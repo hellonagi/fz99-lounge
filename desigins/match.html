@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Details - FZ99 Lounge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex-shrink-0">
+                        <a href="/desigins/" class="text-xl font-bold text-gray-100">FZ99 Lounge</a>
+                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="/desigins/rules.html" class="text-gray-300 hover:text-white text-sm font-medium">Rules</a>
+                        <a href="#" class="text-gray-300 hover:text-white text-sm font-medium">Leaderboard</a>
+                        <a href="#" class="text-gray-300 hover:text-white text-sm font-medium">Results</a>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-3 py-1 text-sm text-gray-300 hover:text-white">
+                        <span class="hidden sm:inline">EN</span>
+                        <span class="sm:hidden">🌐</span>
+                    </button>
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500">
+                        <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20.317 4.3698a16.7241 16.7241 0 0 0-2.7852-2.0916c-.1005-.0337-.2065.0147-.2392.1083a11.2481 11.2481 0 0 0-.5148.9916c-1.0058-.1397-2.0236-.1397-3.04 0a10.5604 10.5604 0 0 0-.522-.9763c-.0346-.0928-.1425-.1411-.2448-.1074a16.6754 16.6754 0 0 0-2.783 2.0916c-.0173.0156-.0282.0357-.0336.0576-3.5274 5.0877-4.4901 10.0495-4.0157 14.9523.002.0228.0136.0447.0309.0602a16.9649 16.9649 0 0 0 5.0604 2.5378c.1024.0329.2114-.0122.2577-.0969.6149-.8355 1.1633-1.7141 1.6335-2.6347.0282-.0553-.0009-.1199-.0618-.1416a11.1409 11.1409 0 0 1-1.5768-.7429c-.0673-.0448-.0648-.1498.0056-.194.1057-.0825.2114-.1686.3118-.2565.0291-.0246.0701-.0283.1037-.0119 3.3165 1.4967 6.9044 1.4967 10.175 0 .0346-.0173.0756-.0137.1056.0109.1004.0879.2061.174.3127.2565.0713.0432.0737.1492.0065.194-.4771.2716-1.0069.5186-1.5778.7419-.0609.0217-.0891.0863-.0609.1416.4774.9206 1.0313 1.7992 1.6335 2.6347.0453.0847.1543.1298.2577.0969a16.9049 16.9049 0 0 0 5.0703-2.5378c.0183-.0156.0309-.0374.0309-.0602.5483-5.5972-.8696-10.4684-3.7438-14.9514a.0499.0499 0 0 0-.0327-.0594zM8.5917 15.2781c-1.0022 0-1.8259-.8954-1.8259-1.9953 0-1.0999.8055-1.9953 1.8259-1.9953 1.0295 0 1.8441.9045 1.826 1.9953 0 1.0999-.8055 1.9953-1.826 1.9953zm6.7271 0c-1.0022 0-1.8259-.8954-1.8259-1.9953 0-1.0999.8055-1.9953 1.8259-1.9953 1.0295 0 1.8441.9045 1.826 1.9953 0 1.0999-.7965 1.9953-1.826 1.9953z"/>
+                        </svg>
+                        <span>Discord Login</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Match Header -->
+        <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md mb-6">
+            <div class="px-4 py-5 sm:px-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <div class="flex items-center space-x-3">
+                            <h1 class="text-2xl font-bold text-white">Queen League</h1>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900 text-red-200">
+                                LIVE
+                            </span>
+                        </div>
+                        <div class="mt-2 flex items-center space-x-4 text-sm text-gray-400">
+                            <span>Season 4 • Game 15</span>
+                            <span>•</span>
+                            <span>Mute City III</span>
+                            <span>•</span>
+                            <span>Lap 2/3</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-400">Time Elapsed</div>
+                        <div class="text-2xl font-bold text-white tabular-nums">02:31</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-6 text-sm">
+                    <div>
+                        <span class="text-gray-400">Players:</span>
+                        <span class="text-white ml-1 font-medium">93/99</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-400">Average MMR:</span>
+                        <span class="text-white ml-1 font-medium">2150</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column - Race Positions -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Current Standings -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Current Standings</h3>
+                    </div>
+                    <div class="divide-y divide-gray-700">
+                        <!-- Position 1 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-yellow-400">1</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">SpeedKing</div>
+                                        <div class="text-xs text-gray-400">Blue Falcon</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-white">Lap 3</div>
+                                    <div class="text-xs text-gray-400">+0.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Position 2 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-gray-300">2</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">RacerPro</div>
+                                        <div class="text-xs text-gray-400">Golden Fox</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-white">Lap 3</div>
+                                    <div class="text-xs text-gray-400">+1.23</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Position 3 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-orange-600">3</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">TurboJet</div>
+                                        <div class="text-xs text-gray-400">Fire Stingray</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-white">Lap 3</div>
+                                    <div class="text-xs text-gray-400">+2.45</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Position 4-10 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xl font-bold text-gray-500">4</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">FalconMaster</div>
+                                        <div class="text-xs text-gray-400">Wild Goose</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-white">Lap 3</div>
+                                    <div class="text-xs text-gray-400">+3.12</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xl font-bold text-gray-500">5</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">NitroKnight</div>
+                                        <div class="text-xs text-gray-400">Blue Falcon</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-white">Lap 2</div>
+                                    <div class="text-xs text-gray-400">+4.56</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Show more button -->
+                        <div class="px-4 py-3 text-center">
+                            <button class="text-sm text-blue-400 hover:text-blue-300">Show all 93 racers</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Match Stats -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Match Statistics</h3>
+                    </div>
+                    <div class="p-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-white">31</div>
+                            <div class="text-xs text-gray-400">KOs</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-white">62</div>
+                            <div class="text-xs text-gray-400">Eliminations</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-white">1:42</div>
+                            <div class="text-xs text-gray-400">Best Lap</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-white">93</div>
+                            <div class="text-xs text-gray-400">Active Players</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Streamers & Info -->
+            <div class="space-y-6">
+                <!-- Live Streams -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Live Streams</h3>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <a href="#" class="block relative group aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-1">
+                                        <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span class="text-xs text-white font-medium">RacerPro</span>
+                                    </div>
+                                    <span class="text-xs text-white bg-black/50 px-1 rounded">P2</span>
+                                </div>
+                                <div class="text-xs text-gray-300 mt-1">1.2K viewers</div>
+                            </div>
+                        </a>
+                        <a href="#" class="block relative group aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-1">
+                                        <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span class="text-xs text-white font-medium">SpeedKing</span>
+                                    </div>
+                                    <span class="text-xs text-white bg-black/50 px-1 rounded">P1</span>
+                                </div>
+                                <div class="text-xs text-gray-300 mt-1">856 viewers</div>
+                            </div>
+                        </a>
+                        <a href="#" class="block relative group aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-1">
+                                        <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span class="text-xs text-white font-medium">F-Zero_Master</span>
+                                    </div>
+                                    <span class="text-xs text-white bg-black/50 px-1 rounded">P8</span>
+                                </div>
+                                <div class="text-xs text-gray-300 mt-1">423 viewers</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Top Players -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Top MMR Players</h3>
+                    </div>
+                    <div class="p-4 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-400">P12</span>
+                                <span class="text-sm text-white">EliteRacer</span>
+                            </div>
+                            <span class="text-sm text-purple-400 font-medium">2850</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-400">P5</span>
+                                <span class="text-sm text-white">NitroKnight</span>
+                            </div>
+                            <span class="text-sm text-purple-400 font-medium">2720</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-400">P1</span>
+                                <span class="text-sm text-white">SpeedKing</span>
+                            </div>
+                            <span class="text-sm text-purple-400 font-medium">2680</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-400">P2</span>
+                                <span class="text-sm text-white">RacerPro</span>
+                            </div>
+                            <span class="text-sm text-purple-400 font-medium">2615</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-400">P23</span>
+                                <span class="text-sm text-white">VelocityX</span>
+                            </div>
+                            <span class="text-sm text-purple-400 font-medium">2590</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 mt-12">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-sm text-gray-500">
+                <p>&copy; 2024 FZ99 Lounge. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Update timer
+        let elapsed = 151; // 2:31 in seconds
+        
+        function updateTimer() {
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            
+            const timerElement = document.querySelector('.tabular-nums');
+            if (timerElement) {
+                timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            elapsed++;
+        }
+        
+        setInterval(updateTimer, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FZ99 Lounge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold text-gray-100">FZ99 Lounge</h1>
+                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="/desigins/rules.html" class="text-gray-300 hover:text-white text-sm font-medium">Rules</a>
+                        <a href="#" class="text-gray-300 hover:text-white text-sm font-medium">Leaderboard</a>
+                        <a href="#" class="text-gray-300 hover:text-white text-sm font-medium">Results</a>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-3 py-1 text-sm text-gray-300 hover:text-white">
+                        <span class="hidden sm:inline">EN</span>
+                        <span class="sm:hidden">🌐</span>
+                    </button>
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-indigo-500">
+                        <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M20.317 4.3698a16.7241 16.7241 0 0 0-2.7852-2.0916c-.1005-.0337-.2065.0147-.2392.1083a11.2481 11.2481 0 0 0-.5148.9916c-1.0058-.1397-2.0236-.1397-3.04 0a10.5604 10.5604 0 0 0-.522-.9763c-.0346-.0928-.1425-.1411-.2448-.1074a16.6754 16.6754 0 0 0-2.783 2.0916c-.0173.0156-.0282.0357-.0336.0576-3.5274 5.0877-4.4901 10.0495-4.0157 14.9523.002.0228.0136.0447.0309.0602a16.9649 16.9649 0 0 0 5.0604 2.5378c.1024.0329.2114-.0122.2577-.0969.6149-.8355 1.1633-1.7141 1.6335-2.6347.0282-.0553-.0009-.1199-.0618-.1416a11.1409 11.1409 0 0 1-1.5768-.7429c-.0673-.0448-.0648-.1498.0056-.194.1057-.0825.2114-.1686.3118-.2565.0291-.0246.0701-.0283.1037-.0119 3.3165 1.4967 6.9044 1.4967 10.175 0 .0346-.0173.0756-.0137.1056.0109.1004.0879.2061.174.3127.2565.0713.0432.0737.1492.0065.194-.4771.2716-1.0069.5186-1.5778.7419-.0609.0217-.0891.0863-.0609.1416.4774.9206 1.0313 1.7992 1.6335 2.6347.0453.0847.1543.1298.2577.0969a16.9049 16.9049 0 0 0 5.0703-2.5378c.0183-.0156.0309-.0374.0309-.0602.5483-5.5972-.8696-10.4684-3.7438-14.9514a.0499.0499 0 0 0-.0327-.0594zM8.5917 15.2781c-1.0022 0-1.8259-.8954-1.8259-1.9953 0-1.0999.8055-1.9953 1.8259-1.9953 1.0295 0 1.8441.9045 1.826 1.9953 0 1.0999-.8055 1.9953-1.826 1.9953zm6.7271 0c-1.0022 0-1.8259-.8954-1.8259-1.9953 0-1.0999.8055-1.9953 1.8259-1.9953 1.0295 0 1.8441.9045 1.826 1.9953 0 1.0999-.7965 1.9953-1.826 1.9953z"/>
+                        </svg>
+                        <span>Discord Login</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section - Next Lobby -->
+    <section class="relative min-h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden">
+        <!-- Animated Background -->
+        <div class="absolute inset-0">
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20"></div>
+            <div class="absolute inset-0" style="background-image: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(255, 119, 198, 0.3) 0%, transparent 50%), radial-gradient(circle at 50% 100%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);"></div>
+        </div>
+
+        <div class="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div class="text-center">
+                <!-- Season Info -->
+                <div class="mb-6">
+                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Season 1 • Game 1</span>
+                </div>
+
+                <!-- Main Title -->
+                <h1 class="text-4xl md:text-6xl font-black text-white mb-3 tracking-tight">
+                    KNIGHT LEAGUE
+                </h1>
+                <div class="mb-8">
+                    <span class="text-sm text-gray-400">Starts in</span>
+                </div>
+
+                <!-- Countdown Timer -->
+                <div class="mb-8">
+                    <div class="inline-flex items-baseline space-x-2 text-white">
+                        <span class="text-6xl md:text-7xl font-black tabular-nums" id="minutes">02</span>
+                        <span class="text-5xl md:text-6xl font-thin opacity-50">:</span>
+                        <span class="text-6xl md:text-7xl font-black tabular-nums" id="seconds">45</span>
+                    </div>
+                </div>
+
+                <!-- Players & Action -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+                    <!-- Players Count -->
+                    <div class="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-5 py-3 border border-white/20">
+                        <div class="relative">
+                            <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                            <div class="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+                        </div>
+                        <span class="text-lg font-semibold text-white">67/99</span>
+                        <span class="text-sm text-gray-300">Players</span>
+                    </div>
+
+                    <!-- Join Button -->
+                    <button class="group relative px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-full hover:shadow-lg hover:shadow-green-500/30 transform hover:scale-105 transition-all duration-200">
+                        <span class="relative z-10">JOIN NOW</span>
+                        <div class="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    </button>
+                </div>
+
+                <!-- Rules Link -->
+                <div class="mt-6">
+                    <p class="text-sm text-gray-400">
+                        Please review the
+                        <a href="/desigins/rules.html" class="text-blue-400 hover:text-blue-300 underline">match rules</a>
+                        before joining
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Ongoing Match -->
+        <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-700">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg leading-6 font-medium text-gray-100">Ongoing Match</h3>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-900 text-red-200">
+                        LIVE
+                    </span>
+                </div>
+            </div>
+            <div class="p-4">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-sm font-semibold text-purple-400">Knight League</span>
+                        </div>
+                        <span class="text-sm text-gray-400">99 Players</span>
+                    </div>
+                </div>
+
+                <!-- Streamers -->
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-gray-300 mb-3">Live Streams</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <a href="#" class="block relative group aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <span class="text-xs text-white font-medium">RacerPro</span>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="#" class="block relative group aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <span class="text-xs text-white font-medium">SpeedKing</span>
+                                </div>
+                            </div>
+                        </a>
+                        <a href="#" class="block relative group aspect-video bg-gray-700 rounded-lg overflow-hidden">
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z"/>
+                                </svg>
+                            </div>
+                            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                                <div class="flex items-center space-x-1">
+                                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                    <span class="text-xs text-white font-medium">F-Zero_Master</span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Participants -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-300 mb-2">Participants</h4>
+                    <div class="flex flex-wrap gap-2 text-xs">
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">RacerPro</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">SpeedKing</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">TurboJet</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">F-Zero_Master</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">BluePhoenix</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">NitroKnight</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">SonicRacer_99</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">FalconMaster</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">EliteRacer</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">VelocityX</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">CaptainSpeed</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">SpeedDemon42</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">TurboChamp</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded">... +86 others</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Matches -->
+        <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+            <div class="px-4 py-5 sm:px-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-100">Recent Matches</h3>
+            </div>
+            <div class="divide-y divide-gray-700">
+                <!-- Match 1 -->
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <span class="text-sm font-semibold text-indigo-400">Queen League</span>
+                            <span class="text-sm text-gray-400 ml-2">5 min ago</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm text-gray-400">87 Players</span>
+                            <span class="text-sm text-gray-500 ml-3">Avg MMR: 2150</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥇</span>
+                                <span class="text-sm text-gray-100">SonicRacer_99</span>
+                            </div>
+                            <span class="text-sm text-green-400 font-medium">1000 pts</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥈</span>
+                                <span class="text-sm text-gray-100">FalconMaster</span>
+                            </div>
+                            <span class="text-sm text-gray-400">850 pts</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥉</span>
+                                <span class="text-sm text-gray-100">SpeedDemon42</span>
+                            </div>
+                            <span class="text-sm text-gray-400">720 pts</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Match 2 -->
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <span class="text-sm font-semibold text-purple-400">King League</span>
+                            <span class="text-sm text-gray-400 ml-2">23 min ago</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm text-gray-400">92 Players</span>
+                            <span class="text-sm text-gray-500 ml-3">Avg MMR: 2320</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥇</span>
+                                <span class="text-sm text-gray-100">BluePhoenix</span>
+                            </div>
+                            <span class="text-sm text-green-400 font-medium">1000 pts</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥈</span>
+                                <span class="text-sm text-gray-100">NitroKnight</span>
+                            </div>
+                            <span class="text-sm text-gray-400">890 pts</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥉</span>
+                                <span class="text-sm text-gray-100">TurboChamp</span>
+                            </div>
+                            <span class="text-sm text-gray-400">780 pts</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Match 3 -->
+                <div class="p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <span class="text-sm font-semibold text-yellow-400">Ace League</span>
+                            <span class="text-sm text-gray-400 ml-2">1 hour ago</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm text-gray-400">99 Players</span>
+                            <span class="text-sm text-gray-500 ml-3">Avg MMR: 2580</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥇</span>
+                                <span class="text-sm text-gray-100">EliteRacer</span>
+                            </div>
+                            <span class="text-sm text-green-400 font-medium">1000 pts</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥈</span>
+                                <span class="text-sm text-gray-100">VelocityX</span>
+                            </div>
+                            <span class="text-sm text-gray-400">920 pts</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="text-2xl">🥉</span>
+                                <span class="text-sm text-gray-100">CaptainSpeed</span>
+                            </div>
+                            <span class="text-sm text-gray-400">810 pts</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-sm text-gray-500">
+                <p>&copy; 2024 FZ99 Lounge. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Countdown Timer
+        let timeLeft = 165; // 2:45 in seconds
+
+        function updateCountdown() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+
+            document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+            document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+
+            timeLeft--;
+
+            if (timeLeft < 0) {
+                timeLeft = 300; // Reset to 5 minutes
+            }
+        }
+
+        setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>

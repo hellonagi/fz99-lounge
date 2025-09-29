@@ -1,0 +1,228 @@
+// Prisma Schema for Discord Cafe - v6.x (2025年9月版)
+// Rust-free version with PostgreSQL optimizations
+
+generator client {
+  provider = "prisma-client-js"
+  // Prisma 6の新機能: Rust-freeエンジン（PostgreSQL対応）
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================
+// Enums
+// =====================================
+
+enum UserRole {
+  user
+  moderator
+  admin
+}
+
+enum UserStatus {
+  active
+  banned
+  deleted
+}
+
+enum Visibility {
+  public
+  private
+  unlisted
+  friends_only
+}
+
+enum ServerCategory {
+  gaming
+  music
+  education
+  technology
+  community
+  anime
+  vtuber
+  other
+}
+
+enum LanguageCode {
+  ja
+  en
+  ko
+  zh
+  es
+  fr
+  de
+  other
+}
+
+// =====================================
+// Models
+// =====================================
+
+model User {
+  id            String      @id @default(uuid())
+  discordId     String      @unique @map("discord_id")
+  username      String
+  discriminator String?
+  globalName    String?     @map("global_name")
+  avatarHash    String?     @map("avatar_hash")
+  email         String?     @unique
+
+  role          UserRole    @default(user)
+  status        UserStatus  @default(active)
+
+  // JSONB fields for flexible data
+  profile       Json        @default("{}")
+  settings      Json        @default("{\"notifications\": {\"email\": true, \"discord\": true}}")
+  tokens        Json?
+
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  lastLoginAt   DateTime?   @map("last_login_at")
+  loginCount    Int         @default(0) @map("login_count")
+
+  // Relations
+  serverListings ServerListing[]
+  friendListings FriendListing[]
+  userGuilds     UserGuild[]
+  contacts       Contact[]
+  auditLogs      AuditLog[]
+
+  @@index([discordId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("users")
+}
+
+model DiscordGuild {
+  id         String   @id @default(uuid())
+  guildId    String   @unique @map("guild_id")
+  name       String
+  iconHash   String?  @map("icon_hash")
+
+  // JSONB for flexible stats and metadata
+  stats      Json     @default("{}")
+  metadata   Json     @default("{}")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  serverListings ServerListing[]
+  userGuilds     UserGuild[]
+
+  @@index([guildId])
+  @@map("discord_guilds")
+}
+
+model ServerListing {
+  id              String         @id @default(uuid())
+  guild           DiscordGuild   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId         String         @map("guild_id")
+  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId         String         @map("owner_id")
+
+  title           String         @db.VarChar(100)
+  description     String?        @db.Text
+  category        ServerCategory @default(other)
+  languages       String[]       @default(["ja"])
+  tags            String[]       @default([])
+
+  inviteCode      String         @map("invite_code")
+  inviteExpiresAt DateTime?      @map("invite_expires_at")
+
+  visibility      Visibility     @default(private)
+  isVerified      Boolean        @default(false) @map("is_verified")
+  isFeatured      Boolean        @default(false) @map("is_featured")
+
+  // JSONB for stats
+  stats           Json           @default("{\"views\": 0, \"clicks\": 0, \"bumps\": 0}")
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  bumpedAt        DateTime       @default(now()) @map("bumped_at")
+
+  @@index([visibility])
+  @@index([category])
+  @@index([bumpedAt(sort: Desc)])
+  @@index([isFeatured])
+  @@map("server_listings")
+}
+
+model FriendListing {
+  id              String     @id @default(uuid())
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String     @map("user_id")
+
+  title           String     @db.VarChar(50)
+  description     String     @db.Text
+  tags            String[]   @default([])
+
+  displaySettings Json       @default("{}") @map("display_settings")
+  visibility      Visibility @default(public)
+
+  stats           Json       @default("{\"views\": 0, \"contacts\": 0}")
+
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  expiresAt       DateTime?  @map("expires_at")
+
+  @@index([userId])
+  @@index([visibility])
+  @@index([expiresAt])
+  @@map("friend_listings")
+}
+
+model UserGuild {
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String       @map("user_id")
+  guild       DiscordGuild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId     String       @map("guild_id")
+
+  permissions String[]
+  joinedAt    DateTime     @default(now()) @map("joined_at")
+
+  @@id([userId, guildId])
+  @@index([guildId])
+  @@map("user_guilds")
+}
+
+model Contact {
+  id             String   @id @default(uuid())
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId         String?  @map("user_id")
+
+  contactInfo    Json     @map("contact_info")
+  message        String   @db.Text
+  status         String   @default("pending")
+
+  securityInfo   Json?    @map("security_info")
+  processingInfo Json     @default("{}") @map("processing_info")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("contacts")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorId    String?  @map("actor_id")
+
+  changes    Json?
+  metadata   Json?
+
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}

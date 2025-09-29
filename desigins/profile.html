@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Profile - FZ99 Lounge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex-shrink-0">
+                        <a href="/desigins/" class="text-xl font-bold text-gray-100">FZ99 Lounge</a>
+                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="/desigins/rules.html" class="text-gray-300 hover:text-white text-sm font-medium">Rules</a>
+                        <a href="#" class="text-gray-300 hover:text-white text-sm font-medium">Leaderboard</a>
+                        <a href="#" class="text-gray-300 hover:text-white text-sm font-medium">Results</a>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button class="px-3 py-1 text-sm text-gray-300 hover:text-white">
+                        <span class="hidden sm:inline">EN</span>
+                        <span class="sm:hidden">🌐</span>
+                    </button>
+                    <div class="flex items-center space-x-3">
+                        <img src="https://via.placeholder.com/32" alt="Profile" class="w-8 h-8 rounded-full bg-gray-600">
+                        <span class="text-sm text-gray-300 hidden sm:inline">SpeedKing</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Profile Header -->
+        <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md mb-6">
+            <div class="bg-gradient-to-r from-purple-900/50 to-indigo-900/50 px-4 py-6 sm:px-6">
+                <div class="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+                    <div class="relative">
+                        <img src="https://via.placeholder.com/96" alt="Profile" class="w-24 h-24 rounded-full bg-gray-600 border-4 border-gray-700">
+                        <div class="absolute bottom-0 right-0 bg-yellow-500 text-gray-900 text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center border-2 border-gray-800">
+                            #12
+                        </div>
+                    </div>
+                    <div class="flex-1 text-center sm:text-left">
+                        <div class="flex items-center justify-center sm:justify-start space-x-3">
+                            <h1 class="text-2xl font-bold text-white">SpeedKing</h1>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-200">
+                                ONLINE
+                            </span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-gray-400">League:</span>
+                                <span class="font-medium text-purple-400">King League</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-gray-400">MMR:</span>
+                                <span class="font-medium text-white">2680</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-gray-400">Joined:</span>
+                                <span class="font-medium text-gray-300">Season 1</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center justify-center sm:justify-start space-x-2">
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+                                Blue Falcon Main
+                            </span>
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">
+                                Streamer
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md">
+                            Add Friend
+                        </button>
+                        <button class="p-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-md">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-2xl font-bold text-white">847</div>
+                <div class="text-xs text-gray-400">Total Matches</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-2xl font-bold text-green-400">124</div>
+                <div class="text-xs text-gray-400">Wins</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-2xl font-bold text-blue-400">14.6%</div>
+                <div class="text-xs text-gray-400">Win Rate</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4">
+                <div class="text-2xl font-bold text-purple-400">3.8</div>
+                <div class="text-xs text-gray-400">Avg Position</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column - Match History -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Recent Matches -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700 flex justify-between items-center">
+                        <h3 class="text-lg font-medium text-gray-100">Recent Matches</h3>
+                        <a href="#" class="text-sm text-blue-400 hover:text-blue-300">View All</a>
+                    </div>
+                    <div class="divide-y divide-gray-700">
+                        <!-- Match 1 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-yellow-400">1st</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">King League</div>
+                                        <div class="text-xs text-gray-400">Mute City III • 10 min ago</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-green-400">+32 MMR</div>
+                                    <div class="text-xs text-gray-400">1000 pts</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                <span>99 Players</span>
+                                <span>•</span>
+                                <span>12 KOs</span>
+                                <span>•</span>
+                                <span>Best Lap: 1:42.3</span>
+                            </div>
+                        </div>
+                        <!-- Match 2 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-gray-400">5th</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">King League</div>
+                                        <div class="text-xs text-gray-400">Big Blue • 45 min ago</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-gray-400">+5 MMR</div>
+                                    <div class="text-xs text-gray-400">650 pts</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                <span>92 Players</span>
+                                <span>•</span>
+                                <span>7 KOs</span>
+                                <span>•</span>
+                                <span>Best Lap: 1:38.1</span>
+                            </div>
+                        </div>
+                        <!-- Match 3 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-orange-600">3rd</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">Queen League</div>
+                                        <div class="text-xs text-gray-400">Sand Ocean • 2 hours ago</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-green-400">+18 MMR</div>
+                                    <div class="text-xs text-gray-400">820 pts</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                <span>87 Players</span>
+                                <span>•</span>
+                                <span>9 KOs</span>
+                                <span>•</span>
+                                <span>Best Lap: 1:55.7</span>
+                            </div>
+                        </div>
+                        <!-- Match 4 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-xl font-bold text-gray-500">23rd</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">King League</div>
+                                        <div class="text-xs text-gray-400">Death Wind • 3 hours ago</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-red-400">-15 MMR</div>
+                                    <div class="text-xs text-gray-400">320 pts</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                <span>95 Players</span>
+                                <span>•</span>
+                                <span>2 KOs</span>
+                                <span>•</span>
+                                <span>Best Lap: 2:10.2</span>
+                            </div>
+                        </div>
+                        <!-- Match 5 -->
+                        <div class="px-4 py-3 hover:bg-gray-750 transition-colors">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center space-x-3">
+                                    <span class="text-2xl font-bold text-gray-300">2nd</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-white">King League</div>
+                                        <div class="text-xs text-gray-400">Silence • 4 hours ago</div>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-green-400">+22 MMR</div>
+                                    <div class="text-xs text-gray-400">900 pts</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                <span>99 Players</span>
+                                <span>•</span>
+                                <span>15 KOs</span>
+                                <span>•</span>
+                                <span>Best Lap: 1:35.9</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Stats -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Performance Stats</h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-400 mb-3">Position Distribution</h4>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Top 3</span>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-24 bg-gray-700 rounded-full h-2">
+                                                <div class="bg-green-500 h-2 rounded-full" style="width: 35%"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-400">35%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Top 10</span>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-24 bg-gray-700 rounded-full h-2">
+                                                <div class="bg-blue-500 h-2 rounded-full" style="width: 62%"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-400">62%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Top 30</span>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="w-24 bg-gray-700 rounded-full h-2">
+                                                <div class="bg-purple-500 h-2 rounded-full" style="width: 85%"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-400">85%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-400 mb-3">Track Performance</h4>
+                                <div class="space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Mute City</span>
+                                        <span class="text-xs text-green-400">Avg: 2.8</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Big Blue</span>
+                                        <span class="text-xs text-green-400">Avg: 3.2</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Sand Ocean</span>
+                                        <span class="text-xs text-yellow-400">Avg: 5.1</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Death Wind</span>
+                                        <span class="text-xs text-red-400">Avg: 8.3</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs text-gray-300">Silence</span>
+                                        <span class="text-xs text-green-400">Avg: 3.6</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Achievements & Stats -->
+            <div class="space-y-6">
+                <!-- Achievements -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Achievements</h3>
+                    </div>
+                    <div class="p-4 grid grid-cols-3 gap-3">
+                        <div class="text-center">
+                            <div class="text-3xl mb-1">🏆</div>
+                            <div class="text-xs text-gray-400">Champion</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-1">⚡</div>
+                            <div class="text-xs text-gray-400">Speed Demon</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-1">🎯</div>
+                            <div class="text-xs text-gray-400">Sharpshooter</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-1">💀</div>
+                            <div class="text-xs text-gray-400">Eliminator</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-1">🛡️</div>
+                            <div class="text-xs text-gray-400">Survivor</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl mb-1">🔥</div>
+                            <div class="text-xs text-gray-400">On Fire</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Season Stats -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Season 4 Stats</h3>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Season High</span>
+                            <span class="text-sm font-medium text-white">2742 MMR</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Total KOs</span>
+                            <span class="text-sm font-medium text-white">892</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Best Streak</span>
+                            <span class="text-sm font-medium text-white">7 Wins</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Fastest Lap</span>
+                            <span class="text-sm font-medium text-white">1:31.2</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-400">Favorite Machine</span>
+                            <span class="text-sm font-medium text-blue-400">Blue Falcon</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rivals -->
+                <div class="bg-gray-800 shadow-lg overflow-hidden sm:rounded-md">
+                    <div class="px-4 py-3 sm:px-6 border-b border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-100">Rivals</h3>
+                    </div>
+                    <div class="p-4 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <img src="https://via.placeholder.com/24" alt="Rival" class="w-6 h-6 rounded-full bg-gray-600">
+                                <span class="text-sm text-white">RacerPro</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-green-400">12W - 8L</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <img src="https://via.placeholder.com/24" alt="Rival" class="w-6 h-6 rounded-full bg-gray-600">
+                                <span class="text-sm text-white">TurboJet</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-red-400">8W - 15L</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <img src="https://via.placeholder.com/24" alt="Rival" class="w-6 h-6 rounded-full bg-gray-600">
+                                <span class="text-sm text-white">NitroKnight</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-400">10W - 10L</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 border-t border-gray-800 mt-12">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-sm text-gray-500">
+                <p>&copy; 2024 FZ99 Lounge. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

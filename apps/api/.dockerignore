@@ -1,0 +1,60 @@
+# Ignore files for Docker build
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.nyc_output
+
+# Build outputs
+dist
+.next
+out
+
+# Environment files (copy separately if needed)
+.env*
+!.env.example
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+docs
+*.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Development files
+.eslintrc*
+.prettierrc*
+jest.config.js
+tsconfig.json
+tsconfig.build.json
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.bak
+*.log
