@@ -14,7 +14,7 @@ export class AppController {
   getHealth() {
     return {
       status: 'ok',
-      service: 'discord-cafe-api',
+      service: 'fz99-lounge-api',
       timestamp: new Date().toISOString(),
     };
   }

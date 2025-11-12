@@ -1,9 +1,9 @@
-// Prisma Schema for Discord Cafe - v6.x (2025年9月版)
-// Rust-free version with PostgreSQL optimizations
+// F-Zero 99 Matchmaking Site - Prisma Schema
+// NestJS v11 + PostgreSQL + Prisma 6
+// Complete redesign - 2025
 
 generator client {
   provider = "prisma-client-js"
-  // Prisma 6の新機能: Rust-freeエンジン（PostgreSQL対応）
   engineType = "library"
 }
 
@@ -12,217 +12,730 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =====================================
-// Enums
-// =====================================
+// ==================== ENUMS ====================
 
 enum UserRole {
-  user
-  moderator
-  admin
+  PLAYER
+  MODERATOR
+  ADMIN
 }
 
 enum UserStatus {
-  active
-  banned
-  deleted
+  ACTIVE
+  WARNED
+  TEMP_BANNED
+  PERM_BANNED
+  DELETED      // ソフトデリート用
 }
 
-enum Visibility {
-  public
-  private
-  unlisted
-  friends_only
+enum EventType {
+  SEASON       // GP/CLASSICシーズン
+  TOURNAMENT   // 大会
 }
 
-enum ServerCategory {
-  gaming
-  music
-  education
-  technology
-  community
-  anime
-  vtuber
-  other
+enum GameMode {
+  GP           // GPモード（最大99人）
+  CLASSIC      // クラシックモード（最大20人）
+  TOURNAMENT   // 大会モード
 }
 
-enum LanguageCode {
-  ja
-  en
-  ko
-  zh
-  es
-  fr
-  de
-  other
+enum League {
+  // GPモード用
+  KNIGHT
+  QUEEN
+  KING
+  ACE
+  MIRROR_KNIGHT
+  MIRROR_QUEEN
+  MIRROR_KING
+  MIRROR_ACE
+
+  // classicモード用
+  CLASSIC_MINI
 }
 
-// =====================================
-// Models
-// =====================================
+enum LobbyStatus {
+  WAITING       // 開始前
+  IN_PROGRESS   // 進行中
+  COMPLETED     // 完了
+  CANCELLED     // キャンセル
+}
+
+enum MatchStatus {
+  PENDING       // 開始前
+  ONGOING       // 進行中
+  RESULTS_PENDING    // 結果入力待ち
+  PROVISIONALLY_CONFIRMED  // 暫定確定
+  COMPLETED     // 完了
+  ABORTED       // 中断
+}
+
+enum ResultStatus {
+  PENDING       // 未入力
+  SUBMITTED     // 提出済
+  NO_SHOW       // 不参加
+  PROVISIONAL   // 暫定
+  DISPUTED      // 異議あり
+  FINALIZED     // 確定
+  INVALIDATED   // 無効化
+}
+
+enum ResultReliability {
+  VERIFIED      // スクショまたは配信で確認済み
+  PARTIAL       // 部分的に確認
+  UNVERIFIED    // 未確認（自己申告のみ）
+  DISPUTED      // 異議申し立て中
+}
+
+enum StreamPlatform {
+  YOUTUBE
+  TWITCH
+}
+
+enum BanSeverity {
+  WARNING
+  TEMP_BAN
+  PERM_BAN
+}
+
+enum DisputeStatus {
+  PENDING
+  INVESTIGATING
+  ACCEPTED
+  REJECTED
+  RESOLVED
+}
+
+enum PenaltyType {
+  FALSE_REPORT      // 虚偽報告
+  NO_SUBMISSION     // 無報告
+  LATE_SUBMISSION   // 遅延報告
+}
+
+// ==================== USERS ====================
 
 model User {
-  id            String      @id @default(uuid())
-  discordId     String      @unique @map("discord_id")
-  username      String
-  discriminator String?
-  globalName    String?     @map("global_name")
-  avatarHash    String?     @map("avatar_hash")
-  email         String?     @unique
+  id              String      @id @default(uuid())
+  profileId       Int         @unique @default(autoincrement())
+  discordId       String      @unique
+  username        String
+  displayName     String?     @db.VarChar(10)
+  displayNameLastChangedAt DateTime?
+  avatarHash      String?
+  email           String?     @unique
 
-  role          UserRole    @default(user)
-  status        UserStatus  @default(active)
+  role            UserRole    @default(PLAYER)
+  status          UserStatus  @default(ACTIVE)
+  deletedAt       DateTime?   // ソフトデリート用
 
-  // JSONB fields for flexible data
-  profile       Json        @default("{}")
-  settings      Json        @default("{\"notifications\": {\"email\": true, \"discord\": true}}")
-  tokens        Json?
+  // 配信URL
+  youtubeUrl      String?
+  twitchUrl       String?
 
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-  lastLoginAt   DateTime?   @map("last_login_at")
-  loginCount    Int         @default(0) @map("login_count")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  lastLoginAt     DateTime?
 
-  // Relations
-  serverListings ServerListing[]
-  friendListings FriendListing[]
-  userGuilds     UserGuild[]
-  contacts       Contact[]
-  auditLogs      AuditLog[]
+  // ペナルティシステム
+  penaltyPoints   Int         @default(0)
+  isSuspended     Boolean     @default(false)
+  suspendedUntil  DateTime?
+
+  // 信頼スコア（将来用）
+  trustScore      Int         @default(100)
+
+  // リレーション
+  stats99              UserStats99?
+  statsClassic         UserStatsClassic?
+  lobbyParticipants    LobbyParticipant[]
+  matchParticipants    MatchParticipant[]
+  createdEvents        Event[]     @relation("EventCreator")
+  createdLobbies       Lobby[]     @relation("LobbyCreator")
+  streams              MatchStream[]
+  splitVotes           SplitVote[]
+  banHistory           BanRecord[] @relation("BanTarget")
+  moderatorActions     BanRecord[] @relation("ModeratorActions")
+  moderationLogs       ModerationLog[] @relation("ModerationTarget")
+  moderatorLogs        ModerationLog[] @relation("ModeratorLogs")
+  penalties            PenaltyRecord[]
+  pushSubscriptions    PushSubscription[]
+  disputes             ResultDispute[] @relation("DisputeReporter")
+  disputeTargets       ResultDispute[] @relation("DisputeTarget")
+  tournamentAbsences   TournamentAbsence[]
+  loginHistory         UserLoginHistory[]
 
   @@index([discordId])
+  @@index([displayName])
+  @@index([profileId])
   @@index([status])
-  @@index([createdAt(sort: Desc)])
   @@map("users")
 }
 
-model DiscordGuild {
-  id         String   @id @default(uuid())
-  guildId    String   @unique @map("guild_id")
-  name       String
-  iconHash   String?  @map("icon_hash")
+// ==================== USER STATS ====================
 
-  // JSONB for flexible stats and metadata
-  stats      Json     @default("{}")
-  metadata   Json     @default("{}")
+model UserStats99 {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
 
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  // MMR
+  mmr             Int      @default(1500)
+  seasonHighMmr   Int      @default(1500)
 
-  // Relations
-  serverListings ServerListing[]
-  userGuilds     UserGuild[]
+  // 累計
+  totalMatches    Int      @default(0)
+  totalWins       Int      @default(0)
+  top3Finishes    Int      @default(0)
+  top10Finishes   Int      @default(0)
+  top30Finishes   Int      @default(0)
+  averagePosition Float    @default(50.0)
 
-  @@index([guildId])
-  @@map("discord_guilds")
+  // バトル統計
+  totalKos        Int      @default(0)
+  totalEliminated Int      @default(0)
+
+  // ベスト記録
+  bestPosition    Int      @default(99)
+  bestLapTime     Float?
+  bestStreak      Int      @default(0)
+  currentStreak   Int      @default(0)
+
+  // お気に入り
+  favoriteMachine String?
+  favoriteTrack   String?
+
+  updatedAt       DateTime @updatedAt
+
+  @@index([mmr])
+  @@map("user_stats_99")
 }
 
-model ServerListing {
-  id              String         @id @default(uuid())
-  guild           DiscordGuild   @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  guildId         String         @map("guild_id")
-  owner           User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId         String         @map("owner_id")
+model UserStatsClassic {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
 
-  title           String         @db.VarChar(100)
-  description     String?        @db.Text
-  category        ServerCategory @default(other)
-  languages       String[]       @default(["ja"])
-  tags            String[]       @default([])
+  // MMR（独立したレーティングシステム）
+  mmr             Int      @default(1500)
+  seasonHighMmr   Int      @default(1500)
 
-  inviteCode      String         @map("invite_code")
-  inviteExpiresAt DateTime?      @map("invite_expires_at")
+  // 累計
+  totalMatches    Int      @default(0)
+  totalWins       Int      @default(0)
+  top3Finishes    Int      @default(0)
+  averagePosition Float    @default(10.0)
 
-  visibility      Visibility     @default(private)
-  isVerified      Boolean        @default(false) @map("is_verified")
-  isFeatured      Boolean        @default(false) @map("is_featured")
+  // ベスト記録
+  bestPosition    Int      @default(20)
+  bestStreak      Int      @default(0)
+  currentStreak   Int      @default(0)
 
-  // JSONB for stats
-  stats           Json           @default("{\"views\": 0, \"clicks\": 0, \"bumps\": 0}")
+  // お気に入り
+  favoriteMachine String?
 
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-  bumpedAt        DateTime       @default(now()) @map("bumped_at")
+  updatedAt       DateTime @updatedAt
 
-  @@index([visibility])
-  @@index([category])
-  @@index([bumpedAt(sort: Desc)])
-  @@index([isFeatured])
-  @@map("server_listings")
+  @@index([mmr])
+  @@map("user_stats_classic")
 }
 
-model FriendListing {
-  id              String     @id @default(uuid())
-  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          String     @map("user_id")
+// ==================== USER LOGIN TRACKING ====================
 
-  title           String     @db.VarChar(50)
-  description     String     @db.Text
-  tags            String[]   @default([])
+model UserLoginHistory {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  displaySettings Json       @default("{}") @map("display_settings")
-  visibility      Visibility @default(public)
+  ipAddress       String
+  ipVersion       String?   // IPv4 or IPv6
+  userAgent       String?   @db.Text
 
-  stats           Json       @default("{\"views\": 0, \"contacts\": 0}")
+  // Optional geolocation data
+  country         String?
+  city            String?
+  timezone        String?
 
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
-  expiresAt       DateTime?  @map("expires_at")
+  // Proxy/VPN detection
+  isVpn           Boolean   @default(false)
+  isProxy         Boolean   @default(false)
+  isTor           Boolean   @default(false)
+
+  // Login context
+  loginMethod     String    @default("discord") // For future auth methods
+  deviceType      String?   // mobile, desktop, tablet
+  browser         String?
+  os              String?
+
+  loginAt         DateTime  @default(now())
+
+  @@index([userId, ipAddress])
+  @@index([ipAddress])
+  @@index([loginAt])
+  @@map("user_login_history")
+}
+
+// ==================== EVENT (SEASON/TOURNAMENT) ====================
+
+model Event {
+  id              String      @id @default(uuid())
+  type            EventType   // SEASON or TOURNAMENT
+  name            String
+  description     String?     @db.Text
+
+  startDate       DateTime
+  endDate         DateTime?
+  isActive        Boolean     @default(true)
+
+  createdBy       String?
+  createdByUser   User?       @relation("EventCreator", fields: [createdBy], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // ポリモーフィック関連
+  season          Season?
+  tournament      Tournament?
+  lobbies         Lobby[]
+
+  @@index([type, isActive])
+  @@index([startDate, endDate])
+  @@map("events")
+}
+
+model Season {
+  id              String      @id @default(uuid())
+  eventId         String      @unique
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  gameMode        GameMode    // GP or CLASSIC only
+  seasonNumber    Int
+
+  description     String?
+
+  @@unique([gameMode, seasonNumber])
+  @@index([gameMode])
+  @@map("seasons")
+}
+
+model Tournament {
+  id              String      @id @default(uuid())
+  eventId         String      @unique
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name            String      // "Winter Cup 2025" など
+  seasonNumber    Int         // 第何回大会か
+
+  // 大会形式
+  totalRounds     Int
+  leagues         Json        // ["KNIGHT", "QUEEN", "ACE"]
+
+  // 参加人数
+  minPlayers      Int         @default(40)
+  maxPlayers      Int         @default(99)
+
+  // スケジュール
+  registrationStart DateTime
+  registrationEnd   DateTime
+
+  // 大会設定
+  intervalMinutes   Int         @default(10)    // ラウンド間のインターバル（分）
+  editWindowMinutes Int         @default(10)    // 最終ラウンド後の修正可能時間（分）
+  disputeDays       Int         @default(7)     // 異議申し立て期間（日）
+
+  // スケジュール管理
+  schedules       TournamentSchedule[]
+  absences        TournamentAbsence[]
+
+  @@unique([name, seasonNumber])
+  @@map("tournaments")
+}
+
+// ==================== LOBBY ====================
+
+model Lobby {
+  id              String      @id @default(uuid())
+
+  // イベント関連
+  eventId         String
+  event           Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // ゲームモード
+  gameMode        GameMode
+  leagueType      League?     // TOURNAMENTの場合はNULL（ラウンドごとに異なるため）
+  gameNumber      Int?        // GP/CLASSICのみ、TOURNAMENTはNULL
+
+  status          LobbyStatus @default(WAITING)
+
+  currentPlayers  Int         @default(0)
+  minPlayers      Int         @default(40)
+  maxPlayers      Int         @default(99)
+
+  scheduledStart  DateTime
+  actualStart     DateTime?
+
+  // 管理用
+  createdBy       String?
+  createdByUser   User?       @relation("LobbyCreator", fields: [createdBy], references: [id])
+  notes           String?
+
+  // MMR制限（オプション）
+  minMmr          Int?
+  maxMmr          Int?
+
+  createdAt       DateTime    @default(now())
+
+  // リレーション
+  participants    LobbyParticipant[]
+  matches         Match[]     // 複数マッチ可能
+
+  @@index([gameMode, status])
+  @@index([eventId])
+  @@index([scheduledStart])
+  @@map("lobbies")
+}
+
+model LobbyParticipant {
+  id          String   @id @default(uuid())
+  lobbyId     String
+  lobby       Lobby    @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  joinedAt    DateTime @default(now())
+  isActive    Boolean  @default(true)     // 途中棄権したらfalse
+
+  // TOURNAMENT専用（累計成績）
+  totalPoints     Int      @default(0)    // 全ラウンドの合計ポイント
+  finalRank       Int?                    // Lobby（大会）全体での最終順位
+  lastUpdatedAt   DateTime?                // 最終更新時刻
+
+  withdrawnAt     DateTime?                // 棄権した時刻
+
+  @@unique([lobbyId, userId])
+  @@index([lobbyId])
+  @@index([userId])
+  @@index([lobbyId, totalPoints])         // 順位表示用
+  @@index([lobbyId, isActive])
+  @@map("lobby_participants")
+}
+
+// ==================== MATCH ====================
+
+model Match {
+  id              String      @id @default(uuid())
+  lobbyId         String      // @unique 削除（複数マッチ対応）
+  lobby           Lobby       @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+
+  sequenceNumber  Int         // 1, 2, 3... (全モード共通の連番)
+
+  gameMode        GameMode
+  leagueType      League
+
+  // パスコード管理
+  passcode        String      @db.VarChar(4)
+  passcodePublishedAt DateTime?
+  passcodeVersion Int         @default(1)
+
+  status          MatchStatus @default(PENDING)
+  totalPlayers    Int
+
+  // 結果の信頼度
+  resultReliability  ResultReliability @default(UNVERIFIED)
+  reliabilityReason  String?
+  hasFirstPlaceScreenshot Boolean @default(false)
+  hasStreamEvidence       Boolean @default(false)
+  verifiedAt             DateTime?
+  verifiedBy             String?
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  // 結果確定タイミング
+  firstResultSubmittedAt DateTime?
+  disputeDeadline        DateTime?
+  provisionalConfirmedAt DateTime?
+  finalConfirmedAt       DateTime?
+
+  // リレーション
+  participants    MatchParticipant[]
+  streams         MatchStream[]
+  splitVotes      SplitVote[]
+  screenshot      ResultScreenshot?
+  disputes        ResultDispute[]
+
+  @@unique([lobbyId, sequenceNumber])
+  @@index([gameMode])
+  @@index([passcode])
+  @@index([status])
+  @@index([lobbyId, status])
+  @@index([status, startedAt])
+  @@index([disputeDeadline])
+  @@map("matches")
+}
+
+model MatchParticipant {
+  id              String        @id @default(uuid())
+  matchId         String
+  match           Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+
+  machine         String
+
+  // 結果入力（ポイントベース）
+  reportedPoints      Int?         // プレイヤーが報告したポイント
+  finalPoints         Int?         // 確定後のポイント（異議で修正される可能性）
+
+  // スクリーンショット（1位のみ必須）
+  screenshotUrl       String?      // 1位なら必須、他は任意
+  screenshotVerified  Boolean @default(false)
+
+  // 配信情報
+  wasStreaming        Boolean @default(false)
+  streamUrl           String?
+
+  pointsEarned    Int           @default(0)  // 大会用ポイント（TOURNAMENTのみ）
+  ratingChange    Int           @default(0)  // MODE_99/CLASSIC用
+
+  // 結果ステータス
+  status          ResultStatus  @default(PENDING)
+
+  // スコア修正猶予期間
+  submittedAt     DateTime?
+  canEditUntil    DateTime?
+  editCount       Int           @default(0)
+  editHistory     Json?
+
+  // 確定タイミング
+  provisionalConfirmedAt DateTime?
+  finalConfirmedAt       DateTime?
+
+  @@unique([matchId, userId])
+  @@index([matchId])
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+  @@map("match_participants")
+}
+
+model MatchStream {
+  id            String      @id @default(uuid())
+  matchId       String
+  match         Match       @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+
+  platform      StreamPlatform
+  streamUrl     String
+
+  isLive        Boolean     @default(false)
+  thumbnailUrl  String?
+  viewerCount   Int?
+  streamTitle   String?
+
+  lastCheckedAt DateTime    @default(now())
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([matchId, userId, platform])
+  @@index([matchId, isLive])
+  @@index([lastCheckedAt])
+  @@map("match_streams")
+}
+
+model SplitVote {
+  id          String   @id @default(uuid())
+  matchId     String
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  votedAt     DateTime @default(now())
+
+  @@unique([matchId, userId])
+  @@index([matchId])
+  @@index([votedAt])
+  @@map("split_votes")
+}
+
+model ResultScreenshot {
+  id          String   @id @default(uuid())
+  matchId     String   @unique
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  imageUrl    String
+  uploadedBy  String
+
+  createdAt   DateTime @default(now())
+
+  @@map("result_screenshots")
+}
+
+model ResultDispute {
+  id              String        @id @default(uuid())
+  matchId         String
+  match           Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  reporterId      String
+  reporter        User          @relation("DisputeReporter", fields: [reporterId], references: [id])
+  targetUserId    String
+  targetUser      User          @relation("DisputeTarget", fields: [targetUserId], references: [id])
+
+  claimedPoints   Int           // 「本当は○○ポイントのはず」
+  evidenceUrl     String        // スクショURL（必須）
+  reason          String        @db.Text
+
+  status          DisputeStatus @default(PENDING)
+  resolution      String?       @db.Text
+  resolvedBy      String?
+  resolvedAt      DateTime?
+
+  createdAt       DateTime      @default(now())
+
+  @@index([matchId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("result_disputes")
+}
+
+// ==================== TOURNAMENT SPECIFIC ====================
+
+model TournamentSchedule {
+  id              String      @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  roundNumber     Int
+  scheduledAt     DateTime
+  actualStartAt   DateTime?
+
+  jobId           String?     // BullMQジョブID
+  status          String      @default("SCHEDULED")
+
+  adjustedBy      String?     // 管理者が調整した場合
+  adjustedAt      DateTime?
+
+  createdAt       DateTime    @default(now())
+
+  @@unique([tournamentId, roundNumber])
+  @@index([tournamentId])
+  @@index([status])
+  @@map("tournament_schedules")
+}
+
+model TournamentAbsence {
+  id              String      @id @default(uuid())
+  tournamentId    String
+  tournament      Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+
+  roundNumber     Int
+
+  penaltyPoints   Int         @default(1)
+  createdAt       DateTime    @default(now())
+
+  @@unique([tournamentId, userId, roundNumber])
+  @@index([userId])
+  @@map("tournament_absences")
+}
+
+// ==================== MODERATION ====================
+
+model BanRecord {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation("BanTarget", fields: [userId], references: [id])
+
+  action      String
+  severity    BanSeverity
+  reason      String
+  description String?     @db.Text
+  evidence    Json?
+
+  moderatorId String
+  moderator   User        @relation("ModeratorActions", fields: [moderatorId], references: [id])
+
+  createdAt   DateTime    @default(now())
+  expiresAt   DateTime?
+
+  targetBanId String?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([moderatorId])
+  @@index([expiresAt])
+  @@map("ban_records")
+}
+
+model ModerationLog {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation("ModerationTarget", fields: [userId], references: [id])
+
+  action      String
+  details     Json
+
+  moderatorId String
+  moderator   User        @relation("ModeratorLogs", fields: [moderatorId], references: [id])
+
+  createdAt   DateTime    @default(now())
 
   @@index([userId])
-  @@index([visibility])
-  @@index([expiresAt])
-  @@map("friend_listings")
-}
-
-model UserGuild {
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String       @map("user_id")
-  guild       DiscordGuild @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  guildId     String       @map("guild_id")
-
-  permissions String[]
-  joinedAt    DateTime     @default(now()) @map("joined_at")
-
-  @@id([userId, guildId])
-  @@index([guildId])
-  @@map("user_guilds")
-}
-
-model Contact {
-  id             String   @id @default(uuid())
-  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  userId         String?  @map("user_id")
-
-  contactInfo    Json     @map("contact_info")
-  message        String   @db.Text
-  status         String   @default("pending")
-
-  securityInfo   Json?    @map("security_info")
-  processingInfo Json     @default("{}") @map("processing_info")
-
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  @@index([status])
+  @@index([action])
   @@index([createdAt(sort: Desc)])
-  @@map("contacts")
+  @@map("moderation_logs")
 }
 
-model AuditLog {
-  id         String   @id @default(uuid())
-  entityType String   @map("entity_type")
-  entityId   String   @map("entity_id")
-  action     String
-  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  actorId    String?  @map("actor_id")
+model PenaltyRecord {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
 
-  changes    Json?
-  metadata   Json?
+  matchId     String?
+  disputeId   String?     // どの異議申し立てが原因か
 
-  createdAt  DateTime @default(now()) @map("created_at")
+  type        PenaltyType // FALSE_REPORT / NO_SUBMISSION / etc
+  points      Int         // 1-5ポイント（重さによる）
+  reason      String
 
-  @@index([entityType, entityId])
-  @@index([actorId])
-  @@index([createdAt(sort: Desc)])
-  @@map("audit_logs")
+  createdAt   DateTime    @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("penalty_records")
+}
+
+// ==================== TEMPLATES ====================
+
+model LobbyTemplate {
+  id          String   @id @default(uuid())
+  name        String
+
+  slots       Json
+  isActive    Boolean  @default(true)
+
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("lobby_templates")
+}
+
+// ==================== PUSH NOTIFICATIONS ====================
+
+model PushSubscription {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint    String
+  p256dh      String
+  auth        String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, endpoint])
+  @@index([userId])
+  @@map("push_subscriptions")
 }
