@@ -1,5 +1,5 @@
 -- PostgreSQL初期化スクリプト
--- Discord Cafe Database Setup
+-- FZ99 Lounge Database Setup
 
 -- 拡張機能の有効化
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm"; -- 類似検索用
 CREATE EXTENSION IF NOT EXISTS "unaccent"; -- アクセント除去
 
 -- データベース設定
-ALTER DATABASE discord_cafe SET timezone TO 'Asia/Tokyo';
+ALTER DATABASE fz99_lounge SET timezone TO 'Asia/Tokyo';
 
 -- 初期ユーザー作成（開発用）
 -- 本番環境では別途セキュアな方法で作成
@@ -26,8 +26,8 @@ END
 $$;
 
 -- 権限設定
-GRANT ALL PRIVILEGES ON DATABASE discord_cafe TO app_user;
-GRANT CONNECT ON DATABASE discord_cafe TO readonly_user;
+GRANT ALL PRIVILEGES ON DATABASE fz99_lounge TO app_user;
+GRANT CONNECT ON DATABASE fz99_lounge TO readonly_user;
 GRANT USAGE ON SCHEMA public TO readonly_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly_user;

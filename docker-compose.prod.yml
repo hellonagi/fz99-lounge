@@ -6,7 +6,7 @@ services:
   postgres:
     restart: always
     environment:
-      POSTGRES_DB: discord_cafe
+      POSTGRES_DB: fz99_lounge
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
@@ -34,11 +34,15 @@ services:
     build:
       target: production
       cache_from:
-        - discord-cafe-api:latest
+        - fz99-lounge-api:latest
     restart: always
     environment:
       NODE_ENV: production
       NODE_OPTIONS: "--max-old-space-size=2048"
+      # Login Tracking (本番環境では有効にすることを推奨)
+      ENABLE_LOGIN_TRACKING: ${ENABLE_LOGIN_TRACKING:-true}
+      MULTI_ACCOUNT_IP_THRESHOLD: ${MULTI_ACCOUNT_IP_THRESHOLD:-2}  # 本番環境では厳しめに
+      SUSPICIOUS_LOGIN_ALERT_DAYS: ${SUSPICIOUS_LOGIN_ALERT_DAYS:-30}  # 本番環境では長期間監視
     volumes: []  # 本番環境ではボリュームマウントしない
     ports: []  # Nginx経由でのみアクセス
     deploy:
@@ -61,7 +65,7 @@ services:
     build:
       target: production
       cache_from:
-        - discord-cafe-web:latest
+        - fz99-lounge-web:latest
     restart: always
     environment:
       NODE_ENV: production
