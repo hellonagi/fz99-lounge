@@ -39,7 +39,7 @@ export class AuthService {
 
       // Create initial stats for new user
       await Promise.all([
-        this.prisma.userStats99.create({
+        this.prisma.userStatsGP.create({
           data: { userId: user.id },
         }),
         this.prisma.userStatsClassic.create({

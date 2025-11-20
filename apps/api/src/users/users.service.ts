@@ -22,7 +22,7 @@ export class UsersService {
         twitchUrl: true,
         createdAt: true,
         lastLoginAt: true,
-        stats99: {
+        statsGP: {
           select: {
             mmr: true,
             seasonHighMmr: true,
@@ -88,7 +88,7 @@ export class UsersService {
         twitchUrl: true,
         createdAt: true,
         lastLoginAt: true,
-        stats99: {
+        statsGP: {
           select: {
             mmr: true,
             seasonHighMmr: true,
@@ -201,7 +201,7 @@ export class UsersService {
 
   async getLeaderboard(gameMode: 'GP' | 'CLASSIC', limit = 100) {
     if (gameMode === 'GP') {
-      return this.prisma.userStats99.findMany({
+      return this.prisma.userStatsGP.findMany({
         take: limit,
         orderBy: { mmr: 'desc' },
         include: {

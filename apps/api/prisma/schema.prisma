@@ -145,7 +145,7 @@ model User {
   trustScore      Int         @default(100)
 
   // リレーション
-  stats99              UserStats99?
+  statsGP              UserStatsGP?
   statsClassic         UserStatsClassic?
   lobbyParticipants    LobbyParticipant[]
   matchParticipants    MatchParticipant[]
@@ -173,7 +173,7 @@ model User {
 
 // ==================== USER STATS ====================
 
-model UserStats99 {
+model UserStatsGP {
   id              String   @id @default(uuid())
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id])
@@ -207,7 +207,7 @@ model UserStats99 {
   updatedAt       DateTime @updatedAt
 
   @@index([mmr])
-  @@map("user_stats_99")
+  @@map("user_stats_gp")
 }
 
 model UserStatsClassic {
