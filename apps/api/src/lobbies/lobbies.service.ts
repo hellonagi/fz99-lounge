@@ -4,10 +4,33 @@ import type { Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { CreateLobbyDto } from './dto/create-lobby.dto';
-import { GameMode, LobbyStatus } from '@prisma/client';
+import { GameMode, LobbyStatus, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class LobbiesService {
+  // 詳細なロビー情報を取得するための共通includeオプション
+  private readonly lobbyDetailInclude = {
+    event: {
+      include: {
+        season: true,
+        tournament: true,
+      },
+    },
+    participants: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            profileId: true,
+            displayName: true,
+            avatarHash: true,
+          },
+        },
+      },
+    },
+    matches: true,
+  };
+
   constructor(
     private prisma: PrismaService,
     private eventsGateway: EventsGateway,
@@ -56,25 +79,7 @@ export class LobbiesService {
         notes,
         status: LobbyStatus.WAITING,
       },
-      include: {
-        event: {
-          include: {
-            season: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                profileId: true,
-                displayName: true,
-                avatarHash: true,
-              },
-            },
-          },
-        },
-      },
+      include: this.lobbyDetailInclude,
     });
 
     // Schedule BullMQ job to start match at scheduledStart time
@@ -107,26 +112,7 @@ export class LobbiesService {
         ...(status && { status }),
       },
       orderBy: { scheduledStart: 'asc' },
-      include: {
-        event: {
-          include: {
-            season: true,
-            tournament: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                profileId: true,
-                displayName: true,
-                avatarHash: true,
-              },
-            },
-          },
-        },
-      },
+      include: this.lobbyDetailInclude,
     });
   }
 
@@ -140,26 +126,7 @@ export class LobbiesService {
         scheduledStart: { gte: now },
       },
       orderBy: { scheduledStart: 'asc' },
-      include: {
-        event: {
-          include: {
-            season: true,
-            tournament: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                profileId: true,
-                displayName: true,
-                avatarHash: true,
-              },
-            },
-          },
-        },
-      },
+      include: this.lobbyDetailInclude,
     });
 
     return lobby;
@@ -168,27 +135,7 @@ export class LobbiesService {
   async getById(lobbyId: string) {
     const lobby = await this.prisma.lobby.findUnique({
       where: { id: lobbyId },
-      include: {
-        event: {
-          include: {
-            season: true,
-            tournament: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                profileId: true,
-                displayName: true,
-                avatarHash: true,
-              },
-            },
-          },
-        },
-        matches: true,
-      },
+      include: this.lobbyDetailInclude,
     });
 
     if (!lobby) {
@@ -228,34 +175,44 @@ export class LobbiesService {
     // Check if user is banned or suspended
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { status: true, isSuspended: true, suspendedUntil: true },
+      include: {
+        suspension: true,
+      },
     });
 
     if (!user) {
       throw new BadRequestException('User not found');
     }
 
-    if (user.isSuspended && user.suspendedUntil && user.suspendedUntil > new Date()) {
-      throw new ForbiddenException('You are currently suspended');
+    if (user.status === UserStatus.BANNED) {
+      throw new ForbiddenException('You are permanently banned');
     }
 
-    // Add user as participant
-    await this.prisma.lobbyParticipant.create({
-      data: {
-        lobbyId,
-        userId,
-      },
-    });
+    if (user.status === UserStatus.SUSPENDED) {
+      if (user.suspension && user.suspension.suspendedUntil > new Date()) {
+        throw new ForbiddenException('You are currently suspended');
+      }
+    }
 
-    // Update lobby player count
-    await this.prisma.lobby.update({
-      where: { id: lobbyId },
-      data: {
-        currentPlayers: { increment: 1 },
-      },
-    });
+    // Add user as participant and update player count in a transaction
+    const updatedLobby = await this.prisma.$transaction(async (tx) => {
+      await tx.lobbyParticipant.create({
+        data: {
+          lobbyId,
+          userId,
+        },
+      });
 
-    const updatedLobby = await this.getById(lobbyId);
+      const updated = await tx.lobby.update({
+        where: { id: lobbyId },
+        data: {
+          currentPlayers: { increment: 1 },
+        },
+        include: this.lobbyDetailInclude,
+      });
+
+      return updated;
+    });
 
     // Emit WebSocket event to notify all clients
     this.eventsGateway.emitLobbyUpdated(updatedLobby);
@@ -320,27 +277,7 @@ export class LobbiesService {
     const updatedLobby = await this.prisma.lobby.update({
       where: { id: lobbyId },
       data: { status: LobbyStatus.CANCELLED },
-      include: {
-        event: {
-          include: {
-            season: true,
-            tournament: true,
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                profileId: true,
-                displayName: true,
-                avatarHash: true,
-              },
-            },
-          },
-        },
-        matches: true,
-      },
+      include: this.lobbyDetailInclude,
     });
 
     // Emit WebSocket event to notify all clients
