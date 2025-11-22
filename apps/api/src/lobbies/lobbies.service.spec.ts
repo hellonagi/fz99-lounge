@@ -3,7 +3,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { LobbiesService } from './lobbies.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
-import { LobbyStatus, UserStatus } from '@prisma/client';
+import { LobbyStatus, UserStatus, GameMode } from '@prisma/client';
 import { Queue } from 'bull';
 
 describe('LobbiesService', () => {
@@ -13,6 +13,8 @@ describe('LobbiesService', () => {
   const mockPrismaService = {
     lobby: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
@@ -604,6 +606,269 @@ describe('LobbiesService', () => {
       await expect(service.delete(lobbyId)).rejects.toThrow(
         'Cannot delete lobby that is not in WAITING status',
       );
+    });
+  });
+
+  describe('getById', () => {
+    const lobbyId = 'lobby-123';
+
+    it('should return lobby when found', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.WAITING,
+        currentPlayers: 50,
+        maxPlayers: 99,
+        event: {
+          season: { id: 'season-1', name: 'Season 1' },
+          tournament: null,
+        },
+        participants: [
+          { user: { id: 'user-1', displayName: 'Player1' } },
+        ],
+        matches: [],
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+
+      // Act
+      const result = await service.getById(lobbyId);
+
+      // Assert
+      expect(mockPrismaService.lobby.findUnique).toHaveBeenCalledWith({
+        where: { id: lobbyId },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual(mockLobby);
+    });
+
+    it('should throw NotFoundException if lobby not found', async () => {
+      // Arrange
+      mockPrismaService.lobby.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.getById(lobbyId)).rejects.toThrow(
+        'Lobby not found',
+      );
+    });
+  });
+
+  describe('getNext', () => {
+    it('should return next scheduled lobby for GP game mode', async () => {
+      // Arrange
+      const futureDate = new Date('2099-12-31T10:00:00Z');
+      const mockLobby = {
+        id: 'lobby-next',
+        gameMode: GameMode.GP,
+        status: LobbyStatus.WAITING,
+        scheduledStart: futureDate,
+        currentPlayers: 30,
+        maxPlayers: 99,
+        event: {
+          season: { id: 'season-1', name: 'Season 1' },
+        },
+        participants: [],
+        matches: [],
+      };
+
+      mockPrismaService.lobby.findFirst.mockResolvedValue(mockLobby);
+
+      // Act
+      const result = await service.getNext(GameMode.GP);
+
+      // Assert
+      expect(mockPrismaService.lobby.findFirst).toHaveBeenCalledWith({
+        where: {
+          gameMode: GameMode.GP,
+          status: LobbyStatus.WAITING,
+          scheduledStart: { gte: expect.any(Date) },
+        },
+        orderBy: { scheduledStart: 'asc' },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual(mockLobby);
+    });
+
+    it('should return null when no upcoming lobby found', async () => {
+      // Arrange
+      mockPrismaService.lobby.findFirst.mockResolvedValue(null);
+
+      // Act
+      const result = await service.getNext(GameMode.GP);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+
+    it('should use GP as default game mode', async () => {
+      // Arrange
+      mockPrismaService.lobby.findFirst.mockResolvedValue(null);
+
+      // Act
+      await service.getNext();
+
+      // Assert
+      expect(mockPrismaService.lobby.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            gameMode: GameMode.GP,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getAll', () => {
+    it('should return all lobbies without filters', async () => {
+      // Arrange
+      const mockLobbies = [
+        {
+          id: 'lobby-1',
+          gameMode: GameMode.GP,
+          status: LobbyStatus.WAITING,
+          scheduledStart: new Date('2099-12-31T10:00:00Z'),
+          event: { season: {} },
+          participants: [],
+          matches: [],
+        },
+        {
+          id: 'lobby-2',
+          gameMode: GameMode.GP,
+          status: LobbyStatus.IN_PROGRESS,
+          scheduledStart: new Date('2099-12-31T11:00:00Z'),
+          event: { season: {} },
+          participants: [],
+          matches: [],
+        },
+      ];
+
+      mockPrismaService.lobby.findMany.mockResolvedValue(mockLobbies);
+
+      // Act
+      const result = await service.getAll();
+
+      // Assert
+      expect(mockPrismaService.lobby.findMany).toHaveBeenCalledWith({
+        where: {},
+        orderBy: { scheduledStart: 'asc' },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual(mockLobbies);
+    });
+
+    it('should return lobbies filtered by gameMode', async () => {
+      // Arrange
+      const mockLobbies = [
+        {
+          id: 'lobby-1',
+          gameMode: GameMode.GP,
+          status: LobbyStatus.WAITING,
+        },
+      ];
+
+      mockPrismaService.lobby.findMany.mockResolvedValue(mockLobbies);
+
+      // Act
+      const result = await service.getAll(GameMode.GP);
+
+      // Assert
+      expect(mockPrismaService.lobby.findMany).toHaveBeenCalledWith({
+        where: { gameMode: GameMode.GP },
+        orderBy: { scheduledStart: 'asc' },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual(mockLobbies);
+    });
+
+    it('should return lobbies filtered by status', async () => {
+      // Arrange
+      const mockLobbies = [
+        {
+          id: 'lobby-1',
+          status: LobbyStatus.WAITING,
+        },
+      ];
+
+      mockPrismaService.lobby.findMany.mockResolvedValue(mockLobbies);
+
+      // Act
+      const result = await service.getAll(undefined, LobbyStatus.WAITING);
+
+      // Assert
+      expect(mockPrismaService.lobby.findMany).toHaveBeenCalledWith({
+        where: { status: LobbyStatus.WAITING },
+        orderBy: { scheduledStart: 'asc' },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual(mockLobbies);
+    });
+
+    it('should return lobbies filtered by both gameMode and status', async () => {
+      // Arrange
+      const mockLobbies = [
+        {
+          id: 'lobby-1',
+          gameMode: GameMode.GP,
+          status: LobbyStatus.WAITING,
+        },
+      ];
+
+      mockPrismaService.lobby.findMany.mockResolvedValue(mockLobbies);
+
+      // Act
+      const result = await service.getAll(GameMode.GP, LobbyStatus.WAITING);
+
+      // Assert
+      expect(mockPrismaService.lobby.findMany).toHaveBeenCalledWith({
+        where: {
+          gameMode: GameMode.GP,
+          status: LobbyStatus.WAITING,
+        },
+        orderBy: { scheduledStart: 'asc' },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual(mockLobbies);
+    });
+
+    it('should return empty array when no lobbies found', async () => {
+      // Arrange
+      mockPrismaService.lobby.findMany.mockResolvedValue([]);
+
+      // Act
+      const result = await service.getAll();
+
+      // Assert
+      expect(result).toEqual([]);
     });
   });
 });
