@@ -14,11 +14,13 @@ describe('LobbiesService', () => {
     lobby: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      delete: jest.fn(),
     },
     lobbyParticipant: {
       findUnique: jest.fn(),
       create: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -397,6 +399,210 @@ describe('LobbiesService', () => {
       );
       await expect(service.leave(lobbyId, userId)).rejects.toThrow(
         'Not in lobby',
+      );
+    });
+  });
+
+  describe('cancel', () => {
+    const lobbyId = 'lobby-123';
+
+    it('should cancel lobby successfully when status is WAITING', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.WAITING,
+        currentPlayers: 50,
+        maxPlayers: 99,
+        event: { season: {}, tournament: {} },
+        participants: [],
+        matches: [],
+      };
+
+      const cancelledLobby = {
+        ...mockLobby,
+        status: LobbyStatus.CANCELLED,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+      mockPrismaService.lobby.update.mockResolvedValue(cancelledLobby);
+
+      // Act
+      const result = await service.cancel(lobbyId);
+
+      // Assert
+      expect(mockPrismaService.lobby.update).toHaveBeenCalledWith({
+        where: { id: lobbyId },
+        data: { status: LobbyStatus.CANCELLED },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(mockEventsGateway.emitLobbyUpdated).toHaveBeenCalledWith(
+        cancelledLobby,
+      );
+
+      expect(result).toEqual({
+        message: 'Lobby cancelled successfully',
+        lobby: cancelledLobby,
+      });
+    });
+
+    it('should cancel lobby successfully when status is IN_PROGRESS', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.IN_PROGRESS,
+        currentPlayers: 99,
+        maxPlayers: 99,
+        event: { season: {}, tournament: {} },
+        participants: [],
+        matches: [],
+      };
+
+      const cancelledLobby = {
+        ...mockLobby,
+        status: LobbyStatus.CANCELLED,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+      mockPrismaService.lobby.update.mockResolvedValue(cancelledLobby);
+
+      // Act
+      const result = await service.cancel(lobbyId);
+
+      // Assert
+      expect(mockPrismaService.lobby.update).toHaveBeenCalledWith({
+        where: { id: lobbyId },
+        data: { status: LobbyStatus.CANCELLED },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      expect(result).toEqual({
+        message: 'Lobby cancelled successfully',
+        lobby: cancelledLobby,
+      });
+    });
+
+    it('should throw NotFoundException if lobby not found', async () => {
+      // Arrange
+      mockPrismaService.lobby.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.cancel(lobbyId)).rejects.toThrow('Lobby not found');
+    });
+
+    it('should throw BadRequestException if lobby status is COMPLETED', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.COMPLETED,
+        currentPlayers: 99,
+        maxPlayers: 99,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+
+      // Act & Assert
+      await expect(service.cancel(lobbyId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.cancel(lobbyId)).rejects.toThrow(
+        'Can only cancel lobbies in WAITING or IN_PROGRESS status',
+      );
+    });
+
+    it('should throw BadRequestException if lobby status is already CANCELLED', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.CANCELLED,
+        currentPlayers: 50,
+        maxPlayers: 99,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+
+      // Act & Assert
+      await expect(service.cancel(lobbyId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.cancel(lobbyId)).rejects.toThrow(
+        'Can only cancel lobbies in WAITING or IN_PROGRESS status',
+      );
+    });
+  });
+
+  describe('delete', () => {
+    const lobbyId = 'lobby-123';
+
+    it('should delete lobby successfully when status is WAITING', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.WAITING,
+        currentPlayers: 5,
+        maxPlayers: 99,
+        event: { season: {}, tournament: {} },
+        participants: [],
+        matches: [],
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+      mockPrismaService.lobbyParticipant.deleteMany.mockResolvedValue({ count: 5 });
+      mockPrismaService.lobby.delete.mockResolvedValue(mockLobby);
+
+      // Act
+      const result = await service.delete(lobbyId);
+
+      // Assert
+      // 1. lobbyParticipant.deleteMany が呼ばれた
+      expect(mockPrismaService.lobbyParticipant.deleteMany).toHaveBeenCalledWith({
+        where: { lobbyId },
+      });
+
+      // 2. lobby.delete が呼ばれた
+      expect(mockPrismaService.lobby.delete).toHaveBeenCalledWith({
+        where: { id: lobbyId },
+      });
+
+      // 3. 返り値が正しい
+      expect(result).toEqual({
+        message: 'Lobby deleted successfully',
+      });
+    });
+
+    it('should throw NotFoundException if lobby not found', async () => {
+      // Arrange
+      mockPrismaService.lobby.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.delete(lobbyId)).rejects.toThrow('Lobby not found');
+    });
+
+    it('should throw BadRequestException if lobby status is not WAITING', async () => {
+      // Arrange
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.IN_PROGRESS,
+        currentPlayers: 99,
+        maxPlayers: 99,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+
+      // Act & Assert
+      await expect(service.delete(lobbyId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.delete(lobbyId)).rejects.toThrow(
+        'Cannot delete lobby that is not in WAITING status',
       );
     });
   });

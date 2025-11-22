@@ -298,14 +298,17 @@ export class LobbiesService {
       );
     }
 
-    // First delete all related LobbyParticipant records
-    await this.prisma.lobbyParticipant.deleteMany({
-      where: { lobbyId },
-    });
+    // Delete all related participants and lobby in a transaction
+    await this.prisma.$transaction(async (tx) => {
+      // First delete all related LobbyParticipant records
+      await tx.lobbyParticipant.deleteMany({
+        where: { lobbyId },
+      });
 
-    // Then delete the lobby
-    await this.prisma.lobby.delete({
-      where: { id: lobbyId },
+      // Then delete the lobby
+      await tx.lobby.delete({
+        where: { id: lobbyId },
+      });
     });
 
     return { message: 'Lobby deleted successfully' };
