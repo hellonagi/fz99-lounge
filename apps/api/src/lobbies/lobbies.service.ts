@@ -242,20 +242,22 @@ export class LobbiesService {
       throw new BadRequestException('Not in lobby');
     }
 
-    // Remove user from participants
-    await this.prisma.lobbyParticipant.delete({
-      where: { id: participant.id },
-    });
+    // Remove user from participants and update player count in a transaction
+    const updatedLobby = await this.prisma.$transaction(async (tx) => {
+      await tx.lobbyParticipant.delete({
+        where: { id: participant.id },
+      });
 
-    // Update lobby player count
-    await this.prisma.lobby.update({
-      where: { id: lobbyId },
-      data: {
-        currentPlayers: { decrement: 1 },
-      },
-    });
+      const updated = await tx.lobby.update({
+        where: { id: lobbyId },
+        data: {
+          currentPlayers: { decrement: 1 },
+        },
+        include: this.lobbyDetailInclude,
+      });
 
-    const updatedLobby = await this.getById(lobbyId);
+      return updated;
+    });
 
     // Emit WebSocket event to notify all clients
     this.eventsGateway.emitLobbyUpdated(updatedLobby);

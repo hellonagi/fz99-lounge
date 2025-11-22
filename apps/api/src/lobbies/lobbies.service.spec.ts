@@ -18,6 +18,7 @@ describe('LobbiesService', () => {
     lobbyParticipant: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
     },
     user: {
       findUnique: jest.fn(),
@@ -272,6 +273,130 @@ describe('LobbiesService', () => {
       );
       await expect(service.join(lobbyId, userId)).rejects.toThrow(
         'You are currently suspended',
+      );
+    });
+  });
+
+  describe('leave', () => {
+    const lobbyId = 'lobby-123';
+    const userId = 'user-456';
+
+    it('should allow user to leave lobby successfully', async () => {
+      // Arrange - モックの設定
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.WAITING,
+        currentPlayers: 51,
+        maxPlayers: 99,
+        event: { season: {}, tournament: {} },
+        participants: [{ user: { id: userId } }],
+        matches: [],
+      };
+
+      const existingParticipant = {
+        id: 'participant-789',
+        lobbyId,
+        userId,
+      };
+
+      const updatedLobby = {
+        id: lobbyId,
+        status: LobbyStatus.WAITING,
+        currentPlayers: 50,
+        maxPlayers: 99,
+        event: { season: {}, tournament: {} },
+        participants: [],
+        matches: [],
+      };
+
+      // getById でロビー取得
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+      // ユーザーが参加している
+      mockPrismaService.lobbyParticipant.findUnique.mockResolvedValue(existingParticipant);
+      // 退出処理成功
+      mockPrismaService.lobbyParticipant.delete.mockResolvedValue(existingParticipant);
+      // lobby.update が updatedLobby を返す
+      mockPrismaService.lobby.update.mockResolvedValue(updatedLobby);
+
+      // Act - メソッド実行
+      const result = await service.leave(lobbyId, userId);
+
+      // Assert - 検証
+      // 1. lobbyParticipant.delete が呼ばれた
+      expect(mockPrismaService.lobbyParticipant.delete).toHaveBeenCalledWith({
+        where: { id: existingParticipant.id },
+      });
+
+      // 2. lobby.update が includeオプション付きで呼ばれた
+      expect(mockPrismaService.lobby.update).toHaveBeenCalledWith({
+        where: { id: lobbyId },
+        data: {
+          currentPlayers: { decrement: 1 },
+        },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      // 3. eventsGateway.emitLobbyUpdated が呼ばれた
+      expect(mockEventsGateway.emitLobbyUpdated).toHaveBeenCalledWith(
+        updatedLobby,
+      );
+
+      // 4. 返り値が正しい
+      expect(result).toEqual(updatedLobby);
+    });
+
+    it('should throw NotFoundException if lobby not found', async () => {
+      // Arrange - ロビーが見つからない
+      mockPrismaService.lobby.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.leave(lobbyId, userId)).rejects.toThrow(
+        'Lobby not found',
+      );
+    });
+
+    it('should throw BadRequestException if lobby status is not WAITING', async () => {
+      // Arrange - ロビーのステータスがIN_PROGRESS
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.IN_PROGRESS,
+        currentPlayers: 50,
+        maxPlayers: 99,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+
+      // Act & Assert
+      await expect(service.leave(lobbyId, userId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.leave(lobbyId, userId)).rejects.toThrow(
+        'Cannot leave lobby at this time',
+      );
+    });
+
+    it('should throw BadRequestException if user is not in lobby', async () => {
+      // Arrange - ユーザーがロビーに参加していない
+      const mockLobby = {
+        id: lobbyId,
+        status: LobbyStatus.WAITING,
+        currentPlayers: 50,
+        maxPlayers: 99,
+      };
+
+      mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
+      mockPrismaService.lobbyParticipant.findUnique.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.leave(lobbyId, userId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.leave(lobbyId, userId)).rejects.toThrow(
+        'Not in lobby',
       );
     });
   });
