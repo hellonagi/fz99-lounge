@@ -3,7 +3,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { LobbiesService } from './lobbies.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
-import { LobbyStatus, UserStatus, GameMode } from '@prisma/client';
+import { LobbyStatus, UserStatus, GameMode, League } from '@prisma/client';
 import { Queue } from 'bull';
 
 describe('LobbiesService', () => {
@@ -15,6 +15,7 @@ describe('LobbiesService', () => {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
     },
@@ -26,6 +27,9 @@ describe('LobbiesService', () => {
     },
     user: {
       findUnique: jest.fn(),
+    },
+    event: {
+      findFirst: jest.fn(),
     },
     $transaction: jest.fn((callback) => {
       // トランザクション内でcallbackを実行
@@ -869,6 +873,196 @@ describe('LobbiesService', () => {
 
       // Assert
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('create', () => {
+    const userId = 'user-admin';
+    const createLobbyDto = {
+      gameMode: GameMode.GP,
+      leagueType: League.KNIGHT,
+      scheduledStart: '2099-12-31T10:00:00Z',
+      minPlayers: 40,
+      maxPlayers: 99,
+      notes: 'Test lobby',
+    };
+
+    it('should create lobby successfully with game number 1 when no previous lobbies', async () => {
+      // Arrange
+      const mockEvent = {
+        id: 'event-1',
+        type: 'SEASON',
+        isActive: true,
+        season: {
+          id: 'season-1',
+          gameMode: GameMode.GP,
+        },
+      };
+
+      const createdLobby = {
+        id: 'lobby-new',
+        gameMode: GameMode.GP,
+        leagueType: League.KNIGHT,
+        eventId: 'event-1',
+        gameNumber: 1,
+        scheduledStart: new Date('2099-12-31T10:00:00Z'),
+        status: LobbyStatus.WAITING,
+        event: mockEvent,
+        participants: [],
+        matches: [],
+      };
+
+      mockPrismaService.event.findFirst.mockResolvedValue(mockEvent);
+      // 最初のロビーなので、lastLobbyはnull
+      mockPrismaService.lobby.findFirst.mockResolvedValue(null);
+      mockPrismaService.lobby.create.mockResolvedValue(createdLobby);
+
+      // Act
+      const result = await service.create(createLobbyDto, userId);
+
+      // Assert
+      // 1. イベント取得が呼ばれた
+      expect(mockPrismaService.event.findFirst).toHaveBeenCalledWith({
+        where: {
+          isActive: true,
+          type: 'SEASON',
+          season: {
+            gameMode: GameMode.GP,
+          },
+        },
+        include: {
+          season: true,
+        },
+      });
+
+      // 2. ロビー作成が呼ばれた
+      expect(mockPrismaService.lobby.create).toHaveBeenCalledWith({
+        data: {
+          gameMode: GameMode.GP,
+          leagueType: League.KNIGHT,
+          eventId: 'event-1',
+          gameNumber: 1,
+          scheduledStart: new Date('2099-12-31T10:00:00Z'),
+          minPlayers: 40,
+          maxPlayers: 99,
+          createdBy: userId,
+          notes: 'Test lobby',
+          status: LobbyStatus.WAITING,
+        },
+        include: expect.objectContaining({
+          event: expect.any(Object),
+          participants: expect.any(Object),
+          matches: true,
+        }),
+      });
+
+      // 3. BullMQジョブが追加された
+      expect(mockMatchQueue.add).toHaveBeenCalledWith(
+        'start-match',
+        { lobbyId: 'lobby-new' },
+        expect.objectContaining({
+          delay: expect.any(Number),
+          removeOnComplete: true,
+          attempts: 3,
+        }),
+      );
+
+      // 4. 返り値が正しい
+      expect(result).toEqual(createdLobby);
+    });
+
+    it('should create lobby with incremented game number when previous lobbies exist', async () => {
+      // Arrange
+      const mockEvent = {
+        id: 'event-1',
+        type: 'SEASON',
+        isActive: true,
+        season: {
+          id: 'season-1',
+          gameMode: GameMode.GP,
+        },
+      };
+
+      const lastLobby = {
+        id: 'lobby-last',
+        gameNumber: 5,
+      };
+
+      const createdLobby = {
+        id: 'lobby-new',
+        gameNumber: 6,
+        event: mockEvent,
+        participants: [],
+        matches: [],
+      };
+
+      mockPrismaService.event.findFirst.mockResolvedValue(mockEvent);
+      mockPrismaService.lobby.findFirst.mockResolvedValue(lastLobby);
+      mockPrismaService.lobby.create.mockResolvedValue(createdLobby);
+
+      // Act
+      const result = await service.create(createLobbyDto, userId);
+
+      // Assert
+      expect(mockPrismaService.lobby.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            gameNumber: 6,
+          }),
+        }),
+      );
+
+      expect(result.gameNumber).toBe(6);
+    });
+
+    it('should throw BadRequestException when no active season found', async () => {
+      // Arrange
+      mockPrismaService.event.findFirst.mockResolvedValue(null);
+
+      // Act & Assert
+      await expect(service.create(createLobbyDto, userId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.create(createLobbyDto, userId)).rejects.toThrow(
+        `No active season found for ${GameMode.GP}`,
+      );
+    });
+
+    it('should not schedule BullMQ job when scheduledStart is in the past', async () => {
+      // Arrange
+      const pastDto = {
+        ...createLobbyDto,
+        scheduledStart: '2020-01-01T10:00:00Z', // 過去の日付
+      };
+
+      const mockEvent = {
+        id: 'event-1',
+        type: 'SEASON',
+        isActive: true,
+        season: {
+          id: 'season-1',
+          gameMode: GameMode.GP,
+        },
+      };
+
+      const createdLobby = {
+        id: 'lobby-past',
+        scheduledStart: new Date('2020-01-01T10:00:00Z'),
+        event: mockEvent,
+        participants: [],
+        matches: [],
+      };
+
+      mockPrismaService.event.findFirst.mockResolvedValue(mockEvent);
+      mockPrismaService.lobby.findFirst.mockResolvedValue(null);
+      mockPrismaService.lobby.create.mockResolvedValue(createdLobby);
+
+      // Act
+      await service.create(pastDto, userId);
+
+      // Assert
+      // BullMQジョブは追加されない
+      expect(mockMatchQueue.add).not.toHaveBeenCalled();
     });
   });
 });
