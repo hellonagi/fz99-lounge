@@ -190,6 +190,28 @@ services:
     networks:
       - fz99-lounge-network
 
+  # MinIO (S3互換オブジェクトストレージ、開発用)
+  minio:
+    image: minio/minio:latest
+    container_name: fz99-lounge-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Web UI
+    command: server /data --console-address ":9001"
+    networks:
+      - fz99-lounge-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   fz99-lounge-network:
     driver: bridge
@@ -198,4 +220,6 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  minio_data:
     driver: local

@@ -15,7 +15,7 @@ export interface User {
 }
 
 export type UserRole = 'PLAYER' | 'MODERATOR' | 'ADMIN';
-export type UserStatus = 'ACTIVE' | 'WARNED' | 'TEMP_BANNED' | 'PERM_BANNED' | 'DELETED';
+export type UserStatus = 'ACTIVE' | 'WARNED' | 'SUSPENDED' | 'BANNED' | 'DELETED';
 
 // Game Mode Types
 export type GameMode = 'GP' | 'CLASSIC' | 'TOURNAMENT';

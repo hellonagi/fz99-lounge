@@ -34,6 +34,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         avatarHash: true,
         role: true,
         status: true,
+        suspension: {
+          select: {
+            suspendedUntil: true,
+          },
+        },
       },
     });
 
@@ -41,8 +46,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('User not found');
     }
 
-    if (user.status === 'PERM_BANNED') {
+    if (user.status === 'BANNED') {
       throw new UnauthorizedException('User is permanently banned');
+    }
+
+    if (user.status === 'SUSPENDED') {
+      if (user.suspension && user.suspension.suspendedUntil > new Date()) {
+        throw new UnauthorizedException('User is currently suspended');
+      }
     }
 
     return user;

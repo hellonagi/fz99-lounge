@@ -13,6 +13,8 @@ import { MatchesModule } from './matches/matches.module';
 import { EventsModule } from './events/events.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 import { AdminModule } from './admin/admin.module';
+import { ScreenshotsModule } from './screenshots/screenshots.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -27,6 +29,7 @@ import { AdminModule } from './admin/admin.module';
       }),
     }),
     PrismaModule,
+    StorageModule,
     EventsModule,
     PushNotificationsModule,
     AuthModule,
@@ -34,6 +37,7 @@ import { AdminModule } from './admin/admin.module';
     SeasonsModule,
     LobbiesModule,
     MatchesModule,
+    ScreenshotsModule,
     AdminModule,
   ],
   controllers: [AppController],
