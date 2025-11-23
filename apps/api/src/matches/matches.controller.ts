@@ -31,7 +31,7 @@ export class MatchesController {
     const userId = user?.id;
 
     // Convert mode string to GameMode enum
-    const gameMode = mode === 'gp' ? GameMode.GP : GameMode.CLASSIC;
+    const gameMode = mode.toUpperCase() as GameMode;
     const seasonNumber = parseInt(season, 10);
     const gameNumber = parseInt(game, 10);
 

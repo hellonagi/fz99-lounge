@@ -112,8 +112,8 @@ export class MatchesProcessor {
         `Started match ${match.id} for lobby ${lobbyId} with passcode ${passcode}`
       );
 
-      // Format mode for URL (GP -> "gp", CLASSIC -> "classic")
-      const modeStr = lobby.gameMode === 'GP' ? 'gp' : 'classic';
+      // Format mode for URL (GP -> "gp", CLASSIC -> "classic", TOURNAMENT -> "tournament")
+      const modeStr = lobby.gameMode.toLowerCase();
       const seasonNumber = lobby.event?.season?.seasonNumber ?? 0;
       const gameNumber = lobby.gameNumber ?? 0;
 
@@ -157,8 +157,8 @@ export class MatchesProcessor {
   }
 
   private generatePasscode(): string {
-    // Generate random 4-digit number (1000-9999)
-    const passcode = Math.floor(Math.random() * 9000) + 1000;
-    return passcode.toString();
+    // Generate random 4-digit number (0000-9999)
+    const passcode = Math.floor(Math.random() * 10000);
+    return passcode.toString().padStart(4, '0');
   }
 }
