@@ -49,3 +49,14 @@ tmp/
 temp/
 *.tmp
 *.log
+
+# Personal notes
+kadai
+prompt.md
+
+# Test helpers (not used yet)
+apps/api/.env.test
+apps/api/test/helpers/
+apps/api/test/load/
+apps/api/prisma/migrations_backup/
+docker-compose.test.yml
