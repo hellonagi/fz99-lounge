@@ -23,8 +23,8 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   WARNED
-  TEMP_BANNED
-  PERM_BANNED
+  SUSPENDED    // 一時停止（期限付き）
+  BANNED       // 永久BAN
   DELETED      // ソフトデリート用
 }
 
@@ -138,8 +138,6 @@ model User {
 
   // ペナルティシステム
   penaltyPoints   Int         @default(0)
-  isSuspended     Boolean     @default(false)
-  suspendedUntil  DateTime?
 
   // 信頼スコア（将来用）
   trustScore      Int         @default(100)
@@ -147,6 +145,7 @@ model User {
   // リレーション
   statsGP              UserStatsGP?
   statsClassic         UserStatsClassic?
+  suspension           UserSuspension?
   lobbyParticipants    LobbyParticipant[]
   matchParticipants    MatchParticipant[]
   createdEvents        Event[]     @relation("EventCreator")
@@ -163,12 +162,30 @@ model User {
   disputeTargets       ResultDispute[] @relation("DisputeTarget")
   tournamentAbsences   TournamentAbsence[]
   loginHistory         UserLoginHistory[]
+  submittedScreenshots MatchScreenshotSubmission[] @relation("SubmittedScreenshots")
+  selectedScreenshots  ResultScreenshot[]          @relation("SelectedScreenshots")
+  screenshotSelections ResultScreenshot[]          @relation("ScreenshotSelections")
 
   @@index([discordId])
   @@index([displayName])
   @@index([profileId])
   @@index([status])
   @@map("users")
+}
+
+model UserSuspension {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  suspendedUntil DateTime
+  reason         String?  @db.Text
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([suspendedUntil])
+  @@map("user_suspensions")
 }
 
 // ==================== USER STATS ====================
@@ -425,7 +442,7 @@ model Match {
   lobbyId         String      // @unique 削除（複数マッチ対応）
   lobby           Lobby       @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
 
-  sequenceNumber  Int         // 1, 2, 3... (全モード共通の連番)
+  sequenceNumber  Int         // 1, 2, 3... (ロビーごとの連番)
 
   gameMode        GameMode
   leagueType      League
@@ -456,11 +473,12 @@ model Match {
   finalConfirmedAt       DateTime?
 
   // リレーション
-  participants    MatchParticipant[]
-  streams         MatchStream[]
-  splitVotes      SplitVote[]
-  screenshot      ResultScreenshot?
-  disputes        ResultDispute[]
+  participants         MatchParticipant[]
+  streams              MatchStream[]
+  splitVotes           SplitVote[]
+  submittedScreenshots MatchScreenshotSubmission[] @relation("SubmittedScreenshots")
+  screenshot           ResultScreenshot?
+  disputes             ResultDispute[]
 
   @@unique([lobbyId, sequenceNumber])
   @@index([gameMode])
@@ -484,10 +502,6 @@ model MatchParticipant {
   // 結果入力（ポイントベース）
   reportedPoints      Int?         // プレイヤーが報告したポイント
   finalPoints         Int?         // 確定後のポイント（異議で修正される可能性）
-
-  // スクリーンショット（1位のみ必須）
-  screenshotUrl       String?      // 1位なら必須、他は任意
-  screenshotVerified  Boolean @default(false)
 
   // 配信情報
   wasStreaming        Boolean @default(false)
@@ -558,15 +572,41 @@ model SplitVote {
   @@map("split_votes")
 }
 
-model ResultScreenshot {
+// 一時提出（複数可能）
+model MatchScreenshotSubmission {
   id          String   @id @default(uuid())
-  matchId     String   @unique
-  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId     String
+  match       Match    @relation("SubmittedScreenshots", fields: [matchId], references: [id], onDelete: Cascade)
 
-  imageUrl    String
-  uploadedBy  String
+  userId      String
+  user        User     @relation("SubmittedScreenshots", fields: [userId], references: [id])
 
-  createdAt   DateTime @default(now())
+  imageUrl    String   // s3://bucket/screenshots/temp/...
+
+  isSelected  Boolean  @default(false)
+  deletedAt   DateTime?
+
+  uploadedAt  DateTime @default(now())
+
+  @@index([matchId, uploadedAt])
+  @@index([isSelected, uploadedAt])
+  @@map("match_screenshot_submissions")
+}
+
+// 管理者が選んだ正式版（1試合1枚）
+model ResultScreenshot {
+  id            String   @id @default(uuid())
+  matchId       String   @unique
+  match         Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  imageUrl      String   // s3://bucket/screenshots/permanent/...
+
+  userId        String
+  user          User     @relation("SelectedScreenshots", fields: [userId], references: [id])
+
+  selectedBy    String
+  selector      User     @relation("ScreenshotSelections", fields: [selectedBy], references: [id])
+  selectedAt    DateTime @default(now())
 
   @@map("result_screenshots")
 }
