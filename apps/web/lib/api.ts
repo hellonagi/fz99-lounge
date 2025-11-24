@@ -112,4 +112,10 @@ export const matchesApi = {
   getById: (id: string) => api.get(`/matches/${id}`),
   getByModeSeasonGame: (mode: string, season: number, game: number) =>
     api.get(`/matches/${mode}/${season}/${game}`),
+  submitScore: (mode: string, season: number, game: number, data: {
+    position: number;
+    reportedPoints: number;
+    machine: string;
+    assistEnabled: boolean;
+  }) => api.post(`/matches/${mode}/${season}/${game}/score`, data),
 };

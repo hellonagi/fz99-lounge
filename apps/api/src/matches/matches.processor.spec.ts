@@ -4,7 +4,7 @@ import { MatchesProcessor } from './matches.processor';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
-import { GameMode, League, LobbyStatus, MatchStatus } from '@prisma/client';
+import { GameMode, League, LobbyStatus } from '@prisma/client';
 
 describe('MatchesProcessor', () => {
   let processor: MatchesProcessor;
@@ -110,7 +110,6 @@ describe('MatchesProcessor', () => {
         passcode: '0042',
         totalPlayers: 50,
         startedAt: new Date('2025-01-15T10:00:00Z'),
-        status: MatchStatus.ONGOING,
       };
 
       mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
@@ -161,8 +160,7 @@ describe('MatchesProcessor', () => {
           passcode: '0042',
           totalPlayers: 50,
           startedAt: expect.any(Date),
-          status: MatchStatus.ONGOING,
-        },
+          },
       });
 
       expect(prisma.lobby.update).toHaveBeenCalledWith({
@@ -440,7 +438,6 @@ describe('MatchesProcessor', () => {
         passcode: '0001',
         totalPlayers: 20,
         startedAt: new Date('2025-01-15T10:00:00Z'),
-        status: MatchStatus.ONGOING,
       };
 
       mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
@@ -479,8 +476,7 @@ describe('MatchesProcessor', () => {
           passcode: '0001',
           totalPlayers: 20,
           startedAt: expect.any(Date),
-          status: MatchStatus.ONGOING,
-        },
+          },
       });
 
       expect(eventsGateway.emitMatchStarted).toHaveBeenCalledWith({
@@ -535,7 +531,6 @@ describe('MatchesProcessor', () => {
         passcode: '1234',
         totalPlayers: 50,
         startedAt: new Date('2025-01-15T10:00:00Z'),
-        status: MatchStatus.ONGOING,
       };
 
       mockPrismaService.lobby.findUnique.mockResolvedValue(mockLobby);
@@ -572,8 +567,7 @@ describe('MatchesProcessor', () => {
           passcode: '1234',
           totalPlayers: 50,
           startedAt: expect.any(Date),
-          status: MatchStatus.ONGOING,
-        },
+          },
       });
 
       // Lobby should be updated to IN_PROGRESS

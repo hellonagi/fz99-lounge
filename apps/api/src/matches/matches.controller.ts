@@ -1,8 +1,10 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { MatchesService } from './matches.service';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GameMode } from '@prisma/client';
+import { SubmitScoreDto } from './dto/submit-score.dto';
 
 @Controller('matches')
 export class MatchesController {
@@ -40,6 +42,29 @@ export class MatchesController {
       seasonNumber,
       gameNumber,
       userId,
+    );
+  }
+
+  @Post(':mode/:season/:game/score')
+  @UseGuards(JwtAuthGuard)
+  async submitScoreByModeSeasonGame(
+    @Param('mode') mode: string,
+    @Param('season') season: string,
+    @Param('game') game: string,
+    @Body() submitScoreDto: SubmitScoreDto,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+    const gameMode = mode.toUpperCase() as GameMode;
+    const seasonNumber = parseInt(season, 10);
+    const gameNumber = parseInt(game, 10);
+
+    return this.matchesService.submitScoreByModeSeasonGame(
+      gameMode,
+      seasonNumber,
+      gameNumber,
+      user.id,
+      submitScoreDto,
     );
   }
 }

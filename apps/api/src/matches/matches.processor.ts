@@ -4,7 +4,7 @@ import type { Job } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
-import { LobbyStatus, MatchStatus } from '@prisma/client';
+import { LobbyStatus } from '@prisma/client';
 
 @Processor('matches')
 export class MatchesProcessor {
@@ -96,7 +96,6 @@ export class MatchesProcessor {
           passcode,
           totalPlayers: lobby.currentPlayers,
           startedAt: new Date(),
-          status: MatchStatus.ONGOING,
         },
       });
 

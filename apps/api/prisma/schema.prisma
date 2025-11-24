@@ -61,14 +61,7 @@ enum LobbyStatus {
   CANCELLED     // キャンセル
 }
 
-enum MatchStatus {
-  PENDING       // 開始前
-  ONGOING       // 進行中
-  RESULTS_PENDING    // 結果入力待ち
-  PROVISIONALLY_CONFIRMED  // 暫定確定
-  COMPLETED     // 完了
-  ABORTED       // 中断
-}
+// MatchStatus enum removed - using LobbyStatus instead
 
 enum ResultStatus {
   PENDING       // 未入力
@@ -452,7 +445,6 @@ model Match {
   passcodePublishedAt DateTime?
   passcodeVersion Int         @default(1)
 
-  status          MatchStatus @default(PENDING)
   totalPlayers    Int
 
   // 結果の信頼度
@@ -483,9 +475,8 @@ model Match {
   @@unique([lobbyId, sequenceNumber])
   @@index([gameMode])
   @@index([passcode])
-  @@index([status])
-  @@index([lobbyId, status])
-  @@index([status, startedAt])
+  @@index([lobbyId])
+  @@index([startedAt])
   @@index([disputeDeadline])
   @@map("matches")
 }
@@ -497,11 +488,12 @@ model MatchParticipant {
   userId          String
   user            User          @relation(fields: [userId], references: [id])
 
-  machine         String
-
-  // 結果入力（ポイントベース）
-  reportedPoints      Int?         // プレイヤーが報告したポイント
-  finalPoints         Int?         // 確定後のポイント（異議で修正される可能性）
+  // F-ZERO 99 specific fields
+  machine         String       // Blue Falcon, Golden Fox, Wild Goose, Fire Stingray
+  position        Int?         // 順位 (1-99)
+  reportedPoints  Int?         // プレイヤーが報告したポイント (0-1000)
+  finalPoints     Int?         // 確定後のポイント（異議で修正される可能性）
+  assistEnabled   Boolean      @default(false)  // アシスト使用フラグ
 
   // 配信情報
   wasStreaming        Boolean @default(false)

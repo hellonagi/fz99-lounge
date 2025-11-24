@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bull';
 import { MatchesController } from './matches.controller';
 import { MatchesService } from './matches.service';
 import { MatchesProcessor } from './matches.processor';
+import { MatchesGateway } from './matches.gateway';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EventsModule } from '../events/events.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
@@ -17,7 +18,7 @@ import { PushNotificationsModule } from '../push-notifications/push-notification
     }),
   ],
   controllers: [MatchesController],
-  providers: [MatchesService, MatchesProcessor],
+  providers: [MatchesService, MatchesProcessor, MatchesGateway],
   exports: [MatchesService],
 })
 export class MatchesModule {}
