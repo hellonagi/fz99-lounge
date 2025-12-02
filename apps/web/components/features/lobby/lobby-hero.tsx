@@ -14,6 +14,7 @@ interface LobbyHeroProps {
   isJoined?: boolean;
   isJoining?: boolean;
   errorMessage?: string;
+  matchUrl?: string | null;
 }
 
 export function LobbyHero({
@@ -28,6 +29,7 @@ export function LobbyHero({
   isJoined = false,
   isJoining = false,
   errorMessage,
+  matchUrl,
 }: LobbyHeroProps) {
   return (
     <section className="relative min-h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden">
@@ -61,22 +63,42 @@ export function LobbyHero({
               {/* League name */}
               <h1 className="text-4xl md:text-6xl font-black text-white mb-3">{league} LEAGUE</h1>
 
-              {/* Countdown timer */}
-              <div className="mb-2">
-                <span className="text-sm text-gray-400">Starts in</span>
-              </div>
-              <LobbyTimer initialSeconds={countdownSeconds} />
+              {/* Match Started or Countdown */}
+              {matchUrl ? (
+                <>
+                  <div className="mb-4">
+                    <span className="text-lg text-green-400 font-semibold">Match Has Started!</span>
+                  </div>
+                  <div className="mb-8">
+                    <p className="text-gray-300">Please go to the match page to check the passcode.</p>
+                  </div>
+                  <Link
+                    href={matchUrl}
+                    className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
+                  >
+                    Go to Match Page →
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {/* Countdown timer */}
+                  <div className="mb-2">
+                    <span className="text-sm text-gray-400">Starts in</span>
+                  </div>
+                  <LobbyTimer initialSeconds={countdownSeconds} />
 
-              {/* Player count & Join button */}
-              {currentPlayers !== undefined && maxPlayers !== undefined && (
-                <PlayerCount
-                  current={currentPlayers}
-                  min={minPlayers}
-                  max={maxPlayers}
-                  onJoin={onJoinClick}
-                  isJoined={isJoined}
-                  isJoining={isJoining}
-                />
+                  {/* Player count & Join button */}
+                  {currentPlayers !== undefined && maxPlayers !== undefined && (
+                    <PlayerCount
+                      current={currentPlayers}
+                      min={minPlayers}
+                      max={maxPlayers}
+                      onJoin={onJoinClick}
+                      isJoined={isJoined}
+                      isJoining={isJoining}
+                    />
+                  )}
+                </>
               )}
 
               {/* Rules link */}

@@ -1,99 +1,106 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { Alert, AlertIcon } from '@/components/ui/alert';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { seasonsApi } from '@/lib/api';
+
+const seasonSchema = z.object({
+  gameMode: z.enum(['GP', 'CLASSIC']),
+  seasonNumber: z
+    .string()
+    .min(1, 'シーズン番号は必須です')
+    .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 1, 'シーズン番号は1以上の数値である必要があります'),
+  startDate: z.string().min(1, '開始日は必須です'),
+  endDate: z.string().optional(),
+  description: z.string().optional(),
+}).refine(
+  (data) => {
+    if (data.endDate && data.startDate) {
+      return new Date(data.startDate) < new Date(data.endDate);
+    }
+    return true;
+  },
+  { message: '終了日は開始日より後である必要があります', path: ['endDate'] }
+);
+
+type SeasonFormData = z.infer<typeof seasonSchema>;
 
 interface CreateSeasonFormProps {
   onSuccess?: () => void;
 }
 
 export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
-  const [formData, setFormData] = useState({
-    gameMode: 'GP' as 'GP' | 'CLASSIC',
-    seasonNumber: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-  });
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<SeasonFormData>({
+    resolver: zodResolver(seasonSchema),
+    defaultValues: {
+      gameMode: 'GP',
+      seasonNumber: '',
+      startDate: '',
+      endDate: '',
+      description: '',
+    },
+  });
 
-    // Validation
-    if (!formData.seasonNumber || !formData.startDate) {
-      setError('シーズン番号と開始日は必須です');
-      return;
-    }
+  const { isSubmitting } = form.formState;
+  const gameMode = form.watch('gameMode');
 
-    if (formData.endDate && new Date(formData.startDate) >= new Date(formData.endDate)) {
-      setError('終了日は開始日より後である必要があります');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError(null);
-    setSuccess(false);
-
+  const onSubmit = async (data: SeasonFormData) => {
     try {
+      // startDateは日付の開始時刻（0:00:00）に設定
+      const startDate = new Date(data.startDate);
+      startDate.setHours(0, 0, 0, 0);
+
+      // endDateは日付の終了時刻（23:59:59）に設定
+      let endDate: Date | undefined;
+      if (data.endDate) {
+        endDate = new Date(data.endDate);
+        endDate.setHours(23, 59, 59, 999);
+      }
+
       const response = await seasonsApi.create({
-        gameMode: formData.gameMode,
-        seasonNumber: parseInt(formData.seasonNumber),
-        description: formData.description || undefined,
-        startDate: new Date(formData.startDate).toISOString(),
-        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : undefined,
+        gameMode: data.gameMode,
+        seasonNumber: parseInt(data.seasonNumber),
+        description: data.description || undefined,
+        startDate: startDate.toISOString(),
+        endDate: endDate ? endDate.toISOString() : undefined,
       });
 
       if (response.data) {
         setSuccess(true);
-        // Reset form
-        setFormData({
-          gameMode: 'GP',
-          seasonNumber: '',
-          description: '',
-          startDate: '',
-          endDate: '',
-        });
+        form.reset();
 
-        // Call success callback
         if (onSuccess) {
           onSuccess();
         }
 
-        // Auto-dismiss success message
-        setTimeout(() => {
-          setSuccess(false);
-        }, 3000);
+        setTimeout(() => setSuccess(false), 3000);
       }
     } catch (err: any) {
       console.error('Error creating season:', err);
-      setError(
-        err.response?.data?.message ||
-        'シーズンの作成に失敗しました。もう一度お試しください。'
-      );
-    } finally {
-      setIsSubmitting(false);
+      form.setError('root', {
+        type: 'manual',
+        message: err.response?.data?.message || 'シーズンの作成に失敗しました。もう一度お試しください。',
+      });
     }
-  };
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
   };
 
   return (
@@ -108,144 +115,176 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Game Mode Selection */}
-          <div className="space-y-2">
-            <Label className="text-white">ゲームモード</Label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gameMode"
-                  value="GP"
-                  checked={formData.gameMode === 'GP'}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="text-white">GP（最大99人）</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="gameMode"
-                  value="CLASSIC"
-                  checked={formData.gameMode === 'CLASSIC'}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-blue-600"
-                />
-                <span className="text-white">CLASSIC（最大20人）</span>
-              </label>
-            </div>
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Game Mode Selection */}
+            <FormField
+              control={form.control}
+              name="gameMode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">ゲームモード</FormLabel>
+                  <FormControl>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="GP"
+                          checked={field.value === 'GP'}
+                          onChange={() => field.onChange('GP')}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span className="text-white">GP（最大99人）</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="CLASSIC"
+                          checked={field.value === 'CLASSIC'}
+                          onChange={() => field.onChange('CLASSIC')}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span className="text-white">CLASSIC（最大20人）</span>
+                      </label>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          {/* Season Number */}
-          <div className="space-y-2">
-            <Label htmlFor="seasonNumber" className="text-white">
-              シーズン番号 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="seasonNumber"
+            {/* Season Number */}
+            <FormField
+              control={form.control}
               name="seasonNumber"
-              type="number"
-              min="1"
-              value={formData.seasonNumber}
-              onChange={handleInputChange}
-              placeholder="1"
-              required
-              className="bg-gray-700 border-gray-600 text-white"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">
+                    シーズン番号 <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      className="bg-gray-700 border-gray-600 text-white"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription className="text-gray-400">
+                    {gameMode}モードのシーズン番号を入力してください
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <p className="text-sm text-gray-400">
-              {formData.gameMode}モードのシーズン番号を入力してください
-            </p>
-          </div>
 
-          {/* Start Date */}
-          <div className="space-y-2">
-            <Label htmlFor="startDate" className="text-white">
-              開始日時 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="startDate"
+            {/* Start Date */}
+            <FormField
+              control={form.control}
               name="startDate"
-              type="datetime-local"
-              value={formData.startDate}
-              onChange={handleInputChange}
-              required
-              className="bg-gray-700 border-gray-600 text-white"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">
+                    開始日 <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      className="bg-gray-700 border-gray-600 text-white"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription className="text-gray-400">
+                    開始日の0:00から有効になります
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          {/* End Date */}
-          <div className="space-y-2">
-            <Label htmlFor="endDate" className="text-white">
-              終了日時（オプション）
-            </Label>
-            <Input
-              id="endDate"
+            {/* End Date */}
+            <FormField
+              control={form.control}
               name="endDate"
-              type="datetime-local"
-              value={formData.endDate}
-              onChange={handleInputChange}
-              className="bg-gray-700 border-gray-600 text-white"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">終了日（オプション）</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      className="bg-gray-700 border-gray-600 text-white"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription className="text-gray-400">
+                    終了日の23:59:59まで有効です。空欄の場合は無期限となります
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <p className="text-sm text-gray-400">
-              空欄の場合は無期限となります
-            </p>
-          </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-white">
-              説明（オプション）
-            </Label>
-            <Textarea
-              id="description"
+            {/* Description */}
+            <FormField
+              control={form.control}
               name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              placeholder="このシーズンの説明を入力..."
-              rows={3}
-              className="bg-gray-700 border-gray-600 text-white"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">説明（オプション）</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="このシーズンの説明を入力..."
+                      rows={3}
+                      className="bg-gray-700 border-gray-600 text-white"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-md flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-red-400 mt-0.5" />
-              <span className="text-red-300">{error}</span>
-            </div>
-          )}
-
-          {/* Success Message */}
-          {success && (
-            <div className="p-3 bg-green-500/20 border border-green-500/50 rounded-md flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-green-400 mt-0.5" />
-              <span className="text-green-300">
-                シーズンが正常に作成されました！
-              </span>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                作成中...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                シーズンを作成
-              </span>
+            {/* Error Message */}
+            {form.formState.errors.root && (
+              <Alert variant="destructive">
+                <AlertIcon>
+                  <AlertCircle className="h-5 w-5 text-red-400" />
+                </AlertIcon>
+                <span>{form.formState.errors.root.message}</span>
+              </Alert>
             )}
-          </Button>
-        </form>
+
+            {/* Success Message */}
+            {success && (
+              <Alert variant="success">
+                <AlertIcon>
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                </AlertIcon>
+                <span>シーズンが正常に作成されました！</span>
+              </Alert>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                  作成中...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  シーズンを作成
+                </span>
+              )}
+            </Button>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   );

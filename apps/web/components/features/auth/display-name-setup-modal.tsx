@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
@@ -11,32 +14,48 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormMessage,
+} from '@/components/ui/form';
 import { usersApi } from '@/lib/api';
 import { toHalfWidth, validateDisplayName } from '@/lib/string';
 import { useAuthStore } from '@/store/authStore';
+
+const displayNameSchema = z.object({
+  displayName: z
+    .string()
+    .min(1, 'Display name is required')
+    .max(10, 'Display name must be 10 characters or less')
+    .refine(
+      (val) => validateDisplayName(val).valid,
+      (val) => ({ message: validateDisplayName(val).error || 'Invalid display name' })
+    ),
+});
+
+type DisplayNameFormData = z.infer<typeof displayNameSchema>;
 
 interface DisplayNameSetupModalProps {
   open: boolean;
 }
 
 export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
-  const [displayName, setDisplayName] = useState('');
-  const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComposing, setIsComposing] = useState(false);
   const { user, updateUser } = useAuthStore();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    // IME変換中は半角変換をスキップ
-    if (isComposing) {
-      setDisplayName(value);
-    } else {
-      const normalized = toHalfWidth(value);
-      setDisplayName(normalized);
-    }
-    setError('');
-  };
+  const form = useForm<DisplayNameFormData>({
+    resolver: zodResolver(displayNameSchema),
+    defaultValues: {
+      displayName: '',
+    },
+  });
+
+  const { isSubmitting } = form.formState;
+  const displayName = form.watch('displayName');
 
   const handleCompositionStart = () => {
     setIsComposing(true);
@@ -47,24 +66,12 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
     // 変換確定時に全角→半角変換を適用
     const value = (e.target as HTMLInputElement).value;
     const normalized = toHalfWidth(value);
-    setDisplayName(normalized);
+    form.setValue('displayName', normalized, { shouldValidate: true });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // バリデーション
-    const validation = validateDisplayName(displayName);
-    if (!validation.valid) {
-      setError(validation.error || 'Invalid display name');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError('');
-
+  const onSubmit = async (data: DisplayNameFormData) => {
     try {
-      const response = await usersApi.updateDisplayName(displayName);
+      const response = await usersApi.updateDisplayName(data.displayName);
       // authStoreを更新
       if (user) {
         updateUser({
@@ -73,8 +80,10 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
         });
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to set display name');
-      setIsSubmitting(false);
+      form.setError('displayName', {
+        type: 'manual',
+        message: err.response?.data?.message || 'Failed to set display name',
+      });
     }
   };
 
@@ -88,33 +97,49 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Input
-                id="displayName"
-                placeholder="Enter display name..."
-                value={displayName}
-                onChange={handleChange}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                maxLength={10}
-                autoFocus
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-gray-400">
-                {displayName.length}/10 characters
-              </p>
-              {error && <p className="text-sm text-red-400">{error}</p>}
-            </div>
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter display name..."
+                      maxLength={10}
+                      autoFocus
+                      disabled={isSubmitting}
+                      {...field}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // IME変換中は半角変換をスキップ
+                        if (isComposing) {
+                          field.onChange(value);
+                        } else {
+                          const normalized = toHalfWidth(value);
+                          field.onChange(normalized);
+                        }
+                      }}
+                      onCompositionStart={handleCompositionStart}
+                      onCompositionEnd={handleCompositionEnd}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {displayName.length}/10 characters
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <DialogFooter>
-            <Button type="submit" disabled={isSubmitting || !displayName}>
-              {isSubmitting ? 'Setting...' : 'Set Display Name'}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button type="submit" disabled={isSubmitting || !displayName}>
+                {isSubmitting ? 'Setting...' : 'Set Display Name'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

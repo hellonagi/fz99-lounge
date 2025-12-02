@@ -1,9 +1,10 @@
 import {
-  MatchCard,
-  MatchCardHeader,
-  MatchCardTitle,
-  MatchCardContent,
-} from '@/components/ui/match-card';
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from '@/components/ui/card';
+import { StatBox, StatBoxValue } from '@/components/ui/stat-box';
 
 interface MatchLobbyInfoCardProps {
   seasonNumber: number | null;
@@ -21,31 +22,28 @@ export function MatchLobbyInfoCard({
   currentPlayers,
 }: MatchLobbyInfoCardProps) {
   return (
-    <MatchCard>
-      <MatchCardHeader>
-        <MatchCardTitle>Lobby Information</MatchCardTitle>
-      </MatchCardHeader>
-      <MatchCardContent>
+    <Card showGradient>
+      <CardHeader>
+        <CardTitle>Lobby Information</CardTitle>
+      </CardHeader>
+      <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Season */}
         {seasonNumber !== null && (
-          <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
-            <p className="text-sm text-gray-400 mb-1">Season</p>
-            <p className="text-xl font-bold text-white">Season {seasonNumber}</p>
-          </div>
+          <StatBox label="Season">
+            <StatBoxValue>Season {seasonNumber}</StatBoxValue>
+          </StatBox>
         )}
 
         {/* Game Number */}
         {gameNumber !== null && (
-          <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
-            <p className="text-sm text-gray-400 mb-1">Game</p>
-            <p className="text-xl font-bold text-white">#{gameNumber}</p>
-          </div>
+          <StatBox label="Game">
+            <StatBoxValue>#{gameNumber}</StatBoxValue>
+          </StatBox>
         )}
 
         {/* Player Count */}
-        <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30 md:col-span-2">
-          <p className="text-sm text-gray-400 mb-3">Players</p>
+        <StatBox label="Players" colSpan={2} className="[&>p:first-child]:mb-3">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <div className="flex justify-between text-sm text-gray-300 mb-2">
@@ -65,9 +63,9 @@ export function MatchLobbyInfoCard({
               </p>
             </div>
           </div>
+        </StatBox>
         </div>
-        </div>
-      </MatchCardContent>
-    </MatchCard>
+      </CardContent>
+    </Card>
   );
 }

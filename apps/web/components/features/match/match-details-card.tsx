@@ -1,9 +1,10 @@
 import {
-  MatchCard,
-  MatchCardHeader,
-  MatchCardTitle,
-  MatchCardContent,
-} from '@/components/ui/match-card';
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from '@/components/ui/card';
+import { StatBox, StatBoxValue } from '@/components/ui/stat-box';
 
 interface MatchDetailsCardProps {
   gameMode: string;
@@ -69,28 +70,25 @@ export function MatchDetailsCard({
   };
 
   return (
-    <MatchCard>
-      <MatchCardHeader>
-        <MatchCardTitle>Match Details</MatchCardTitle>
-      </MatchCardHeader>
-      <MatchCardContent>
+    <Card showGradient>
+      <CardHeader>
+        <CardTitle>Match Details</CardTitle>
+      </CardHeader>
+      <CardContent>
         {/* Basic Info Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Game Mode */}
-        <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
-          <p className="text-sm text-gray-400 mb-1">Game Mode</p>
-          <p className="text-xl font-bold text-white">{gameMode}</p>
-        </div>
+        <StatBox label="Game Mode">
+          <StatBoxValue>{gameMode}</StatBoxValue>
+        </StatBox>
 
         {/* League Type */}
-        <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
-          <p className="text-sm text-gray-400 mb-1">League</p>
-          <p className="text-xl font-bold text-white">{leagueType}</p>
-        </div>
+        <StatBox label="League">
+          <StatBoxValue>{leagueType}</StatBoxValue>
+        </StatBox>
 
         {/* Status */}
-        <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
-          <p className="text-sm text-gray-400 mb-1">Status</p>
+        <StatBox label="Status">
           <span
             className={`inline-block px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(
               status
@@ -98,33 +96,30 @@ export function MatchDetailsCard({
           >
             {getStatusLabel(status)}
           </span>
-        </div>
+        </StatBox>
 
         {/* Total Players */}
-        <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30">
-          <p className="text-sm text-gray-400 mb-1">Total Players</p>
-          <p className="text-xl font-bold text-white">{totalPlayers}</p>
-        </div>
+        <StatBox label="Total Players">
+          <StatBoxValue>{totalPlayers}</StatBoxValue>
+        </StatBox>
 
         {/* Started At */}
-        <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30 md:col-span-2">
-          <p className="text-sm text-gray-400 mb-1">Started At</p>
+        <StatBox label="Started At" colSpan={2}>
           <p className="text-lg font-semibold text-white">
             {formatDateTime(startedAt)}
           </p>
-        </div>
+        </StatBox>
 
         {/* Completed At */}
         {completedAt && (
-          <div className="bg-gray-800/30 rounded-lg p-4 border border-gray-700/30 md:col-span-2">
-            <p className="text-sm text-gray-400 mb-1">Completed At</p>
+          <StatBox label="Completed At" colSpan={2}>
             <p className="text-lg font-semibold text-white">
               {formatDateTime(completedAt)}
             </p>
-          </div>
+          </StatBox>
         )}
         </div>
-      </MatchCardContent>
-    </MatchCard>
+      </CardContent>
+    </Card>
   );
 }

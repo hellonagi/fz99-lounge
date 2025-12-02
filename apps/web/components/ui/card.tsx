@@ -1,13 +1,22 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  showGradient?: boolean;
+}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, showGradient = false, children, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('rounded-lg border border-gray-700 bg-gray-800 text-gray-100', className)}
+      className={cn('rounded-lg border border-gray-700 bg-gray-800 text-gray-100', showGradient && 'relative', className)}
       {...props}
-    />
+    >
+      {showGradient && (
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-pink-900/10 pointer-events-none" />
+      )}
+      {showGradient ? <div className="relative">{children}</div> : children}
+    </div>
   )
 );
 Card.displayName = 'Card';
