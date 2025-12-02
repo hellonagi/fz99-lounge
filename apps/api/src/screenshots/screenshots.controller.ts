@@ -18,6 +18,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { ScreenshotsService } from './screenshots.service';
 import { SubmitScreenshotDto } from './dto/submit-screenshot.dto';
 
@@ -57,6 +58,7 @@ export class ScreenshotsController {
    * 試合の提出済みスクショ一覧を取得
    * GET /api/screenshots/match/:matchId/submissions
    */
+  @Public()
   @Get('match/:matchId/submissions')
   async getSubmissions(@Param('matchId') matchId: string) {
     return await this.screenshotsService.getSubmissions(matchId);

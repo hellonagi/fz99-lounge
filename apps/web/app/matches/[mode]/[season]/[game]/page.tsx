@@ -2,15 +2,18 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 import { MatchHeaderCard } from '@/components/features/match/match-header-card';
 import { MatchPasscodeCard } from '@/components/features/match/match-passcode-card';
 import { MatchParticipantsCard } from '@/components/features/match/match-participants-card';
 import { MatchResultList } from '@/components/features/match/match-result-list';
 import { MatchTotalRanking } from '@/components/features/match/match-total-ranking';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
+import { ScreenshotUploadForm } from '@/components/features/match/screenshot-upload-form';
+import { ScreenshotGallery } from '@/components/features/match/screenshot-gallery';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { matchesApi } from '@/lib/api';
+import { matchesApi, screenshotsApi } from '@/lib/api';
 import { useMatchSocket } from '@/hooks/useMatchSocket';
 
 interface Match {
@@ -60,26 +63,28 @@ export default function MatchPage() {
   const mode = params.mode as string;
   const season = parseInt(params.season as string, 10);
   const game = parseInt(params.game as string, 10);
+  const { user } = useAuthStore();
 
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [screenshots, setScreenshots] = useState<any[]>([]);
 
   const fetchMatch = async () => {
     try {
-      // Debug: Check if token exists
-      const token = localStorage.getItem('token');
-      console.log('[Match Page] Token exists:', !!token);
-      console.log('[Match Page] Fetching match:', { mode, season, game });
-
       const response = await matchesApi.getByModeSeasonGame(mode, season, game);
-      console.log('[Match Page] Match data received:', {
-        hasPasscode: !!response.data.passcode,
-        passcode: response.data.passcode,
-      });
       setMatch(response.data);
+
+      // Fetch screenshots
+      if (response.data.id) {
+        try {
+          const screenshotsResponse = await screenshotsApi.getSubmissions(response.data.id);
+          setScreenshots(screenshotsResponse.data);
+        } catch (err) {
+          setScreenshots([]);
+        }
+      }
     } catch (err: any) {
-      console.error('[Match Page] Error fetching match:', err);
       setError(err.response?.data?.message || 'Failed to load match');
     } finally {
       setLoading(false);
@@ -205,6 +210,30 @@ export default function MatchPage() {
   // Calculate total scores for MatchTotalRanking
   const totalScores = calculateTotalScores();
 
+  // Check if current user is 1st place
+  const isFirstPlace = () => {
+    if (!user || !match.participants || match.participants.length === 0) {
+      return false;
+    }
+
+    // Sort participants by reportedPoints (desc) and check if current user is first
+    const sorted = [...match.participants]
+      .filter(p => p.reportedPoints !== null)
+      .sort((a, b) => (b.reportedPoints || 0) - (a.reportedPoints || 0));
+
+    if (sorted.length === 0) {
+      return false;
+    }
+
+    return sorted[0].user.id === user.id;
+  };
+
+  // Check if user can upload screenshot (IN_PROGRESS or COMPLETED, but not FINALIZED)
+  const canUploadScreenshot =
+    (match.lobby.status === 'IN_PROGRESS' || match.lobby.status === 'COMPLETED') &&
+    match.lobby.status !== 'FINALIZED' &&
+    isFirstPlace();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800">
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -323,6 +352,19 @@ export default function MatchPage() {
               )}
             </CardContent>
           </Card>
+          )}
+
+          {/* Screenshot Upload Form - only show for 1st place when match is IN_PROGRESS or COMPLETED (not FINALIZED) */}
+          {canUploadScreenshot && (
+            <ScreenshotUploadForm
+              matchId={match.id}
+              onUploadSuccess={fetchMatch}
+            />
+          )}
+
+          {/* Screenshot Gallery - show all submitted screenshots */}
+          {screenshots.length > 0 && (
+            <ScreenshotGallery screenshots={screenshots} />
           )}
         </div>
       </main>

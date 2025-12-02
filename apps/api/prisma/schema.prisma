@@ -58,6 +58,7 @@ enum LobbyStatus {
   WAITING       // 開始前
   IN_PROGRESS   // 進行中
   COMPLETED     // 完了
+  FINALIZED     // 確定済み（スクショ選択済み）
   CANCELLED     // キャンセル
 }
 

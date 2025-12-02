@@ -8,6 +8,7 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import sharp from 'sharp';
 
 @Injectable()
 export class StorageService {
@@ -41,33 +42,57 @@ export class StorageService {
           },
     });
 
-    this.baseUrl = endpoint || `https://${this.bucketName}.s3.${this.region}.amazonaws.com`;
+    // ブラウザからアクセス可能なURLを設定
+    // MinIOの場合、Docker内部URLではなく、localhost:9000を使用
+    if (endpoint) {
+      this.baseUrl = endpoint.replace('minio:9000', 'localhost:9000');
+    } else {
+      this.baseUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com`;
+    }
 
     this.logger.log(
       `Storage initialized: ${endpoint ? 'MinIO (dev)' : 'AWS S3 (prod)'} - Bucket: ${this.bucketName}`,
     );
+    this.logger.log(`Public URL: ${this.baseUrl}`);
   }
 
   /**
    * 一時フォルダにファイルをアップロード
+   * 画像を圧縮してからアップロード
    */
   async uploadTempScreenshot(
     matchId: string,
     file: Express.Multer.File,
   ): Promise<string> {
-    const key = `screenshots/temp/${matchId}/${Date.now()}-${file.originalname}`;
+    // 画像を圧縮 (最大1920x1080、JPEG 85%品質)
+    const compressedBuffer = await sharp(file.buffer)
+      .resize(1920, 1080, {
+        fit: 'inside', // アスペクト比を維持
+        withoutEnlargement: true, // 元画像より大きくしない
+      })
+      .jpeg({
+        quality: 85, // JPEG品質 (1-100)
+        progressive: true, // プログレッシブJPEG
+      })
+      .toBuffer();
+
+    const key = `screenshots/temp/${matchId}/${Date.now()}.jpg`;
 
     await this.s3Client.send(
       new PutObjectCommand({
         Bucket: this.bucketName,
         Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
+        Body: compressedBuffer,
+        ContentType: 'image/jpeg',
       }),
     );
 
-    const url = `${this.baseUrl}/${key}`;
-    this.logger.log(`Uploaded temp screenshot: ${url}`);
+    const url = `${this.baseUrl}/${this.bucketName}/${key}`;
+    const originalSize = (file.size / 1024 / 1024).toFixed(2);
+    const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
+    this.logger.log(
+      `Uploaded temp screenshot: ${url} (${originalSize}MB → ${compressedSize}MB)`,
+    );
     return url;
   }
 
@@ -86,7 +111,7 @@ export class StorageService {
       }),
     );
 
-    const url = `${this.baseUrl}/${permanentKey}`;
+    const url = `${this.baseUrl}/${this.bucketName}/${permanentKey}`;
     this.logger.log(`Copied to permanent: ${url}`);
     return url;
   }

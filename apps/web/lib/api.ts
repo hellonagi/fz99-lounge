@@ -119,3 +119,19 @@ export const matchesApi = {
     targetUserId?: string;
   }) => api.post(`/matches/${mode}/${season}/${game}/score`, data),
 };
+
+// Screenshots API
+export const screenshotsApi = {
+  submit: (matchId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('matchId', matchId);
+    return api.post('/screenshots/submit', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  getSubmissions: (matchId: string) => api.get(`/screenshots/match/${matchId}/submissions`),
+  getOfficial: (matchId: string) => api.get(`/screenshots/match/${matchId}/official`),
+};
