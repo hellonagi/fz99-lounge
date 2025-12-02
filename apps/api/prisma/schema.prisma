@@ -121,6 +121,9 @@ model User {
   status          UserStatus  @default(ACTIVE)
   deletedAt       DateTime?   // ソフトデリート用
 
+  // テスト用フラグ
+  isFake          Boolean     @default(false)
+
   // 配信URL
   youtubeUrl      String?
   twitchUrl       String?
@@ -411,7 +414,7 @@ model LobbyParticipant {
   user        User     @relation(fields: [userId], references: [id])
 
   joinedAt    DateTime @default(now())
-  isActive    Boolean  @default(true)     // 途中棄権したらfalse
+  hasWithdrawn Boolean @default(false)    // 途中棄権したらtrue
 
   // TOURNAMENT専用（累計成績）
   totalPoints     Int      @default(0)    // 全ラウンドの合計ポイント
@@ -424,7 +427,7 @@ model LobbyParticipant {
   @@index([lobbyId])
   @@index([userId])
   @@index([lobbyId, totalPoints])         // 順位表示用
-  @@index([lobbyId, isActive])
+  @@index([lobbyId, hasWithdrawn])
   @@map("lobby_participants")
 }
 
