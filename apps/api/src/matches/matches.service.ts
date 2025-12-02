@@ -49,9 +49,11 @@ export class MatchesService {
               },
             },
           },
-          orderBy: {
-            finalPoints: 'desc',
-          },
+          orderBy: [
+            {
+              reportedPoints: { sort: 'desc', nulls: 'last' },
+            },
+          ],
         },
       },
     });
@@ -129,9 +131,11 @@ export class MatchesService {
               },
             },
           },
-          orderBy: {
-            finalPoints: 'desc',
-          },
+          orderBy: [
+            {
+              reportedPoints: { sort: 'desc', nulls: 'last' },
+            },
+          ],
         },
       },
     });
@@ -160,7 +164,11 @@ export class MatchesService {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: {
-        lobby: true,
+        lobby: {
+          include: {
+            participants: true,
+          },
+        },
         participants: {
           where: { userId },
         },
@@ -176,6 +184,8 @@ export class MatchesService {
       throw new BadRequestException('Cannot submit score - match is not in progress');
     }
 
+    let participantId: string;
+
     // Check if user is a participant
     if (!match.participants.length) {
       // User is not a participant yet, add them
@@ -184,61 +194,57 @@ export class MatchesService {
           matchId,
           userId,
           machine: submitScoreDto.machine,
-          position: submitScoreDto.position,
+          position: null, // Position will be calculated based on points
           reportedPoints: submitScoreDto.reportedPoints,
+          finalPoints: submitScoreDto.reportedPoints,
           assistEnabled: submitScoreDto.assistEnabled,
         },
-        include: {
-          user: {
-            select: {
-              id: true,
-              profileId: true,
-              displayName: true,
-              avatarHash: true,
-            },
-          },
-        },
       });
-
-      // Emit event for real-time update
-      this.eventEmitter.emit('match.scoreUpdated', {
-        matchId,
-        participant,
-      });
-
-      return participant;
+      participantId = participant.id;
     } else {
       // Update existing participant's score
-      const participant = await this.prisma.matchParticipant.update({
+      await this.prisma.matchParticipant.update({
         where: {
           id: match.participants[0].id,
         },
         data: {
           machine: submitScoreDto.machine,
-          position: submitScoreDto.position,
           reportedPoints: submitScoreDto.reportedPoints,
+          finalPoints: submitScoreDto.reportedPoints,
           assistEnabled: submitScoreDto.assistEnabled,
         },
-        include: {
-          user: {
-            select: {
-              id: true,
-              profileId: true,
-              displayName: true,
-              avatarHash: true,
-            },
+      });
+      participantId = match.participants[0].id;
+    }
+
+    // Calculate and update positions for all participants
+    await this.updateMatchPositions(matchId);
+
+    // Get the updated participant with position
+    const updatedParticipant = await this.prisma.matchParticipant.findUnique({
+      where: { id: participantId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            profileId: true,
+            displayName: true,
+            avatarHash: true,
           },
         },
-      });
+      },
+    });
 
-      // Emit event for real-time update
-      this.eventEmitter.emit('match.scoreUpdated', {
-        matchId,
-        participant,
-      });
+    // Emit event for real-time update
+    this.eventEmitter.emit('match.scoreUpdated', {
+      matchId,
+      participant: updatedParticipant,
+    });
 
-      return participant;
-    }
+    // Check if all participants have submitted - auto complete match
+    await this.checkAndCompleteMatch(matchId, match.lobby.id, match.lobby.participants.length);
+
+    return updatedParticipant;
   }
 
   async submitScoreByModeSeasonGame(
@@ -268,5 +274,82 @@ export class MatchesService {
     }
 
     return this.submitScore(match.id, userId, submitScoreDto);
+  }
+
+  /**
+   * Update positions for all participants in a match based on their points
+   * Handles tied rankings properly (e.g., #1, #1, #3, #4 for tied first place)
+   */
+  private async updateMatchPositions(matchId: string) {
+    // Get all participants sorted by points (highest first)
+    const participants = await this.prisma.matchParticipant.findMany({
+      where: { matchId },
+      orderBy: { finalPoints: 'desc' },
+    });
+
+    // Calculate positions with proper tie handling
+    let currentRank = 1;
+    let previousPoints: number | null = null;
+    let participantsWithPoints = 0;
+
+    for (let i = 0; i < participants.length; i++) {
+      const participant = participants[i];
+
+      // Skip if no points reported yet
+      if (participant.finalPoints === null) {
+        continue;
+      }
+
+      participantsWithPoints++;
+
+      // If points changed from previous participant, update rank
+      if (previousPoints !== null && previousPoints !== participant.finalPoints) {
+        currentRank = participantsWithPoints;
+      }
+
+      // Update the participant's position
+      await this.prisma.matchParticipant.update({
+        where: { id: participant.id },
+        data: { position: currentRank },
+      });
+
+      previousPoints = participant.finalPoints;
+    }
+  }
+
+  /**
+   * Check if all participants have submitted scores and auto-complete the match
+   */
+  private async checkAndCompleteMatch(matchId: string, lobbyId: string, totalParticipants: number) {
+    // Count how many participants have submitted scores
+    const submittedCount = await this.prisma.matchParticipant.count({
+      where: {
+        matchId,
+        reportedPoints: { not: null },
+      },
+    });
+
+    // If all participants have submitted, complete the match
+    if (submittedCount >= totalParticipants) {
+      await this.prisma.$transaction([
+        // Update lobby status to COMPLETED
+        this.prisma.lobby.update({
+          where: { id: lobbyId },
+          data: { status: LobbyStatus.COMPLETED },
+        }),
+        // Set match completedAt timestamp
+        this.prisma.match.update({
+          where: { id: matchId },
+          data: { completedAt: new Date() },
+        }),
+      ]);
+
+      // Emit event for real-time status update
+      this.eventEmitter.emit('match.completed', {
+        matchId,
+        lobbyId,
+        completedAt: new Date(),
+      });
+    }
   }
 }

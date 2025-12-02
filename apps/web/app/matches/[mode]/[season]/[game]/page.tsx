@@ -5,7 +5,11 @@ import { useParams } from 'next/navigation';
 import { MatchHeaderCard } from '@/components/features/match/match-header-card';
 import { MatchPasscodeCard } from '@/components/features/match/match-passcode-card';
 import { MatchParticipantsCard } from '@/components/features/match/match-participants-card';
+import { MatchResultList } from '@/components/features/match/match-result-list';
+import { MatchTotalRanking } from '@/components/features/match/match-total-ranking';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { matchesApi } from '@/lib/api';
 import { useMatchSocket } from '@/hooks/useMatchSocket';
 
@@ -60,7 +64,6 @@ export default function MatchPage() {
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'game1' | 'game2' | 'game3' | 'total'>('game1');
 
   const fetchMatch = async () => {
     try {
@@ -98,7 +101,7 @@ export default function MatchPage() {
       if (!prevMatch) return prevMatch;
 
       // Update or add participant in the match data
-      const updatedParticipants = prevMatch.participants || [];
+      const updatedParticipants = [...(prevMatch.participants || [])];
       const existingIndex = updatedParticipants.findIndex(
         (p) => p.user.id === participant.user.id
       );
@@ -106,12 +109,22 @@ export default function MatchPage() {
       if (existingIndex >= 0) {
         updatedParticipants[existingIndex] = {
           ...updatedParticipants[existingIndex],
+          position: participant.position,
           reportedPoints: participant.reportedPoints,
           finalPoints: participant.finalPoints,
+          machine: participant.machine,
+          assistEnabled: participant.assistEnabled,
         };
       } else {
         updatedParticipants.push(participant);
       }
+
+      // Sort by reportedPoints (descending) to maintain correct order
+      updatedParticipants.sort((a, b) => {
+        const aPoints = a.reportedPoints ?? 0;
+        const bPoints = b.reportedPoints ?? 0;
+        return bPoints - aPoints;
+      });
 
       return {
         ...prevMatch,
@@ -189,129 +202,8 @@ export default function MatchPage() {
     return Array.from(totals.values()).sort((a, b) => b.totalPoints - a.totalPoints);
   };
 
-  const renderGameResults = (participants: any[]) => {
-    if (!participants || participants.length === 0) {
-      return (
-        <div className="text-center text-gray-500 py-8">
-          No results submitted yet
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-2">
-        {participants
-          .sort((a, b) => {
-            // Sort by position first, then by points
-            if (a.position && b.position) return a.position - b.position;
-            if (a.position) return -1;
-            if (b.position) return 1;
-            return (b.reportedPoints || 0) - (a.reportedPoints || 0);
-          })
-          .map((participant) => (
-            <div key={participant.user.id} className="flex justify-between items-center p-4 bg-gray-700 rounded-lg">
-              <div className="flex items-center space-x-4">
-                {/* Position */}
-                <div className="text-center min-w-[40px]">
-                  {participant.position ? (
-                    <span className={`text-lg font-bold ${
-                      participant.position <= 3 ? 'text-yellow-400' :
-                      participant.position <= 10 ? 'text-gray-300' : 'text-gray-400'
-                    }`}>
-                      #{participant.position}
-                    </span>
-                  ) : (
-                    <span className="text-gray-500">-</span>
-                  )}
-                </div>
-
-                {/* Player Name */}
-                <div>
-                  <span className="text-white font-medium">
-                    {participant.user.displayName || `User#${participant.user.profileId}`}
-                  </span>
-                  {participant.assistEnabled && (
-                    <span className="ml-2 text-xs text-blue-400 bg-blue-900/50 px-2 py-0.5 rounded">
-                      ASSIST
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-4">
-                {/* Machine */}
-                <span className={`text-sm ${
-                  participant.machine === 'Blue Falcon' ? 'text-blue-400' :
-                  participant.machine === 'Golden Fox' ? 'text-yellow-400' :
-                  participant.machine === 'Wild Goose' ? 'text-green-400' :
-                  participant.machine === 'Fire Stingray' ? 'text-red-400' :
-                  'text-gray-400'
-                }`}>
-                  {participant.machine}
-                </span>
-
-                {/* Points */}
-                <div className="text-right min-w-[80px]">
-                  {participant.reportedPoints !== null ? (
-                    <span className="text-yellow-400 font-bold">{participant.reportedPoints} pts</span>
-                  ) : (
-                    <span className="text-gray-500">No score</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-      </div>
-    );
-  };
-
-  const renderTotalResults = () => {
-    const totalScores = calculateTotalScores();
-
-    if (totalScores.length === 0) {
-      return (
-        <div className="text-center text-gray-500 py-8">
-          No results yet
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-2">
-        {totalScores.map((entry, index) => (
-          <div key={entry.user.id} className="flex justify-between items-center p-4 bg-gray-700 rounded-lg">
-            <div className="flex items-center space-x-4">
-              {/* Rank */}
-              <div className="text-center min-w-[40px]">
-                <span className={`text-lg font-bold ${
-                  index === 0 ? 'text-yellow-400' :
-                  index === 1 ? 'text-gray-300' :
-                  index === 2 ? 'text-orange-400' : 'text-gray-400'
-                }`}>
-                  #{index + 1}
-                </span>
-              </div>
-
-              {/* Player Name */}
-              <div>
-                <span className="text-white font-medium">
-                  {entry.user.displayName || `User#${entry.user.profileId}`}
-                </span>
-                <span className="ml-2 text-xs text-gray-400">
-                  ({entry.gamesPlayed}/3 games)
-                </span>
-              </div>
-            </div>
-
-            {/* Total Points */}
-            <div className="text-right">
-              <span className="text-2xl text-yellow-400 font-bold">{entry.totalPoints} pts</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  // Calculate total scores for MatchTotalRanking
+  const totalScores = calculateTotalScores();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800">
@@ -336,132 +228,101 @@ export default function MatchPage() {
 
           {/* For TOURNAMENT mode: Show tabs */}
           {match.gameMode === 'TOURNAMENT' ? (
-          <div className="bg-gray-800 rounded-lg overflow-hidden">
-            <div className="flex border-b border-gray-700">
-              <button
-                onClick={() => setActiveTab('game1')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
-                  activeTab === 'game1'
-                    ? 'bg-gray-700 text-white border-b-2 border-blue-500'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                }`}
-              >
-                Game 1
-              </button>
-              <button
-                onClick={() => setActiveTab('game2')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
-                  activeTab === 'game2'
-                    ? 'bg-gray-700 text-white border-b-2 border-blue-500'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                }`}
-              >
-                Game 2
-              </button>
-              <button
-                onClick={() => setActiveTab('game3')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
-                  activeTab === 'game3'
-                    ? 'bg-gray-700 text-white border-b-2 border-blue-500'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                }`}
-              >
-                Game 3
-              </button>
-              <button
-                onClick={() => setActiveTab('total')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ml-auto ${
-                  activeTab === 'total'
-                    ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-white'
-                    : 'text-yellow-400 hover:text-white hover:bg-gray-700/50'
-                }`}
-              >
-                🏆 Total
-              </button>
-            </div>
+          <Card className="overflow-hidden">
+            <Tabs defaultValue="game1">
+              <TabsList>
+                <TabsTrigger value="game1">Game 1</TabsTrigger>
+                <TabsTrigger value="game2">Game 2</TabsTrigger>
+                <TabsTrigger value="game3">Game 3</TabsTrigger>
+                <TabsTrigger
+                  value="total"
+                  className="ml-auto text-yellow-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-600 data-[state=active]:to-yellow-500 data-[state=active]:text-white data-[state=active]:border-0"
+                >
+                  🏆 Total
+                </TabsTrigger>
+              </TabsList>
 
-            {/* Tab Content */}
-            <div className="p-6">
-              {activeTab === 'game1' && (
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4">Game 1 Results</h3>
-                  {renderGameResults(games[0].participants)}
+              <TabsContent value="game1">
+                <h3 className="text-xl font-bold text-white mb-4">Game 1 Results</h3>
+                <MatchResultList participants={games[0].participants} />
 
-                  {/* Score Submission Form - only show when match is IN_PROGRESS */}
-                  {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
-                    <div className="mt-6 pt-6 border-t border-gray-600">
-                      <ScoreSubmissionForm
-                        mode={mode}
-                        season={season}
-                        game={game}
-                        onScoreSubmitted={handleScoreSubmitted}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-              {activeTab === 'game2' && (
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4">Game 2 Results</h3>
-                  {renderGameResults(games[1].participants)}
+                {/* Score Submission Form - only show when match is IN_PROGRESS */}
+                {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
+                  <div className="mt-6 pt-6 border-t border-gray-600">
+                    <ScoreSubmissionForm
+                      mode={mode}
+                      season={season}
+                      game={game}
+                      participants={match.lobby.participants}
+                      onScoreSubmitted={handleScoreSubmitted}
+                    />
+                  </div>
+                )}
+              </TabsContent>
 
-                  {/* Score Submission Form - only show when match is IN_PROGRESS */}
-                  {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
-                    <div className="mt-6 pt-6 border-t border-gray-600">
-                      <ScoreSubmissionForm
-                        mode={mode}
-                        season={season}
-                        game={game}
-                        onScoreSubmitted={handleScoreSubmitted}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-              {activeTab === 'game3' && (
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4">Game 3 Results</h3>
-                  {renderGameResults(games[2].participants)}
+              <TabsContent value="game2">
+                <h3 className="text-xl font-bold text-white mb-4">Game 2 Results</h3>
+                <MatchResultList participants={games[1].participants} />
 
-                  {/* Score Submission Form - only show when match is IN_PROGRESS */}
-                  {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
-                    <div className="mt-6 pt-6 border-t border-gray-600">
-                      <ScoreSubmissionForm
-                        mode={mode}
-                        season={season}
-                        game={game}
-                        onScoreSubmitted={handleScoreSubmitted}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-              {activeTab === 'total' && (
-                <div>
-                  <h3 className="text-xl font-bold text-white mb-4">🏆 Total Ranking</h3>
-                  {renderTotalResults()}
-                </div>
-              )}
-            </div>
-          </div>
+                {/* Score Submission Form - only show when match is IN_PROGRESS */}
+                {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
+                  <div className="mt-6 pt-6 border-t border-gray-600">
+                    <ScoreSubmissionForm
+                      mode={mode}
+                      season={season}
+                      game={game}
+                      participants={match.lobby.participants}
+                      onScoreSubmitted={handleScoreSubmitted}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="game3">
+                <h3 className="text-xl font-bold text-white mb-4">Game 3 Results</h3>
+                <MatchResultList participants={games[2].participants} />
+
+                {/* Score Submission Form - only show when match is IN_PROGRESS */}
+                {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
+                  <div className="mt-6 pt-6 border-t border-gray-600">
+                    <ScoreSubmissionForm
+                      mode={mode}
+                      season={season}
+                      game={game}
+                      participants={match.lobby.participants}
+                      onScoreSubmitted={handleScoreSubmitted}
+                    />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="total">
+                <h3 className="text-xl font-bold text-white mb-4">🏆 Total Ranking</h3>
+                <MatchTotalRanking entries={totalScores} />
+              </TabsContent>
+            </Tabs>
+          </Card>
           ) : (
           /* For GP/CLASSIC mode: Simple results display without tabs */
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Match Results</h3>
-            {renderGameResults(match.participants || [])}
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-xl font-bold text-white mb-4">Match Results</h3>
+              <MatchResultList participants={match.participants || []} />
 
-            {/* Score Submission Form - only show when match is IN_PROGRESS */}
-            {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
-              <div className="mt-6 pt-6 border-t border-gray-600">
-                <ScoreSubmissionForm
-                  mode={mode}
-                  season={season}
-                  game={game}
-                  onScoreSubmitted={handleScoreSubmitted}
-                />
-              </div>
-            )}
-          </div>
+              {/* Score Submission Form - only show when match is IN_PROGRESS */}
+              {match.lobby.status === 'IN_PROGRESS' && localStorage.getItem('token') && (
+                <div className="mt-6 pt-6 border-t border-gray-600">
+                  <ScoreSubmissionForm
+                    mode={mode}
+                    season={season}
+                    game={game}
+                    participants={match.lobby.participants}
+                    onScoreSubmitted={handleScoreSubmitted}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
           )}
         </div>
       </main>

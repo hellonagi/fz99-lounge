@@ -113,9 +113,9 @@ export const matchesApi = {
   getByModeSeasonGame: (mode: string, season: number, game: number) =>
     api.get(`/matches/${mode}/${season}/${game}`),
   submitScore: (mode: string, season: number, game: number, data: {
-    position: number;
     reportedPoints: number;
     machine: string;
     assistEnabled: boolean;
+    targetUserId?: string;
   }) => api.post(`/matches/${mode}/${season}/${game}/score`, data),
 };

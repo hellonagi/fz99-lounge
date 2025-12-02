@@ -1,4 +1,4 @@
-import { MatchCard, MatchCardContent } from '@/components/ui/match-card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 interface MatchHeaderCardProps {
@@ -41,11 +41,11 @@ export function MatchHeaderCard({
   };
 
   // Determine if match is live
-  const isLive = status === 'ONGOING';
+  const isLive = status === 'IN_PROGRESS';
 
   return (
-    <MatchCard>
-      <MatchCardContent className="text-center p-8">
+    <Card showGradient>
+      <CardContent className="text-center p-8">
         {/* Time */}
         <div className="text-5xl md:text-6xl font-black text-white mb-2">
           {formatTime(startedAt)}
@@ -75,7 +75,7 @@ export function MatchHeaderCard({
             {isLive ? 'Live' : 'Match over'}
           </Badge>
         </div>
-      </MatchCardContent>
-    </MatchCard>
+      </CardContent>
+    </Card>
   );
 }

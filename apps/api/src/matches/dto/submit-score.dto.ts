@@ -1,4 +1,4 @@
-import { IsInt, IsEnum, IsBoolean, Min, Max } from 'class-validator';
+import { IsInt, IsEnum, IsBoolean, IsOptional, IsUUID, Min, Max } from 'class-validator';
 
 export enum F99Machine {
   BLUE_FALCON = 'Blue Falcon',
@@ -9,11 +9,6 @@ export enum F99Machine {
 
 export class SubmitScoreDto {
   @IsInt()
-  @Min(1)
-  @Max(99)
-  position: number;  // 順位 (1-99)
-
-  @IsInt()
   @Min(0)
   @Max(1000)
   reportedPoints: number;  // ポイント (0-1000)
@@ -23,4 +18,8 @@ export class SubmitScoreDto {
 
   @IsBoolean()
   assistEnabled: boolean;  // アシスト使用フラグ
+
+  @IsOptional()
+  @IsUUID()
+  targetUserId?: string;  // moderator以上が他のユーザーのスコアを提出する場合に指定
 }

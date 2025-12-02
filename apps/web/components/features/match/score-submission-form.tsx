@@ -1,49 +1,104 @@
 'use client';
 
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { matchesApi } from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 
 const F99_MACHINES = [
   { value: 'Blue Falcon', name: 'Blue Falcon', color: 'text-blue-400' },
   { value: 'Golden Fox', name: 'Golden Fox', color: 'text-yellow-400' },
   { value: 'Wild Goose', name: 'Wild Goose', color: 'text-green-400' },
   { value: 'Fire Stingray', name: 'Fire Stingray', color: 'text-red-400' },
-];
+] as const;
+
+const scoreSchema = z.object({
+  points: z
+    .string()
+    .min(1, 'Points is required')
+    .refine((val) => !isNaN(parseInt(val, 10)), 'Points must be a number')
+    .refine((val) => {
+      const num = parseInt(val, 10);
+      return num >= 0 && num <= 1000;
+    }, 'Points must be between 0 and 1000'),
+  machine: z.string().min(1, 'Machine is required'),
+  assistEnabled: z.boolean(),
+  targetUserId: z.string().optional(),
+});
+
+type ScoreFormData = z.infer<typeof scoreSchema>;
+
+interface Participant {
+  user: {
+    id: string;
+    profileId: number;
+    discordId: string;
+    displayName: string | null;
+    avatarHash?: string | null;
+  };
+}
 
 interface ScoreSubmissionFormProps {
   mode: string;
   season: number;
   game: number;
+  participants: Participant[];
   onScoreSubmitted?: () => void;
 }
 
-export function ScoreSubmissionForm({ mode, season, game, onScoreSubmitted }: ScoreSubmissionFormProps) {
-  const [position, setPosition] = useState('');
-  const [points, setPoints] = useState('');
-  const [machine, setMachine] = useState('Blue Falcon');
-  const [assistEnabled, setAssistEnabled] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function ScoreSubmissionForm({ mode, season, game, participants, onScoreSubmitted }: ScoreSubmissionFormProps) {
   const [success, setSuccess] = useState(false);
+  const { user } = useAuthStore();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setIsSubmitting(true);
+  // Check if user is moderator or admin
+  const isModerator = user?.role === 'MODERATOR' || user?.role === 'ADMIN';
 
+  const form = useForm<ScoreFormData>({
+    resolver: zodResolver(scoreSchema),
+    defaultValues: {
+      points: '',
+      machine: 'Blue Falcon',
+      assistEnabled: false,
+      targetUserId: undefined,
+    },
+  });
+
+  const { isSubmitting } = form.formState;
+  const selectedMachine = form.watch('machine');
+
+  const onSubmit = async (data: ScoreFormData) => {
     try {
       await matchesApi.submitScore(mode, season, game, {
-        position: parseInt(position, 10),
-        reportedPoints: parseInt(points, 10),
-        machine,
-        assistEnabled,
+        reportedPoints: parseInt(data.points, 10),
+        machine: data.machine,
+        assistEnabled: data.assistEnabled,
+        targetUserId: data.targetUserId,
       });
 
       setSuccess(true);
-      setPosition('');
-      setPoints('');
-      setMachine('Blue Falcon');
-      setAssistEnabled(false);
+      form.reset();
 
       if (onScoreSubmitted) {
         onScoreSubmitted();
@@ -52,126 +107,158 @@ export function ScoreSubmissionForm({ mode, season, game, onScoreSubmitted }: Sc
       // Hide success message after 3 seconds
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit score');
-    } finally {
-      setIsSubmitting(false);
+      form.setError('root', {
+        type: 'manual',
+        message: err.message || 'Failed to submit score',
+      });
     }
   };
 
   return (
     <div>
-      <h3 className="text-lg font-bold text-white mb-4">Submit Your Result</h3>
+      <h3 className="text-lg font-bold text-white mb-4">
+        {isModerator ? 'Submit Score (Moderator)' : 'Submit Your Result'}
+      </h3>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          {/* Position Input */}
-          <div>
-            <label htmlFor="position" className="block text-sm font-medium text-gray-300 mb-1">
-              Position <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="position"
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="1-99"
-              required
-              min="1"
-              max="99"
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* Participant Selection (Moderator only) */}
+          {isModerator && (
+            <FormField
+              control={form.control}
+              name="targetUserId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-300">
+                    Select Participant <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectValue placeholder="Choose a participant..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-gray-700 border-gray-600">
+                      {participants.map((p) => (
+                        <SelectItem
+                          key={p.user.id}
+                          value={p.user.id}
+                          className="text-white hover:bg-gray-600"
+                        >
+                          {p.user.displayName || p.user.discordId}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="text-gray-500">
+                    Select the participant you are submitting scores for
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
+          )}
 
           {/* Points Input */}
-          <div>
-            <label htmlFor="points" className="block text-sm font-medium text-gray-300 mb-1">
-              Points <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="points"
-              value={points}
-              onChange={(e) => setPoints(e.target.value)}
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="0-1000"
-              required
-              min="0"
-              max="1000"
-            />
-          </div>
-        </div>
+          <FormField
+            control={form.control}
+            name="points"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-300">
+                  Points <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder="0-1000"
+                    min="0"
+                    max="1000"
+                    className="bg-gray-700 border-gray-600 text-white"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        {/* Machine Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
-            Machine <span className="text-red-500">*</span>
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            {F99_MACHINES.map((m) => (
-              <button
-                key={m.value}
-                type="button"
-                onClick={() => setMachine(m.value)}
-                className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                  machine === m.value
-                    ? 'bg-gray-700 border-blue-500'
-                    : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
-                }`}
-              >
-                <span className={`font-medium ${machine === m.value ? m.color : 'text-gray-400'}`}>
-                  {m.name}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+          {/* Machine Selection */}
+          <FormField
+            control={form.control}
+            name="machine"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-300">
+                  Machine <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <div className="grid grid-cols-2 gap-3">
+                    {F99_MACHINES.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => field.onChange(m.value)}
+                        className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                          selectedMachine === m.value
+                            ? 'bg-gray-700 border-blue-500'
+                            : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
+                        }`}
+                      >
+                        <span className={`font-medium ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
+                          {m.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        {/* Assist Toggle */}
-        <div className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
-          <div>
-            <label htmlFor="assist" className="text-sm font-medium text-gray-300">
-              Assist Mode
-            </label>
-            <p className="text-xs text-gray-500 mt-1">Was assist enabled during this race?</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setAssistEnabled(!assistEnabled)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              assistEnabled ? 'bg-blue-600' : 'bg-gray-600'
-            }`}
+          {/* Assist Toggle */}
+          <FormField
+            control={form.control}
+            name="assistEnabled"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-gray-300">Assist Mode</FormLabel>
+                  <FormDescription className="text-gray-500">
+                    Was assist enabled during this race?
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          {/* Error Message */}
+          {form.formState.errors.root && (
+            <Alert variant="destructive">{form.formState.errors.root.message}</Alert>
+          )}
+
+          {/* Success Message */}
+          {success && (
+            <Alert variant="success">Score submitted successfully!</Alert>
+          )}
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700"
           >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                assistEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="p-3 bg-red-900/50 border border-red-600 rounded-lg text-red-200">
-            {error}
-          </div>
-        )}
-
-        {/* Success Message */}
-        {success && (
-          <div className="p-3 bg-green-900/50 border border-green-600 rounded-lg text-green-200">
-            Score submitted successfully!
-          </div>
-        )}
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={isSubmitting || !position || !points}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
-        >
-          {isSubmitting ? 'Submitting...' : 'Submit Result'}
-        </button>
-      </form>
+            {isSubmitting ? 'Submitting...' : 'Submit Result'}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }
