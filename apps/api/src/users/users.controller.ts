@@ -26,7 +26,21 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   async updateMe(@Req() req: Request, @Body() updateProfileDto: UpdateProfileDto) {
     const user = req.user as any;
+    return this.usersService.updateStreamUrls(user.id, updateProfileDto);
+  }
+
+  @Put('me/profile')
+  @UseGuards(JwtAuthGuard)
+  async updateProfile(@Req() req: Request, @Body() updateProfileDto: UpdateProfileDto) {
+    const user = req.user as any;
     return this.usersService.updateProfile(user.id, updateProfileDto);
+  }
+
+  @Get('me/suggested-country')
+  @UseGuards(JwtAuthGuard)
+  async getSuggestedCountry(@Req() req: Request) {
+    const user = req.user as any;
+    return this.usersService.getSuggestedCountry(user.id);
   }
 
   @Get('leaderboard')

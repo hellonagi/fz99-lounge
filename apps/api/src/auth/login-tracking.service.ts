@@ -4,6 +4,12 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 const UAParser = require('ua-parser-js');
 
+interface GeoLocation {
+  country?: string;  // ISO 3166-1 alpha-2 (JP, US, etc.)
+  city?: string;
+  timezone?: string;
+}
+
 @Injectable()
 export class LoginTrackingService {
   private readonly logger = new Logger(LoginTrackingService.name);
@@ -123,12 +129,65 @@ export class LoginTrackingService {
   }
 
   /**
+   * Get geolocation from IP address using ipinfo.io
+   * Only called for new users to save API quota
+   */
+  async getGeoLocation(ipAddress: string): Promise<GeoLocation> {
+    try {
+      // Skip for localhost/private IPs
+      if (this.isPrivateIp(ipAddress)) {
+        return {};
+      }
+
+      const response = await fetch(`https://ipinfo.io/${ipAddress}/json`);
+
+      if (!response.ok) {
+        this.logger.warn(`ipinfo.io returned ${response.status} for IP ${ipAddress}`);
+        return {};
+      }
+
+      const data = await response.json();
+
+      return {
+        country: data.country || undefined,  // "JP", "US", etc.
+        city: data.city || undefined,
+        timezone: data.timezone || undefined,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get geolocation for IP ${ipAddress}:`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Check if IP is private/local (skip geolocation for these)
+   */
+  private isPrivateIp(ipAddress: string): boolean {
+    return (
+      ipAddress === 'unknown' ||
+      ipAddress === '127.0.0.1' ||
+      ipAddress === '::1' ||
+      ipAddress.startsWith('192.168.') ||
+      ipAddress.startsWith('10.') ||
+      ipAddress.startsWith('172.16.') ||
+      ipAddress.startsWith('172.17.') ||
+      ipAddress.startsWith('172.18.') ||
+      ipAddress.startsWith('172.19.') ||
+      ipAddress.startsWith('172.2') ||
+      ipAddress.startsWith('172.30.') ||
+      ipAddress.startsWith('172.31.')
+    );
+  }
+
+  /**
    * Record user login
+   * @param isNewUser - If true, fetch geolocation from IP (only for first-time users to save API quota)
    */
   async recordLogin(
     userId: number,
     req: Request,
-    loginMethod: string = 'discord'
+    loginMethod: string = 'discord',
+    isNewUser: boolean = false
   ): Promise<void> {
     try {
       const ipAddress = this.extractIpAddress(req);
@@ -136,6 +195,19 @@ export class LoginTrackingService {
       const { browser, os, deviceType } = this.parseUserAgent(userAgent);
       const ipVersion = this.detectIpVersion(ipAddress);
       const { isVpn, isProxy, isTor } = await this.detectProxyVpn(ipAddress);
+
+      // Get geolocation only for new users (to save ipinfo.io API quota)
+      let country: string | null = null;
+      let city: string | null = null;
+      let timezone: string | null = null;
+
+      if (isNewUser) {
+        const geo = await this.getGeoLocation(ipAddress);
+        country = geo.country || null;
+        city = geo.city || null;
+        timezone = geo.timezone || null;
+        this.logger.log(`Geolocation for new user ${userId}: ${country}`);
+      }
 
       // Record login history
       await this.prisma.userLoginHistory.create({
@@ -151,6 +223,9 @@ export class LoginTrackingService {
           isVpn,
           isProxy,
           isTor,
+          country,
+          city,
+          timezone,
         },
       });
 

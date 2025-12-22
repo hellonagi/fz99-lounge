@@ -27,12 +27,13 @@ export class AuthController {
   @UseGuards(DiscordAuthGuard)
   async discordCallback(@Req() req: Request, @Res() res: Response) {
     const discordUser = req.user as any;
-    const { accessToken, user } = await this.authService.login(discordUser);
+    const { accessToken, user, isNewUser } = await this.authService.login(discordUser);
 
     // Track login if enabled (default: true)
+    // For new users, fetch geolocation from IP to suggest country
     const enableTracking = this.configService.get<string>('ENABLE_LOGIN_TRACKING', 'true') !== 'false';
     if (enableTracking && user) {
-      await this.loginTrackingService.recordLogin(user.id, req, 'discord');
+      await this.loginTrackingService.recordLogin(user.id, req, 'discord', isNewUser);
     }
 
     // Set HttpOnly cookie with JWT

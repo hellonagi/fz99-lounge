@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,13 +20,22 @@ import {
   FormDescription,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { usersApi } from '@/lib/api';
 import { toHalfWidth, validateDisplayName } from '@/lib/string';
 import { useAuthStore } from '@/store/authStore';
+import { countries } from '@/lib/countries';
 
-const displayNameSchema = z.object({
+const setupSchema = z.object({
   displayName: z
     .string()
     .min(1, 'Display name is required')
@@ -35,9 +44,10 @@ const displayNameSchema = z.object({
       (val) => validateDisplayName(val).valid,
       (val) => ({ message: validateDisplayName(val).error || 'Invalid display name' })
     ),
+  country: z.string().min(1, 'Please select your country'),
 });
 
-type DisplayNameFormData = z.infer<typeof displayNameSchema>;
+type SetupFormData = z.infer<typeof setupSchema>;
 
 interface DisplayNameSetupModalProps {
   open: boolean;
@@ -45,17 +55,39 @@ interface DisplayNameSetupModalProps {
 
 export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
   const [isComposing, setIsComposing] = useState(false);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const { user, updateUser } = useAuthStore();
 
-  const form = useForm<DisplayNameFormData>({
-    resolver: zodResolver(displayNameSchema),
+  const form = useForm<SetupFormData>({
+    resolver: zodResolver(setupSchema),
     defaultValues: {
       displayName: '',
+      country: '',
     },
   });
 
   const { isSubmitting } = form.formState;
   const displayName = form.watch('displayName');
+  const country = form.watch('country');
+
+  // Fetch suggested country from IP geolocation when modal opens
+  useEffect(() => {
+    if (open && !country) {
+      setIsLoadingSuggestion(true);
+      usersApi.getSuggestedCountry()
+        .then((res) => {
+          if (res.data.country) {
+            form.setValue('country', res.data.country);
+          }
+        })
+        .catch(() => {
+          // Ignore errors - user can still select manually
+        })
+        .finally(() => {
+          setIsLoadingSuggestion(false);
+        });
+    }
+  }, [open]);
 
   const handleCompositionStart = () => {
     setIsComposing(true);
@@ -69,20 +101,25 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
     form.setValue('displayName', normalized, { shouldValidate: true });
   };
 
-  const onSubmit = async (data: DisplayNameFormData) => {
+  const onSubmit = async (data: SetupFormData) => {
     try {
-      const response = await usersApi.updateDisplayName(data.displayName);
+      // Update display name and country together
+      const response = await usersApi.updateProfile({
+        displayName: data.displayName,
+        country: data.country,
+      });
       // authStoreを更新
       if (user) {
         updateUser({
           ...user,
           displayName: response.data.displayName,
+          country: response.data.country,
         });
       }
     } catch (err: any) {
       form.setError('displayName', {
         type: 'manual',
-        message: err.response?.data?.message || 'Failed to set display name',
+        message: err.response?.data?.message || 'Failed to save profile',
       });
     }
   };
@@ -91,9 +128,9 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Set Your Display Name</DialogTitle>
+          <DialogTitle>Set Up Your Profile</DialogTitle>
           <DialogDescription>
-            Choose a display name (1-10 characters). This can only be changed once every 60 days.
+            Choose a display name and select your country. Display name can only be changed once every 60 days.
           </DialogDescription>
         </DialogHeader>
 
@@ -104,6 +141,7 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
               name="displayName"
               render={({ field }) => (
                 <FormItem>
+                  <FormLabel>Display Name</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Enter display name..."
@@ -133,9 +171,48 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="country"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Country</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select your country">
+                          {field.value && (
+                            <span className="flex items-center gap-2">
+                              <span className={`fi fi-${field.value.toLowerCase()}`} />
+                              {countries.find((c) => c.code === field.value)?.name}
+                            </span>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {countries.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          <span className="flex items-center gap-2">
+                            <span className={`fi fi-${c.code.toLowerCase()}`} />
+                            {c.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting || !displayName}>
-                {isSubmitting ? 'Setting...' : 'Set Display Name'}
+              <Button type="submit" disabled={isSubmitting || !displayName || !country}>
+                {isSubmitting ? 'Saving...' : 'Save Profile'}
               </Button>
             </DialogFooter>
           </form>

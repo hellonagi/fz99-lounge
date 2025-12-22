@@ -18,12 +18,15 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async validateOrCreateUser(discordUser: DiscordUser): Promise<User> {
+  async validateOrCreateUser(discordUser: DiscordUser): Promise<{ user: User; isNewUser: boolean }> {
     let user = await this.prisma.user.findUnique({
       where: { discordId: discordUser.discordId },
     });
 
+    let isNewUser = false;
+
     if (!user) {
+      isNewUser = true;
       user = await this.prisma.user.create({
         data: {
           discordId: discordUser.discordId,
@@ -51,7 +54,7 @@ export class AuthService {
       });
     }
 
-    return user;
+    return { user, isNewUser };
   }
 
   generateJwtToken(user: User): string {
@@ -65,11 +68,12 @@ export class AuthService {
   }
 
   async login(discordUser: DiscordUser) {
-    const user = await this.validateOrCreateUser(discordUser);
+    const { user, isNewUser } = await this.validateOrCreateUser(discordUser);
     const accessToken = this.generateJwtToken(user);
 
     return {
       accessToken,
+      isNewUser,
       user: {
         id: user.id,
         discordId: user.discordId,

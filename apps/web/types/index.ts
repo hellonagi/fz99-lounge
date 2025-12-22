@@ -7,6 +7,7 @@ export interface User {
   avatarHash: string | null;
   role: UserRole;
   status?: UserStatus;
+  country?: string | null;
   youtubeUrl?: string | null;
   twitchUrl?: string | null;
   createdAt?: string;

@@ -40,8 +40,11 @@ export const authApi = {
 export const usersApi = {
   getMe: () => api.get('/users/me'),
   updateDisplayName: (displayName: string) => api.put('/users/me/display-name', { displayName }),
-  updateProfile: (data: { youtubeUrl?: string; twitchUrl?: string }) =>
+  updateProfile: (data: { displayName?: string; country?: string; youtubeUrl?: string; twitchUrl?: string }) =>
+    api.put('/users/me/profile', data),
+  updateStreamUrls: (data: { youtubeUrl?: string; twitchUrl?: string }) =>
     api.put('/users/me', data),
+  getSuggestedCountry: () => api.get<{ country: string | null }>('/users/me/suggested-country'),
   getUser: (id: string) => api.get(`/users/${id}`),
   getUserByProfileId: (profileId: number) => api.get(`/users/profile/${profileId}`),
   getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', limit = 100) =>
