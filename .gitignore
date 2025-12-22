@@ -54,6 +54,10 @@ temp/
 kadai
 prompt.md
 
+# Local docs and simulations
+docs/
+simulations/
+
 # Test helpers (not used yet)
 apps/api/.env.test
 apps/api/test/helpers/
