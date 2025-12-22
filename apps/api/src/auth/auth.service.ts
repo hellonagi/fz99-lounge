@@ -37,15 +37,7 @@ export class AuthService {
         },
       });
 
-      // Create initial stats for new user
-      await Promise.all([
-        this.prisma.userStatsGP.create({
-          data: { userId: user.id },
-        }),
-        this.prisma.userStatsClassic.create({
-          data: { userId: user.id },
-        }),
-      ]);
+      // UserSeasonStats is created when user first plays in a season
     } else {
       // Update last login and profile info
       user = await this.prisma.user.update({
@@ -80,7 +72,6 @@ export class AuthService {
       accessToken,
       user: {
         id: user.id,
-        profileId: user.profileId,
         discordId: user.discordId,
         username: user.username,
         displayName: user.displayName,

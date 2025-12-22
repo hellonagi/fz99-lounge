@@ -6,6 +6,7 @@ import { UsersService } from '../users/users.service';
 import { LoginTrackingService } from './login-tracking.service';
 import { DiscordAuthGuard } from './guards/discord-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { setAuthCookie, clearAuthCookie } from './utils/cookie.utils';
 
 @Controller('auth')
 export class AuthController {
@@ -34,9 +35,12 @@ export class AuthController {
       await this.loginTrackingService.recordLogin(user.id, req, 'discord');
     }
 
-    // Redirect to frontend with token
+    // Set HttpOnly cookie with JWT
+    setAuthCookie(res, accessToken, this.configService);
+
+    // Redirect to frontend without token in URL
     const frontendUrl = this.configService.get<string>('CORS_ORIGIN', 'http://localhost:3001');
-    return res.redirect(`${frontendUrl}/auth/callback?token=${accessToken}`);
+    return res.redirect(`${frontendUrl}/auth/callback`);
   }
 
   @Get('profile')
@@ -48,7 +52,9 @@ export class AuthController {
 
   @Get('logout')
   @UseGuards(JwtAuthGuard)
-  async logout() {
+  async logout(@Res({ passthrough: true }) res: Response) {
+    // Clear the auth cookie
+    clearAuthCookie(res, this.configService);
     return { message: 'Logged out successfully' };
   }
 }

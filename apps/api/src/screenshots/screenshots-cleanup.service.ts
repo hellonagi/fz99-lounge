@@ -24,7 +24,7 @@ export class ScreenshotsCleanupService {
     cutoffDate.setDate(cutoffDate.getDate() - 7);
 
     const unselectedScreenshots =
-      await this.prisma.matchScreenshotSubmission.findMany({
+      await this.prisma.gameScreenshotSubmission.findMany({
         where: {
           isSelected: false,
           deletedAt: null,
@@ -47,7 +47,7 @@ export class ScreenshotsCleanupService {
         await this.storage.deleteFile(screenshot.imageUrl);
 
         // DBを更新（ソフトデリート）
-        await this.prisma.matchScreenshotSubmission.update({
+        await this.prisma.gameScreenshotSubmission.update({
           where: { id: screenshot.id },
           data: { deletedAt: new Date() },
         });

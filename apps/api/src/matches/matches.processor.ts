@@ -4,7 +4,7 @@ import type { Job } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
-import { LobbyStatus } from '@prisma/client';
+import { MatchStatus } from '@prisma/client';
 
 @Processor('matches')
 export class MatchesProcessor {
@@ -17,128 +17,127 @@ export class MatchesProcessor {
   ) {}
 
   @Process('start-match')
-  async handleStartMatch(job: Job<{ lobbyId: string }>) {
-    const { lobbyId } = job.data;
-    this.logger.log(`Processing start-match job for lobby ${lobbyId}`);
+  async handleStartMatch(job: Job<{ matchId: number }>) {
+    const { matchId } = job.data;
+    this.logger.log(`Processing start-match job for match ${matchId}`);
 
     try {
-      // Get lobby
-      const lobby = await this.prisma.lobby.findUnique({
-        where: { id: lobbyId },
+      // Get match with existing game
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
         include: {
           participants: true,
-          event: {
+          games: {
+            orderBy: { gameNumber: 'desc' },
+            take: 1,
+          },
+          season: {
             include: {
-              season: true,
+              event: true,
             },
           },
         },
       });
 
-      if (!lobby) {
-        this.logger.warn(`Lobby ${lobbyId} not found`);
+      if (!match) {
+        this.logger.warn(`Match ${matchId} not found`);
         return;
       }
 
-      // Check if lobby is still in WAITING status
-      if (lobby.status !== LobbyStatus.WAITING) {
+      // Check if match is still in WAITING status
+      if (match.status !== MatchStatus.WAITING) {
         this.logger.warn(
-          `Lobby ${lobbyId} is not in WAITING status (current: ${lobby.status})`
+          `Match ${matchId} is not in WAITING status (current: ${match.status})`,
         );
         return;
       }
 
       // Check if minimum players met
-      if (lobby.currentPlayers < lobby.minPlayers) {
+      const currentPlayers = match.participants.length;
+      if (currentPlayers < match.minPlayers) {
         this.logger.warn(
-          `Lobby ${lobbyId} does not have enough players (${lobby.currentPlayers}/${lobby.minPlayers})`
+          `Match ${matchId} does not have enough players (${currentPlayers}/${match.minPlayers})`,
         );
 
-        // Update lobby status to CANCELLED
-        await this.prisma.lobby.update({
-          where: { id: lobbyId },
+        // Update match status to CANCELLED
+        await this.prisma.match.update({
+          where: { id: matchId },
           data: {
-            status: LobbyStatus.CANCELLED,
+            status: MatchStatus.CANCELLED,
           },
         });
 
-        this.logger.log(`Lobby ${lobbyId} cancelled due to insufficient players`);
+        this.logger.log(`Match ${matchId} cancelled due to insufficient players`);
 
         // Emit WebSocket event to notify clients
-        this.eventsGateway.emitLobbyCancelled(lobbyId);
+        this.eventsGateway.emitMatchCancelled(matchId);
 
         return;
       }
 
-      // Check if leagueType exists
-      if (!lobby.leagueType) {
-        this.logger.warn(`Lobby ${lobbyId} has no leagueType. Cannot create match.`);
+      // Get existing game (created when match was created)
+      const game = match.games[0];
+      if (!game) {
+        this.logger.error(`No game found for match ${matchId}`);
         return;
       }
 
-      // Generate 4-digit passcode
+      // Generate 4-digit passcode and update game
       const passcode = this.generatePasscode();
 
-      // Get next sequence number for this lobby
-      const lastMatch = await this.prisma.match.findFirst({
-        where: { lobbyId: lobby.id },
-        orderBy: { sequenceNumber: 'desc' },
-      });
-      const sequenceNumber = lastMatch ? lastMatch.sequenceNumber + 1 : 1;
-
-      // Create match
-      const match = await this.prisma.match.create({
+      const updatedGame = await this.prisma.game.update({
+        where: { id: game.id },
         data: {
-          lobbyId: lobby.id,
-          gameMode: lobby.gameMode,
-          leagueType: lobby.leagueType,
-          sequenceNumber,
           passcode,
-          totalPlayers: lobby.currentPlayers,
+          passcodePublishedAt: new Date(),
           startedAt: new Date(),
         },
       });
 
-      // Update lobby status
-      await this.prisma.lobby.update({
-        where: { id: lobbyId },
+      // Update match status
+      await this.prisma.match.update({
+        where: { id: matchId },
         data: {
-          status: LobbyStatus.IN_PROGRESS,
+          status: MatchStatus.IN_PROGRESS,
+          actualStart: new Date(),
         },
       });
 
       this.logger.log(
-        `Started match ${match.id} for lobby ${lobbyId} with passcode ${passcode}`
+        `Started match ${matchId} with game ${updatedGame.id} and passcode ${passcode}`,
       );
 
-      // Format mode for URL (GP -> "gp", CLASSIC -> "classic", TOURNAMENT -> "tournament")
-      const modeStr = lobby.gameMode.toLowerCase();
-      const seasonNumber = lobby.event?.season?.seasonNumber ?? 0;
-      const gameNumber = lobby.gameNumber ?? 0;
+      // Format category for URL (GP -> "gp", CLASSIC -> "classic", TOURNAMENT -> "tournament")
+      const categoryStr = match.season.event.category.toLowerCase();
+      const seasonNumber = match.season.seasonNumber;
+      const matchNumber = match.matchNumber;
 
       // Emit WebSocket event to all clients
       this.eventsGateway.emitMatchStarted({
         matchId: match.id,
-        lobbyId: lobby.id,
-        passcode: match.passcode,
-        leagueType: match.leagueType,
-        totalPlayers: match.totalPlayers,
-        startedAt: match.startedAt ? match.startedAt.toISOString() : new Date().toISOString(),
-        mode: modeStr,
+        gameId: updatedGame.id,
+        passcode: updatedGame.passcode,
+        leagueType: updatedGame.leagueType,
+        totalPlayers: currentPlayers,
+        startedAt: updatedGame.startedAt
+          ? updatedGame.startedAt.toISOString()
+          : new Date().toISOString(),
+        category: categoryStr,
         season: seasonNumber,
-        game: gameNumber,
-        url: `/matches/${modeStr}/${seasonNumber}/${gameNumber}`,
+        match: matchNumber,
+        url: `/matches/${categoryStr}/${seasonNumber}/${matchNumber}`,
       });
 
       // Send Push notifications to all participants
       try {
         await this.pushNotificationsService.notifyMatchStart({
-          id: match.id,
-          passcode: match.passcode,
-          leagueType: match.leagueType,
-          totalPlayers: match.totalPlayers,
-          lobby: {
-            participants: lobby.participants.map((p) => ({
+          id: updatedGame.id,
+          passcode: updatedGame.passcode,
+          leagueType: updatedGame.leagueType,
+          totalPlayers: currentPlayers,
+          url: `/matches/${categoryStr}/${seasonNumber}/${matchNumber}`,
+          match: {
+            participants: match.participants.map((p) => ({
               userId: p.userId,
             })),
           },
@@ -148,9 +147,9 @@ export class MatchesProcessor {
         // Continue even if push notifications fail
       }
 
-      return match;
+      return updatedGame;
     } catch (error) {
-      this.logger.error(`Failed to start match for lobby ${lobbyId}:`, error);
+      this.logger.error(`Failed to start match ${matchId}:`, error);
       throw error;
     }
   }

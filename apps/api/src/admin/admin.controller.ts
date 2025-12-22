@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Query, UseGuards, ForbiddenException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards, ForbiddenException, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LoginTrackingService } from '../auth/login-tracking.service';
+import { ClassicRatingService } from '../rating/classic-rating.service';
 import { UserRole } from '@prisma/client';
 
 @Controller('admin')
@@ -13,6 +14,7 @@ export class AdminController {
   constructor(
     private loginTrackingService: LoginTrackingService,
     private configService: ConfigService,
+    private classicRatingService: ClassicRatingService,
   ) {
     this.defaultAlertDays = this.configService.get<number>('SUSPICIOUS_LOGIN_ALERT_DAYS', 7);
   }
@@ -60,7 +62,7 @@ export class AdminController {
     this.checkAdminAccess(req);
 
     const limitNum = parseInt(limit, 10) || 50;
-    const history = await this.loginTrackingService.getUserLoginHistory(userId, limitNum);
+    const history = await this.loginTrackingService.getUserLoginHistory(parseInt(userId, 10), limitNum);
 
     return {
       userId,
@@ -135,6 +137,29 @@ export class AdminController {
       },
       highlySuspicious,
       moderatelySuspicious: moderatelySuspicious.slice(0, 10), // Limit to first 10
+    };
+  }
+
+  /**
+   * Trigger rating calculation for a specific game
+   */
+  @Post('games/:gameId/calculate-rating')
+  async calculateRating(
+    @Req() req: Request,
+    @Param('gameId') gameId: string,
+  ) {
+    this.checkAdminAccess(req);
+
+    const gameIdNum = parseInt(gameId, 10);
+    if (isNaN(gameIdNum)) {
+      throw new ForbiddenException('Invalid game ID');
+    }
+
+    await this.classicRatingService.calculateAndUpdateRatings(gameIdNum);
+
+    return {
+      success: true,
+      message: `Rating calculation completed for game ${gameIdNum}`,
     };
   }
 }

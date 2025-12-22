@@ -1,17 +1,17 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { toHalfWidth, validateDisplayName } from '../common/utils/string.util';
+import { EventCategory } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findById(id: string) {
+  async findById(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
-        profileId: true,
         discordId: true,
         username: true,
         displayName: true,
@@ -22,32 +22,32 @@ export class UsersService {
         twitchUrl: true,
         createdAt: true,
         lastLoginAt: true,
-        statsGP: {
-          select: {
-            mmr: true,
-            seasonHighMmr: true,
-            totalMatches: true,
-            totalWins: true,
-            top3Finishes: true,
-            top10Finishes: true,
-            averagePosition: true,
-            totalKos: true,
-            bestPosition: true,
-            currentStreak: true,
-            favoriteMachine: true,
+        // シーズン別統計を取得（アクティブシーズンのみ）
+        seasonStats: {
+          where: {
+            season: { isActive: true },
           },
-        },
-        statsClassic: {
           select: {
-            mmr: true,
-            seasonHighMmr: true,
+            seasonId: true,
+            displayRating: true,
+            seasonHighRating: true,
             totalMatches: true,
-            totalWins: true,
-            top3Finishes: true,
-            averagePosition: true,
-            bestPosition: true,
-            currentStreak: true,
-            favoriteMachine: true,
+            firstPlaces: true,
+            secondPlaces: true,
+            thirdPlaces: true,
+            survivedCount: true,
+            assistUsedCount: true,
+            season: {
+              select: {
+                seasonNumber: true,
+                event: {
+                  select: {
+                    category: true,
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -72,61 +72,7 @@ export class UsersService {
     return user;
   }
 
-  async findByProfileId(profileId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { profileId },
-      select: {
-        id: true,
-        profileId: true,
-        discordId: true,
-        username: true,
-        displayName: true,
-        avatarHash: true,
-        role: true,
-        status: true,
-        youtubeUrl: true,
-        twitchUrl: true,
-        createdAt: true,
-        lastLoginAt: true,
-        statsGP: {
-          select: {
-            mmr: true,
-            seasonHighMmr: true,
-            totalMatches: true,
-            totalWins: true,
-            top3Finishes: true,
-            top10Finishes: true,
-            averagePosition: true,
-            totalKos: true,
-            bestPosition: true,
-            currentStreak: true,
-            favoriteMachine: true,
-          },
-        },
-        statsClassic: {
-          select: {
-            mmr: true,
-            seasonHighMmr: true,
-            totalMatches: true,
-            totalWins: true,
-            top3Finishes: true,
-            averagePosition: true,
-            bestPosition: true,
-            currentStreak: true,
-            favoriteMachine: true,
-          },
-        },
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
-  }
-
-  async updateDisplayName(userId: string, displayName: string) {
+  async updateDisplayName(userId: number, displayName: string) {
     // 全角→半角変換
     const normalized = toHalfWidth(displayName);
 
@@ -168,7 +114,6 @@ export class UsersService {
       },
       select: {
         id: true,
-        profileId: true,
         discordId: true,
         username: true,
         displayName: true,
@@ -178,7 +123,7 @@ export class UsersService {
     });
   }
 
-  async updateProfile(userId: string, data: { youtubeUrl?: string; twitchUrl?: string }) {
+  async updateProfile(userId: number, data: { youtubeUrl?: string; twitchUrl?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -187,7 +132,6 @@ export class UsersService {
       },
       select: {
         id: true,
-        profileId: true,
         discordId: true,
         username: true,
         displayName: true,
@@ -199,37 +143,54 @@ export class UsersService {
     });
   }
 
-  async getLeaderboard(gameMode: 'GP' | 'CLASSIC', limit = 100) {
-    if (gameMode === 'GP') {
-      return this.prisma.userStatsGP.findMany({
-        take: limit,
-        orderBy: { mmr: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              profileId: true,
-              displayName: true,
-              avatarHash: true,
-            },
-          },
+  /**
+   * リーダーボード取得
+   * GP/CLASSIC両方ともUserSeasonStatsから取得
+   */
+  async getLeaderboard(eventCategory: 'GP' | 'CLASSIC', seasonNumber?: number, limit = 100) {
+    // シーズンを特定
+    let targetSeasonId: number | undefined;
+
+    if (seasonNumber !== undefined) {
+      const season = await this.prisma.season.findFirst({
+        where: {
+          seasonNumber,
+          event: { category: eventCategory as EventCategory },
         },
+        select: { id: true },
       });
+      targetSeasonId = season?.id;
     } else {
-      return this.prisma.userStatsClassic.findMany({
-        take: limit,
-        orderBy: { mmr: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              profileId: true,
-              displayName: true,
-              avatarHash: true,
-            },
+      // アクティブシーズンを取得
+      const activeSeason = await this.prisma.season.findFirst({
+        where: {
+          isActive: true,
+          event: { category: eventCategory as EventCategory },
+        },
+        select: { id: true },
+      });
+      targetSeasonId = activeSeason?.id;
+    }
+
+    if (!targetSeasonId) {
+      return [];
+    }
+
+    return this.prisma.userSeasonStats.findMany({
+      where: {
+        seasonId: targetSeasonId,
+      },
+      take: limit,
+      orderBy: { displayRating: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            avatarHash: true,
           },
         },
-      });
-    }
+      },
+    });
   }
 }

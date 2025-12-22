@@ -1,20 +1,40 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSeasonDto } from './dto/create-season.dto';
-import { GameMode } from '@prisma/client';
+import { EventCategory } from '@prisma/client';
 
 @Injectable()
 export class SeasonsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Create a new season for a given category.
+   * If an Event for this category doesn't exist, it will be created.
+   */
   async create(createSeasonDto: CreateSeasonDto) {
-    const { gameMode, seasonNumber, startDate, endDate, description } = createSeasonDto;
+    const { category, seasonNumber, startDate, endDate, description } = createSeasonDto;
 
-    // Check if season number already exists for this game mode
+    // Find or create the Event for this category
+    let event = await this.prisma.event.findFirst({
+      where: { category },
+    });
+
+    if (!event) {
+      // Create the Event for this category
+      event = await this.prisma.event.create({
+        data: {
+          category,
+          name: category, // "GP", "CLASSIC", or "TOURNAMENT"
+          description: `${category} mode seasons`,
+        },
+      });
+    }
+
+    // Check if season number already exists for this event
     const existing = await this.prisma.season.findUnique({
       where: {
-        gameMode_seasonNumber: {
-          gameMode,
+        eventId_seasonNumber: {
+          eventId: event.id,
           seasonNumber,
         },
       },
@@ -22,17 +42,14 @@ export class SeasonsService {
 
     if (existing) {
       throw new BadRequestException(
-        `Season ${seasonNumber} already exists for ${gameMode}`
+        `Season ${seasonNumber} already exists for ${category}`
       );
     }
 
-    // Deactivate other active events for the same game mode
-    await this.prisma.event.updateMany({
+    // Deactivate other active seasons for the same category
+    await this.prisma.season.updateMany({
       where: {
-        type: 'SEASON',
-        season: {
-          gameMode,
-        },
+        event: { category },
         isActive: true,
       },
       data: {
@@ -40,21 +57,15 @@ export class SeasonsService {
       },
     });
 
-    // Create season with associated event
+    // Create the new season
     const season = await this.prisma.season.create({
       data: {
-        gameMode,
+        eventId: event.id,
         seasonNumber,
         description,
-        event: {
-          create: {
-            type: 'SEASON',
-            name: `Season ${seasonNumber} - ${gameMode}`,
-            startDate: new Date(startDate),
-            endDate: endDate ? new Date(endDate) : null,
-            isActive: true,
-          },
-        },
+        startDate: new Date(startDate),
+        endDate: endDate ? new Date(endDate) : null,
+        isActive: true,
       },
       include: {
         event: true,
@@ -64,14 +75,14 @@ export class SeasonsService {
     return season;
   }
 
-  async getActive(gameMode: GameMode) {
+  /**
+   * Get the active season for a given category
+   */
+  async getActive(category: EventCategory) {
     const season = await this.prisma.season.findFirst({
       where: {
-        gameMode,
-        event: {
-          isActive: true,
-          type: 'SEASON',
-        },
+        event: { category },
+        isActive: true,
       },
       include: {
         event: true,
@@ -79,25 +90,32 @@ export class SeasonsService {
     });
 
     if (!season) {
-      throw new NotFoundException(`No active season found for ${gameMode}`);
+      throw new NotFoundException(`No active season found for ${category}`);
     }
 
     return season;
   }
 
-  async getAll(gameMode?: GameMode) {
+  /**
+   * Get all seasons, optionally filtered by category
+   */
+  async getAll(category?: EventCategory) {
     return this.prisma.season.findMany({
-      where: gameMode ? { gameMode } : undefined,
+      where: category ? { event: { category } } : undefined,
       include: {
         event: true,
       },
-      orderBy: {
-        seasonNumber: 'desc',
-      },
+      orderBy: [
+        { event: { category: 'asc' } },
+        { seasonNumber: 'desc' },
+      ],
     });
   }
 
-  async getById(id: string) {
+  /**
+   * Get a season by ID
+   */
+  async getById(id: number) {
     const season = await this.prisma.season.findUnique({
       where: { id },
       include: {
@@ -112,8 +130,11 @@ export class SeasonsService {
     return season;
   }
 
+  /**
+   * Update a season
+   */
   async update(
-    id: string,
+    id: number,
     updateData: {
       seasonNumber?: number;
       description?: string;
@@ -127,8 +148,8 @@ export class SeasonsService {
     if (updateData.seasonNumber && updateData.seasonNumber !== season.seasonNumber) {
       const existing = await this.prisma.season.findUnique({
         where: {
-          gameMode_seasonNumber: {
-            gameMode: season.gameMode,
+          eventId_seasonNumber: {
+            eventId: season.eventId,
             seasonNumber: updateData.seasonNumber,
           },
         },
@@ -136,28 +157,21 @@ export class SeasonsService {
 
       if (existing) {
         throw new BadRequestException(
-          `Season ${updateData.seasonNumber} already exists for ${season.gameMode}`
+          `Season ${updateData.seasonNumber} already exists for ${season.event.category}`
         );
       }
     }
 
-    // Update season and event
+    // Update the season
     const updated = await this.prisma.season.update({
       where: { id },
       data: {
         ...(updateData.seasonNumber && { seasonNumber: updateData.seasonNumber }),
         ...(updateData.description !== undefined && { description: updateData.description }),
-        event: {
-          update: {
-            ...(updateData.startDate && { startDate: new Date(updateData.startDate) }),
-            ...(updateData.endDate !== undefined && {
-              endDate: updateData.endDate ? new Date(updateData.endDate) : null
-            }),
-            ...(updateData.seasonNumber && {
-              name: `Season ${updateData.seasonNumber} - ${season.gameMode}`,
-            }),
-          },
-        },
+        ...(updateData.startDate && { startDate: new Date(updateData.startDate) }),
+        ...(updateData.endDate !== undefined && {
+          endDate: updateData.endDate ? new Date(updateData.endDate) : null,
+        }),
       },
       include: {
         event: true,
@@ -167,21 +181,19 @@ export class SeasonsService {
     return updated;
   }
 
-  async toggleStatus(id: string, isActive: boolean) {
+  /**
+   * Toggle season active status
+   */
+  async toggleStatus(id: number, isActive: boolean) {
     const season = await this.getById(id);
 
-    // If activating, deactivate other seasons of same game mode
+    // If activating, deactivate other seasons of the same category
     if (isActive) {
-      await this.prisma.event.updateMany({
+      await this.prisma.season.updateMany({
         where: {
-          type: 'SEASON',
-          season: {
-            gameMode: season.gameMode,
-          },
+          event: { category: season.event.category },
           isActive: true,
-          id: {
-            not: season.eventId,
-          },
+          id: { not: id },
         },
         data: {
           isActive: false,
@@ -189,16 +201,10 @@ export class SeasonsService {
       });
     }
 
-    // Update the target season's event status
+    // Update the target season's status
     const updated = await this.prisma.season.update({
       where: { id },
-      data: {
-        event: {
-          update: {
-            isActive,
-          },
-        },
-      },
+      data: { isActive },
       include: {
         event: true,
       },
@@ -207,23 +213,24 @@ export class SeasonsService {
     return updated;
   }
 
-  async delete(id: string) {
+  /**
+   * Delete a season
+   */
+  async delete(id: number) {
     const season = await this.getById(id);
 
-    // Check if there are any lobbies associated with this season's event
-    const lobbiesCount = await this.prisma.lobby.count({
-      where: {
-        eventId: season.eventId,
-      },
+    // Check if there are any matches associated with this season
+    const matchesCount = await this.prisma.match.count({
+      where: { seasonId: id },
     });
 
-    if (lobbiesCount > 0) {
+    if (matchesCount > 0) {
       throw new BadRequestException(
-        `Cannot delete season with ${lobbiesCount} associated lobbies. Please delete or reassign the lobbies first.`
+        `Cannot delete season with ${matchesCount} associated matches. Please delete or reassign the matches first.`
       );
     }
 
-    // Delete the season (event will be cascade deleted)
+    // Delete the season
     await this.prisma.season.delete({
       where: { id },
     });

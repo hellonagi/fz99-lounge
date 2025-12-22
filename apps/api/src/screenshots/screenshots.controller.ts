@@ -48,7 +48,7 @@ export class ScreenshotsController {
     @Request() req,
   ) {
     return await this.screenshotsService.submitScreenshot(
-      dto.matchId,
+      dto.gameId,
       req.user.id,
       file,
     );
@@ -56,12 +56,12 @@ export class ScreenshotsController {
 
   /**
    * 試合の提出済みスクショ一覧を取得
-   * GET /api/screenshots/match/:matchId/submissions
+   * GET /api/screenshots/game/:gameId/submissions
    */
   @Public()
-  @Get('match/:matchId/submissions')
-  async getSubmissions(@Param('matchId') matchId: string) {
-    return await this.screenshotsService.getSubmissions(matchId);
+  @Get('game/:gameId/submissions')
+  async getSubmissions(@Param('gameId') gameId: string) {
+    return await this.screenshotsService.getSubmissions(parseInt(gameId, 10));
   }
 
   /**
@@ -77,17 +77,17 @@ export class ScreenshotsController {
     @Request() req,
   ) {
     return await this.screenshotsService.selectScreenshot(
-      submissionId,
+      parseInt(submissionId, 10),
       req.user.id,
     );
   }
 
   /**
    * 試合の正式スクショを取得
-   * GET /api/screenshots/match/:matchId/official
+   * GET /api/screenshots/game/:gameId/official
    */
-  @Get('match/:matchId/official')
-  async getOfficialScreenshot(@Param('matchId') matchId: string) {
-    return await this.screenshotsService.getOfficialScreenshot(matchId);
+  @Get('game/:gameId/official')
+  async getOfficialScreenshot(@Param('gameId') gameId: string) {
+    return await this.screenshotsService.getOfficialScreenshot(parseInt(gameId, 10));
   }
 }

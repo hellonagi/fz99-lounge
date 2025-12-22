@@ -1,8 +1,9 @@
-import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import { IsNotEmpty, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class SubmitScreenshotDto {
   @IsNotEmpty()
-  @IsUUID()
-  @IsString()
-  matchId: string;
+  @IsInt()
+  @Type(() => Number)
+  gameId: number;
 }

@@ -15,26 +15,26 @@ export class ScreenshotsService {
    * プレイヤーがスクショを提出
    */
   async submitScreenshot(
-    matchId: string,
-    userId: string,
+    gameId: number,
+    userId: number,
     file: Express.Multer.File,
   ) {
-    // Matchの存在確認
-    const match = await this.prisma.match.findUnique({
-      where: { id: matchId },
+    // Gameの存在確認
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
     });
 
-    if (!match) {
-      throw new NotFoundException(`Match ${matchId} not found`);
+    if (!game) {
+      throw new NotFoundException(`Game ${gameId} not found`);
     }
 
     // S3/MinIOにアップロード (temp/ フォルダ)
-    const imageUrl = await this.storage.uploadTempScreenshot(matchId, file);
+    const imageUrl = await this.storage.uploadTempScreenshot(String(gameId), file);
 
     // DBに保存
-    const submission = await this.prisma.matchScreenshotSubmission.create({
+    const submission = await this.prisma.gameScreenshotSubmission.create({
       data: {
-        matchId,
+        gameId,
         userId,
         imageUrl,
       },
@@ -50,7 +50,7 @@ export class ScreenshotsService {
     });
 
     this.logger.log(
-      `Screenshot submitted for match ${matchId} by user ${userId}`,
+      `Screenshot submitted for game ${gameId} by user ${userId}`,
     );
 
     return submission;
@@ -59,10 +59,10 @@ export class ScreenshotsService {
   /**
    * 試合の提出済みスクショ一覧を取得
    */
-  async getSubmissions(matchId: string) {
-    return await this.prisma.matchScreenshotSubmission.findMany({
+  async getSubmissions(gameId: number) {
+    return await this.prisma.gameScreenshotSubmission.findMany({
       where: {
-        matchId,
+        gameId,
         deletedAt: null, // 削除されていないもののみ
       },
       include: {
@@ -84,10 +84,10 @@ export class ScreenshotsService {
   /**
    * 管理者が1枚を選んで正式採用
    */
-  async selectScreenshot(submissionId: string, adminUserId: string) {
+  async selectScreenshot(submissionId: number, adminUserId: number) {
     // 提出の存在確認
     const submission =
-      await this.prisma.matchScreenshotSubmission.findUnique({
+      await this.prisma.gameScreenshotSubmission.findUnique({
         where: { id: submissionId },
       });
 
@@ -99,13 +99,13 @@ export class ScreenshotsService {
 
     // 既に採用済みの画像があるか確認
     const existingScreenshot = await this.prisma.resultScreenshot.findUnique({
-      where: { matchId: submission.matchId },
+      where: { gameId: submission.gameId },
     });
 
     // permanent/ フォルダにコピー
     const permanentUrl = await this.storage.copyToPermanent(
       submission.imageUrl,
-      submission.matchId,
+      String(submission.gameId),
     );
 
     // 既存のものがあれば削除
@@ -119,7 +119,7 @@ export class ScreenshotsService {
     // ResultScreenshotに保存
     const resultScreenshot = await this.prisma.resultScreenshot.create({
       data: {
-        matchId: submission.matchId,
+        gameId: submission.gameId,
         imageUrl: permanentUrl,
         userId: submission.userId,
         selectedBy: adminUserId,
@@ -127,13 +127,13 @@ export class ScreenshotsService {
     });
 
     // 提出レコードを「選択済み」にマーク
-    await this.prisma.matchScreenshotSubmission.update({
+    await this.prisma.gameScreenshotSubmission.update({
       where: { id: submissionId },
       data: { isSelected: true },
     });
 
     this.logger.log(
-      `Screenshot ${submissionId} selected for match ${submission.matchId} by admin ${adminUserId}`,
+      `Screenshot ${submissionId} selected for game ${submission.gameId} by admin ${adminUserId}`,
     );
 
     return resultScreenshot;
@@ -142,9 +142,9 @@ export class ScreenshotsService {
   /**
    * 試合の正式スクショを取得
    */
-  async getOfficialScreenshot(matchId: string) {
+  async getOfficialScreenshot(gameId: number) {
     return await this.prisma.resultScreenshot.findUnique({
-      where: { matchId },
+      where: { gameId },
       include: {
         user: {
           select: {

@@ -9,13 +9,14 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { SeasonsModule } from './seasons/seasons.module';
-import { LobbiesModule } from './lobbies/lobbies.module';
 import { MatchesModule } from './matches/matches.module';
+import { GamesModule } from './games/games.module';
 import { EventsModule } from './events/events.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { ScreenshotsModule } from './screenshots/screenshots.module';
 import { StorageModule } from './storage/storage.module';
+import { RatingModule } from './rating/rating.module';
 
 @Module({
   imports: [
@@ -37,10 +38,11 @@ import { StorageModule } from './storage/storage.module';
     AuthModule,
     UsersModule,
     SeasonsModule,
-    LobbiesModule,
     MatchesModule,
+    GamesModule,
     ScreenshotsModule,
     AdminModule,
+    RatingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

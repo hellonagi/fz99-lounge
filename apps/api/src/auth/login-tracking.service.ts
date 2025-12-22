@@ -126,7 +126,7 @@ export class LoginTrackingService {
    * Record user login
    */
   async recordLogin(
-    userId: string,
+    userId: number,
     req: Request,
     loginMethod: string = 'discord'
   ): Promise<void> {
@@ -173,7 +173,7 @@ export class LoginTrackingService {
   /**
    * Check for suspicious login patterns
    */
-  private async checkSuspiciousActivity(userId: string, ipAddress: string): Promise<void> {
+  private async checkSuspiciousActivity(userId: number, ipAddress: string): Promise<void> {
     try {
       // Check if multiple accounts are using the same IP
       const accountsFromSameIp = await this.getAccountsFromIp(ipAddress);
@@ -217,7 +217,7 @@ export class LoginTrackingService {
   async getAccountsFromIp(
     ipAddress: string,
     daysBack: number = 30
-  ): Promise<Array<{ userId: string; username: string; lastLogin: Date }>> {
+  ): Promise<Array<{ userId: number; username: string; lastLogin: Date }>> {
     const since = new Date();
     since.setDate(since.getDate() - daysBack);
 
@@ -250,7 +250,7 @@ export class LoginTrackingService {
    * Get recent logins for a user
    */
   async getRecentLoginsForUser(
-    userId: string,
+    userId: number,
     hoursBack: number = 24
   ): Promise<Array<{ ipAddress: string; loginAt: Date }>> {
     const since = new Date();
@@ -273,7 +273,7 @@ export class LoginTrackingService {
    * Get login history for a user
    */
   async getUserLoginHistory(
-    userId: string,
+    userId: number,
     limit: number = 50
   ) {
     return this.prisma.userLoginHistory.findMany({
@@ -289,7 +289,7 @@ export class LoginTrackingService {
   async findMultiAccountUsers(daysBack: number = 30): Promise<Array<{
     ipAddress: string;
     accounts: Array<{
-      userId: string;
+      userId: number;
       username: string;
       displayName: string | null;
       lastLogin: Date;
@@ -319,7 +319,7 @@ export class LoginTrackingService {
     const results: Array<{
       ipAddress: string;
       accounts: Array<{
-        userId: string;
+        userId: number;
         username: string;
         displayName: string | null;
         lastLogin: Date;

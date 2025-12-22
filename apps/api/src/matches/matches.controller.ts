@@ -1,139 +1,85 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards, HttpCode, HttpStatus, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { MatchesService } from './matches.service';
-import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { CreateMatchDto } from './dto/create-match.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { GameMode, UserRole } from '@prisma/client';
-import { SubmitScoreDto } from './dto/submit-score.dto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole, EventCategory, MatchStatus } from '@prisma/client';
 
 @Controller('matches')
 export class MatchesController {
-  constructor(
-    private matchesService: MatchesService,
-    private eventEmitter: EventEmitter2,
-  ) {}
+  constructor(private matchesService: MatchesService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  async create(@Body() createMatchDto: CreateMatchDto, @Req() req: Request) {
+    const user = req.user as any;
+    return this.matchesService.create(createMatchDto, user.id);
+  }
+
+  @Get()
+  async getAll(
+    @Query('category') category?: EventCategory,
+    @Query('status') status?: MatchStatus,
+  ) {
+    return this.matchesService.getAll(category, status);
+  }
+
+  @Get('next')
+  async getNext(@Query('category') category?: EventCategory) {
+    const match = await this.matchesService.getNext(category);
+    return { match };
+  }
+
+  @Get('recent')
+  async getRecent(@Query('limit') limit?: string) {
+    const limitNum = limit ? parseInt(limit, 10) : 5;
+    return this.matchesService.getRecent(limitNum);
+  }
 
   @Get(':id')
-  @UseGuards(OptionalJwtAuthGuard)
-  async getById(@Param('id') id: string, @Req() req: Request) {
-    // Try to get user ID if authenticated (optional auth)
-    const user = req.user as any;
-    const userId = user?.id;
-
-    return this.matchesService.getById(id, userId);
+  async getById(@Param('id') id: string) {
+    return this.matchesService.getById(parseInt(id, 10));
   }
 
-  @Get(':mode/:season/:game')
-  @UseGuards(OptionalJwtAuthGuard)
-  async getByModeSeasonGame(
-    @Param('mode') mode: string,
-    @Param('season') season: string,
-    @Param('game') game: string,
-    @Req() req: Request,
-  ) {
-    // Try to get user ID if authenticated (optional auth)
-    const user = req.user as any;
-    const userId = user?.id;
-
-    // Convert mode string to GameMode enum
-    const gameMode = mode.toUpperCase() as GameMode;
-    const seasonNumber = parseInt(season, 10);
-    const gameNumber = parseInt(game, 10);
-
-    return this.matchesService.getByModeSeasonGame(
-      gameMode,
-      seasonNumber,
-      gameNumber,
-      userId,
-    );
-  }
-
-  @Post(':mode/:season/:game/score')
+  @Post(':id/join')
   @UseGuards(JwtAuthGuard)
-  async submitScoreByModeSeasonGame(
-    @Param('mode') mode: string,
-    @Param('season') season: string,
-    @Param('game') game: string,
-    @Body() submitScoreDto: SubmitScoreDto,
-    @Req() req: Request,
-  ) {
+  async join(@Param('id') id: string, @Req() req: Request) {
     const user = req.user as any;
-    const gameMode = mode.toUpperCase() as GameMode;
-    const seasonNumber = parseInt(season, 10);
-    const gameNumber = parseInt(game, 10);
-
-    // Determine target user ID
-    let targetUserId = user.id;
-
-    // If targetUserId is specified in DTO, check permissions
-    if (submitScoreDto.targetUserId) {
-      // Only MODERATOR or ADMIN can submit scores for other users
-      if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-        throw new ForbiddenException('Only moderators and admins can submit scores for other users');
-      }
-      targetUserId = submitScoreDto.targetUserId;
-    }
-
-    return this.matchesService.submitScoreByModeSeasonGame(
-      gameMode,
-      seasonNumber,
-      gameNumber,
-      targetUserId,
-      submitScoreDto,
-    );
+    return this.matchesService.join(parseInt(id, 10), user.id);
   }
 
-  @Patch(':mode/:season/:game/score/:userId')
+  @Delete(':id/leave')
   @UseGuards(JwtAuthGuard)
-  async updateScoreByModeSeasonGame(
-    @Param('mode') mode: string,
-    @Param('season') season: string,
-    @Param('game') game: string,
-    @Param('userId') targetUserId: string,
-    @Body() submitScoreDto: SubmitScoreDto,
-    @Req() req: Request,
-  ) {
+  async leave(@Param('id') id: string, @Req() req: Request) {
     const user = req.user as any;
-    const gameMode = mode.toUpperCase() as GameMode;
-    const seasonNumber = parseInt(season, 10);
-    const gameNumber = parseInt(game, 10);
-
-    // Only MODERATOR or ADMIN can edit other users' scores
-    if (targetUserId !== user.id) {
-      if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-        throw new ForbiddenException('Only moderators and admins can edit other users\' scores');
-      }
-    }
-
-    // Use the same service method (it handles both create and update)
-    return this.matchesService.submitScoreByModeSeasonGame(
-      gameMode,
-      seasonNumber,
-      gameNumber,
-      targetUserId,
-      submitScoreDto,
-    );
+    return this.matchesService.leave(parseInt(id, 10), user.id);
   }
 
-  // Test endpoint to emit WebSocket events manually (for testing only)
-  @Post(':id/emit-test')
-  @HttpCode(HttpStatus.OK)
-  async emitTestScore(
-    @Param('id') matchId: string,
-    @Body() data: { participant: any },
-  ) {
-    // Only allow in non-production
-    if (process.env.NODE_ENV === 'production') {
-      return { message: 'Test endpoint disabled in production' };
-    }
+  @Patch(':id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  async cancel(@Param('id') id: string) {
+    return this.matchesService.cancel(parseInt(id, 10));
+  }
 
-    // Emit the WebSocket event
-    this.eventEmitter.emit('match.scoreUpdated', {
-      matchId,
-      participant: data.participant,
-    });
-
-    return { message: 'WebSocket event emitted', matchId };
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  async delete(@Param('id') id: string) {
+    return this.matchesService.delete(parseInt(id, 10));
   }
 }

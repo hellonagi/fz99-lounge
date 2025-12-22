@@ -2,13 +2,23 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service';
+import { COOKIE_NAME } from '../utils/cookie.utils';
 
 export interface JwtPayload {
-  sub: string;
+  sub: number;
   discordId: string;
   username: string;
 }
+
+// Extract JWT from cookie
+const extractJwtFromCookie = (req: Request): string | null => {
+  if (req?.cookies && req.cookies[COOKIE_NAME]) {
+    return req.cookies[COOKIE_NAME];
+  }
+  return null;
+};
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -17,7 +27,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // Priority: 1. Cookie, 2. Authorization Bearer (backward compatibility)
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        extractJwtFromCookie,
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET') || 'default-secret-key',
     });
@@ -26,20 +40,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   async validate(payload: JwtPayload) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: {
-        id: true,
-        discordId: true,
-        username: true,
-        displayName: true,
-        avatarHash: true,
-        role: true,
-        status: true,
-        suspension: {
-          select: {
-            suspendedUntil: true,
-          },
-        },
-      },
     });
 
     if (!user) {
@@ -51,7 +51,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     if (user.status === 'SUSPENDED') {
-      if (user.suspension && user.suspension.suspendedUntil > new Date()) {
+      if (user.suspendedUntil && user.suspendedUntil > new Date()) {
         throw new UnauthorizedException('User is currently suspended');
       }
     }

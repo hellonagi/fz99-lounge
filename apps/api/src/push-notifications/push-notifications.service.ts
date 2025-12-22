@@ -22,12 +22,12 @@ export class PushNotificationsService {
     } else {
       this.logger.warn(
         'VAPID keys not configured. Push notifications will not work. ' +
-          'Run: npx web-push generate-vapid-keys'
+          'Run: npx web-push generate-vapid-keys',
       );
     }
   }
 
-  async subscribe(userId: string, subscription: PushSubscriptionJSON) {
+  async subscribe(userId: number, subscription: PushSubscriptionJSON) {
     const { endpoint, keys } = subscription;
 
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
@@ -57,7 +57,7 @@ export class PushNotificationsService {
     this.logger.log(`Push subscription saved for user ${userId}`);
   }
 
-  async unsubscribe(userId: string, endpoint: string) {
+  async unsubscribe(userId: number, endpoint: string) {
     await this.prisma.pushSubscription.deleteMany({
       where: {
         userId,
@@ -69,7 +69,7 @@ export class PushNotificationsService {
   }
 
   async sendNotification(
-    userId: string,
+    userId: number,
     payload: {
       title: string;
       body: string;
@@ -77,7 +77,7 @@ export class PushNotificationsService {
       badge?: string;
       data?: any;
       actions?: Array<{ action: string; title: string; icon?: string }>;
-    }
+    },
   ) {
     const subscriptions = await this.prisma.pushSubscription.findMany({
       where: { userId },
@@ -101,7 +101,7 @@ export class PushNotificationsService {
                 auth: sub.auth,
               },
             },
-            notificationPayload
+            notificationPayload,
           );
           this.logger.log(`Push notification sent to user ${userId}`);
         } catch (error: any) {
@@ -116,47 +116,48 @@ export class PushNotificationsService {
             throw error;
           }
         }
-      })
+      }),
     );
 
     return results;
   }
 
-  async notifyMatchStart(match: {
-    id: string;
+  async notifyMatchStart(game: {
+    id: number;
     passcode: string;
     leagueType: string;
     totalPlayers: number;
-    lobby: {
-      participants: Array<{ userId: string }>;
+    url: string;
+    match: {
+      participants: Array<{ userId: number }>;
     };
   }) {
-    const participantIds = match.lobby.participants.map((p) => p.userId);
+    const participantIds = game.match.participants.map((p) => p.userId);
 
     this.logger.log(
-      `Sending match start notifications to ${participantIds.length} participants`
+      `Sending match start notifications to ${participantIds.length} participants`,
     );
 
     const results = await Promise.allSettled(
       participantIds.map((userId) =>
         this.sendNotification(userId, {
           title: '🎮 マッチが開始されました！',
-          body: `パスコード: ${match.passcode}`,
+          body: `パスコード: ${game.passcode}`,
           icon: '/icon-192x192.png',
           badge: '/badge-72x72.png',
           data: {
-            matchId: match.id,
-            passcode: match.passcode,
-            url: `/matches/${match.id}`,
+            gameId: game.id,
+            passcode: game.passcode,
+            url: game.url,
           },
           actions: [
             {
-              action: 'open-match',
-              title: 'マッチページを開く',
+              action: 'open-game',
+              title: 'ゲームページを開く',
             },
           ],
-        })
-      )
+        }),
+      ),
     );
 
     return results;

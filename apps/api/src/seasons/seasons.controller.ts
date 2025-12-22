@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { SeasonsService } from './seasons.service';
 import { CreateSeasonDto } from './dto/create-season.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, GameMode } from '@prisma/client';
+import { UserRole, EventCategory } from '@prisma/client';
 
 @Controller('seasons')
 export class SeasonsController {
@@ -18,17 +18,17 @@ export class SeasonsController {
   }
 
   @Get('active')
-  async getActive(@Query('mode') mode: GameMode = GameMode.GP) {
-    return this.seasonsService.getActive(mode);
+  async getActive(@Query('category') category: EventCategory = EventCategory.GP) {
+    return this.seasonsService.getActive(category);
   }
 
   @Get()
-  async getAll(@Query('mode') mode?: GameMode) {
-    return this.seasonsService.getAll(mode);
+  async getAll(@Query('category') category?: EventCategory) {
+    return this.seasonsService.getAll(category);
   }
 
   @Get(':id')
-  async getById(@Param('id') id: string) {
+  async getById(@Param('id', ParseIntPipe) id: number) {
     return this.seasonsService.getById(id);
   }
 
@@ -36,7 +36,7 @@ export class SeasonsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateData: {
       seasonNumber?: number;
       description?: string;
@@ -51,7 +51,7 @@ export class SeasonsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async toggleStatus(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() data: { isActive: boolean }
   ) {
     return this.seasonsService.toggleStatus(id, data.isActive);
@@ -60,7 +60,7 @@ export class SeasonsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async delete(@Param('id') id: string) {
+  async delete(@Param('id', ParseIntPipe) id: number) {
     return this.seasonsService.delete(id);
   }
 }

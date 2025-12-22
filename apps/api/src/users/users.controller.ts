@@ -39,11 +39,11 @@ export class UsersController {
 
   @Get('profile/:profileId')
   async getUserByProfileId(@Param('profileId') profileId: string) {
-    return this.usersService.findByProfileId(parseInt(profileId, 10));
+    return this.usersService.findById(parseInt(profileId, 10));
   }
 
   @Get(':id')
   async getUser(@Param('id') id: string) {
-    return this.usersService.findById(id);
+    return this.usersService.findById(parseInt(id, 10));
   }
 }
