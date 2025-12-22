@@ -13,6 +13,7 @@ interface Participant {
   user: {
     id: number;
     displayName: string | null;
+    profile?: { country: string | null } | null;
   };
   machine: string;
   totalScore: number | null;
@@ -85,6 +86,7 @@ export function MatchDetailsTable({ participants }: MatchDetailsTableProps) {
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium">#</th>
+            <th className="py-2 px-1 w-6"></th>
             <th className="text-left py-2 px-2 font-medium">Player</th>
             <th className="text-left py-2 px-2 font-medium">Machine</th>
             <th className="text-center py-2 px-1 font-medium w-10">R1</th>
@@ -107,6 +109,13 @@ export function MatchDetailsTable({ participants }: MatchDetailsTableProps) {
                 participant.rank <= 3 ? 'text-yellow-400' : 'text-gray-300'
               )}>
                 {participant.rank}
+              </td>
+
+              {/* Country */}
+              <td className="py-2 px-1 w-6">
+                {participant.user.profile?.country && (
+                  <span className={`fi fi-${participant.user.profile.country.toLowerCase()}`} title={participant.user.profile.country} />
+                )}
               </td>
 
               {/* Player Name */}

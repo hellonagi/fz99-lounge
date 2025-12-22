@@ -18,6 +18,7 @@ interface Participant {
     profileId: number;
     displayName: string | null;
     avatarHash?: string | null;
+    profile?: { country: string | null } | null;
   };
   position: number | null;
   reportedPoints: number | null;
@@ -119,6 +120,7 @@ export function MatchResultList({
             position={(participant as any)._calculatedPosition}
             displayName={participant.user.displayName}
             profileId={participant.user.profileId}
+            country={participant.user.profile?.country}
             machine={participant.machine}
             assistEnabled={participant.assistEnabled}
             totalScore={participant.totalScore}

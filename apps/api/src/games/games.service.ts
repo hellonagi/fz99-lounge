@@ -52,6 +52,9 @@ export class GamesService {
                 discordId: true,
                 displayName: true,
                 avatarHash: true,
+                profile: {
+                  select: { country: true },
+                },
               },
             },
             raceResults: true,
@@ -144,6 +147,9 @@ export class GamesService {
                 discordId: true,
                 displayName: true,
                 avatarHash: true,
+                profile: {
+                  select: { country: true },
+                },
               },
             },
             raceResults: true,
@@ -330,6 +336,9 @@ export class GamesService {
             discordId: true,
             displayName: true,
             avatarHash: true,
+            profile: {
+              select: { country: true },
+            },
           },
         },
         raceResults: true,
@@ -482,6 +491,9 @@ export class GamesService {
             discordId: true,
             displayName: true,
             avatarHash: true,
+            profile: {
+              select: { country: true },
+            },
           },
         },
         raceResults: true,

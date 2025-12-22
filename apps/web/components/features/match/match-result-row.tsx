@@ -19,6 +19,7 @@ interface MatchResultRowProps {
   position?: number | null;
   displayName: string | null;
   profileId: number;
+  country?: string | null;
   machine: string;
   assistEnabled: boolean;
   totalScore?: number | null;
@@ -29,6 +30,7 @@ export function MatchResultRow({
   position,
   displayName,
   profileId,
+  country,
   machine,
   assistEnabled,
   totalScore,
@@ -54,6 +56,13 @@ export function MatchResultRow({
           </span>
         ) : (
           <span className="text-gray-500 text-sm">-</span>
+        )}
+      </div>
+
+      {/* Country */}
+      <div className="flex-shrink-0 w-5">
+        {country && (
+          <span className={`fi fi-${country.toLowerCase()}`} title={country} />
         )}
       </div>
 
