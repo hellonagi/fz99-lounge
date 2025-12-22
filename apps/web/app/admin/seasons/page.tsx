@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/authStore';
 import { CreateSeasonForm, SeasonsList, SeasonCard } from '@/components/features/seasons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Trophy, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Trophy, Calendar } from 'lucide-react';
 import { seasonsApi } from '@/lib/api';
 
 export default function SeasonsManagementPage() {
@@ -116,23 +116,6 @@ export default function SeasonsManagementPage() {
                   season={season}
                 />
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* No Active Seasons Warning */}
-        {!loadingActive && activeSeasons.length === 0 && (
-          <div className="mb-8 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-400 mt-0.5" />
-              <div>
-                <p className="text-yellow-300 font-semibold">
-                  アクティブなシーズンがありません
-                </p>
-                <p className="text-yellow-300/80 text-sm mt-1">
-                  ロビーを作成するには、少なくとも1つのアクティブなシーズンが必要です。
-                </p>
-              </div>
             </div>
           </div>
         )}

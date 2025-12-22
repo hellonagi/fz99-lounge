@@ -9,19 +9,18 @@ import { seasonsApi } from '@/lib/api';
 import { EditSeasonDialog } from './edit-season-dialog';
 
 interface Season {
-  id: string;
-  eventId: string;
-  gameMode: 'GP' | 'CLASSIC';
+  id: number;
+  eventId: number;
   seasonNumber: number;
   description: string | null;
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
   event: {
-    id: string;
-    type: string;
+    id: number;
+    category: 'GP' | 'CLASSIC' | 'TOURNAMENT';
     name: string;
     description: string | null;
-    startDate: string;
-    endDate: string | null;
-    isActive: boolean;
     createdAt: string;
     updatedAt: string;
   };
@@ -36,7 +35,7 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'GP' | 'CLASSIC'>('ALL');
-  const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null);
+  const [editingSeasonId, setEditingSeasonId] = useState<number | null>(null);
 
   const fetchSeasons = async () => {
     try {
@@ -56,7 +55,7 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
     fetchSeasons();
   }, [refreshTrigger]);
 
-  const handleToggleStatus = async (seasonId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (seasonId: number, currentStatus: boolean) => {
     try {
       // Toggle the active status
       await seasonsApi.toggleStatus(seasonId, {
@@ -70,7 +69,7 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
     }
   };
 
-  const handleDelete = async (seasonId: string) => {
+  const handleDelete = async (seasonId: number) => {
     if (!confirm('本当にこのシーズンを削除しますか？この操作は取り消せません。')) {
       return;
     }
@@ -86,15 +85,15 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
 
   const filteredSeasons = seasons.filter(season => {
     if (filter === 'ALL') return true;
-    return season.gameMode === filter;
+    return season.event.category === filter;
   });
 
   const getSeasonStatus = (season: Season) => {
     const now = new Date();
-    const startDate = new Date(season.event.startDate);
-    const endDate = season.event.endDate ? new Date(season.event.endDate) : null;
+    const startDate = new Date(season.startDate);
+    const endDate = season.endDate ? new Date(season.endDate) : null;
 
-    if (!season.event.isActive) {
+    if (!season.isActive) {
       return { label: '非アクティブ', variant: 'secondary' as const };
     }
 
@@ -213,14 +212,14 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
                           {status.label}
                         </Badge>
                         <Badge variant="outline" className="text-gray-300">
-                          {season.gameMode}
+                          {season.event.category}
                         </Badge>
                       </div>
                       <div className="text-sm text-gray-400 space-y-1">
                         <p>シーズン番号: {season.seasonNumber}</p>
-                        <p>開始: {formatDate(season.event.startDate)}</p>
-                        {season.event.endDate && (
-                          <p>終了: {formatDate(season.event.endDate)}</p>
+                        <p>開始: {formatDate(season.startDate)}</p>
+                        {season.endDate && (
+                          <p>終了: {formatDate(season.endDate)}</p>
                         )}
                         {season.description && (
                           <p className="italic">{season.description}</p>
@@ -239,8 +238,8 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleToggleStatus(season.id, season.event.isActive)}
-                        className={season.event.isActive ? "text-green-400 hover:text-green-300" : "text-gray-400 hover:text-white"}
+                        onClick={() => handleToggleStatus(season.id, season.isActive)}
+                        className={season.isActive ? "text-green-400 hover:text-green-300" : "text-gray-400 hover:text-white"}
                       >
                         <Power className="h-4 w-4" />
                       </Button>

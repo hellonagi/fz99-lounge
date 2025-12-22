@@ -1,33 +1,33 @@
 import { useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 
-interface UseMatchSocketProps {
-  matchId: string;
+interface UseGameSocketProps {
+  gameId: number;
   onScoreUpdated?: (participant: any) => void;
   onStatusChanged?: (status: string) => void;
 }
 
-export function useMatchSocket({ matchId, onScoreUpdated, onStatusChanged }: UseMatchSocketProps) {
+export function useGameSocket({ gameId, onScoreUpdated, onStatusChanged }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    if (!matchId) return;
+    if (!gameId) return;
 
-    // Connect to the matches namespace
-    const socket = io('http://localhost:3000/matches', {
+    // Connect to the games namespace
+    const socket = io('http://localhost:3000/games', {
       withCredentials: true,
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('Connected to match socket');
-      // Join the specific match room
-      socket.emit('joinMatch', matchId);
+      console.log('Connected to game socket');
+      // Join the specific game room
+      socket.emit('joinGame', gameId);
     });
 
     socket.on('disconnect', () => {
-      console.log('Disconnected from match socket');
+      console.log('Disconnected from game socket');
     });
 
     socket.on('scoreUpdated', (participant) => {
@@ -46,12 +46,12 @@ export function useMatchSocket({ matchId, onScoreUpdated, onStatusChanged }: Use
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.emit('leaveMatch', matchId);
+        socketRef.current.emit('leaveGame', gameId);
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, [matchId, onScoreUpdated, onStatusChanged]);
+  }, [gameId, onScoreUpdated, onStatusChanged]);
 
   return socketRef.current;
 }

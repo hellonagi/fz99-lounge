@@ -3,51 +3,55 @@ import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
 import { useRouter } from 'next/navigation';
 
-interface Lobby {
-  id: string;
-  gameMode: string;
+interface Match {
+  id: number;
+  category: string;
+  inGameMode: string;
   leagueType: string;
-  gameNumber: number;
+  matchNumber: number;
   scheduledStart: string;
   currentPlayers: number;
   maxPlayers: number;
   minPlayers: number;
   season: {
-    id: string;
+    id: number;
     seasonNumber: number;
-    gameMode: string;
+    event: {
+      id: number;
+      category: string;
+    };
   };
   participants: Array<{
-    userId: string;
+    userId: number;
     user: {
-      id: string;
+      id: number;
       displayName: string;
       avatarHash: string | null;
     };
   }>;
 }
 
-interface UseLobbyWebSocketProps {
-  nextLobby: Lobby | null;
-  setNextLobby: (lobby: Lobby | null) => void;
+interface UseMatchWebSocketProps {
+  nextMatch: Match | null;
+  setNextMatch: (match: Match | null) => void;
   setError: (error: string | null) => void;
   fetchData: () => Promise<void>;
   wsConnected: boolean;
   setWsConnected: (connected: boolean) => void;
 }
 
-export function useLobbyWebSocket({
-  nextLobby,
-  setNextLobby,
+export function useMatchWebSocket({
+  nextMatch,
+  setNextMatch,
   setError,
   fetchData,
   wsConnected,
   setWsConnected,
-}: UseLobbyWebSocketProps) {
+}: UseMatchWebSocketProps) {
   const { isAuthenticated, user } = useAuthStore();
   const router = useRouter();
-  const nextLobbyRef = useRef<Lobby | null>(null);
-  nextLobbyRef.current = nextLobby;
+  const nextMatchRef = useRef<Match | null>(null);
+  nextMatchRef.current = nextMatch;
 
   useEffect(() => {
     const socket = getSocket();
@@ -63,37 +67,37 @@ export function useLobbyWebSocket({
       setWsConnected(false);
     };
 
-    // Handle match started event
+    // Handle match started event (when match transitions to IN_PROGRESS)
     const handleMatchStarted = (data: any) => {
       console.log('Match started event received:', data);
 
       // Check if current user is in this match
-      if (isAuthenticated && user && nextLobbyRef.current?.id === data.lobbyId) {
-        // Redirect to match page using new URL format
-        const matchUrl = `/matches/${data.mode}/${data.season}/${data.game}`;
+      if (isAuthenticated && user && nextMatchRef.current?.id === data.matchId) {
+        // Redirect to match page
+        const matchUrl = `/matches/${data.category}/${data.season}/${data.match}`;
         console.log('Redirecting to match page:', matchUrl);
         router.push(matchUrl);
       }
     };
 
-    // Handle lobby updated event (player joined/left)
-    const handleLobbyUpdated = (data: any) => {
-      console.log('Lobby updated event received:', data);
+    // Handle match updated event (player joined/left)
+    const handleMatchUpdated = (data: any) => {
+      console.log('Match updated event received:', data);
 
-      // Update lobby if it's the one we're showing
-      if (nextLobbyRef.current?.id === data.id) {
-        setNextLobby(data);
+      // Update match if it's the one we're showing
+      if (nextMatchRef.current?.id === data.id) {
+        setNextMatch(data);
       }
     };
 
-    // Handle lobby cancelled event
-    const handleLobbyCancelled = (data: { lobbyId: string }) => {
-      console.log('Lobby cancelled event received:', data);
+    // Handle match cancelled event
+    const handleMatchCancelled = (data: { matchId: number }) => {
+      console.log('Match cancelled event received:', data);
 
-      // Check if it's the lobby we're showing
-      if (nextLobbyRef.current?.id === data.lobbyId) {
-        setError('ロビーがキャンセルされました（最小人数に達しませんでした）');
-        setNextLobby(null);
+      // Check if it's the match we're showing
+      if (nextMatchRef.current?.id === data.matchId) {
+        setError('マッチがキャンセルされました（最小人数に達しませんでした）');
+        setNextMatch(null);
       }
     };
 
@@ -101,8 +105,8 @@ export function useLobbyWebSocket({
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('match-started', handleMatchStarted);
-    socket.on('lobby-updated', handleLobbyUpdated);
-    socket.on('lobby-cancelled', handleLobbyCancelled);
+    socket.on('match-updated', handleMatchUpdated);
+    socket.on('match-cancelled', handleMatchCancelled);
 
     // Initial fetch
     fetchData();
@@ -120,9 +124,9 @@ export function useLobbyWebSocket({
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('match-started', handleMatchStarted);
-      socket.off('lobby-updated', handleLobbyUpdated);
-      socket.off('lobby-cancelled', handleLobbyCancelled);
+      socket.off('match-updated', handleMatchUpdated);
+      socket.off('match-cancelled', handleMatchCancelled);
       clearInterval(pollInterval);
     };
-  }, [fetchData, isAuthenticated, user, wsConnected, setWsConnected, setNextLobby, setError, router]);
+  }, [fetchData, isAuthenticated, user, wsConnected, setWsConnected, setNextMatch, setError, router]);
 }

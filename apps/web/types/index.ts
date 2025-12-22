@@ -1,10 +1,9 @@
 // User & Auth Types
 export interface User {
-  id: string;
-  profileId: number;
+  id: number;
   discordId: string;
   username: string;
-  displayName: string;
+  displayName: string | null;
   avatarHash: string | null;
   role: UserRole;
   status?: UserStatus;
@@ -17,8 +16,19 @@ export interface User {
 export type UserRole = 'PLAYER' | 'MODERATOR' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'WARNED' | 'SUSPENDED' | 'BANNED' | 'DELETED';
 
-// Game Mode Types
-export type GameMode = 'GP' | 'CLASSIC' | 'TOURNAMENT';
+// Event Category - システムレベルの分類（レート計算ロジック）
+export type EventCategory = 'GP' | 'CLASSIC' | 'TOURNAMENT';
+
+// In-Game Mode - F-Zero 99 のゲーム内モード
+export type InGameMode =
+  | 'GRAND_PRIX'
+  | 'MINI_PRIX'
+  | 'TEAM_BATTLE'
+  | 'CLASSIC_MINI_PRIX'
+  | 'PRO'
+  | 'CLASSIC'
+  | 'NINETY_NINE';
+
 export type League =
   | 'KNIGHT'
   | 'QUEEN'
@@ -30,72 +40,142 @@ export type League =
   | 'MIRROR_ACE'
   | 'CLASSIC_MINI';
 
-// Lobby Types
-export interface Lobby {
-  id: string;
-  gameMode: GameMode;
-  leagueType: League | null;
-  status: LobbyStatus;
-  currentPlayers: number;
+// Match Types (was Lobby - waiting room for a session)
+export interface Match {
+  id: number;
+  seasonId: number;
+  matchNumber: number;
+  status: MatchStatus;
   minPlayers: number;
   maxPlayers: number;
   scheduledStart: string;
-  countdownStart?: string | null;
   actualStart?: string | null;
-}
-
-export type LobbyStatus =
-  | 'WAITING'
-  | 'READY'
-  | 'FULL'
-  | 'STARTING'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'CANCELLED';
-
-// Match Types
-export interface Match {
-  id: string;
-  gameMode: GameMode;
-  leagueType: League;
-  status: MatchStatus;
-  totalPlayers: number;
-  startedAt: string;
-  completedAt?: string | null;
+  deadline: string;  // スコア提出期限
+  notes?: string | null;
+  createdAt: string;
+  // Computed
+  currentPlayers?: number;
+  // Relations
+  season?: Season;
+  participants?: MatchParticipant[];
 }
 
 export type MatchStatus =
-  | 'ONGOING'
-  | 'RESULTS_PENDING'
-  | 'PROVISIONALLY_CONFIRMED'
+  | 'WAITING'
+  | 'IN_PROGRESS'
   | 'COMPLETED'
-  | 'ABORTED';
+  | 'FINALIZED'
+  | 'CANCELLED';
 
-// User Stats Types
-export interface UserStats99 {
-  mmr: number;
-  seasonHighMmr: number;
-  totalMatches: number;
-  totalWins: number;
-  top3Finishes: number;
-  top10Finishes: number;
-  averagePosition: number;
-  totalKos: number;
-  bestPosition: number;
-  currentStreak: number;
-  favoriteMachine?: string | null;
+export interface MatchParticipant {
+  id: number;
+  matchId: number;
+  userId: number;
+  joinedAt: string;
+  hasWithdrawn: boolean;
+  withdrawnAt?: string | null;
+  // Relations
+  user?: User;
+  streams?: MatchStream[];
 }
 
-export interface UserStatsClassic {
-  mmr: number;
-  seasonHighMmr: number;
+// Game Types (was Match - actual game within a session)
+export interface Game {
+  id: number;
+  matchId: number;
+  gameNumber: number;
+  inGameMode: InGameMode;
+  leagueType: League;
+  passcode: string;
+  passcodePublishedAt?: string | null;
+  startedAt?: string | null;
+  // Relations
+  match?: Match;
+  participants?: GameParticipant[];
+}
+
+export interface GameParticipant {
+  id: number;
+  gameId: number;
+  userId: number;
+  machine: string;
+  assistEnabled: boolean;
+  status: ResultStatus;
+  // Relations
+  user?: User;
+  raceResults?: RaceResult[];
+}
+
+export interface MatchStream {
+  id: number;
+  matchParticipantId: number;
+  platform: 'YOUTUBE' | 'TWITCH';
+  streamUrl: string;
+  isLive: boolean;
+  thumbnailUrl?: string | null;
+  viewerCount?: number | null;
+  streamTitle?: string | null;
+  // Relations
+  matchParticipant?: MatchParticipant;
+}
+
+export interface RaceResult {
+  id: number;
+  gameParticipantId: number;
+  raceNumber: number;  // 1-5 (GRAND_PRIX) or 1 (単発モード)
+  position?: number | null;
+  points?: number | null;
+  isEliminated: boolean;  // クラッシュアウト/ランクアウトで脱落
+}
+
+export type ResultStatus =
+  | 'PENDING'
+  | 'SUBMITTED'
+  | 'UNSUBMITTED'
+  | 'DISPUTED'
+  | 'INVALIDATED';
+
+// Event & Season Types
+export interface Event {
+  id: number;
+  category: EventCategory;
+  name: string;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Season {
+  id: number;
+  eventId: number;
+  seasonNumber: number;
+  startDate: string;
+  endDate?: string | null;
+  isActive: boolean;
+  description?: string | null;
+  // Relations
+  event?: Event;
+}
+
+// User Season Stats (シーズン別統計)
+export interface UserSeasonStats {
+  id: number;
+  userId: number;
+  seasonId: number;
+  // レート
+  internalRating: number;
+  displayRating: number;
+  convergencePoints: number;
+  seasonHighRating: number;
+  // 統計
   totalMatches: number;
-  totalWins: number;
-  top3Finishes: number;
-  averagePosition: number;
-  bestPosition: number;
-  currentStreak: number;
-  favoriteMachine?: string | null;
+  firstPlaces: number;
+  secondPlaces: number;
+  thirdPlaces: number;
+  survivedCount: number;
+  assistUsedCount: number;
+  // Relations
+  season?: Season;
 }
 
 // API Response Types
@@ -105,6 +185,5 @@ export interface AuthResponse {
 }
 
 export interface UserProfileResponse extends User {
-  stats99?: UserStats99;
-  statsClassic?: UserStatsClassic;
+  seasonStats?: UserSeasonStats[];
 }

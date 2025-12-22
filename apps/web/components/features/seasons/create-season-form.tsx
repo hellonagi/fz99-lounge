@@ -22,7 +22,7 @@ import { AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { seasonsApi } from '@/lib/api';
 
 const seasonSchema = z.object({
-  gameMode: z.enum(['GP', 'CLASSIC']),
+  category: z.enum(['GP', 'CLASSIC']),
   seasonNumber: z
     .string()
     .min(1, 'シーズン番号は必須です')
@@ -52,7 +52,7 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
   const form = useForm<SeasonFormData>({
     resolver: zodResolver(seasonSchema),
     defaultValues: {
-      gameMode: 'GP',
+      category: 'GP',
       seasonNumber: '',
       startDate: '',
       endDate: '',
@@ -61,7 +61,7 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
   });
 
   const { isSubmitting } = form.formState;
-  const gameMode = form.watch('gameMode');
+  const category = form.watch('category');
 
   const onSubmit = async (data: SeasonFormData) => {
     try {
@@ -77,7 +77,7 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
       }
 
       const response = await seasonsApi.create({
-        gameMode: data.gameMode,
+        category: data.category,
         seasonNumber: parseInt(data.seasonNumber),
         description: data.description || undefined,
         startDate: startDate.toISOString(),
@@ -117,13 +117,13 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Game Mode Selection */}
+            {/* Category Selection */}
             <FormField
               control={form.control}
-              name="gameMode"
+              name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-white">ゲームモード</FormLabel>
+                  <FormLabel className="text-white">カテゴリ</FormLabel>
                   <FormControl>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -172,7 +172,7 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
                     />
                   </FormControl>
                   <FormDescription className="text-gray-400">
-                    {gameMode}モードのシーズン番号を入力してください
+                    {category}モードのシーズン番号を入力してください
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

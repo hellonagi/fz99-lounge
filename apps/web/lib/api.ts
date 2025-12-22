@@ -7,17 +7,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
-
-// Add token to requests
-api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
+  withCredentials: true, // Send cookies with requests
 });
 
 // Handle authentication errors
@@ -58,80 +48,98 @@ export const usersApi = {
     api.get(`/users/leaderboard?mode=${mode}&limit=${limit}`),
 };
 
-// Lobbies API
-export const lobbiesApi = {
+// Matches API (for waiting room management - was lobbies)
+export const matchesApi = {
   create: (data: {
-    gameMode: 'GP' | 'CLASSIC';
+    seasonId: number;
+    inGameMode: string;
     leagueType: string;
     scheduledStart: string;
     minPlayers?: number;
     maxPlayers?: number;
     notes?: string;
-  }) => api.post('/lobbies', data),
-  getNext: (mode: 'GP' | 'CLASSIC' = 'GP') =>
-    api.get(`/lobbies/next?mode=${mode}`),
-  getAll: (mode?: 'GP' | 'CLASSIC', status?: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED') => {
+  }) => api.post('/matches', data),
+  getNext: (category?: 'GP' | 'CLASSIC') => {
     const params = new URLSearchParams();
-    if (mode) params.append('mode', mode);
-    if (status) params.append('status', status);
-    return api.get(`/lobbies?${params.toString()}`);
+    if (category) params.append('category', category);
+    return api.get(`/matches/next?${params.toString()}`);
   },
-  getById: (id: string) => api.get(`/lobbies/${id}`),
-  join: (id: string) => api.post(`/lobbies/${id}/join`),
-  leave: (id: string) => api.delete(`/lobbies/${id}/leave`),
-  cancel: (id: string) => api.patch(`/lobbies/${id}/cancel`),
-  delete: (id: string) => api.delete(`/lobbies/${id}`),
+  getAll: (category?: 'GP' | 'CLASSIC', status?: 'WAITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED') => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (status) params.append('status', status);
+    return api.get(`/matches?${params.toString()}`);
+  },
+  getRecent: (limit: number = 5) => api.get(`/matches/recent?limit=${limit}`),
+  getById: (id: number) => api.get(`/matches/${id}`),
+  join: (id: number) => api.post(`/matches/${id}/join`),
+  leave: (id: number) => api.delete(`/matches/${id}/leave`),
+  cancel: (id: number) => api.patch(`/matches/${id}/cancel`),
+  delete: (id: number) => api.delete(`/matches/${id}`),
 };
 
 // Seasons API
 export const seasonsApi = {
-  getActive: (mode: 'GP' | 'CLASSIC' = 'GP') =>
-    api.get(`/seasons/active?mode=${mode}`),
-  getAll: () => api.get('/seasons'),
-  getById: (id: string) => api.get(`/seasons/${id}`),
+  getActive: (category: 'GP' | 'CLASSIC' = 'GP') =>
+    api.get(`/seasons/active?category=${category}`),
+  getAll: (category?: 'GP' | 'CLASSIC') => {
+    const params = category ? `?category=${category}` : '';
+    return api.get(`/seasons${params}`);
+  },
+  getById: (id: number) => api.get(`/seasons/${id}`),
   create: (data: {
-    gameMode: 'GP' | 'CLASSIC';
+    category: 'GP' | 'CLASSIC';
     seasonNumber: number;
     description?: string;
     startDate: string;
     endDate?: string;
   }) => api.post('/seasons', data),
-  update: (id: string, data: {
+  update: (id: number, data: {
     seasonNumber?: number;
     description?: string;
     startDate?: string;
     endDate?: string;
   }) => api.patch(`/seasons/${id}`, data),
-  toggleStatus: (id: string, data: { isActive: boolean }) =>
+  toggleStatus: (id: number, data: { isActive: boolean }) =>
     api.patch(`/seasons/${id}/toggle-status`, data),
-  delete: (id: string) => api.delete(`/seasons/${id}`),
+  delete: (id: number) => api.delete(`/seasons/${id}`),
 };
 
-// Matches API
-export const matchesApi = {
-  getById: (id: string) => api.get(`/matches/${id}`),
-  getByModeSeasonGame: (mode: string, season: number, game: number) =>
-    api.get(`/matches/${mode}/${season}/${game}`),
-  submitScore: (mode: string, season: number, game: number, data: {
+// Games API (for score submission - was matches)
+export const gamesApi = {
+  getById: (id: number) => api.get(`/games/${id}`),
+  getByCategorySeasonMatch: (category: string, season: number, match: number) =>
+    api.get(`/games/${category}/${season}/${match}`),
+  submitScore: (category: string, season: number, match: number, data: {
     reportedPoints: number;
     machine: string;
     assistEnabled: boolean;
-    targetUserId?: string;
-  }) => api.post(`/matches/${mode}/${season}/${game}/score`, data),
+    targetUserId?: number;
+  }) => api.post(`/games/${category}/${season}/${match}/score`, data),
+  // Moderator actions
+  updateScore: (category: string, season: number, match: number, userId: number, data: {
+    raceResults: Array<{
+      raceNumber: number;
+      position?: number;
+      isEliminated: boolean;
+    }>;
+  }) => api.patch(`/games/${category}/${season}/${match}/score/${userId}`, data),
+  endMatch: (category: string, season: number, match: number) =>
+    api.post(`/games/${category}/${season}/${match}/end`),
 };
 
 // Screenshots API
 export const screenshotsApi = {
-  submit: (matchId: string, file: File) => {
+  submit: (gameId: number, file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('matchId', matchId);
+    formData.append('gameId', String(gameId));
     return api.post('/screenshots/submit', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
-  getSubmissions: (matchId: string) => api.get(`/screenshots/match/${matchId}/submissions`),
-  getOfficial: (matchId: string) => api.get(`/screenshots/match/${matchId}/official`),
+  getSubmissions: (gameId: number) => api.get(`/screenshots/game/${gameId}/submissions`),
+  getOfficial: (gameId: number) => api.get(`/screenshots/game/${gameId}/official`),
 };

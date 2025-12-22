@@ -42,14 +42,14 @@ const editSeasonSchema = z.object({
 type EditSeasonFormData = z.infer<typeof editSeasonSchema>;
 
 interface EditSeasonDialogProps {
-  seasonId: string;
+  seasonId: number;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
 export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditSeasonDialogProps) {
-  const [originalGameMode, setOriginalGameMode] = useState<'GP' | 'CLASSIC'>('GP');
+  const [originalCategory, setOriginalCategory] = useState<'GP' | 'CLASSIC' | 'TOURNAMENT'>('GP');
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
 
@@ -82,14 +82,14 @@ export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditS
         form.reset({
           seasonNumber: season.seasonNumber.toString(),
           description: season.description || '',
-          startDate: season.event.startDate
-            ? new Date(season.event.startDate).toISOString().slice(0, 16)
+          startDate: season.startDate
+            ? new Date(season.startDate).toISOString().slice(0, 16)
             : '',
-          endDate: season.event.endDate
-            ? new Date(season.event.endDate).toISOString().slice(0, 16)
+          endDate: season.endDate
+            ? new Date(season.endDate).toISOString().slice(0, 16)
             : '',
         });
-        setOriginalGameMode(season.gameMode);
+        setOriginalCategory(season.event.category);
       }
     } catch (err: any) {
       console.error('Error fetching season:', err);
@@ -156,12 +156,12 @@ export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditS
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* Game Mode (Display Only) */}
+              {/* Category (Display Only) */}
               <div className="space-y-2">
-                <FormLabel className="text-white">ゲームモード</FormLabel>
+                <FormLabel className="text-white">カテゴリ</FormLabel>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-gray-300">
-                    {originalGameMode}
+                    {originalCategory}
                   </Badge>
                   <span className="text-sm text-gray-400">（変更不可）</span>
                 </div>

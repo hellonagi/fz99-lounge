@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { CreateLobbyCard } from '@/components/features/admin/create-lobby-card';
-import { LobbiesListCard } from '@/components/features/admin/lobbies-list-card';
+import { CreateMatchCard } from '@/components/features/admin/create-match-card';
+import { MatchesListCard } from '@/components/features/admin/matches-list-card';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -56,16 +56,16 @@ export default function AdminPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
           <p className="text-gray-400">
-            Manage lobbies, seasons, users, and match results
+            Manage matches, seasons, users, and game results
           </p>
         </div>
 
         {/* Dashboard Grid */}
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Create Lobby Card */}
+            {/* Create Match Card */}
             <div className="lg:col-span-2">
-              <CreateLobbyCard />
+              <CreateMatchCard />
             </div>
 
             {/* Placeholder for future features */}
@@ -111,8 +111,8 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Lobbies List */}
-          <LobbiesListCard />
+          {/* Matches List */}
+          <MatchesListCard />
         </div>
       </div>
     </div>

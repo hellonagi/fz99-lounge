@@ -7,23 +7,23 @@ import { Calendar, Gamepad2, Users, Trophy } from 'lucide-react';
 
 interface SeasonCardProps {
   season: {
-    id: string;
-    gameMode: 'GP' | 'CLASSIC';
+    id: number;
     seasonNumber: number;
     description: string | null;
+    startDate: string;
+    endDate: string | null;
+    isActive: boolean;
     event: {
+      category: 'GP' | 'CLASSIC' | 'TOURNAMENT';
       name: string;
-      startDate: string;
-      endDate: string | null;
-      isActive: boolean;
     };
   };
-  lobbyCount?: number;
+  matchCount?: number;
   participantCount?: number;
   onManage?: () => void;
 }
 
-export function SeasonCard({ season, lobbyCount = 0, participantCount = 0, onManage }: SeasonCardProps) {
+export function SeasonCard({ season, matchCount = 0, participantCount = 0, onManage }: SeasonCardProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ja-JP', {
       year: 'numeric',
@@ -34,10 +34,10 @@ export function SeasonCard({ season, lobbyCount = 0, participantCount = 0, onMan
 
   const getSeasonStatus = () => {
     const now = new Date();
-    const startDate = new Date(season.event.startDate);
-    const endDate = season.event.endDate ? new Date(season.event.endDate) : null;
+    const startDate = new Date(season.startDate);
+    const endDate = season.endDate ? new Date(season.endDate) : null;
 
-    if (!season.event.isActive) {
+    if (!season.isActive) {
       return { label: '非アクティブ', variant: 'secondary' as const, color: 'text-gray-400' };
     }
 
@@ -53,7 +53,7 @@ export function SeasonCard({ season, lobbyCount = 0, participantCount = 0, onMan
   };
 
   const status = getSeasonStatus();
-  const maxPlayers = season.gameMode === 'GP' ? 99 : 20;
+  const maxPlayers = season.event.category === 'GP' ? 99 : 20;
 
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
@@ -69,7 +69,7 @@ export function SeasonCard({ season, lobbyCount = 0, participantCount = 0, onMan
                 {status.label}
               </Badge>
               <Badge variant="outline" className="text-gray-300">
-                {season.gameMode} ({maxPlayers}人)
+                {season.event.category} ({maxPlayers}人)
               </Badge>
             </div>
           </div>
@@ -88,12 +88,12 @@ export function SeasonCard({ season, lobbyCount = 0, participantCount = 0, onMan
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2 text-gray-300">
             <Calendar className="h-4 w-4 text-gray-500" />
-            <span>開始: {formatDate(season.event.startDate)}</span>
+            <span>開始: {formatDate(season.startDate)}</span>
           </div>
-          {season.event.endDate && (
+          {season.endDate && (
             <div className="flex items-center gap-2 text-gray-300">
               <Calendar className="h-4 w-4 text-gray-500" />
-              <span>終了: {formatDate(season.event.endDate)}</span>
+              <span>終了: {formatDate(season.endDate)}</span>
             </div>
           )}
         </div>
@@ -102,9 +102,9 @@ export function SeasonCard({ season, lobbyCount = 0, participantCount = 0, onMan
           <div className="bg-gray-700 rounded-lg p-3">
             <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
               <Trophy className="h-3 w-3" />
-              <span>ロビー数</span>
+              <span>マッチ数</span>
             </div>
-            <p className="text-white text-xl font-bold">{lobbyCount}</p>
+            <p className="text-white text-xl font-bold">{matchCount}</p>
           </div>
           <div className="bg-gray-700 rounded-lg p-3">
             <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">

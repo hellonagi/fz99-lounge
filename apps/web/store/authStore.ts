@@ -3,10 +3,9 @@ import { persist } from 'zustand/middleware';
 import type { User } from '@/types';
 
 interface AuthState {
-  token: string | null;
   user: User | null;
   isAuthenticated: boolean;
-  login: (token: string, user: User) => void;
+  setUser: (user: User | null) => void;
   logout: () => void;
   updateUser: (user: User) => void;
 }
@@ -14,22 +13,23 @@ interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
-      token: null,
       user: null,
       isAuthenticated: false,
-      login: (token, user) => {
-        localStorage.setItem('token', token);
-        set({ token, user, isAuthenticated: true });
+      setUser: (user) => {
+        set({ user, isAuthenticated: !!user });
       },
       logout: () => {
+        // Clean up legacy localStorage data
         localStorage.removeItem('token');
-        set({ token: null, user: null, isAuthenticated: false });
+        set({ user: null, isAuthenticated: false });
       },
       updateUser: (user) => set({ user }),
     }),
     {
       name: 'auth-storage',
       skipHydration: true,
+      // Only persist user info (token is now in HttpOnly cookie)
+      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
     }
   )
 );
