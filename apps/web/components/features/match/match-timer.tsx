@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 
-interface LobbyTimerProps {
+interface MatchTimerProps {
   initialSeconds?: number;
 }
 
-export function LobbyTimer({ initialSeconds = 165 }: LobbyTimerProps) {
+export function MatchTimer({ initialSeconds = 165 }: MatchTimerProps) {
   const [timeLeft, setTimeLeft] = useState(initialSeconds);
 
   useEffect(() => {

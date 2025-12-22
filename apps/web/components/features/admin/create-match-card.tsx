@@ -24,7 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { lobbiesApi } from '@/lib/api';
+import { matchesApi, seasonsApi } from '@/lib/api';
 
 const LEAGUE_OPTIONS_99 = [
   { value: 'KNIGHT', label: 'Knight League' },
@@ -41,8 +41,20 @@ const LEAGUE_OPTIONS_CLASSIC = [
   { value: 'CLASSIC_MINI', label: 'Classic Mini' },
 ];
 
-const lobbySchema = z.object({
-  gameMode: z.enum(['GP', 'CLASSIC']),
+const IN_GAME_MODE_OPTIONS = [
+  { value: 'GRAND_PRIX', label: 'Grand Prix' },
+  { value: 'MINI_PRIX', label: 'Mini Prix' },
+  { value: 'TEAM_BATTLE', label: 'Team Battle' },
+  { value: 'CLASSIC', label: 'Classic' },
+  { value: 'CLASSIC_MINI_PRIX', label: 'Classic Mini Prix' },
+  { value: 'PRO', label: 'Pro' },
+  { value: 'NINETY_NINE', label: '99' },
+];
+
+const matchSchema = z.object({
+  category: z.enum(['GP', 'CLASSIC']),
+  seasonId: z.string().min(1, 'Season is required'),
+  inGameMode: z.string().min(1, 'In-game mode is required'),
   leagueType: z.string().min(1, 'League type is required'),
   scheduledStart: z.string().min(1, 'Start time is required'),
   minPlayers: z
@@ -59,15 +71,26 @@ const lobbySchema = z.object({
   { message: 'Max players must be greater than or equal to min players', path: ['maxPlayers'] }
 );
 
-type LobbyFormData = z.infer<typeof lobbySchema>;
+type MatchFormData = z.infer<typeof matchSchema>;
 
-export function CreateLobbyCard() {
+interface Season {
+  id: number;
+  seasonNumber: number;
+  event: {
+    category: string;
+  };
+}
+
+export function CreateMatchCard() {
   const [success, setSuccess] = useState(false);
+  const [seasons, setSeasons] = useState<Season[]>([]);
 
-  const form = useForm<LobbyFormData>({
-    resolver: zodResolver(lobbySchema),
+  const form = useForm<MatchFormData>({
+    resolver: zodResolver(matchSchema),
     defaultValues: {
-      gameMode: 'GP',
+      category: 'GP',
+      seasonId: '',
+      inGameMode: 'GRAND_PRIX',
       leagueType: 'KNIGHT',
       scheduledStart: '',
       minPlayers: '40',
@@ -77,26 +100,48 @@ export function CreateLobbyCard() {
   });
 
   const { isSubmitting } = form.formState;
-  const gameMode = form.watch('gameMode');
-  const leagueOptions = gameMode === 'GP' ? LEAGUE_OPTIONS_99 : LEAGUE_OPTIONS_CLASSIC;
+  const category = form.watch('category');
+  const leagueOptions = category === 'GP' ? LEAGUE_OPTIONS_99 : LEAGUE_OPTIONS_CLASSIC;
 
-  // Update defaults when game mode changes
+  // Fetch seasons on mount
   useEffect(() => {
-    if (gameMode === 'GP') {
+    const fetchSeasons = async () => {
+      try {
+        const response = await seasonsApi.getAll();
+        setSeasons(response.data);
+      } catch (err) {
+        console.error('Failed to fetch seasons:', err);
+      }
+    };
+    fetchSeasons();
+  }, []);
+
+  // Filter seasons by category
+  const filteredSeasons = seasons.filter(
+    (s) => s.event?.category === category
+  );
+
+  // Update defaults when category changes
+  useEffect(() => {
+    if (category === 'GP') {
       form.setValue('leagueType', 'KNIGHT');
+      form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('minPlayers', '40');
       form.setValue('maxPlayers', '99');
     } else {
       form.setValue('leagueType', 'CLASSIC_MINI');
+      form.setValue('inGameMode', 'CLASSIC');
       form.setValue('minPlayers', '10');
       form.setValue('maxPlayers', '20');
     }
-  }, [gameMode, form]);
+    form.setValue('seasonId', '');
+  }, [category, form]);
 
-  const onSubmit = async (data: LobbyFormData) => {
+  const onSubmit = async (data: MatchFormData) => {
     try {
-      await lobbiesApi.create({
-        gameMode: data.gameMode,
+      await matchesApi.create({
+        seasonId: parseInt(data.seasonId),
+        inGameMode: data.inGameMode,
         leagueType: data.leagueType,
         scheduledStart: new Date(data.scheduledStart).toISOString(),
         minPlayers: parseInt(data.minPlayers),
@@ -114,7 +159,7 @@ export function CreateLobbyCard() {
     } catch (err: any) {
       form.setError('root', {
         type: 'manual',
-        message: err.response?.data?.message || 'Failed to create lobby',
+        message: err.response?.data?.message || 'Failed to create match',
       });
     }
   };
@@ -122,19 +167,19 @@ export function CreateLobbyCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create Lobby</CardTitle>
-        <CardDescription>Schedule a new match lobby</CardDescription>
+        <CardTitle>Create Match</CardTitle>
+        <CardDescription>Schedule a new match</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Game Mode */}
+            {/* Category */}
             <FormField
               control={form.control}
-              name="gameMode"
+              name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Game Mode</FormLabel>
+                  <FormLabel>Category</FormLabel>
                   <FormControl>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
@@ -159,6 +204,58 @@ export function CreateLobbyCard() {
                       </label>
                     </div>
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Season */}
+            <FormField
+              control={form.control}
+              name="seasonId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Season</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a season" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {filteredSeasons.map((season) => (
+                        <SelectItem key={season.id} value={String(season.id)}>
+                          Season {season.seasonNumber}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* In-Game Mode */}
+            <FormField
+              control={form.control}
+              name="inGameMode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>In-Game Mode</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a mode" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {IN_GAME_MODE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -244,7 +341,7 @@ export function CreateLobbyCard() {
                   <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Any special notes for this lobby..."
+                      placeholder="Any special notes for this match..."
                       rows={3}
                       {...field}
                     />
@@ -259,12 +356,12 @@ export function CreateLobbyCard() {
               <Alert variant="destructive">{form.formState.errors.root.message}</Alert>
             )}
             {success && (
-              <Alert variant="success">Lobby created successfully!</Alert>
+              <Alert variant="success">Match created successfully!</Alert>
             )}
 
             {/* Submit Button */}
             <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Creating...' : 'Create Lobby'}
+              {isSubmitting ? 'Creating...' : 'Create Match'}
             </Button>
           </form>
         </Form>

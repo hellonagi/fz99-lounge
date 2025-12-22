@@ -14,7 +14,7 @@ import {
 
 interface Participant {
   user: {
-    id: string;
+    id: number;
     profileId: number;
     displayName: string | null;
     avatarHash?: string | null;
@@ -24,6 +24,8 @@ interface Participant {
   finalPoints?: number | null;
   machine: string;
   assistEnabled: boolean;
+  totalScore?: number | null;
+  eliminatedAtRace?: number | null;
 }
 
 interface MatchResultListProps {
@@ -47,23 +49,57 @@ export function MatchResultList({
     );
   }
 
-  // API already returns participants sorted by points (desc)
-  // Just calculate positions based on the order (handle ties)
-  const participantsWithPosition = participants.map((participant, index) => {
+  // Sort participants:
+  // 1. Non-DNF users by totalScore (desc)
+  // 2. DNF race 3 users (all tied)
+  // 3. DNF race 2 users (all tied)
+  // 4. DNF race 1 users (all tied)
+  const sortedParticipants = [...participants].sort((a, b) => {
+    const aElim = a.eliminatedAtRace;
+    const bElim = b.eliminatedAtRace;
+
+    // Both finished (no DNF) - sort by score
+    if (aElim === null && bElim === null) {
+      const aScore = a.totalScore ?? a.finalPoints ?? a.reportedPoints ?? 0;
+      const bScore = b.totalScore ?? b.finalPoints ?? b.reportedPoints ?? 0;
+      return bScore - aScore;
+    }
+
+    // One finished, one DNF - finished player ranks higher
+    if (aElim === null) return -1;
+    if (bElim === null) return 1;
+
+    // Both DNF - later race = higher rank (3 > 2 > 1)
+    return bElim - aElim;
+  });
+
+  // Calculate positions with proper tie handling
+  const participantsWithPosition: (Participant & { _calculatedPosition: number })[] = [];
+
+  for (let index = 0; index < sortedParticipants.length; index++) {
+    const participant = sortedParticipants[index];
     let calculatedPosition = index + 1;
 
-    // Handle ties - if same points as previous, use same position
     if (index > 0) {
-      const currentPoints = participant.finalPoints ?? participant.reportedPoints ?? 0;
-      const previousPoints = participants[index - 1].finalPoints ?? participants[index - 1].reportedPoints ?? 0;
-      if (currentPoints === previousPoints) {
-        // Find the position of the previous participant with same points
-        calculatedPosition = (participants[index - 1] as any)._calculatedPosition;
+      const currentElim = participant.eliminatedAtRace;
+      const previousElim = sortedParticipants[index - 1].eliminatedAtRace;
+
+      // DNF users at same race are tied
+      if (currentElim !== null && currentElim === previousElim) {
+        calculatedPosition = participantsWithPosition[index - 1]._calculatedPosition;
+      }
+      // Non-DNF users with same score are tied
+      else if (currentElim === null && previousElim === null) {
+        const currentScore = participant.totalScore ?? participant.finalPoints ?? participant.reportedPoints ?? 0;
+        const previousScore = sortedParticipants[index - 1].totalScore ?? sortedParticipants[index - 1].finalPoints ?? sortedParticipants[index - 1].reportedPoints ?? 0;
+        if (currentScore === previousScore) {
+          calculatedPosition = participantsWithPosition[index - 1]._calculatedPosition;
+        }
       }
     }
 
-    return { ...participant, _calculatedPosition: calculatedPosition };
-  });
+    participantsWithPosition.push({ ...participant, _calculatedPosition: calculatedPosition });
+  }
 
   const totalPages = Math.ceil(participantsWithPosition.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -85,7 +121,8 @@ export function MatchResultList({
             profileId={participant.user.profileId}
             machine={participant.machine}
             assistEnabled={participant.assistEnabled}
-            reportedPoints={participant.reportedPoints}
+            totalScore={participant.totalScore}
+            eliminatedAtRace={participant.eliminatedAtRace}
           />
         ))}
       </div>

@@ -19,11 +19,11 @@ import Image from 'next/image';
 import { screenshotsApi } from '@/lib/api';
 
 interface ScreenshotUploadFormProps {
-  matchId: string;
+  matchId: number;
   onUploadSuccess?: () => void;
 }
 
-export function ScreenshotUploadForm({ matchId, onUploadSuccess }: ScreenshotUploadFormProps) {
+export function ScreenshotUploadForm({ matchId: gameId, onUploadSuccess }: ScreenshotUploadFormProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export function ScreenshotUploadForm({ matchId, onUploadSuccess }: ScreenshotUpl
     }
 
     try {
-      await screenshotsApi.submit(matchId, data.file);
+      await screenshotsApi.submit(gameId, data.file);
 
       setSuccess(true);
       setPreview(null);

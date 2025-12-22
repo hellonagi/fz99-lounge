@@ -8,13 +8,21 @@ const MACHINE_COLORS: Record<string, string> = {
   'Fire Stingray': 'text-red-400',
 };
 
+const MACHINE_SHORT: Record<string, string> = {
+  'Blue Falcon': 'BF',
+  'Golden Fox': 'GF',
+  'Wild Goose': 'WG',
+  'Fire Stingray': 'FS',
+};
+
 interface MatchResultRowProps {
   position?: number | null;
   displayName: string | null;
   profileId: number;
   machine: string;
   assistEnabled: boolean;
-  reportedPoints: number | null;
+  totalScore?: number | null;
+  eliminatedAtRace?: number | null;
 }
 
 export function MatchResultRow({
@@ -23,7 +31,8 @@ export function MatchResultRow({
   profileId,
   machine,
   assistEnabled,
-  reportedPoints,
+  totalScore,
+  eliminatedAtRace,
 }: MatchResultRowProps) {
   const positionColor = position
     ? position <= 3
@@ -33,47 +42,50 @@ export function MatchResultRow({
         : 'text-gray-400'
     : 'text-gray-500';
 
-  return (
-    <div className="flex justify-between items-center p-4 bg-gray-700 rounded-lg">
-      <div className="flex items-center space-x-4">
-        {/* Position */}
-        <div className="text-center min-w-[40px]">
-          {position ? (
-            <span className={cn('text-lg font-bold', positionColor)}>
-              #{position}
-            </span>
-          ) : (
-            <span className="text-gray-500">-</span>
-          )}
-        </div>
+  const shortMachine = MACHINE_SHORT[machine] || machine;
 
-        {/* Player Name */}
-        <div className="flex items-center gap-2">
-          <span className="text-white font-medium">
-            {displayName || `User#${profileId}`}
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 bg-gray-700 rounded-lg">
+      {/* Position */}
+      <div className="flex-shrink-0 w-7 text-left">
+        {position ? (
+          <span className={cn('text-sm font-bold', positionColor)}>
+            #{position}
           </span>
-          {assistEnabled && (
-            <Badge variant="outline" className="text-xs text-blue-400 border-blue-400/50 bg-blue-900/50">
-              ASSIST
-            </Badge>
-          )}
-        </div>
+        ) : (
+          <span className="text-gray-500 text-sm">-</span>
+        )}
       </div>
 
-      <div className="flex items-center space-x-4">
-        {/* Machine */}
-        <span className={cn('text-sm', MACHINE_COLORS[machine] || 'text-gray-400')}>
-          {machine}
+      {/* Name */}
+      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        <span className="text-white font-medium text-sm truncate">
+          {displayName || `User#${profileId}`}
         </span>
+        {assistEnabled && (
+          <Badge variant="outline" className="text-[10px] px-1 py-0 text-blue-400 border-blue-400/50 bg-blue-900/50 flex-shrink-0">
+            A
+          </Badge>
+        )}
+      </div>
 
-        {/* Points */}
-        <div className="text-right min-w-[80px]">
-          {reportedPoints !== null ? (
-            <span className="text-yellow-400 font-bold">{reportedPoints} pts</span>
-          ) : (
-            <span className="text-gray-500">No score</span>
-          )}
-        </div>
+      {/* Machine - fixed width for alignment */}
+      <span className={cn('text-xs flex-shrink-0 w-6 text-center font-mono sm:hidden', MACHINE_COLORS[machine] || 'text-gray-400')}>
+        {shortMachine}
+      </span>
+      <span className={cn('text-xs flex-shrink-0 hidden sm:inline sm:w-24', MACHINE_COLORS[machine] || 'text-gray-400')}>
+        {machine}
+      </span>
+
+      {/* Points or DNF */}
+      <div className="flex-shrink-0 w-16 text-right">
+        {eliminatedAtRace !== null && eliminatedAtRace !== undefined ? (
+          <span className="text-red-400 font-bold text-sm whitespace-nowrap">DNF R{eliminatedAtRace}</span>
+        ) : totalScore !== null && totalScore !== undefined ? (
+          <span className="text-white font-bold text-sm whitespace-nowrap">{totalScore} pts</span>
+        ) : (
+          <span className="text-gray-500 text-sm">-</span>
+        )}
       </div>
     </div>
   );

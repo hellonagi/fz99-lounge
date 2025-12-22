@@ -16,7 +16,7 @@ interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
-  lobbyId: string;
+  matchId: number;
   league: string;
   scheduledStart: string;
   title?: string;
@@ -28,11 +28,11 @@ export function DeleteConfirmDialog({
   open,
   onOpenChange,
   onConfirm,
-  lobbyId,
+  matchId,
   league,
   scheduledStart,
-  title = 'Delete Lobby?',
-  description = 'This action cannot be undone. This will permanently delete the lobby.',
+  title = 'Delete Match?',
+  description = 'This action cannot be undone. This will permanently delete the match.',
   confirmText = 'Delete',
 }: DeleteConfirmDialogProps) {
   return (
@@ -48,7 +48,7 @@ export function DeleteConfirmDialog({
         <div className="py-4 space-y-2">
           <div className="text-sm">
             <span className="text-gray-400">ID:</span>{' '}
-            <span className="text-white font-mono">{lobbyId.slice(0, 8)}...</span>
+            <span className="text-white font-mono">{matchId}</span>
           </div>
           <div className="text-sm">
             <span className="text-gray-400">League:</span>{' '}

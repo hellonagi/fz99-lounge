@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { LobbyTimer } from './lobby-timer';
+import { MatchTimer } from './match-timer';
 import { PlayerCount } from './player-count';
 
-interface LobbyHeroProps {
+interface MatchHeroProps {
   season?: number;
-  game?: number;
+  match?: number;
   league?: string;
   currentPlayers?: number;
   minPlayers?: number;
@@ -17,9 +17,9 @@ interface LobbyHeroProps {
   matchUrl?: string | null;
 }
 
-export function LobbyHero({
+export function MatchHero({
   season,
-  game,
+  match,
   league,
   currentPlayers,
   minPlayers,
@@ -30,7 +30,7 @@ export function LobbyHero({
   isJoining = false,
   errorMessage,
   matchUrl,
-}: LobbyHeroProps) {
+}: MatchHeroProps) {
   return (
     <section className="relative min-h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden">
       {/* Background gradient */}
@@ -47,16 +47,16 @@ export function LobbyHero({
                 {errorMessage}
               </h1>
               <p className="text-gray-400">
-                Check back soon for the next lobby
+                Check back soon for the next match
               </p>
             </div>
           ) : (
             // Normal state
             <>
-              {/* Season & Game info */}
+              {/* Season & Match info */}
               <div className="mb-6">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                  Season {season} • Game {game}
+                  Season {season} • Match {match}
                 </span>
               </div>
 
@@ -85,7 +85,7 @@ export function LobbyHero({
                   <div className="mb-2">
                     <span className="text-sm text-gray-400">Starts in</span>
                   </div>
-                  <LobbyTimer initialSeconds={countdownSeconds} />
+                  <MatchTimer initialSeconds={countdownSeconds} />
 
                   {/* Player count & Join button */}
                   {currentPlayers !== undefined && maxPlayers !== undefined && (

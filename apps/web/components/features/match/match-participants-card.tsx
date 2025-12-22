@@ -15,21 +15,30 @@ import {
 
 interface Participant {
   user: {
-    id: string;
+    id: number;
     profileId: number;
     discordId: string;
     displayName: string | null;
     avatarHash: string | null;
+    seasonStats?: Array<{
+      displayRating: number;
+    }>;
   };
 }
 
 interface MatchParticipantsCardProps {
   participants: Participant[];
+  embedded?: boolean;
 }
 
 const ITEMS_PER_PAGE = 20;
 
-export function MatchParticipantsCard({ participants }: MatchParticipantsCardProps) {
+// Helper to get rating from participant
+const getRating = (participant: Participant): number => {
+  return participant.user.seasonStats?.[0]?.displayRating ?? 0;
+};
+
+export function MatchParticipantsCard({ participants, embedded = false }: MatchParticipantsCardProps) {
   const [currentPage, setCurrentPage] = useState(1);
 
   const getUserAvatarUrl = (discordId: string, avatarHash: string | null, index: number) => {
@@ -41,27 +50,28 @@ export function MatchParticipantsCard({ participants }: MatchParticipantsCardPro
     return `https://cdn.discordapp.com/embed/avatars/${index % 6}.png`;
   };
 
-  const totalPages = Math.ceil(participants.length / ITEMS_PER_PAGE);
+  // Sort participants by rating (highest first)
+  const sortedParticipants = [...participants].sort((a, b) => getRating(b) - getRating(a));
+
+  const totalPages = Math.ceil(sortedParticipants.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentParticipants = participants.slice(startIndex, endIndex);
+  const currentParticipants = sortedParticipants.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  return (
-    <Card showGradient>
-      <CardHeader>
-        <CardTitle>Participants ({participants.length})</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {participants.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">No participants data available</p>
-        ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {currentParticipants.map((participant, index) => (
+  const content = (
+    <>
+      {sortedParticipants.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">No participants data available</p>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {currentParticipants.map((participant, index) => {
+              const rating = getRating(participant);
+              return (
                 <div
                   key={participant.user.id}
                   className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/30 hover:border-gray-600/50 transition-all duration-200 hover:shadow-lg"
@@ -76,64 +86,93 @@ export function MatchParticipantsCard({ participants }: MatchParticipantsCardPro
                       />
                     </div>
 
-                    {/* Name */}
+                    {/* Name and Rating */}
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-semibold truncate">
                         {participant.user.displayName || `Player ${participant.user.profileId}`}
                       </p>
                     </div>
+
+                    {/* Rating */}
+                    <div className="flex-shrink-0">
+                      <span className="text-white font-bold text-sm">
+                        {rating}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {totalPages > 1 && (
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <PaginationItem key={page}>
-                          <PaginationLink
-                            onClick={() => handlePageChange(page)}
-                            isActive={currentPage === page}
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      );
-                    } else if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <PaginationItem key={page}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    }
-                    return null;
-                  })}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
-            )}
+              );
+            })}
           </div>
-        )}
+
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => handlePageChange(page)}
+                          isActive={currentPage === page}
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  } else if (page === currentPage - 2 || page === currentPage + 2) {
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return null;
+                })}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="p-3 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">
+          Participants ({sortedParticipants.length})
+        </h3>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Card showGradient>
+      <CardHeader>
+        <CardTitle>Participants ({sortedParticipants.length})</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {content}
       </CardContent>
     </Card>
   );
