@@ -96,6 +96,19 @@ docker exec fz99-lounge-web npm install package-name
 docker restart fz99-lounge-web
 ```
 
+## 🎮 レーティングシミュレーション
+
+`simulations/` フォルダでPythonシミュレーションを実行する際は、**必ずvenvを有効化**すること:
+
+```bash
+cd simulations
+source venv/bin/activate
+python rating_simulator.py  # シミュレーション実行
+python visualize.py         # グラフ生成
+```
+
+出力は全て `simulations/output/` に保存される。
+
 ## 📚 参考リンク
 
 - [Prisma: Prototyping your schema](https://www.prisma.io/docs/orm/prisma-migrate/workflows/prototyping-your-schema)
