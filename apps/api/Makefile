@@ -26,13 +26,14 @@ help:
 	@echo "  make test-all       - 全テストスイート実行"
 	@echo ""
 	@echo "=== Simulators (実際のAPIを叩いてテスト) ==="
-	@echo "  make sim-fake-users COUNT=50 - フェイクユーザー作成"
+	@echo "  make sim-fake-users COUNT=50 - フェイクユーザー作成 (default: 40)"
 	@echo "  make sim-fake-users-stats    - フェイクユーザー統計表示"
 	@echo "  make sim-join COUNT=20       - WAITINGロビーに参加(時間差)"
 	@echo "  make sim-leave COUNT=10      - フェイクユーザー退出(時間差)"
 	@echo "  make sim-leave-all           - 全フェイクユーザー退出"
 	@echo "  make sim-score MODE=gradual  - スコア送信 (gradual|fast|burst)"
 	@echo "  make sim-score-latest        - 最新試合にスコア送信"
+	@echo "  make sim-score-classic       - CLASSIC専用 (16人/順位重複なし)"
 	@echo ""
 	@echo "=== Load Tests (Artillery負荷テスト) ==="
 	@echo "  make load-lobby     - ロビー操作の負荷テスト"
@@ -115,7 +116,7 @@ MODE ?= gradual
 COUNT ?= 40
 DELAY ?= 500
 
-# フェイクユーザー作成（全アクティブシーズンに対応）
+# フェイクユーザー作成
 # Usage: make sim-fake-users COUNT=50
 sim-fake-users:
 	npx dotenv -e ../../.env -- ts-node test/simulators/create-fake-users.ts --count=$(COUNT)
@@ -132,6 +133,10 @@ sim-score:
 # 最新試合にスコア送信 (ショートカット)
 sim-score-latest:
 	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-scores.ts $(MODE) --latest
+
+# CLASSICモード専用スコア送信 (16人、各レース4人脱落、順位重複なし)
+sim-score-classic:
+	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-classic-scores.ts
 
 # ロビー参加シミュレータ (既存フェイクユーザーを使用、API経由)
 # Usage: make sim-join COUNT=20 DELAY=500

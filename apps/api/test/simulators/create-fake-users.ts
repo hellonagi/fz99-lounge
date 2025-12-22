@@ -16,7 +16,7 @@ async function createFakeUsers(count: number) {
 
   for (let i = 0; i < count; i++) {
     const firstName = faker.person.firstName();
-    const displayName = `${firstName}${faker.string.numeric(2)}`;
+    const displayName = `${firstName.slice(0, 8)}${faker.string.numeric(2)}`; // Max 10 chars
     const discordId = generateFakeDiscordId();
     const username = faker.internet.username({ firstName }).toLowerCase().slice(0, 32);
 
@@ -27,10 +27,16 @@ async function createFakeUsers(count: number) {
           username,
           displayName,
           isFake: true,
+          profile: {
+            create: {
+              country: faker.location.countryCode('alpha-2'),
+            },
+          },
         },
+        include: { profile: true },
       });
       created++;
-      console.log(`  [${created}] Created: ${displayName} (ID: ${user.id})`);
+      console.log(`  [${created}] Created: ${displayName} (ID: ${user.id}, Country: ${user.profile?.country})`);
     } catch (error: any) {
       if (error.code === 'P2002') {
         skipped++;
