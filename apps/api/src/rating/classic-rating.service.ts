@@ -197,53 +197,29 @@ export class ClassicRatingService {
 
   /**
    * 参加者をソートして順位を計算
-   * - 完走者: totalScore順
-   * - DNF race 3: 全員同順位
-   * - DNF race 2: 全員同順位
-   * - DNF race 1: 全員同順位
+   * 単純にtotalScore順で順位を決定（DNFでもスコアがあるため同じロジック）
    */
   private sortAndRankParticipants(
     participants: any[],
   ): Array<any & { calculatedPosition: number }> {
-    // ソート
+    // スコア順でソート（高い順）
     const sorted = [...participants].sort((a, b) => {
-      const aElim = a.eliminatedAtRace;
-      const bElim = b.eliminatedAtRace;
-
-      // Both finished - sort by score
-      if (aElim === null && bElim === null) {
-        return (b.totalScore ?? 0) - (a.totalScore ?? 0);
-      }
-
-      // One finished, one DNF
-      if (aElim === null) return -1;
-      if (bElim === null) return 1;
-
-      // Both DNF - later race = higher rank
-      return bElim - aElim;
+      return (b.totalScore ?? 0) - (a.totalScore ?? 0);
     });
 
-    // 順位を計算
+    // 順位を計算（同スコアは同順位）
     const result: Array<any & { calculatedPosition: number }> = [];
     let currentPosition = 1;
-    let prevElim: number | null | undefined = undefined;
     let prevScore: number | null = null;
     let samePositionCount = 0;
 
     for (let i = 0; i < sorted.length; i++) {
       const p = sorted[i];
-      const elim = p.eliminatedAtRace;
       const score = p.totalScore ?? 0;
 
       let isTie = false;
-      if (i > 0) {
-        if (elim !== null && elim === prevElim) {
-          // Same DNF race = tied
-          isTie = true;
-        } else if (elim === null && prevElim === null && score === prevScore) {
-          // Both finished with same score = tied
-          isTie = true;
-        }
+      if (i > 0 && score === prevScore) {
+        isTie = true;
       }
 
       if (isTie) {
@@ -258,7 +234,6 @@ export class ClassicRatingService {
         calculatedPosition: currentPosition,
       });
 
-      prevElim = elim;
       prevScore = score;
     }
 
@@ -431,49 +406,37 @@ export class ClassicRatingService {
 
   /**
    * 比較対象のランクを選択
+   * 原則: 自分の前後3人ずつ、計6人。端の場合は片側に寄せる
    */
   private selectComparisonTargets(
     myRank: number,
     totalPlayers: number,
   ): number[] {
-    let targets: number[];
+    const aboveAvailable = myRank - 1;
+    const belowAvailable = totalPlayers - myRank;
 
-    if (myRank === 1) {
-      targets = [2, 3, 4, 5, 6, 7];
-    } else if (myRank === 2) {
-      targets = [1, 3, 4, 5, 6, 7];
-    } else if (myRank === 3) {
-      targets = [1, 2, 4, 5, 6, 7];
-    } else if (myRank === totalPlayers) {
-      targets = [];
-      for (let i = myRank - 6; i < myRank; i++) {
-        targets.push(i);
+    // 原則3人ずつだが、端の場合は調整
+    let above = Math.min(3, aboveAvailable);
+    let below = Math.min(3, belowAvailable);
+
+    // 6人に満たない場合、反対側から補充
+    if (above + below < 6) {
+      if (above < 3) {
+        below = Math.min(6 - above, belowAvailable);
+      } else {
+        above = Math.min(6 - below, aboveAvailable);
       }
-    } else if (myRank === totalPlayers - 1) {
-      targets = [];
-      for (let i = myRank - 5; i < myRank; i++) {
-        targets.push(i);
-      }
-      targets.push(myRank + 1);
-    } else if (myRank === totalPlayers - 2) {
-      targets = [];
-      for (let i = myRank - 3; i < myRank; i++) {
-        targets.push(i);
-      }
-      targets.push(myRank + 1);
-      targets.push(myRank + 2);
-    } else {
-      targets = [
-        myRank - 3,
-        myRank - 2,
-        myRank - 1,
-        myRank + 1,
-        myRank + 2,
-        myRank + 3,
-      ];
     }
 
-    return targets.filter((t) => t >= 1 && t <= totalPlayers);
+    const targets: number[] = [];
+    for (let i = 1; i <= above; i++) {
+      targets.push(myRank - i);
+    }
+    for (let i = 1; i <= below; i++) {
+      targets.push(myRank + i);
+    }
+
+    return targets;
   }
 
   /**
@@ -617,7 +580,14 @@ export class ClassicRatingService {
     position: number,
   ): number {
     // 順位に応じたポイント（高順位ほど高い）
-    const pointsEarned = Math.max(0.35, 1.0 - (position - 1) * 0.04);
+    const convergencePointsByPosition: Record<number, number> = {
+      1: 1.0, 2: 0.96, 3: 0.92, 4: 0.88, 5: 0.84,
+      6: 0.80, 7: 0.76, 8: 0.72, 9: 0.68, 10: 0.64,
+      11: 0.60, 12: 0.56,
+      13: 0.52, 14: 0.52, 15: 0.52, 16: 0.52, // 13-16位は同じ
+      17: 0.48, 18: 0.48, 19: 0.48, 20: 0.48, // 17-20位は同じ
+    };
+    const pointsEarned = convergencePointsByPosition[position] ?? 0.35;
     return currentPoints + pointsEarned;
   }
 
