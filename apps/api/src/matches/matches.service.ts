@@ -79,6 +79,13 @@ export class MatchesService {
     const { seasonId, inGameMode, leagueType, scheduledStart, minPlayers, maxPlayers, notes } =
       createMatchDto;
 
+    // Validate scheduledStart is at least 1 minute from now
+    const scheduledDate = new Date(scheduledStart);
+    const minTime = new Date(Date.now() + 60 * 1000);
+    if (scheduledDate < minTime) {
+      throw new BadRequestException('Start time must be at least 1 minute from now');
+    }
+
     // Get season with event
     const season = await this.prisma.season.findUnique({
       where: { id: seasonId },

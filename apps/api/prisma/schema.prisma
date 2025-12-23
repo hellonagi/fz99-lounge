@@ -509,10 +509,11 @@ model RaceResult {
   gameParticipantId Int
   gameParticipant   GameParticipant @relation(fields: [gameParticipantId], references: [id], onDelete: Cascade)
 
-  raceNumber    Int      // 1-5 (GRAND_PRIX) or 1 (単発モード)
-  position      Int?     // このレースの順位
-  points        Int?     // このレースのポイント
-  isEliminated  Boolean  @default(false) // クラッシュアウト/ランクアウトで脱落
+  raceNumber     Int      // 1-5 (GRAND_PRIX) or 1 (単発モード)
+  position       Int?     // このレースの順位
+  points         Int?     // このレースのポイント
+  isEliminated   Boolean  @default(false) // クラッシュアウト/ランクアウトで脱落
+  isDisconnected Boolean  @default(false) // 切断により脱落
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

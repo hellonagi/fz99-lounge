@@ -200,9 +200,9 @@ data-clean-force:
 
 data-reset: data-clean-force prisma-seed
 
-# Usage: make data-clear-scores OPTS="--latest"
+# スコアデータをクリア（game_participants, race_results）
 data-clear-scores:
-	npx ts-node scripts/clear-match-scores.ts $(OPTS)
+	docker exec fz99-lounge-db psql -U dbuser -d fz99_lounge -c 'DELETE FROM race_results; DELETE FROM game_participants;'
 
 # 全ユーザーのレートを初期化
 data-reset-ratings:

@@ -2,11 +2,12 @@
 
 /**
  * Simulate CLASSIC mode score submissions with realistic race progression
- * - Race1: 16 players, positions 1-16, bottom 4 eliminated
- * - Race2: 12 players, positions 1-12, bottom 4 eliminated
- * - Race3: 8 players, positions 1-8, bottom 4 eliminated
- * - No duplicate positions per race
- * - Considers real user submissions
+ * - Race1: positions 1-20, 17-20位がDNF (4人脱落)
+ * - Race2: positions 1-16, 13-16位がDNF (4人脱落)
+ * - Race3: positions 1-12, 9-12位がDNF (4人脱落)
+ * - DNFでも順位に応じたポイントを獲得
+ * - DNF後のレースは position: null (参加していない)
+ * - 順位は単純にtotalScore順
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -139,82 +140,48 @@ class ClassicScoreSimulator {
 
   /**
    * Generate race assignments for all fake users
-   * Ensures no duplicate positions per race
-   * Considers real user submissions
+   * Race1: 1-20位, 17-20位がDNF
+   * Race2: 1-16位, 13-16位がDNF
+   * Race3: 1-12位, 9-12位がDNF
+   * DNF後のレースはposition: null（参加していない）
    */
   generateRaceAssignments(): RaceAssignment[] {
     const totalParticipants = this.game.match.participants.length;
     const fakeCount = this.fakeUsers.length;
 
-    console.log(`\n📋 Generating race assignments for ${fakeCount} fake users...`);
+    console.log(`\n📋 Generating race assignments for ${fakeCount} fake users (${totalParticipants} total participants)...`);
 
-    // Get positions already taken by real users for each race
+    // Fixed position ranges for CLASSIC mode
+    const race1Max = 20;
+    const race1DnfMin = 17; // 17-20がDNF
+    const race2Max = 16;
+    const race2DnfMin = 13; // 13-16がDNF
+    const race3Max = 12;
+    const race3DnfMin = 9; // 9-12がDNF
+
+    console.log(`   Race1: 1-${race1Max} (DNF: ${race1DnfMin}-${race1Max})`);
+    console.log(`   Race2: 1-${race2Max} (DNF: ${race2DnfMin}-${race2Max})`);
+    console.log(`   Race3: 1-${race3Max} (DNF: ${race3DnfMin}-${race3Max})`);
+
+    // Track taken positions
     const takenPositions: Map<number, Set<number>> = new Map([
       [1, new Set()],
       [2, new Set()],
       [3, new Set()],
     ]);
 
-    // Also track which real users are eliminated at which race
-    const realUserEliminations: Map<number, number | null> = new Map(); // userId -> eliminatedAtRace
-
-    for (const [userId, raceResults] of this.realUserSubmissions) {
-      let eliminatedAt: number | null = null;
+    // Collect real user submissions
+    for (const [, raceResults] of this.realUserSubmissions) {
       for (const result of raceResults) {
-        if (result.isEliminated) {
-          eliminatedAt = result.raceNumber;
-          break;
-        }
         if (result.position) {
           takenPositions.get(result.raceNumber)?.add(result.position);
         }
       }
-      realUserEliminations.set(userId, eliminatedAt);
     }
 
-    console.log(`   Race 1 taken positions: ${Array.from(takenPositions.get(1) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
-    console.log(`   Race 2 taken positions: ${Array.from(takenPositions.get(2) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
-    console.log(`   Race 3 taken positions: ${Array.from(takenPositions.get(3) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
-
-    // Calculate how many fake users need to be eliminated at each race
-    // Total 16 players: Race1 eliminates 4, Race2 eliminates 4, Race3 eliminates 4, 4 survive
-    const realUsersEliminatedAt1 = Array.from(realUserEliminations.values()).filter(r => r === 1).length;
-    const realUsersEliminatedAt2 = Array.from(realUserEliminations.values()).filter(r => r === 2).length;
-    const realUsersEliminatedAt3 = Array.from(realUserEliminations.values()).filter(r => r === 3).length;
-    const realUsersSurvived = Array.from(realUserEliminations.values()).filter(r => r === null).length;
-
-    const fakeToEliminateAt1 = Math.max(0, 4 - realUsersEliminatedAt1);
-    const fakeToEliminateAt2 = Math.max(0, 4 - realUsersEliminatedAt2);
-    const fakeToEliminateAt3 = Math.max(0, 4 - realUsersEliminatedAt3);
-    const fakeToSurvive = fakeCount - fakeToEliminateAt1 - fakeToEliminateAt2 - fakeToEliminateAt3;
-
-    console.log(`\n   Elimination distribution:`);
-    console.log(`   - Race 1: ${fakeToEliminateAt1} fake users (+ ${realUsersEliminatedAt1} real)`);
-    console.log(`   - Race 2: ${fakeToEliminateAt2} fake users (+ ${realUsersEliminatedAt2} real)`);
-    console.log(`   - Race 3: ${fakeToEliminateAt3} fake users (+ ${realUsersEliminatedAt3} real)`);
-    console.log(`   - Survive: ${fakeToSurvive} fake users (+ ${realUsersSurvived} real)`);
-
-    // Shuffle fake users
-    const shuffledFakeUsers = [...this.fakeUsers].sort(() => Math.random() - 0.5);
-
-    // Assign elimination fate to each fake user
-    const assignments: RaceAssignment[] = [];
-    let idx = 0;
-
-    // Users eliminated at Race 1 (positions 13-16)
-    const race1EliminatedUsers = shuffledFakeUsers.slice(idx, idx + fakeToEliminateAt1);
-    idx += fakeToEliminateAt1;
-
-    // Users eliminated at Race 2 (positions 9-12 in race 2)
-    const race2EliminatedUsers = shuffledFakeUsers.slice(idx, idx + fakeToEliminateAt2);
-    idx += fakeToEliminateAt2;
-
-    // Users eliminated at Race 3 (positions 5-8 in race 3)
-    const race3EliminatedUsers = shuffledFakeUsers.slice(idx, idx + fakeToEliminateAt3);
-    idx += fakeToEliminateAt3;
-
-    // Survivors
-    const survivorUsers = shuffledFakeUsers.slice(idx);
+    console.log(`   Race 1 taken: ${Array.from(takenPositions.get(1) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
+    console.log(`   Race 2 taken: ${Array.from(takenPositions.get(2) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
+    console.log(`   Race 3 taken: ${Array.from(takenPositions.get(3) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
 
     // Helper to get available positions
     const getAvailablePositions = (raceNum: number, min: number, max: number): number[] => {
@@ -227,7 +194,8 @@ class ClassicScoreSimulator {
     };
 
     // Helper to pick and mark position as taken
-    const pickPosition = (raceNum: number, available: number[]): number => {
+    const pickPosition = (raceNum: number, available: number[]): number | undefined => {
+      if (available.length === 0) return undefined;
       const idx = Math.floor(Math.random() * available.length);
       const pos = available[idx];
       available.splice(idx, 1);
@@ -235,59 +203,89 @@ class ClassicScoreSimulator {
       return pos;
     };
 
-    // Generate assignments for Race 1 eliminated users
-    const race1BottomPositions = getAvailablePositions(1, 13, 16);
-    for (const user of race1EliminatedUsers) {
-      const pos = pickPosition(1, race1BottomPositions);
+    // Calculate distribution: 4 DNF each race, rest survive
+    const race1DnfSlots = getAvailablePositions(1, race1DnfMin, race1Max).length;
+    const race2DnfSlots = getAvailablePositions(2, race2DnfMin, race2Max).length;
+    const race3DnfSlots = getAvailablePositions(3, race3DnfMin, race3Max).length;
+    const surviveSlots = getAvailablePositions(3, 1, race3DnfMin - 1).length;
+
+    let fakeToEliminateAt1 = Math.min(race1DnfSlots, 4);
+    let fakeToEliminateAt2 = Math.min(race2DnfSlots, 4);
+    let fakeToEliminateAt3 = Math.min(race3DnfSlots, 4);
+    let fakeToSurvive = fakeCount - fakeToEliminateAt1 - fakeToEliminateAt2 - fakeToEliminateAt3;
+
+    // Adjust if not enough survivors or too many
+    if (fakeToSurvive < 0) {
+      // Reduce eliminations
+      const excess = -fakeToSurvive;
+      fakeToEliminateAt1 = Math.max(0, fakeToEliminateAt1 - Math.ceil(excess / 3));
+      fakeToEliminateAt2 = Math.max(0, fakeToEliminateAt2 - Math.ceil(excess / 3));
+      fakeToEliminateAt3 = Math.max(0, fakeToEliminateAt3 - Math.ceil(excess / 3));
+      fakeToSurvive = fakeCount - fakeToEliminateAt1 - fakeToEliminateAt2 - fakeToEliminateAt3;
+    }
+
+    console.log(`\n   Distribution: R1 DNF=${fakeToEliminateAt1}, R2 DNF=${fakeToEliminateAt2}, R3 DNF=${fakeToEliminateAt3}, Survive=${fakeToSurvive}`);
+
+    // Shuffle and assign
+    const shuffledFakeUsers = [...this.fakeUsers].sort(() => Math.random() - 0.5);
+    const assignments: RaceAssignment[] = [];
+    let userIdx = 0;
+
+    // Race 1 DNF users (17-20位)
+    // DNF: isEliminated: true を設定、後続レースは position: null
+    const r1DnfPositions = getAvailablePositions(1, race1DnfMin, race1Max);
+    for (let i = 0; i < fakeToEliminateAt1 && userIdx < shuffledFakeUsers.length; i++) {
+      const user = shuffledFakeUsers[userIdx++];
+      const pos1 = pickPosition(1, r1DnfPositions);
       assignments.push({
         user,
         raceResults: [
-          { raceNumber: 1, position: pos, isEliminated: true },
-          { raceNumber: 2, isEliminated: true },
-          { raceNumber: 3, isEliminated: true },
+          { raceNumber: 1, position: pos1, isEliminated: true }, // Race 1で脱落
+          { raceNumber: 2, position: null, isEliminated: false }, // 参加していない
+          { raceNumber: 3, position: null, isEliminated: false }, // 参加していない
         ],
       });
     }
 
-    // Generate assignments for Race 2 eliminated users
-    const race1MidHighPositions = getAvailablePositions(1, 1, 12);
-    const race2BottomPositions = getAvailablePositions(2, 9, 12);
-    for (const user of race2EliminatedUsers) {
-      const pos1 = pickPosition(1, race1MidHighPositions);
-      const pos2 = pickPosition(2, race2BottomPositions);
+    // Race 2 DNF users (13-16位)
+    const r2DnfPositions = getAvailablePositions(2, race2DnfMin, race2Max);
+    for (let i = 0; i < fakeToEliminateAt2 && userIdx < shuffledFakeUsers.length; i++) {
+      const user = shuffledFakeUsers[userIdx++];
+      const pos1 = pickPosition(1, getAvailablePositions(1, 1, race1DnfMin - 1));
+      const pos2 = pickPosition(2, r2DnfPositions);
       assignments.push({
         user,
         raceResults: [
           { raceNumber: 1, position: pos1, isEliminated: false },
-          { raceNumber: 2, position: pos2, isEliminated: true },
-          { raceNumber: 3, isEliminated: true },
+          { raceNumber: 2, position: pos2, isEliminated: true }, // Race 2で脱落
+          { raceNumber: 3, position: null, isEliminated: false }, // 参加していない
         ],
       });
     }
 
-    // Generate assignments for Race 3 eliminated users
-    const race2MidHighPositions = getAvailablePositions(2, 1, 8);
-    const race3BottomPositions = getAvailablePositions(3, 5, 8);
-    for (const user of race3EliminatedUsers) {
-      const pos1 = pickPosition(1, getAvailablePositions(1, 1, 12));
-      const pos2 = pickPosition(2, race2MidHighPositions);
-      const pos3 = pickPosition(3, race3BottomPositions);
+    // Race 3 DNF users (9-12位)
+    const r3DnfPositions = getAvailablePositions(3, race3DnfMin, race3Max);
+    for (let i = 0; i < fakeToEliminateAt3 && userIdx < shuffledFakeUsers.length; i++) {
+      const user = shuffledFakeUsers[userIdx++];
+      const pos1 = pickPosition(1, getAvailablePositions(1, 1, race1DnfMin - 1));
+      const pos2 = pickPosition(2, getAvailablePositions(2, 1, race2DnfMin - 1));
+      const pos3 = pickPosition(3, r3DnfPositions);
       assignments.push({
         user,
         raceResults: [
           { raceNumber: 1, position: pos1, isEliminated: false },
           { raceNumber: 2, position: pos2, isEliminated: false },
-          { raceNumber: 3, position: pos3, isEliminated: true },
+          { raceNumber: 3, position: pos3, isEliminated: true }, // Race 3で脱落
         ],
       });
     }
 
-    // Generate assignments for survivors
-    const race3TopPositions = getAvailablePositions(3, 1, 4);
-    for (const user of survivorUsers) {
-      const pos1 = pickPosition(1, getAvailablePositions(1, 1, 12));
-      const pos2 = pickPosition(2, getAvailablePositions(2, 1, 8));
-      const pos3 = pickPosition(3, race3TopPositions);
+    // Survivors (1-8位)
+    for (; userIdx < shuffledFakeUsers.length; userIdx++) {
+      const user = shuffledFakeUsers[userIdx];
+      const pos1 = pickPosition(1, getAvailablePositions(1, 1, race1DnfMin - 1));
+      const pos2 = pickPosition(2, getAvailablePositions(2, 1, race2DnfMin - 1));
+      const pos3 = pickPosition(3, getAvailablePositions(3, 1, race3DnfMin - 1));
       assignments.push({
         user,
         raceResults: [
@@ -341,12 +339,19 @@ class ClassicScoreSimulator {
   }
 
   formatRaceResults(raceResults: RaceResult[]): string {
+    // DNF positions: R1=17-20, R2=13-16, R3=9-12
+    const dnfPositions: Record<number, number[]> = {
+      1: [17, 18, 19, 20],
+      2: [13, 14, 15, 16],
+      3: [9, 10, 11, 12],
+    };
+
     const parts: string[] = [];
     for (const r of raceResults) {
-      if (r.isEliminated && !r.position) {
+      if (r.position === null || r.position === undefined) {
         parts.push('-');
-      } else if (r.isEliminated) {
-        parts.push(`${r.position}*`);
+      } else if (dnfPositions[r.raceNumber]?.includes(r.position)) {
+        parts.push(`${r.position}*`); // DNF position
       } else {
         parts.push(`${r.position}`);
       }
@@ -357,11 +362,9 @@ class ClassicScoreSimulator {
   calculateTotalPoints(raceResults: RaceResult[]): number {
     let total = 0;
     for (const race of raceResults) {
-      if (!race.isEliminated && race.position) {
-        // Assuming 1st = 100, 2nd = 95, ... 20th = 5
-        total += 105 - race.position * 5;
-      } else if (race.isEliminated && race.position) {
-        // Eliminated but has position (e.g., Race 1 elimination)
+      if (race.position) {
+        // 順位があればポイントを獲得（DNFでも）
+        // 1st = 100, 2nd = 95, ... 20th = 5
         total += 105 - race.position * 5;
       }
     }
@@ -399,10 +402,7 @@ class ClassicScoreSimulator {
       where: {
         gameId: this.game.id,
       },
-      orderBy: [
-        { totalScore: 'desc' },
-        { eliminatedAtRace: 'desc' },
-      ],
+      orderBy: { totalScore: 'desc' },
       include: {
         user: {
           select: {
@@ -417,38 +417,43 @@ class ClassicScoreSimulator {
       },
     });
 
-    // Sort: Non-DNF by score, then DNF race 3, then DNF race 2, then DNF race 1
+    // Sort by totalScore only (DNFでもスコアがあるため)
     const sorted = [...participants].sort((a, b) => {
-      const aElim = a.eliminatedAtRace;
-      const bElim = b.eliminatedAtRace;
-
-      if (aElim === null && bElim === null) {
-        return (b.totalScore ?? 0) - (a.totalScore ?? 0);
-      }
-      if (aElim === null) return -1;
-      if (bElim === null) return 1;
-      return bElim - aElim;
+      return (b.totalScore ?? 0) - (a.totalScore ?? 0);
     });
 
-    console.log('\n📊 Final Rankings:');
-    console.log('==================');
+    console.log('\n📊 Final Rankings (by Total Score):');
+    console.log('====================================');
 
     let rank = 1;
+    let prevScore: number | null = null;
+    let displayRank = 1;
+
     for (const p of sorted) {
       const displayName = p.user.displayName || p.user.discordId;
       const fakeTag = p.user.isFake ? '' : ' [REAL]';
+      const score = p.totalScore ?? 0;
       const elim = p.eliminatedAtRace;
-      const scoreText = elim !== null ? `DNF R${elim}` : `${p.totalScore ?? 0} pts`;
+      const dnfTag = elim !== null ? ` (DNF R${elim})` : '';
+
+      // 同スコアは同順位
+      if (prevScore !== null && score === prevScore) {
+        // 同順位を維持
+      } else {
+        displayRank = rank;
+      }
 
       const races = p.raceResults.map(r => {
-        if (r.isEliminated && !r.position) return '-';
+        if (r.position === null) return '-';
         if (r.isEliminated) return `${r.position}*`;
         return `${r.position}`;
       }).join(', ');
 
       console.log(
-        `   #${String(rank).padStart(2)} | ${scoreText.padStart(8)} | [${races.padEnd(10)}] | ${displayName}${fakeTag}`
+        `   #${String(displayRank).padStart(2)} | ${String(score).padStart(3)} pts | [${races.padEnd(12)}] | ${displayName}${dnfTag}${fakeTag}`
       );
+
+      prevScore = score;
       rank++;
     }
   }

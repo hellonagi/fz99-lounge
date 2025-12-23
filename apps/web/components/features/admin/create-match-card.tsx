@@ -56,7 +56,14 @@ const matchSchema = z.object({
   seasonId: z.string().min(1, 'Season is required'),
   inGameMode: z.string().min(1, 'In-game mode is required'),
   leagueType: z.string().min(1, 'League type is required'),
-  scheduledStart: z.string().min(1, 'Start time is required'),
+  scheduledStart: z
+    .string()
+    .min(1, 'Start time is required')
+    .refine((val) => {
+      const scheduledDate = new Date(val);
+      const minTime = new Date(Date.now() + 60 * 1000); // 現在時刻 + 1分
+      return scheduledDate >= minTime;
+    }, 'Start time must be at least 1 minute from now'),
   minPlayers: z
     .string()
     .min(1, 'Min players is required')

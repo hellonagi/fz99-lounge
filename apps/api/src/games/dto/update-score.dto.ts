@@ -20,10 +20,14 @@ export class RaceResultUpdateDto {
   @IsInt()
   @Min(1)
   @Max(20)
-  position?: number; // 1-20, null if eliminated
+  position?: number; // 1-20, null if eliminated or disconnected
 
   @IsBoolean()
   isEliminated: boolean; // true if ranked out or crashed out
+
+  @IsOptional()
+  @IsBoolean()
+  isDisconnected?: boolean; // true if disconnected during race
 }
 
 export class UpdateScoreDto {

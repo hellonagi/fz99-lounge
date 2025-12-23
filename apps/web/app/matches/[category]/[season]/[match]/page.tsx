@@ -5,8 +5,6 @@ import { useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { MatchHeaderCard } from '@/components/features/match/match-header-card';
 import { MatchPasscodeCard } from '@/components/features/match/match-passcode-card';
-import { MatchParticipantsCard } from '@/components/features/match/match-participants-card';
-import { MatchResultList } from '@/components/features/match/match-result-list';
 import { MatchDetailsTable } from '@/components/features/match/match-details-table';
 import { ModeratorPanel } from '@/components/features/match/moderator-panel';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
@@ -34,16 +32,20 @@ interface Game {
     maxPlayers: number;
     currentPlayers: number;
     scheduledStart: string;
+    deadline: string;
     season: {
       seasonNumber: number;
     } | null;
     participants: Array<{
       user: {
         id: number;
-        profileId: number;
         discordId: string;
         displayName: string | null;
         avatarHash: string | null;
+        profile?: { country: string | null } | null;
+        seasonStats?: Array<{
+          displayRating: number;
+        }>;
       };
     }>;
   };
@@ -83,7 +85,7 @@ export default function GamePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('participants');
+  const [activeTab, setActiveTab] = useState<string>('results');
   const initialTabSet = useRef(false);
 
   const fetchGame = async () => {
@@ -111,15 +113,11 @@ export default function GamePage() {
     fetchGame();
   }, [category, season, match]);
 
-  // Set default tab based on game status (only on first load)
+  // Set default tab on first load
   useEffect(() => {
     if (game && !initialTabSet.current) {
       initialTabSet.current = true;
-      if (game.match.status === 'IN_PROGRESS' || game.match.status === 'COMPLETED') {
-        setActiveTab('results');
-      } else {
-        setActiveTab('participants');
-      }
+      setActiveTab('results');
     }
   }, [game]);
 
@@ -261,28 +259,21 @@ export default function GamePage() {
           {/* Passcode Card */}
           <MatchPasscodeCard passcode={game.passcode} />
 
-          {/* Participants / Results / Details / Moderator Tabs */}
+          {/* Results / Moderator Tabs */}
           <Card>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="w-full justify-start">
-                <TabsTrigger value="participants">Participants</TabsTrigger>
                 <TabsTrigger value="results">Results</TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
                 {user && (user.role === 'MODERATOR' || user.role === 'ADMIN') && (
                   <TabsTrigger value="moderator" className="text-orange-400">Mod</TabsTrigger>
                 )}
               </TabsList>
 
-              <TabsContent value="participants" className="p-0">
-                <MatchParticipantsCard participants={game.match.participants} embedded />
-              </TabsContent>
-
               <TabsContent value="results">
-                <MatchResultList participants={game.participants || []} />
-              </TabsContent>
-
-              <TabsContent value="details">
-                <MatchDetailsTable participants={game.participants || []} />
+                <MatchDetailsTable
+                  gameParticipants={game.participants}
+                  matchParticipants={game.match.participants}
+                />
               </TabsContent>
 
               {user && (user.role === 'MODERATOR' || user.role === 'ADMIN') && (
@@ -310,7 +301,7 @@ export default function GamePage() {
                   mode={category}
                   season={season}
                   game={match}
-                  participants={game.match.participants}
+                  deadline={game.match.deadline}
                   onScoreSubmitted={handleScoreSubmitted}
                 />
               </CardContent>

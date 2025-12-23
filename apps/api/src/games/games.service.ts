@@ -119,6 +119,9 @@ export class GamesService {
                     discordId: true,
                     displayName: true,
                     avatarHash: true,
+                    profile: {
+                      select: { country: true },
+                    },
                     seasonStats: {
                       where: {
                         season: {
@@ -285,6 +288,40 @@ export class GamesService {
 
     // Handle race results for CLASSIC mode
     if (submitScoreDto.raceResults && submitScoreDto.raceResults.length > 0) {
+      const race1 = submitScoreDto.raceResults.find(r => r.raceNumber === 1);
+      const race2 = submitScoreDto.raceResults.find(r => r.raceNumber === 2);
+      const race3 = submitScoreDto.raceResults.find(r => r.raceNumber === 3);
+
+      // Validate: Race 1 position is required unless disconnected
+      if (!race1?.isDisconnected) {
+        if (!race1 || race1.position === undefined || race1.position === null) {
+          throw new BadRequestException('Race 1 position is required');
+        }
+        if (race1.position < 1 || race1.position > 20) {
+          throw new BadRequestException('Race 1 position must be between 1 and 20');
+        }
+      }
+
+      // Validate: Race 2 position is required if race1 is not eliminated/dc AND race2 is not dc
+      if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isDisconnected) {
+        if (!race2 || race2.position === undefined || race2.position === null) {
+          throw new BadRequestException('Race 2 position is required');
+        }
+        if (race2.position < 1 || race2.position > 20) {
+          throw new BadRequestException('Race 2 position must be between 1 and 20');
+        }
+      }
+
+      // Validate: Race 3 position is required if race1/2 are not eliminated/dc AND race3 is not dc
+      if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isEliminated && !race2?.isDisconnected && !race3?.isDisconnected) {
+        if (!race3 || race3.position === undefined || race3.position === null) {
+          throw new BadRequestException('Race 3 position is required');
+        }
+        if (race3.position < 1 || race3.position > 20) {
+          throw new BadRequestException('Race 3 position must be between 1 and 20');
+        }
+      }
+
       // Delete existing race results for this participant
       await this.prisma.raceResult.deleteMany({
         where: { gameParticipantId: participantId },
@@ -295,25 +332,51 @@ export class GamesService {
 
       // Create new race results and calculate totals
       for (const raceResult of submitScoreDto.raceResults) {
-        const points = raceResult.isEliminated ? 0 : (raceResult.position ? this.calculateRacePoints(raceResult.position) : 0);
+        // 既にDNF/DCしている場合、以降のレースはnull（参加していない）
+        const isAfterElimination = eliminatedAtRace !== null;
+
+        // ポイント計算
+        let points = 0;
+        let position: number | null = null;
+        let isEliminated = false;
+        let isDisconnected = false;
+
+        if (isAfterElimination) {
+          // DNF/DC後のレースは参加していない扱い
+          points = 0;
+          position = null;
+          isEliminated = false;
+          isDisconnected = false;
+        } else if (raceResult.isDisconnected) {
+          // Disconnected: 0点、順位なし
+          points = 0;
+          position = null;
+          isEliminated = false;
+          isDisconnected = true;
+          eliminatedAtRace = raceResult.raceNumber;
+        } else if (raceResult.position) {
+          // 順位がある場合
+          points = this.calculateRacePoints(raceResult.position);
+          position = raceResult.position;
+          isEliminated = raceResult.isEliminated ?? false;
+          isDisconnected = false;
+          if (isEliminated) {
+            eliminatedAtRace = raceResult.raceNumber;
+          }
+        }
 
         await this.prisma.raceResult.create({
           data: {
             gameParticipantId: participantId,
             raceNumber: raceResult.raceNumber,
-            position: raceResult.isEliminated ? null : (raceResult.position || null),
+            position,
             points,
-            isEliminated: raceResult.isEliminated,
+            isEliminated,
+            isDisconnected,
           },
         });
 
-        // Add to total (only non-eliminated races count)
         totalScore += points;
-
-        // Track first elimination
-        if (raceResult.isEliminated && eliminatedAtRace === null) {
-          eliminatedAtRace = raceResult.raceNumber;
-        }
       }
 
       // Update participant with calculated totals
@@ -350,9 +413,6 @@ export class GamesService {
       gameId,
       participant: updatedParticipant,
     });
-
-    // Check if all participants have submitted
-    await this.checkAndCompleteGame(gameId, game.matchId, game.match.participants.length);
 
     return updatedParticipant;
   }
@@ -435,6 +495,41 @@ export class GamesService {
       throw new NotFoundException('Participant not found in this game');
     }
 
+    // Validate race results
+    const race1 = updateScoreDto.raceResults.find(r => r.raceNumber === 1);
+    const race2 = updateScoreDto.raceResults.find(r => r.raceNumber === 2);
+    const race3 = updateScoreDto.raceResults.find(r => r.raceNumber === 3);
+
+    // Validate: Race 1 position is required unless disconnected
+    if (!race1?.isDisconnected) {
+      if (!race1 || race1.position === undefined || race1.position === null) {
+        throw new BadRequestException('Race 1 position is required');
+      }
+      if (race1.position < 1 || race1.position > 20) {
+        throw new BadRequestException('Race 1 position must be between 1 and 20');
+      }
+    }
+
+    // Validate: Race 2 position is required if race1 is not eliminated/dc AND race2 is not dc
+    if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isDisconnected) {
+      if (!race2 || race2.position === undefined || race2.position === null) {
+        throw new BadRequestException('Race 2 position is required');
+      }
+      if (race2.position < 1 || race2.position > 20) {
+        throw new BadRequestException('Race 2 position must be between 1 and 20');
+      }
+    }
+
+    // Validate: Race 3 position is required if race1/2 are not eliminated/dc AND race3 is not dc
+    if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isEliminated && !race2?.isDisconnected && !race3?.isDisconnected) {
+      if (!race3 || race3.position === undefined || race3.position === null) {
+        throw new BadRequestException('Race 3 position is required');
+      }
+      if (race3.position < 1 || race3.position > 20) {
+        throw new BadRequestException('Race 3 position must be between 1 and 20');
+      }
+    }
+
     // Delete existing race results
     await this.prisma.raceResult.deleteMany({
       where: { gameParticipantId: participant.id },
@@ -445,29 +540,51 @@ export class GamesService {
 
     // Create new race results and calculate totals
     for (const raceResult of updateScoreDto.raceResults) {
-      const points = raceResult.isEliminated
-        ? 0
-        : raceResult.position
-          ? this.calculateRacePoints(raceResult.position)
-          : 0;
+      // 既にDNF/DCしている場合、以降のレースはnull（参加していない）
+      const isAfterElimination = eliminatedAtRace !== null;
+
+      // ポイント計算
+      let points = 0;
+      let position: number | null = null;
+      let isEliminated = false;
+      let isDisconnected = false;
+
+      if (isAfterElimination) {
+        // DNF/DC後のレースは参加していない扱い
+        points = 0;
+        position = null;
+        isEliminated = false;
+        isDisconnected = false;
+      } else if (raceResult.isDisconnected) {
+        // Disconnected: 0点、順位なし
+        points = 0;
+        position = null;
+        isEliminated = false;
+        isDisconnected = true;
+        eliminatedAtRace = raceResult.raceNumber;
+      } else if (raceResult.position) {
+        // 順位がある場合
+        points = this.calculateRacePoints(raceResult.position);
+        position = raceResult.position;
+        isEliminated = raceResult.isEliminated ?? false;
+        isDisconnected = false;
+        if (isEliminated) {
+          eliminatedAtRace = raceResult.raceNumber;
+        }
+      }
 
       await this.prisma.raceResult.create({
         data: {
           gameParticipantId: participant.id,
           raceNumber: raceResult.raceNumber,
-          position: raceResult.isEliminated ? null : (raceResult.position || null),
+          position,
           points,
-          isEliminated: raceResult.isEliminated,
+          isEliminated,
+          isDisconnected,
         },
       });
 
-      // Add to total (only non-eliminated races count)
       totalScore += points;
-
-      // Track first elimination
-      if (raceResult.isEliminated && eliminatedAtRace === null) {
-        eliminatedAtRace = raceResult.raceNumber;
-      }
     }
 
     // Update participant with calculated totals
@@ -517,40 +634,6 @@ export class GamesService {
   private calculateRacePoints(position: number): number {
     if (position < 1 || position > 20) return 0;
     return 105 - (position * 5); // 1st=100, 2nd=95, 3rd=90...
-  }
-
-  /**
-   * Check if all participants have submitted scores and auto-complete the game
-   * Note: Rating calculation is now triggered at Match.deadline, not on score submission
-   */
-  private async checkAndCompleteGame(
-    gameId: number,
-    matchId: number,
-    totalParticipants: number,
-  ) {
-    // Count how many participants have submitted scores
-    const submittedCount = await this.prisma.gameParticipant.count({
-      where: {
-        gameId,
-        status: ResultStatus.SUBMITTED,
-      },
-    });
-
-    // If all participants have submitted, mark match as completed
-    // Note: Final rating calculation happens at Match.deadline via scheduled job
-    if (submittedCount >= totalParticipants) {
-      await this.prisma.match.update({
-        where: { id: matchId },
-        data: { status: MatchStatus.COMPLETED },
-      });
-
-      // Emit event for real-time status update
-      this.eventEmitter.emit('game.completed', {
-        gameId,
-        matchId,
-        completedAt: new Date(),
-      });
-    }
   }
 
   /**
