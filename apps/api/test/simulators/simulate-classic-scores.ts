@@ -8,12 +8,15 @@
  * - DNFでも順位に応じたポイントを獲得
  * - DNF後のレースは position: null (参加していない)
  * - 順位は単純にtotalScore順
+ * - スクショ提出もシミュレート
  */
 
 import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 import axios from 'axios';
 import * as jwt from 'jsonwebtoken';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const prisma = new PrismaClient();
 
@@ -21,6 +24,9 @@ const API_URL = process.env.API_URL || 'http://localhost:3000';
 const JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
 
 const F99_MACHINES = ['Blue Falcon', 'Golden Fox', 'Wild Goose', 'Fire Stingray'];
+
+// Test image for screenshot simulation
+const TEST_IMAGE_PATH = path.join(__dirname, '../fixtures/test-screenshot.png');
 
 interface RaceResult {
   raceNumber: number;
@@ -395,6 +401,107 @@ class ClassicScoreSimulator {
     }
   }
 
+  /**
+   * Submit screenshot for a user
+   */
+  async submitScreenshot(user: UserWithToken, type: 'INDIVIDUAL' | 'FINAL_SCORE'): Promise<boolean> {
+    if (!fs.existsSync(TEST_IMAGE_PATH)) {
+      console.log(`   ⚠️  Test image not found: ${TEST_IMAGE_PATH}`);
+      return false;
+    }
+
+    try {
+      // Read file and create FormData
+      const fileBuffer = fs.readFileSync(TEST_IMAGE_PATH);
+      const blob = new Blob([fileBuffer], { type: 'image/png' });
+
+      const formData = new FormData();
+      formData.append('file', blob, 'screenshot.png');
+      formData.append('gameId', String(this.game.id));
+      formData.append('type', type);
+
+      await axios.post(
+        `${API_URL}/api/screenshots/submit`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      return true;
+    } catch (error: any) {
+      // Ignore duplicate submission errors
+      if (error.response?.status === 409 || error.response?.data?.message?.includes('already')) {
+        return true;
+      }
+      console.error(`   ❌ Screenshot failed for ${user.displayName || user.discordId}:`, error.response?.data?.message || error.message);
+      return false;
+    }
+  }
+
+  /**
+   * Simulate screenshot submissions for all participants
+   */
+  async simulateScreenshots(delayMs: number = 300) {
+    console.log(`\n📸 Submitting screenshots...`);
+
+    // Get all participants who submitted scores
+    const participants = await prisma.gameParticipant.findMany({
+      where: { gameId: this.game.id },
+      orderBy: { totalScore: 'desc' },
+      include: { user: true },
+    });
+
+    if (participants.length === 0) {
+      console.log('   ⚠️  No participants to submit screenshots for');
+      return;
+    }
+
+    // Submit INDIVIDUAL screenshots for all
+    let successCount = 0;
+    for (const p of participants) {
+      const userWithToken: UserWithToken = {
+        id: p.user.id,
+        discordId: p.user.discordId,
+        displayName: p.user.displayName,
+        isFake: p.user.isFake,
+        token: jwt.sign(
+          { sub: p.user.id, discordId: p.user.discordId, role: 'PLAYER' },
+          JWT_SECRET,
+          { expiresIn: '1h' }
+        ),
+      };
+
+      const success = await this.submitScreenshot(userWithToken, 'INDIVIDUAL');
+      if (success) successCount++;
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    console.log(`   📷 INDIVIDUAL: ${successCount}/${participants.length} submitted`);
+
+    // Submit FINAL_SCORE for 1st place
+    const firstPlace = participants[0];
+    if (firstPlace) {
+      const userWithToken: UserWithToken = {
+        id: firstPlace.user.id,
+        discordId: firstPlace.user.discordId,
+        displayName: firstPlace.user.displayName,
+        isFake: firstPlace.user.isFake,
+        token: jwt.sign(
+          { sub: firstPlace.user.id, discordId: firstPlace.user.discordId, role: 'PLAYER' },
+          JWT_SECRET,
+          { expiresIn: '1h' }
+        ),
+      };
+
+      const success = await this.submitScreenshot(userWithToken, 'FINAL_SCORE');
+      if (success) {
+        console.log(`   🏆 FINAL_SCORE: ${firstPlace.user.displayName || firstPlace.user.discordId}`);
+      }
+    }
+  }
+
   async displayFinalRankings() {
     if (!this.game) return;
 
@@ -465,6 +572,7 @@ class ClassicScoreSimulator {
     try {
       await this.findInProgressClassicGame();
       await this.simulate(1000);
+      await this.simulateScreenshots(300);
       await this.displayFinalRankings();
 
       const season = this.game.match.season?.seasonNumber;

@@ -50,6 +50,7 @@ docker logs fz99-lounge-api --tail 20
 - ダークモードは ThemeProvider（next-themes） + `dark:` で制御する
 - globals.css にはリセットとベーススタイル以外を極力書かない
 - フォームは可能な限り react-hook-form + zod + shadcn Form で実装する
+- **絵文字は基本的に使わない**。アイコンが必要な場合は `lucide-react` を使用する
 
 
 ## 🧪 テスト実装の手順
