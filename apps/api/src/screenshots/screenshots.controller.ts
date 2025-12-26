@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Body,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -21,6 +22,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { ScreenshotsService } from './screenshots.service';
 import { SubmitScreenshotDto } from './dto/submit-screenshot.dto';
+import { ScreenshotType } from '@prisma/client';
 
 @Controller('screenshots')
 @UseGuards(JwtAuthGuard)
@@ -30,6 +32,7 @@ export class ScreenshotsController {
   /**
    * スクショを提出 (プレイヤー用)
    * POST /api/screenshots/submit
+   * type: INDIVIDUAL（個人成績）または FINAL_SCORE（全体スコア、1位のみ）
    */
   @Post('submit')
   @HttpCode(HttpStatus.CREATED)
@@ -51,34 +54,71 @@ export class ScreenshotsController {
       dto.gameId,
       req.user.id,
       file,
+      dto.type,
     );
   }
 
   /**
    * 試合の提出済みスクショ一覧を取得
-   * GET /api/screenshots/game/:gameId/submissions
+   * GET /api/screenshots/game/:gameId/submissions?type=INDIVIDUAL
    */
   @Public()
   @Get('game/:gameId/submissions')
-  async getSubmissions(@Param('gameId') gameId: string) {
-    return await this.screenshotsService.getSubmissions(parseInt(gameId, 10));
+  async getSubmissions(
+    @Param('gameId') gameId: string,
+    @Query('type') type?: ScreenshotType,
+  ) {
+    return await this.screenshotsService.getSubmissions(
+      parseInt(gameId, 10),
+      type,
+    );
   }
 
   /**
-   * スクショを選択して正式採用 (管理者用)
-   * POST /api/screenshots/:submissionId/select
+   * スクショを承認 (管理者用)
+   * POST /api/screenshots/:submissionId/verify
    */
-  @Post(':submissionId/select')
+  @Post(':submissionId/verify')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'MODERATOR')
   @HttpCode(HttpStatus.OK)
-  async selectScreenshot(
+  async verifyScreenshot(
     @Param('submissionId') submissionId: string,
     @Request() req,
   ) {
-    return await this.screenshotsService.selectScreenshot(
+    return await this.screenshotsService.verifyScreenshot(
       parseInt(submissionId, 10),
       req.user.id,
+    );
+  }
+
+  /**
+   * スクショを差し戻し (管理者用)
+   * POST /api/screenshots/:submissionId/reject
+   */
+  @Post(':submissionId/reject')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'MODERATOR')
+  @HttpCode(HttpStatus.OK)
+  async rejectScreenshot(
+    @Param('submissionId') submissionId: string,
+    @Request() req,
+  ) {
+    return await this.screenshotsService.rejectScreenshot(
+      parseInt(submissionId, 10),
+      req.user.id,
+    );
+  }
+
+  /**
+   * 試合の承認進捗を取得
+   * GET /api/screenshots/game/:gameId/progress
+   */
+  @Public()
+  @Get('game/:gameId/progress')
+  async getVerificationProgress(@Param('gameId') gameId: string) {
+    return await this.screenshotsService.getVerificationProgress(
+      parseInt(gameId, 10),
     );
   }
 

@@ -114,10 +114,16 @@ export const gamesApi = {
   getByCategorySeasonMatch: (category: string, season: number, match: number) =>
     api.get(`/games/${category}/${season}/${match}`),
   submitScore: (category: string, season: number, match: number, data: {
-    reportedPoints: number;
+    reportedPoints?: number;
     machine: string;
     assistEnabled: boolean;
     targetUserId?: number;
+    raceResults?: Array<{
+      raceNumber: number;
+      position?: number;
+      isEliminated: boolean;
+      isDisconnected: boolean;
+    }>;
   }) => api.post(`/games/${category}/${season}/${match}/score`, data),
   // Moderator actions
   updateScore: (category: string, season: number, match: number, userId: number, data: {
@@ -132,17 +138,26 @@ export const gamesApi = {
 };
 
 // Screenshots API
+export type ScreenshotType = 'INDIVIDUAL' | 'FINAL_SCORE';
+
 export const screenshotsApi = {
-  submit: (gameId: number, file: File) => {
+  submit: (gameId: number, file: File, type: ScreenshotType = 'INDIVIDUAL') => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('gameId', String(gameId));
+    formData.append('type', type);
     return api.post('/screenshots/submit', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
-  getSubmissions: (gameId: number) => api.get(`/screenshots/game/${gameId}/submissions`),
+  getSubmissions: (gameId: number, type?: ScreenshotType) => {
+    const params = type ? `?type=${type}` : '';
+    return api.get(`/screenshots/game/${gameId}/submissions${params}`);
+  },
   getOfficial: (gameId: number) => api.get(`/screenshots/game/${gameId}/official`),
+  verify: (submissionId: number) => api.post(`/screenshots/${submissionId}/verify`),
+  reject: (submissionId: number) => api.post(`/screenshots/${submissionId}/reject`),
+  getProgress: (gameId: number) => api.get(`/screenshots/game/${gameId}/progress`),
 };

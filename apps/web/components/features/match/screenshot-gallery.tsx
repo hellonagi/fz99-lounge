@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 
 interface Screenshot {
   id: string;
-  imageUrl: string;
+  imageUrl: string | null;
   uploadedAt: string;
+  isDeleted?: boolean;
   user: {
     id: string;
     displayName: string | null;
@@ -23,39 +23,41 @@ interface ScreenshotGalleryProps {
 export function ScreenshotGallery({ screenshots }: ScreenshotGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // Filter out deleted screenshots (no image to show)
+  const visibleScreenshots = screenshots.filter(s => s.imageUrl);
+
+  if (visibleScreenshots.length === 0) {
+    return (
+      <p className="text-gray-500 text-sm">No screenshots available</p>
+    );
+  }
+
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-white">Submitted Screenshots</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {screenshots.map((screenshot) => (
-              <div key={screenshot.id} className="space-y-2">
-                {/* Screenshot Image - Clickable */}
-                <div
-                  className="relative aspect-video rounded-lg overflow-hidden bg-gray-800 border border-gray-700 cursor-pointer hover:border-blue-500 transition-colors"
-                  onClick={() => setSelectedImage(screenshot.imageUrl)}
-                >
-                  <Image
-                    src={screenshot.imageUrl}
-                    alt={`Screenshot by ${screenshot.user.displayName || screenshot.user.username}`}
-                    fill
-                    className="object-contain"
-                    unoptimized
-                  />
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {visibleScreenshots.map((screenshot) => (
+          <div key={screenshot.id} className="space-y-2">
+            {/* Screenshot Image - Clickable */}
+            <div
+              className="relative aspect-video rounded-lg overflow-hidden bg-gray-800 border border-gray-700 cursor-pointer hover:border-blue-500 transition-colors"
+              onClick={() => setSelectedImage(screenshot.imageUrl)}
+            >
+              <Image
+                src={screenshot.imageUrl!}
+                alt={`Screenshot by ${screenshot.user.displayName || screenshot.user.username}`}
+                fill
+                className="object-contain"
+                unoptimized
+              />
+            </div>
 
-                {/* Posted by */}
-                <p className="text-sm text-gray-400 px-2">
-                  Posted by <span className="text-white">{screenshot.user.displayName || screenshot.user.username}</span>
-                </p>
-              </div>
-            ))}
+            {/* Posted by */}
+            <p className="text-sm text-gray-400 px-2">
+              Posted by <span className="text-white">{screenshot.user.displayName || screenshot.user.username}</span>
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
 
       {/* Lightbox for enlarged view */}
       {selectedImage && (

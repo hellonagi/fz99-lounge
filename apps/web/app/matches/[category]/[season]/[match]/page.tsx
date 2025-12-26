@@ -148,6 +148,7 @@ export default function GamePage() {
           assistEnabled: participant.assistEnabled,
           totalScore: participant.totalScore,
           eliminatedAtRace: participant.eliminatedAtRace,
+          raceResults: participant.raceResults,
         };
       } else {
         updatedParticipants.push(participant);
@@ -217,28 +218,39 @@ export default function GamePage() {
     );
   }
 
-  // Check if current user is 1st place
+  // Check if current user is 1st place (includes ties)
   const isFirstPlace = () => {
     if (!user || !game.participants || game.participants.length === 0) {
       return false;
     }
 
-    // Sort participants by reportedPoints (desc) and check if current user is first
+    // Sort participants by score (totalScore or reportedPoints)
     const sorted = [...game.participants]
-      .filter(p => p.reportedPoints !== null)
-      .sort((a, b) => (b.reportedPoints || 0) - (a.reportedPoints || 0));
+      .filter(p => p.totalScore !== null || p.reportedPoints !== null)
+      .sort((a, b) => {
+        const aScore = a.totalScore ?? a.reportedPoints ?? 0;
+        const bScore = b.totalScore ?? b.reportedPoints ?? 0;
+        return bScore - aScore;
+      });
 
     if (sorted.length === 0) {
       return false;
     }
 
-    return sorted[0].user.id === user.id;
+    // Get top score
+    const topScore = sorted[0].totalScore ?? sorted[0].reportedPoints ?? 0;
+
+    // Check if current user has the top score (allows ties)
+    const userScore = game.participants.find(p => p.user.id === user.id);
+    if (!userScore) return false;
+
+    const userPoints = userScore.totalScore ?? userScore.reportedPoints ?? 0;
+    return userPoints === topScore;
   };
 
-  // Check if user can upload screenshot (IN_PROGRESS or COMPLETED, but not FINALIZED)
+  // Check if user can upload final score screenshot (IN_PROGRESS only, 1st place only)
   const canUploadScreenshot =
-    (game.match.status === 'IN_PROGRESS' || game.match.status === 'COMPLETED') &&
-    game.match.status !== 'FINALIZED' &&
+    game.match.status === 'IN_PROGRESS' &&
     isFirstPlace();
 
   return (
@@ -273,6 +285,7 @@ export default function GamePage() {
                 <MatchDetailsTable
                   gameParticipants={game.participants}
                   matchParticipants={game.match.participants}
+                  screenshots={screenshots}
                 />
               </TabsContent>
 
@@ -283,9 +296,11 @@ export default function GamePage() {
                     matchId={game.match.id}
                     matchStatus={game.match.status}
                     participants={game.participants || []}
+                    screenshots={screenshots}
                     category={category}
                     season={season}
                     match={match}
+                    deadline={game.match.deadline}
                     onUpdate={fetchGame}
                   />
                 </TabsContent>
@@ -308,17 +323,34 @@ export default function GamePage() {
             </Card>
           )}
 
-          {/* Screenshot Upload Form - only show for 1st place when game is IN_PROGRESS or COMPLETED (not FINALIZED) */}
-          {canUploadScreenshot && (
+          {/* Individual Screenshot Upload Form - all players during match */}
+          {game.match.status === 'IN_PROGRESS' && user && (
             <ScreenshotUploadForm
-              matchId={game.id}
+              gameId={game.id}
+              type="INDIVIDUAL"
               onUploadSuccess={fetchGame}
             />
           )}
 
-          {/* Screenshot Gallery - show all submitted screenshots */}
-          {screenshots.length > 0 && (
-            <ScreenshotGallery screenshots={screenshots} />
+          {/* Final Score Screenshot Upload Form - 1st place only */}
+          {canUploadScreenshot && (
+            <ScreenshotUploadForm
+              gameId={game.id}
+              type="FINAL_SCORE"
+              onUploadSuccess={fetchGame}
+            />
+          )}
+
+          {/* Screenshots Section - show final score screenshot if exists */}
+          {screenshots.filter(s => s.type === 'FINAL_SCORE').length > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-bold text-white mb-4">Screenshots</h3>
+                <ScreenshotGallery
+                  screenshots={screenshots.filter(s => s.type === 'FINAL_SCORE')}
+                />
+              </CardContent>
+            </Card>
           )}
         </div>
       </main>

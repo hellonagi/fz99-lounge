@@ -33,7 +33,8 @@ help:
 	@echo "  make sim-leave-all           - 全フェイクユーザー退出"
 	@echo "  make sim-score MODE=gradual  - スコア送信 (gradual|fast|burst)"
 	@echo "  make sim-score-latest        - 最新試合にスコア送信"
-	@echo "  make sim-score-classic       - CLASSIC専用 (16人/順位重複なし)"
+	@echo "  make sim-score-classic       - CLASSIC専用 (スコア+スクショ提出)"
+	@echo "  make sim-clean-scores        - スコア・スクショをクリア"
 	@echo ""
 	@echo "=== Load Tests (Artillery負荷テスト) ==="
 	@echo "  make load-lobby     - ロビー操作の負荷テスト"
@@ -54,7 +55,6 @@ help:
 	@echo "  make data-clean     - テストユーザー(isFake=true)を削除"
 	@echo "  make data-clean-force - 確認なしで削除"
 	@echo "  make data-reset     - テストデータ削除 + シード再実行"
-	@echo "  make data-clear-scores - 試合スコアをクリア (--latest対応)"
 	@echo "  make data-reset-ratings - 全ユーザーのレートを初期化"
 	@echo ""
 
@@ -134,7 +134,7 @@ sim-score:
 sim-score-latest:
 	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-scores.ts $(MODE) --latest
 
-# CLASSICモード専用スコア送信 (16人、各レース4人脱落、順位重複なし)
+# CLASSICモード専用スコア送信 (16人、各レース4人脱落、順位重複なし、スクショ提出含む)
 sim-score-classic:
 	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-classic-scores.ts
 
@@ -152,6 +152,10 @@ sim-leave:
 
 sim-leave-all:
 	npx dotenv -e ../../.env -- ts-node test/simulators/leave-lobby-simulator.ts --all --delay=$(DELAY)
+
+# スコア・スクショをクリア
+sim-clean-scores:
+	docker exec fz99-lounge-db psql -U dbuser -d fz99_lounge -c 'DELETE FROM race_results; DELETE FROM game_screenshot_submissions; DELETE FROM result_screenshots; DELETE FROM game_participants;'
 
 # =============================================================================
 # Load Tests
@@ -199,10 +203,6 @@ data-clean-force:
 	npx ts-node scripts/clean-test-data.ts --force
 
 data-reset: data-clean-force prisma-seed
-
-# スコアデータをクリア（game_participants, race_results）
-data-clear-scores:
-	docker exec fz99-lounge-db psql -U dbuser -d fz99_lounge -c 'DELETE FROM race_results; DELETE FROM game_participants;'
 
 # 全ユーザーのレートを初期化
 data-reset-ratings:

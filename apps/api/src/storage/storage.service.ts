@@ -57,25 +57,29 @@ export class StorageService {
   }
 
   /**
-   * 一時フォルダにファイルをアップロード
-   * 画像を圧縮してからアップロード
+   * 画像を圧縮するヘルパーメソッド
+   */
+  private async compressImage(buffer: Buffer): Promise<Buffer> {
+    return await sharp(buffer)
+      .resize(1920, 1080, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: 85,
+        progressive: true,
+      })
+      .toBuffer();
+  }
+
+  /**
+   * 一時フォルダにファイルをアップロード（後方互換性のため維持）
    */
   async uploadTempScreenshot(
     matchId: string,
     file: Express.Multer.File,
   ): Promise<string> {
-    // 画像を圧縮 (最大1920x1080、JPEG 85%品質)
-    const compressedBuffer = await sharp(file.buffer)
-      .resize(1920, 1080, {
-        fit: 'inside', // アスペクト比を維持
-        withoutEnlargement: true, // 元画像より大きくしない
-      })
-      .jpeg({
-        quality: 85, // JPEG品質 (1-100)
-        progressive: true, // プログレッシブJPEG
-      })
-      .toBuffer();
-
+    const compressedBuffer = await this.compressImage(file.buffer);
     const key = `screenshots/temp/${matchId}/${Date.now()}.jpg`;
 
     await this.s3Client.send(
@@ -92,6 +96,67 @@ export class StorageService {
     const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
     this.logger.log(
       `Uploaded temp screenshot: ${url} (${originalSize}MB → ${compressedSize}MB)`,
+    );
+    return url;
+  }
+
+  /**
+   * 個人成績スクショをアップロード
+   * フォルダ: screenshots/individual/{gameId}/{userId}_{timestamp}.jpg
+   * 7日後にクリーンアップ対象
+   */
+  async uploadIndividualScreenshot(
+    gameId: string,
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    const compressedBuffer = await this.compressImage(file.buffer);
+    const key = `screenshots/individual/${gameId}/${userId}_${Date.now()}.jpg`;
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: compressedBuffer,
+        ContentType: 'image/jpeg',
+      }),
+    );
+
+    const url = `${this.baseUrl}/${this.bucketName}/${key}`;
+    const originalSize = (file.size / 1024 / 1024).toFixed(2);
+    const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
+    this.logger.log(
+      `Uploaded individual screenshot: ${url} (${originalSize}MB → ${compressedSize}MB)`,
+    );
+    return url;
+  }
+
+  /**
+   * 全体スコアスクショをアップロード（1位のみ）
+   * フォルダ: screenshots/final/{gameId}/{timestamp}.jpg
+   * 永久保存
+   */
+  async uploadFinalScoreScreenshot(
+    gameId: string,
+    file: Express.Multer.File,
+  ): Promise<string> {
+    const compressedBuffer = await this.compressImage(file.buffer);
+    const key = `screenshots/final/${gameId}/${Date.now()}.jpg`;
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        Body: compressedBuffer,
+        ContentType: 'image/jpeg',
+      }),
+    );
+
+    const url = `${this.baseUrl}/${this.bucketName}/${key}`;
+    const originalSize = (file.size / 1024 / 1024).toFixed(2);
+    const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
+    this.logger.log(
+      `Uploaded final score screenshot: ${url} (${originalSize}MB → ${compressedSize}MB)`,
     );
     return url;
   }

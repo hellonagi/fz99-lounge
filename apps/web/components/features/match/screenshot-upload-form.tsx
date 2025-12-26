@@ -16,14 +16,23 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
-import { screenshotsApi } from '@/lib/api';
+import { screenshotsApi, ScreenshotType } from '@/lib/api';
 
 interface ScreenshotUploadFormProps {
-  matchId: number;
+  gameId: number;
+  type?: ScreenshotType;
+  title?: string;
+  description?: string;
   onUploadSuccess?: () => void;
 }
 
-export function ScreenshotUploadForm({ matchId: gameId, onUploadSuccess }: ScreenshotUploadFormProps) {
+export function ScreenshotUploadForm({
+  gameId,
+  type = 'INDIVIDUAL',
+  title,
+  description,
+  onUploadSuccess,
+}: ScreenshotUploadFormProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +44,15 @@ export function ScreenshotUploadForm({ matchId: gameId, onUploadSuccess }: Scree
   });
 
   const { isSubmitting } = form.formState;
+
+  // デフォルトのタイトルと説明
+  const displayTitle = title || (type === 'FINAL_SCORE'
+    ? 'Submit Final Score Screenshot'
+    : 'Submit Individual Score Screenshot');
+
+  const displayDescription = description || (type === 'FINAL_SCORE'
+    ? 'As 1st place, submit the final results screen showing all scores'
+    : 'Submit your personal score screenshot for verification');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,11 +92,14 @@ export function ScreenshotUploadForm({ matchId: gameId, onUploadSuccess }: Scree
     }
 
     try {
-      await screenshotsApi.submit(gameId, data.file);
+      await screenshotsApi.submit(gameId, data.file, type);
 
       setSuccess(true);
       setPreview(null);
       form.reset();
+      // ファイルinputをリセット
+      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
 
       if (onUploadSuccess) {
         onUploadSuccess();
@@ -97,9 +118,11 @@ export function ScreenshotUploadForm({ matchId: gameId, onUploadSuccess }: Scree
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-bold text-white mb-2">🏆 Submit Result Screenshot</h3>
+            <h3 className="text-lg font-bold text-white mb-2">
+              {displayTitle}
+            </h3>
             <p className="text-sm text-gray-400">
-              As the 1st place winner, you can submit a screenshot of the final results
+              {displayDescription}
             </p>
           </div>
 

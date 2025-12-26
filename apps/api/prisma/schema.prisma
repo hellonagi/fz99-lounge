@@ -105,6 +105,11 @@ enum DisputeStatus {
   RESOLVED
 }
 
+enum ScreenshotType {
+  INDIVIDUAL  // 個人成績スクショ（7日後に自動削除）
+  FINAL_SCORE // 全体スコアスクショ（1位のみ提出可、永久保存）
+}
+
 enum PenaltyType {
   FALSE_REPORT // 虚偽報告
   NO_SUBMISSION // 無報告
@@ -562,7 +567,7 @@ model SplitVote {
   @@map("split_votes")
 }
 
-// 一時提出（複数可能）
+// スクリーンショット提出（個人成績 or 全体スコア）
 model GameScreenshotSubmission {
   id     Int  @id @default(autoincrement())
   gameId Int
@@ -572,14 +577,24 @@ model GameScreenshotSubmission {
   user   User @relation("SubmittedScreenshots", fields: [userId], references: [id])
 
   imageUrl String
+  type     ScreenshotType @default(INDIVIDUAL)
 
   isSelected Boolean   @default(false)
+  isVerified Boolean   @default(false)
+  verifiedBy Int?
+  verifiedAt DateTime?
+  isRejected Boolean   @default(false)
+  rejectedBy Int?
+  rejectedAt DateTime?
   deletedAt  DateTime?
 
   uploadedAt DateTime @default(now())
 
   @@index([gameId, uploadedAt])
+  @@index([gameId, type])
+  @@index([gameId, userId, type])
   @@index([isSelected, uploadedAt])
+  @@index([type, isVerified, deletedAt])
   @@map("game_screenshot_submissions")
 }
 

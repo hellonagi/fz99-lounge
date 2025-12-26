@@ -1,6 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+} from '@/components/ui/dialog';
+import Image from 'next/image';
 
 interface RaceResult {
   raceNumber: number;
@@ -38,6 +44,20 @@ interface MatchParticipant {
   };
 }
 
+interface Screenshot {
+  id: number;
+  userId: number;
+  imageUrl: string | null;
+  type: 'INDIVIDUAL' | 'FINAL_SCORE';
+  isVerified: boolean;
+  isRejected?: boolean;
+  isDeleted?: boolean;
+  user: {
+    id: number;
+    displayName: string | null;
+  };
+}
+
 interface MergedParticipant {
   user: {
     id: number;
@@ -53,20 +73,32 @@ interface MergedParticipant {
   ratingChange?: number | null;
   preGameRating?: number | null;
   hasSubmitted: boolean;
+  screenshot?: Screenshot;
 }
 
 interface MatchDetailsTableProps {
   gameParticipants?: GameParticipant[];
   matchParticipants?: MatchParticipant[];
+  screenshots?: Screenshot[];
 }
 
-export function MatchDetailsTable({ gameParticipants = [], matchParticipants = [] }: MatchDetailsTableProps) {
+export function MatchDetailsTable({
+  gameParticipants = [],
+  matchParticipants = [],
+  screenshots = [],
+}: MatchDetailsTableProps) {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   // Merge match participants with game participants
   const mergedParticipants: MergedParticipant[] = [];
 
   // First, add all match participants (registered players)
   for (const mp of matchParticipants) {
     const gameData = gameParticipants.find(gp => gp.user.id === mp.user.id);
+    // Find individual screenshot for this user
+    const userScreenshot = screenshots.find(
+      s => s.userId === mp.user.id && s.type === 'INDIVIDUAL'
+    );
 
     mergedParticipants.push({
       user: {
@@ -83,18 +115,23 @@ export function MatchDetailsTable({ gameParticipants = [], matchParticipants = [
       ratingChange: gameData?.ratingChange ?? null,
       preGameRating: mp.user.seasonStats?.[0]?.displayRating ?? null,
       hasSubmitted: !!gameData,
+      screenshot: userScreenshot,
     });
   }
 
   // Add any game participants not in match participants (edge case)
   for (const gp of gameParticipants) {
     if (!mergedParticipants.find(p => p.user.id === gp.user.id)) {
+      const userScreenshot = screenshots.find(
+        s => s.userId === gp.user.id && s.type === 'INDIVIDUAL'
+      );
       mergedParticipants.push({
         ...gp,
         machine: gp.machine || null,
         assistEnabled: gp.assistEnabled ?? false,
         preGameRating: null,
         hasSubmitted: true,
+        screenshot: userScreenshot,
       });
     }
   }
@@ -180,6 +217,7 @@ export function MatchDetailsTable({ gameParticipants = [], matchParticipants = [
             <th className="text-center py-2 px-1 font-medium w-10 hidden md:table-cell">R2</th>
             <th className="text-center py-2 px-1 font-medium w-10 hidden md:table-cell">R3</th>
             <th className="text-right py-2 px-2 font-medium">Pts</th>
+            <th className="text-center py-2 px-2 font-medium">Status</th>
             <th className="text-right py-2 px-2 font-medium hidden lg:table-cell">Rating</th>
             <th className="text-right py-2 px-2 font-medium">+/-</th>
           </tr>
@@ -241,6 +279,40 @@ export function MatchDetailsTable({ gameParticipants = [], matchParticipants = [
                 {participant.totalScore ?? '-'}
               </td>
 
+              {/* Status */}
+              <td className="py-2 px-2 text-center">
+                {participant.screenshot ? (
+                  (() => {
+                    const statusText = participant.screenshot.isVerified
+                      ? 'Verified'
+                      : participant.screenshot.isRejected
+                      ? 'Rejected'
+                      : 'Submitted';
+                    const statusColor = participant.screenshot.isVerified
+                      ? 'text-green-400'
+                      : participant.screenshot.isRejected
+                      ? 'text-red-400'
+                      : 'text-blue-400';
+
+                    return participant.screenshot.imageUrl ? (
+                      <button
+                        onClick={() => setSelectedImage(participant.screenshot!.imageUrl!)}
+                        className={cn("text-xs font-medium hover:underline", statusColor)}
+                        title="View screenshot"
+                      >
+                        {statusText}
+                      </button>
+                    ) : (
+                      <span className={cn("text-xs font-medium", statusColor)}>
+                        {statusText}
+                      </span>
+                    );
+                  })()
+                ) : (
+                  <span className="text-gray-500">-</span>
+                )}
+              </td>
+
               {/* Rating After - hidden on mobile/tablet */}
               <td className="py-2 px-2 text-right text-gray-100 hidden lg:table-cell">
                 {participant.ratingAfter ?? (participant.preGameRating ?? '-')}
@@ -261,6 +333,23 @@ export function MatchDetailsTable({ gameParticipants = [], matchParticipants = [
           ))}
         </tbody>
       </table>
+
+      {/* Screenshot Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-0">
+          {selectedImage && (
+            <div className="relative w-full aspect-video">
+              <Image
+                src={selectedImage}
+                alt="Screenshot"
+                fill
+                className="object-contain rounded-lg"
+                unoptimized
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

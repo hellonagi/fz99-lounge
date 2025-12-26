@@ -8,13 +8,11 @@ import { gamesApi } from '@/lib/api';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -109,16 +107,38 @@ const classicScoreSchema = z
 type GpScoreFormData = z.infer<typeof gpScoreSchema>;
 type ClassicScoreFormData = z.infer<typeof classicScoreSchema>;
 
+interface Participant {
+  user: {
+    id: number;
+    displayName: string | null;
+  };
+}
+
 interface ScoreSubmissionFormProps {
   mode: string;
   season: number;
   game: number;
   deadline: string;
   onScoreSubmitted?: () => void;
+  // Moderator mode: show player selector
+  participants?: Participant[];
+  title?: string;
 }
 
-export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmitted }: ScoreSubmissionFormProps) {
+export function ScoreSubmissionForm({
+  mode,
+  season,
+  game,
+  deadline,
+  onScoreSubmitted,
+  participants,
+  title,
+}: ScoreSubmissionFormProps) {
   const [success, setSuccess] = useState(false);
+  const [targetUserId, setTargetUserId] = useState<number | null>(null);
+
+  // Is this moderator mode?
+  const isModeratorMode = !!participants && participants.length > 0;
 
   // Determine if this is CLASSIC mode
   const isClassicMode = mode.toLowerCase() === 'classic';
@@ -211,15 +231,26 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
     : gpForm.watch('machine');
 
   const onSubmitGp = async (data: GpScoreFormData) => {
+    // In moderator mode, require target user selection
+    if (isModeratorMode && !targetUserId) {
+      gpForm.setError('root', {
+        type: 'manual',
+        message: 'Please select a player',
+      });
+      return;
+    }
+
     try {
       await gamesApi.submitScore(mode, season, game, {
         reportedPoints: parseInt(data.points, 10),
         machine: data.machine,
         assistEnabled: data.assistEnabled,
+        targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
 
       setSuccess(true);
       gpForm.reset();
+      if (isModeratorMode) setTargetUserId(null);
 
       if (onScoreSubmitted) {
         onScoreSubmitted();
@@ -235,6 +266,15 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
   };
 
   const onSubmitClassic = async (data: ClassicScoreFormData) => {
+    // In moderator mode, require target user selection
+    if (isModeratorMode && !targetUserId) {
+      classicForm.setError('root', {
+        type: 'manual',
+        message: 'Please select a player',
+      });
+      return;
+    }
+
     try {
       // Build race results array
       const raceResults = [];
@@ -285,10 +325,12 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
         machine: data.machine,
         assistEnabled: data.assistEnabled,
         raceResults,
+        targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
 
       setSuccess(true);
       classicForm.reset();
+      if (isModeratorMode) setTargetUserId(null);
 
       if (onScoreSubmitted) {
         onScoreSubmitted();
@@ -306,11 +348,34 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
   return (
     <div>
       <h3 className="text-lg font-bold text-white mb-1">
-        Submit Your Result
+        {title || (isModeratorMode ? 'Edit Player Score' : 'Submit Your Result')}
       </h3>
       <p className="text-sm text-gray-400 mb-4">
-        Please submit your score by {formattedDeadline}.
+        {isModeratorMode
+          ? 'Select a player and enter their score.'
+          : `Please submit your score by ${formattedDeadline}.`}
       </p>
+
+      {/* Player Selector for Moderator Mode */}
+      {isModeratorMode && (
+        <div className="mb-4">
+          <Label className="text-gray-300 mb-2 block">
+            Target Player <span className="text-red-500">*</span>
+          </Label>
+          <select
+            value={targetUserId ?? ''}
+            onChange={(e) => setTargetUserId(e.target.value ? parseInt(e.target.value, 10) : null)}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select a player...</option>
+            {participants.map((p) => (
+              <option key={p.user.id} value={p.user.id}>
+                {p.user.displayName || `User#${p.user.id}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {isClassicMode ? (
         // CLASSIC mode form
@@ -326,19 +391,19 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
                     Machine <span className="text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {F99_MACHINES.map((m) => (
                         <button
                           key={m.value}
                           type="button"
                           onClick={() => field.onChange(m.value)}
-                          className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                          className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg border-2 transition-all ${
                             selectedMachine === m.value
                               ? 'bg-gray-700 border-blue-500'
                               : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
                           }`}
                         >
-                          <span className={`font-medium ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
+                          <span className={`font-medium text-sm sm:text-base ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
                             {m.name}
                           </span>
                         </button>
@@ -350,24 +415,22 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
               )}
             />
 
-            {/* Assist Toggle */}
+            {/* Steer Assist */}
             <FormField
               control={classicForm.control}
               name="assistEnabled"
               render={({ field }) => (
-                <FormItem className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-gray-300">Assist Mode</FormLabel>
-                    <FormDescription className="text-gray-500">
-                      Was assist enabled during this match?
-                    </FormDescription>
-                  </div>
+                <FormItem className="flex items-center gap-2">
                   <FormControl>
-                    <Switch
+                    <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      id="steerAssist"
                     />
                   </FormControl>
+                  <Label htmlFor="steerAssist" className="text-gray-300 cursor-pointer">
+                    Steer Assist
+                  </Label>
                 </FormItem>
               )}
             />
@@ -659,19 +722,19 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
                     Machine <span className="text-red-500">*</span>
                   </FormLabel>
                   <FormControl>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {F99_MACHINES.map((m) => (
                         <button
                           key={m.value}
                           type="button"
                           onClick={() => field.onChange(m.value)}
-                          className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                          className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg border-2 transition-all ${
                             selectedMachine === m.value
                               ? 'bg-gray-700 border-blue-500'
                               : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
                           }`}
                         >
-                          <span className={`font-medium ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
+                          <span className={`font-medium text-sm sm:text-base ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
                             {m.name}
                           </span>
                         </button>
@@ -683,24 +746,22 @@ export function ScoreSubmissionForm({ mode, season, game, deadline, onScoreSubmi
               )}
             />
 
-            {/* Assist Toggle */}
+            {/* Steer Assist */}
             <FormField
               control={gpForm.control}
               name="assistEnabled"
               render={({ field }) => (
-                <FormItem className="flex items-center justify-between p-4 bg-gray-900 rounded-lg">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-gray-300">Assist Mode</FormLabel>
-                    <FormDescription className="text-gray-500">
-                      Was assist enabled during this race?
-                    </FormDescription>
-                  </div>
+                <FormItem className="flex items-center gap-2">
                   <FormControl>
-                    <Switch
+                    <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      id="steerAssistGp"
                     />
                   </FormControl>
+                  <Label htmlFor="steerAssistGp" className="text-gray-300 cursor-pointer">
+                    Steer Assist
+                  </Label>
                 </FormItem>
               )}
             />
