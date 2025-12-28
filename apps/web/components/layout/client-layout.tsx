@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { authApi } from '@/lib/api';
 import { DisplayNameSetupModal } from '@/components/features/auth/display-name-setup-modal';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, setUser } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [ready, setReady] = useState(false);
 
   // クライアント側でマウント後にハイドレーションを実行
   useEffect(() => {
@@ -14,8 +16,33 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     setMounted(true);
   }, []);
 
+  // ハイドレーション後、必要に応じてAPIからユーザー情報を取得
+  useEffect(() => {
+    if (!mounted) return;
+
+    const { isAuthenticated: isAuth, user: currentUser } = useAuthStore.getState();
+
+    // localStorageにユーザー情報がない場合のみAPIから取得
+    // （ブラウザ変更時やlocalStorage削除時に対応）
+    if (!isAuth || !currentUser) {
+      authApi
+        .getProfile()
+        .then((response) => {
+          setUser(response.data);
+        })
+        .catch(() => {
+          // JWT無効または未認証 → 何もしない
+        })
+        .finally(() => {
+          setReady(true);
+        });
+    } else {
+      setReady(true);
+    }
+  }, [mounted, setUser]);
+
   // ログイン済みでdisplayName未設定の場合、モーダルを表示
-  const showSetupModal = mounted && isAuthenticated && user && !user.displayName;
+  const showSetupModal = mounted && ready && isAuthenticated && user && !user.displayName;
 
   return (
     <>

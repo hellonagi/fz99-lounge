@@ -1,0 +1,2 @@
+This is an invalid file for testing file type validation.
+Only JPG, PNG, and WebP images should be accepted.

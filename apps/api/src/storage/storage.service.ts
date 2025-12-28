@@ -213,9 +213,19 @@ export class StorageService {
 
   /**
    * URLからS3キーを抽出
+   * URL形式: http://localhost:9000/fz99-screenshots/screenshots/...
+   * → キー: screenshots/...
    */
   private extractKeyFromUrl(url: string): string {
     const urlObj = new URL(url);
-    return urlObj.pathname.substring(1); // 先頭の "/" を削除
+    let path = urlObj.pathname.substring(1); // 先頭の "/" を削除
+
+    // MinIO URLの場合、パスにバケット名が含まれているので除去
+    // 例: "fz99-screenshots/screenshots/..." → "screenshots/..."
+    if (path.startsWith(`${this.bucketName}/`)) {
+      path = path.substring(this.bucketName.length + 1);
+    }
+
+    return path;
   }
 }
