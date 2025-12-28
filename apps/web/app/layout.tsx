@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { ClientLayout } from "@/components/layout/client-layout";
 
@@ -23,14 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.3.2/css/flag-icons.min.css"
-        />
-      </head>
       <body className={`${notoSansJP.variable} antialiased bg-gray-900 min-h-screen`} suppressHydrationWarning>
-        <Header />
         <ClientLayout>{children}</ClientLayout>
         <Footer />
       </body>

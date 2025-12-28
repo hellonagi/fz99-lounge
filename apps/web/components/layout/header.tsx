@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -17,15 +16,14 @@ import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { SiDiscord } from 'react-icons/si';
 import { User, LogOut, Shield } from 'lucide-react';
 
-export default function Header() {
+interface HeaderProps {
+  mounted: boolean;
+}
+
+export default function Header({ mounted }: HeaderProps) {
   const { isAuthenticated, user, logout } = useAuthStore();
   const avatarUrl = useAvatarUrl(user?.discordId, user?.avatarHash, 32);
-  const [mounted, setMounted] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleLogin = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/discord`;

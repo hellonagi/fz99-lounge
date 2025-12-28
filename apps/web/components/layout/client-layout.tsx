@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
 import { DisplayNameSetupModal } from '@/components/features/auth/display-name-setup-modal';
+import Header from '@/components/layout/header';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, setUser } = useAuthStore();
@@ -46,6 +47,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <Header mounted={mounted} />
       {children}
       {showSetupModal && <DisplayNameSetupModal open={true} />}
     </>
