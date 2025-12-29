@@ -135,6 +135,25 @@ export const gamesApi = {
   }) => api.patch(`/games/${category}/${season}/${match}/score/${userId}`, data),
   endMatch: (category: string, season: number, match: number) =>
     api.post(`/games/${category}/${season}/${match}/end`),
+  updateTracks: (category: string, season: number, match: number, tracks: (number | null)[]) =>
+    api.patch(`/games/${category}/${season}/${match}/tracks`, { tracks }),
+};
+
+// Tracks API
+export interface Track {
+  id: number;
+  name: string;
+  league: string;
+  bannerPath: string;
+  mirrorOfId: number | null;
+}
+
+export const tracksApi = {
+  getAll: (league?: string) => {
+    const params = league ? `?league=${league}` : '';
+    return api.get<Track[]>(`/tracks${params}`);
+  },
+  getById: (id: number) => api.get<Track>(`/tracks/${id}`),
 };
 
 // Screenshots API

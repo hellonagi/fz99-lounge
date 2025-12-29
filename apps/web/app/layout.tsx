@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 import Footer from "@/components/layout/footer";
 import { ClientLayout } from "@/components/layout/client-layout";

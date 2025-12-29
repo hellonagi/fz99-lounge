@@ -116,6 +116,18 @@ enum PenaltyType {
   LATE_SUBMISSION // 遅延報告
 }
 
+// ==================== TRACKS ====================
+
+model Track {
+  id         Int     @id // 1-20: 通常, 101-120: ミラー
+  name       String // "Mute City I"
+  league     League // KNIGHT〜ACE, MIRROR_KNIGHT〜MIRROR_ACE
+  bannerPath String // "/banners/tr01_mutecity1.png"
+  mirrorOfId Int? // ミラーコースの場合、元コースのID
+
+  @@map("tracks")
+}
+
 // ==================== USERS ====================
 
 model User {

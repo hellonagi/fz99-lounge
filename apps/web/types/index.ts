@@ -90,6 +90,7 @@ export interface Game {
   passcode: string;
   passcodePublishedAt?: string | null;
   startedAt?: string | null;
+  tracks?: number[] | null; // CLASSIC用: 各レースのコースID [R1, R2, R3]
   // Relations
   match?: Match;
   participants?: GameParticipant[];

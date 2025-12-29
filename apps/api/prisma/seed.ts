@@ -1,6 +1,51 @@
-import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaClient, UserRole, League } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+// トラックデータ（通常コース）
+const normalTracks: { id: number; name: string; league: League; bannerPath: string }[] = [
+  // KNIGHT League (ID 1-5)
+  { id: 1, name: 'Mute City I', league: 'KNIGHT', bannerPath: '/banners/tr01_mutecity1.png' },
+  { id: 2, name: 'Big Blue', league: 'KNIGHT', bannerPath: '/banners/tr02_bigblue.png' },
+  { id: 3, name: 'Sand Ocean', league: 'KNIGHT', bannerPath: '/banners/tr03_sandocean.png' },
+  { id: 4, name: 'Death Wind I', league: 'KNIGHT', bannerPath: '/banners/tr04_deathwind1.png' },
+  { id: 5, name: 'Silence', league: 'KNIGHT', bannerPath: '/banners/tr05_silence.png' },
+  // QUEEN League (ID 6-10)
+  { id: 6, name: 'Mute City II', league: 'QUEEN', bannerPath: '/banners/tr06_mutecity2.png' },
+  { id: 7, name: 'Port Town I', league: 'QUEEN', bannerPath: '/banners/tr07_porttown1.png' },
+  { id: 8, name: 'Red Canyon I', league: 'QUEEN', bannerPath: '/banners/tr08_redcanyon1.png' },
+  { id: 9, name: 'White Land I', league: 'QUEEN', bannerPath: '/banners/tr09_whiteland1.png' },
+  { id: 10, name: 'White Land II', league: 'QUEEN', bannerPath: '/banners/tr10_whiteland2.png' },
+  // KING League (ID 11-15)
+  { id: 11, name: 'Mute City III', league: 'KING', bannerPath: '/banners/tr11_mutecity3.png' },
+  { id: 12, name: 'Death Wind II', league: 'KING', bannerPath: '/banners/tr12_deathwind2.png' },
+  { id: 13, name: 'Port Town II', league: 'KING', bannerPath: '/banners/tr13_porttown2.png' },
+  { id: 14, name: 'Red Canyon II', league: 'KING', bannerPath: '/banners/tr14_redcanyon2.png' },
+  { id: 15, name: 'Fire Field', league: 'KING', bannerPath: '/banners/tr15_firefield.png' },
+  // ACE League (ID 16-20)
+  { id: 16, name: 'Mute City IV', league: 'ACE', bannerPath: '/banners/tr16_mutecity4.png' },
+  { id: 17, name: 'Sand Storm I', league: 'ACE', bannerPath: '/banners/tr17_sandstorm1.png' },
+  { id: 18, name: 'Big Blue II', league: 'ACE', bannerPath: '/banners/tr18_bigblue2.png' },
+  { id: 19, name: 'Sand Storm II', league: 'ACE', bannerPath: '/banners/tr19_sandstorm2.png' },
+  { id: 20, name: 'Silence II', league: 'ACE', bannerPath: '/banners/tr20_silence2.png' },
+];
+
+// ミラートラックを生成（ID 101-120）
+const mirrorTracks = normalTracks.map((track) => ({
+  id: track.id + 100,
+  name: track.name,
+  league: `MIRROR_${track.league}` as League,
+  bannerPath: track.bannerPath, // 同じバナーを使用
+  mirrorOfId: track.id,
+}));
+
+// CLASSICトラックを生成（ID 201-220）- 元のリーグを保持
+const classicTracks = normalTracks.map((track) => ({
+  id: track.id + 200,
+  name: track.name,
+  league: track.league, // 元のリーグを保持（色分け用）
+  bannerPath: track.bannerPath, // 同じバナーを使用
+}));
 
 async function main() {
   console.log('Seeding database...');
@@ -54,6 +99,63 @@ async function main() {
       description: 'CLASSIC Season 1',
     },
   });
+
+  // トラック作成（通常コース）
+  for (const track of normalTracks) {
+    await prisma.track.upsert({
+      where: { id: track.id },
+      update: {
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+      },
+      create: {
+        id: track.id,
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+      },
+    });
+  }
+
+  // トラック作成（ミラーコース）
+  for (const track of mirrorTracks) {
+    await prisma.track.upsert({
+      where: { id: track.id },
+      update: {
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+        mirrorOfId: track.mirrorOfId,
+      },
+      create: {
+        id: track.id,
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+        mirrorOfId: track.mirrorOfId,
+      },
+    });
+  }
+
+  // トラック作成（CLASSICコース）
+  for (const track of classicTracks) {
+    await prisma.track.upsert({
+      where: { id: track.id },
+      update: {
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+      },
+      create: {
+        id: track.id,
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+      },
+    });
+  }
+  console.log(`Created ${normalTracks.length + mirrorTracks.length + classicTracks.length} tracks (${normalTracks.length} GP + ${mirrorTracks.length} mirror + ${classicTracks.length} classic)`);
 
   // ユーザー作成: 1 ADMIN + 3 MODERATOR + 26 PLAYER = 30名
   const users: {

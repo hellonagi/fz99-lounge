@@ -1,13 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { gamesApi, screenshotsApi } from '@/lib/api';
+import { gamesApi, screenshotsApi, tracksApi, Track } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Image from 'next/image';
 import { Check } from 'lucide-react';
 import { ScoreSubmissionForm } from './score-submission-form';
@@ -57,6 +64,7 @@ interface ModeratorPanelProps {
   season: number;
   match: number;
   deadline: string;
+  tracks?: number[] | null;
   onUpdate: () => void;
 }
 
@@ -70,12 +78,30 @@ export function ModeratorPanel({
   season,
   match,
   deadline,
+  tracks,
   onUpdate,
 }: ModeratorPanelProps) {
   const [endingMatch, setEndingMatch] = useState(false);
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // Track selection state (CLASSIC only)
+  const [selectedTracks, setSelectedTracks] = useState<(number | null)[]>([
+    tracks?.[0] ?? null,
+    tracks?.[1] ?? null,
+    tracks?.[2] ?? null,
+  ]);
+  const [savingTracks, setSavingTracks] = useState(false);
+  const [allTracks, setAllTracks] = useState<Track[]>([]);
+
+  // Fetch tracks from API (CLASSIC only)
+  const isClassic = category.toUpperCase() === 'CLASSIC';
+  useEffect(() => {
+    if (isClassic) {
+      tracksApi.getAll().then((res) => setAllTracks(res.data));
+    }
+  }, [isClassic]);
 
   // Get screenshots by type
   const individualScreenshots = screenshots.filter(s => s.type === 'INDIVIDUAL');
@@ -162,6 +188,43 @@ export function ModeratorPanel({
     return bElim - aElim;
   });
 
+  // Track selection handlers (CLASSIC only)
+  const getTrackById = (id: number) => allTracks.find((t) => t.id === id);
+
+  const handleTrackChange = (raceIndex: number, value: string) => {
+    const trackId = value === 'none' ? null : parseInt(value, 10);
+    setSelectedTracks((prev) => {
+      const newTracks = [...prev];
+      newTracks[raceIndex] = trackId;
+      return newTracks;
+    });
+  };
+
+  const getAvailableTracks = (raceIndex: number) => {
+    // Filter to CLASSIC tracks (ID 201-220) only, and exclude tracks already selected in other races
+    const otherSelectedTracks = selectedTracks.filter((_, i) => i !== raceIndex);
+    return allTracks
+      .filter((track) => track.id >= 201 && track.id <= 220)
+      .filter((track) => !otherSelectedTracks.includes(track.id));
+  };
+
+  const handleSaveTracks = async () => {
+    setSavingTracks(true);
+    try {
+      // Send tracks array preserving null positions
+      await gamesApi.updateTracks(category, season, match, selectedTracks);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to save tracks:', error);
+      alert('Failed to save tracks');
+    } finally {
+      setSavingTracks(false);
+    }
+  };
+
+  const tracksChanged =
+    JSON.stringify(selectedTracks) !== JSON.stringify([tracks?.[0] ?? null, tracks?.[1] ?? null, tracks?.[2] ?? null]);
+
   return (
     <div className="space-y-4">
       {/* Manual Match End / Finalize Button */}
@@ -181,6 +244,48 @@ export function ModeratorPanel({
           >
             {endingMatch ? 'Processing...' : matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Calculate Ratings'}
           </Button>
+        </div>
+      )}
+
+      {/* Track Selection (CLASSIC only) */}
+      {isClassic && (
+        <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+          <h3 className="text-sm font-medium text-white mb-3">Track Selection</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {['R1', 'R2', 'R3'].map((label, index) => (
+              <div key={label}>
+                <label className="block text-xs text-gray-400 mb-1">{label}</label>
+                <Select
+                  value={selectedTracks[index]?.toString() ?? 'none'}
+                  onValueChange={(value) => handleTrackChange(index, value)}
+                >
+                  <SelectTrigger className="w-full bg-gray-700 border-gray-600 text-sm">
+                    <SelectValue placeholder="Select track" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Not set</SelectItem>
+                    {getAvailableTracks(index).map((track) => (
+                      <SelectItem key={track.id} value={track.id.toString()}>
+                        {track.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          {tracksChanged && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                size="sm"
+                onClick={handleSaveTracks}
+                disabled={savingTracks}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {savingTracks ? 'Saving...' : 'Save Tracks'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -245,9 +350,10 @@ export function ModeratorPanel({
 
                   {/* Country */}
                   <td className="py-2 px-1 w-6">
-                    {participant.user.profile?.country && (
-                      <span className={`fi fi-${participant.user.profile.country.toLowerCase()}`} title={participant.user.profile.country} />
-                    )}
+                    <span
+                      className={`fi fi-${participant.user.profile?.country?.toLowerCase() || 'un'}`}
+                      title={participant.user.profile?.country || 'Unknown'}
+                    />
                   </td>
 
                   {/* Player Name */}

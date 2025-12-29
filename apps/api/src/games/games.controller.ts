@@ -176,4 +176,34 @@ export class GamesController {
 
     return this.gamesService.endMatch(eventCategory, seasonNumber, matchNumber);
   }
+
+  @Patch(':category/:season/:match/tracks')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateTracks(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Body() body: { tracks: number[] },
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+
+    // Only MODERATOR or ADMIN can update tracks
+    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only moderators and admins can update tracks',
+      );
+    }
+
+    return this.gamesService.updateTracks(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+      body.tracks,
+    );
+  }
 }

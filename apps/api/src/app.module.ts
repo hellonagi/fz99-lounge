@@ -17,6 +17,7 @@ import { AdminModule } from './admin/admin.module';
 import { ScreenshotsModule } from './screenshots/screenshots.module';
 import { StorageModule } from './storage/storage.module';
 import { RatingModule } from './rating/rating.module';
+import { TracksModule } from './tracks/tracks.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { RatingModule } from './rating/rating.module';
     ScreenshotsModule,
     AdminModule,
     RatingModule,
+    TracksModule,
   ],
   controllers: [AppController],
   providers: [AppService],

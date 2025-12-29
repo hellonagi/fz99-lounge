@@ -709,4 +709,78 @@ export class GamesService {
       matchId: game.matchId,
     };
   }
+
+  /**
+   * Update tracks for a CLASSIC game
+   * Only MODERATOR/ADMIN can call this
+   */
+  async updateTracks(
+    eventCategory: EventCategory,
+    seasonNumber: number,
+    matchNumber: number,
+    tracks: (number | null)[],
+    gameNumber: number = 1,
+  ) {
+    // Validate tracks
+    if (!Array.isArray(tracks)) {
+      throw new BadRequestException('Tracks must be an array');
+    }
+
+    // Filter out nulls for validation
+    const nonNullTracks = tracks.filter((t): t is number => t !== null);
+
+    // Validate track IDs exist in database
+    if (nonNullTracks.length > 0) {
+      const validTracks = await this.prisma.track.findMany({
+        where: { id: { in: nonNullTracks } },
+        select: { id: true },
+      });
+      const validTrackIds = new Set(validTracks.map((t) => t.id));
+      for (const trackId of nonNullTracks) {
+        if (!validTrackIds.has(trackId)) {
+          throw new BadRequestException(`Invalid track ID: ${trackId}`);
+        }
+      }
+    }
+
+    // Check for duplicates (excluding nulls)
+    const uniqueTracks = new Set(nonNullTracks);
+    if (uniqueTracks.size !== nonNullTracks.length) {
+      throw new BadRequestException('Duplicate tracks are not allowed');
+    }
+
+    // Find the game
+    const game = await this.prisma.game.findFirst({
+      where: {
+        gameNumber,
+        match: {
+          matchNumber,
+          season: {
+            seasonNumber,
+            event: {
+              category: eventCategory,
+            },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    // Update tracks
+    const updatedGame = await this.prisma.game.update({
+      where: { id: game.id },
+      data: {
+        tracks,
+      },
+    });
+
+    return {
+      success: true,
+      gameId: updatedGame.id,
+      tracks: updatedGame.tracks,
+    };
+  }
 }

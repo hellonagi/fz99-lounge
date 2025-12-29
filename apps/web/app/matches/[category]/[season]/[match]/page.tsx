@@ -10,6 +10,7 @@ import { ModeratorPanel } from '@/components/features/match/moderator-panel';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
 import { ScreenshotUploadForm } from '@/components/features/match/screenshot-upload-form';
 import { ScreenshotGallery } from '@/components/features/match/screenshot-gallery';
+import { TrackBanners } from '@/components/features/match/track-banners';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { gamesApi, screenshotsApi } from '@/lib/api';
@@ -21,6 +22,7 @@ interface Game {
   inGameMode: string;
   leagueType: string;
   passcode: string | null;
+  tracks?: number[] | null;
   totalPlayers: number;
   startedAt: string | null;
   completedAt: string | null;
@@ -256,7 +258,7 @@ export default function GamePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 overflow-x-hidden">
       <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
-        <div className="space-y-3 sm:space-y-6">
+        <div className="space-y-2 sm:space-y-3">
           {/* Header Card */}
           <MatchHeaderCard
             gameMode={game.category}
@@ -267,6 +269,11 @@ export default function GamePage() {
             completedAt={game.completedAt}
             status={game.match.status}
           />
+
+          {/* Track Banners (CLASSIC only) */}
+          {category.toUpperCase() === 'CLASSIC' && (
+            <TrackBanners tracks={game.tracks} />
+          )}
 
           {/* Passcode Card */}
           <MatchPasscodeCard passcode={game.passcode} />
@@ -301,6 +308,7 @@ export default function GamePage() {
                     season={season}
                     match={match}
                     deadline={game.match.deadline}
+                    tracks={game.tracks}
                     onUpdate={fetchGame}
                   />
                 </TabsContent>

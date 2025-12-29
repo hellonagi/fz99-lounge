@@ -239,9 +239,10 @@ export function MatchDetailsTable({
 
               {/* Country */}
               <td className="py-2 px-1 w-6">
-                {participant.user.profile?.country && (
-                  <span className={`fi fi-${participant.user.profile.country.toLowerCase()}`} title={participant.user.profile.country} />
-                )}
+                <span
+                  className={`fi fi-${participant.user.profile?.country?.toLowerCase() || 'un'}`}
+                  title={participant.user.profile?.country || 'Unknown'}
+                />
               </td>
 
               {/* Player Name */}

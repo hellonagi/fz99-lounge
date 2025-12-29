@@ -61,9 +61,10 @@ export function MatchResultRow({
 
       {/* Country */}
       <div className="flex-shrink-0 w-5">
-        {country && (
-          <span className={`fi fi-${country.toLowerCase()}`} title={country} />
-        )}
+        <span
+          className={`fi fi-${country?.toLowerCase() || 'un'}`}
+          title={country || 'Unknown'}
+        />
       </div>
 
       {/* Name */}
