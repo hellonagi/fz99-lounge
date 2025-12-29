@@ -38,20 +38,95 @@ function RuleSection({ title, icon, children }: RuleSectionProps) {
   );
 }
 
-type RankInfo = {
+type RankTier = {
   name: string;
   mmrRange: string;
+};
+
+type RankInfo = {
+  name: string;
   color: string;
+  tiers: RankTier[];
 };
 
 const ranks: RankInfo[] = [
-  { name: 'Bronze', mmrRange: '0-999', color: 'bg-amber-700' },
-  { name: 'Silver', mmrRange: '1000-1999', color: 'bg-slate-400' },
-  { name: 'Gold', mmrRange: '2000-2499', color: 'bg-yellow-500' },
-  { name: 'Platinum', mmrRange: '2500-2999', color: 'bg-cyan-400' },
-  { name: 'Diamond', mmrRange: '3000-3499', color: 'bg-violet-500' },
-  { name: 'Master', mmrRange: '3500-3999', color: 'bg-emerald-500' },
-  { name: 'Grandmaster', mmrRange: '4000+', color: 'bg-rose-500' },
+  {
+    name: 'Bronze',
+    color: 'bg-amber-700',
+    tiers: [
+      { name: 'Bronze V', mmrRange: '0-199' },
+      { name: 'Bronze IV', mmrRange: '200-399' },
+      { name: 'Bronze III', mmrRange: '400-599' },
+      { name: 'Bronze II', mmrRange: '600-799' },
+      { name: 'Bronze I', mmrRange: '800-999' },
+    ],
+  },
+  {
+    name: 'Silver',
+    color: 'bg-slate-400',
+    tiers: [
+      { name: 'Silver V', mmrRange: '1000-1199' },
+      { name: 'Silver IV', mmrRange: '1200-1399' },
+      { name: 'Silver III', mmrRange: '1400-1599' },
+      { name: 'Silver II', mmrRange: '1600-1799' },
+      { name: 'Silver I', mmrRange: '1800-1999' },
+    ],
+  },
+  {
+    name: 'Gold',
+    color: 'bg-yellow-500',
+    tiers: [
+      { name: 'Gold V', mmrRange: '2000-2099' },
+      { name: 'Gold IV', mmrRange: '2100-2199' },
+      { name: 'Gold III', mmrRange: '2200-2299' },
+      { name: 'Gold II', mmrRange: '2300-2399' },
+      { name: 'Gold I', mmrRange: '2400-2499' },
+    ],
+  },
+  {
+    name: 'Platinum',
+    color: 'bg-cyan-400',
+    tiers: [
+      { name: 'Platinum V', mmrRange: '2500-2599' },
+      { name: 'Platinum IV', mmrRange: '2600-2699' },
+      { name: 'Platinum III', mmrRange: '2700-2799' },
+      { name: 'Platinum II', mmrRange: '2800-2899' },
+      { name: 'Platinum I', mmrRange: '2900-2999' },
+    ],
+  },
+  {
+    name: 'Diamond',
+    color: 'bg-violet-500',
+    tiers: [
+      { name: 'Diamond V', mmrRange: '3000-3099' },
+      { name: 'Diamond IV', mmrRange: '3100-3199' },
+      { name: 'Diamond III', mmrRange: '3200-3299' },
+      { name: 'Diamond II', mmrRange: '3300-3399' },
+      { name: 'Diamond I', mmrRange: '3400-3499' },
+    ],
+  },
+  {
+    name: 'Master',
+    color: 'bg-emerald-500',
+    tiers: [
+      { name: 'Master V', mmrRange: '3500-3599' },
+      { name: 'Master IV', mmrRange: '3600-3699' },
+      { name: 'Master III', mmrRange: '3700-3799' },
+      { name: 'Master II', mmrRange: '3800-3899' },
+      { name: 'Master I', mmrRange: '3900-3999' },
+    ],
+  },
+  {
+    name: 'Grandmaster',
+    color: 'bg-rose-500',
+    tiers: [
+      { name: 'Grandmaster V', mmrRange: '4000-4099' },
+      { name: 'Grandmaster IV', mmrRange: '4100-4199' },
+      { name: 'Grandmaster III', mmrRange: '4200-4299' },
+      { name: 'Grandmaster II', mmrRange: '4300-4399' },
+      { name: 'Grandmaster I', mmrRange: '4400+' },
+    ],
+  },
 ];
 
 
@@ -134,22 +209,29 @@ export default function RulesPage() {
               title="Ranking System"
               icon={<Trophy className="w-5 h-5" />}
             >
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+              <div className="space-y-4">
                 {ranks.map((rank) => (
-                  <div
-                    key={rank.name}
-                    className="flex items-center gap-2 p-2 bg-gray-900/50 rounded-lg"
-                  >
-                    <div className={`w-3 h-3 rounded-full ${rank.color}`}></div>
-                    <div>
-                      <div className="text-sm font-medium text-white">{rank.name}</div>
-                      <div className="text-xs text-gray-400">{rank.mmrRange} MMR</div>
+                  <div key={rank.name} className="bg-gray-900/50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={`w-4 h-4 rounded-full ${rank.color}`}></div>
+                      <h4 className="text-white font-medium">{rank.name}</h4>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                      {rank.tiers.map((tier) => (
+                        <div
+                          key={tier.name}
+                          className="flex flex-col p-2 bg-gray-800/50 rounded text-center"
+                        >
+                          <span className="text-xs text-gray-300">{tier.name.split(' ')[1]}</span>
+                          <span className="text-xs text-gray-500">{tier.mmrRange}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-400 text-sm mt-4">
                 Rankings are reset each season. GP Mode and Classic Mode have independent rankings.
               </p>
             </RuleSection>

@@ -30,14 +30,43 @@ interface LeaderboardTableProps {
 }
 
 // Rank thresholds from rules page
-function getRankInfo(rating: number): { name: string; color: string; textColor: string } {
-  if (rating >= 4000) return { name: 'GM', color: 'bg-rose-500', textColor: 'text-orange-300' };
-  if (rating >= 3500) return { name: 'Master', color: 'bg-emerald-500', textColor: 'text-emerald-300' };
-  if (rating >= 3000) return { name: 'Diamond', color: 'bg-violet-500', textColor: 'text-violet-300' };
-  if (rating >= 2500) return { name: 'Platinum', color: 'bg-cyan-400', textColor: 'text-cyan-300' };
-  if (rating >= 2000) return { name: 'Gold', color: 'bg-yellow-500', textColor: 'text-yellow-300' };
-  if (rating >= 1000) return { name: 'Silver', color: 'bg-slate-400', textColor: 'text-slate-300' };
-  return { name: 'Bronze', color: 'bg-amber-700', textColor: 'text-amber-400' };
+// Bronze/Silver: 200 per tier, others: 100 per tier
+const tiers = ['V', 'IV', 'III', 'II', 'I'] as const;
+
+function getRankInfo(rating: number): { name: string; color: string } {
+  // Grandmaster: 4000+ (100 per tier)
+  if (rating >= 4000) {
+    const tierIndex = Math.min(Math.floor((rating - 4000) / 100), 4);
+    return { name: `GM ${tiers[tierIndex]}`, color: 'bg-rose-500' };
+  }
+  // Master: 3500-3999 (100 per tier)
+  if (rating >= 3500) {
+    const tierIndex = Math.floor((rating - 3500) / 100);
+    return { name: `Master ${tiers[tierIndex]}`, color: 'bg-emerald-500' };
+  }
+  // Diamond: 3000-3499 (100 per tier)
+  if (rating >= 3000) {
+    const tierIndex = Math.floor((rating - 3000) / 100);
+    return { name: `Diamond ${tiers[tierIndex]}`, color: 'bg-violet-500' };
+  }
+  // Platinum: 2500-2999 (100 per tier)
+  if (rating >= 2500) {
+    const tierIndex = Math.floor((rating - 2500) / 100);
+    return { name: `Plat ${tiers[tierIndex]}`, color: 'bg-cyan-400' };
+  }
+  // Gold: 2000-2499 (100 per tier)
+  if (rating >= 2000) {
+    const tierIndex = Math.floor((rating - 2000) / 100);
+    return { name: `Gold ${tiers[tierIndex]}`, color: 'bg-yellow-500' };
+  }
+  // Silver: 1000-1999 (200 per tier)
+  if (rating >= 1000) {
+    const tierIndex = Math.floor((rating - 1000) / 200);
+    return { name: `Silver ${tiers[tierIndex]}`, color: 'bg-slate-400' };
+  }
+  // Bronze: 0-999 (200 per tier)
+  const tierIndex = Math.floor(rating / 200);
+  return { name: `Bronze ${tiers[tierIndex]}`, color: 'bg-amber-700' };
 }
 
 export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
@@ -134,7 +163,7 @@ export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
                 </td>
 
                 {/* Rating */}
-                <td className={cn('py-2 px-2 text-right font-bold', rankInfo.textColor)}>
+                <td className="py-2 px-2 text-right font-bold text-white">
                   {entry.displayRating}
                 </td>
 
