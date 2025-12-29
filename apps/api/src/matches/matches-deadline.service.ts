@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { ClassicRatingService } from '../rating/classic-rating.service';
 import { EventsGateway } from '../events/events.gateway';
-import { MatchStatus, EventCategory } from '@prisma/client';
+import { MatchStatus } from '@prisma/client';
 
 @Injectable()
 export class MatchesDeadlineService {
@@ -11,7 +10,6 @@ export class MatchesDeadlineService {
 
   constructor(
     private prisma: PrismaService,
-    private classicRatingService: ClassicRatingService,
     private eventsGateway: EventsGateway,
   ) {}
 
@@ -61,25 +59,8 @@ export class MatchesDeadlineService {
   private async processExpiredMatch(match: any) {
     this.logger.log(`Processing expired match ${match.id}`);
 
-    const category = match.season?.event?.category;
-
-    // Calculate ratings for each game in the match
-    for (const game of match.games) {
-      try {
-        if (category === EventCategory.CLASSIC) {
-          await this.classicRatingService.calculateAndUpdateRatings(game.id);
-          this.logger.log(`Calculated ratings for CLASSIC game ${game.id}`);
-        }
-        // TODO: Add GP and TOURNAMENT rating services when implemented
-      } catch (error) {
-        this.logger.error(
-          `Failed to calculate ratings for game ${game.id}:`,
-          error,
-        );
-      }
-    }
-
-    // Mark match as completed
+    // Mark match as COMPLETED (submission deadline reached)
+    // Rating calculation happens when match is FINALIZED
     await this.prisma.match.update({
       where: { id: match.id },
       data: { status: MatchStatus.COMPLETED },
@@ -88,6 +69,6 @@ export class MatchesDeadlineService {
     // Emit WebSocket event
     this.eventsGateway.emitMatchCompleted(match.id);
 
-    this.logger.log(`Match ${match.id} completed after deadline`);
+    this.logger.log(`Match ${match.id} marked as COMPLETED after deadline (awaiting finalization)`);
   }
 }

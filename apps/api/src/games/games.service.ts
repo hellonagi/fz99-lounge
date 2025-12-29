@@ -637,7 +637,8 @@ export class GamesService {
   }
 
   /**
-   * Manually end a match and calculate ratings
+   * Finalize a match - calculate ratings and mark as FINALIZED
+   * Can be called from IN_PROGRESS or COMPLETED status
    * Only MODERATOR/ADMIN can call this
    */
   async endMatch(
@@ -677,34 +678,34 @@ export class GamesService {
       throw new NotFoundException('Game not found');
     }
 
-    // Check if match is in a state that can be ended
+    // Check if match is in a state that can be finalized
     if (game.match.status !== MatchStatus.IN_PROGRESS && game.match.status !== MatchStatus.COMPLETED) {
       throw new BadRequestException(
-        `Cannot end match - current status is ${game.match.status}`,
+        `Cannot finalize match - current status is ${game.match.status}`,
       );
     }
-
-    // Update match status to COMPLETED
-    await this.prisma.match.update({
-      where: { id: game.matchId },
-      data: {
-        status: MatchStatus.COMPLETED,
-      },
-    });
 
     // Calculate ratings
     await this.classicRatingService.calculateAndUpdateRatings(game.id);
 
+    // Update match status to FINALIZED
+    await this.prisma.match.update({
+      where: { id: game.matchId },
+      data: {
+        status: MatchStatus.FINALIZED,
+      },
+    });
+
     // Emit event for real-time status update
-    this.eventEmitter.emit('game.completed', {
+    this.eventEmitter.emit('game.finalized', {
       gameId: game.id,
       matchId: game.matchId,
-      completedAt: new Date(),
+      finalizedAt: new Date(),
     });
 
     return {
       success: true,
-      message: `Match ended and ratings calculated for game ${game.id}`,
+      message: `Match finalized and ratings calculated for game ${game.id}`,
       gameId: game.id,
       matchId: game.matchId,
     };

@@ -256,7 +256,7 @@ export class MatchesService {
     const matches = await this.prisma.match.findMany({
       where: {
         status: {
-          in: [MatchStatus.COMPLETED, MatchStatus.IN_PROGRESS],
+          in: [MatchStatus.COMPLETED, MatchStatus.FINALIZED, MatchStatus.IN_PROGRESS],
         },
       },
       orderBy: { actualStart: 'desc' },

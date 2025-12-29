@@ -242,7 +242,7 @@ export function ModeratorPanel({
             onClick={handleEndMatch}
             disabled={endingMatch}
           >
-            {endingMatch ? 'Processing...' : matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Calculate Ratings'}
+            {endingMatch ? 'Processing...' : matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Finalize'}
           </Button>
         </div>
       )}
@@ -531,8 +531,8 @@ export function ModeratorPanel({
         </div>
       )}
 
-      {/* Score Edit Form */}
-      {matchStatus === 'IN_PROGRESS' && (
+      {/* Score Edit Form - available until match is finalized */}
+      {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && (
         <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
           <ScoreSubmissionForm
             mode={category}

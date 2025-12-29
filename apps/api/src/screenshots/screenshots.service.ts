@@ -312,7 +312,7 @@ export class ScreenshotsService {
     }
 
     // 全スクショがverifiedかチェックし、条件を満たせば自動完了
-    await this.checkAllVerifiedAndComplete(submission.gameId);
+    await this.checkAllVerifiedAndFinalize(submission.gameId);
 
     return updated;
   }
@@ -369,10 +369,10 @@ export class ScreenshotsService {
   }
 
   /**
-   * 全スクショがverifiedかチェックし、条件を満たせばマッチをCOMPLETEDに変更
+   * 全スクショがverifiedかチェックし、条件を満たせばマッチをFINALIZEDに変更
    * 条件: 全参加者のINDIVIDUALがverify済み + FINAL_SCOREが1つ以上verify済み
    */
-  private async checkAllVerifiedAndComplete(gameId: number) {
+  private async checkAllVerifiedAndFinalize(gameId: number) {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: {
@@ -384,7 +384,8 @@ export class ScreenshotsService {
       },
     });
 
-    if (!game || game.match.status !== 'IN_PROGRESS') {
+    // IN_PROGRESSまたはCOMPLETED（deadline経過後）の場合のみFINALIZEに遷移可能
+    if (!game || (game.match.status !== 'IN_PROGRESS' && game.match.status !== 'COMPLETED')) {
       return;
     }
 
@@ -415,18 +416,9 @@ export class ScreenshotsService {
     );
 
     // 条件: 全参加者のINDIVIDUAL + FINAL_SCOREが1つ以上
-    const isComplete = verifiedIndividualCount >= totalParticipants && verifiedFinalScoreCount >= 1;
+    const isReadyToFinalize = verifiedIndividualCount >= totalParticipants && verifiedFinalScoreCount >= 1;
 
-    if (isComplete) {
-      await this.prisma.match.update({
-        where: { id: game.matchId },
-        data: { status: 'COMPLETED' },
-      });
-
-      this.logger.log(
-        `Match ${game.matchId} automatically set to COMPLETED (all screenshots verified)`,
-      );
-
+    if (isReadyToFinalize) {
       // レート計算をトリガー
       try {
         await this.classicRatingService.calculateAndUpdateRatings(gameId);
@@ -434,6 +426,15 @@ export class ScreenshotsService {
       } catch (error) {
         this.logger.error(`Failed to calculate ratings for game ${gameId}: ${error}`);
       }
+
+      await this.prisma.match.update({
+        where: { id: game.matchId },
+        data: { status: 'FINALIZED' },
+      });
+
+      this.logger.log(
+        `Match ${game.matchId} automatically set to FINALIZED (all screenshots verified)`,
+      );
     }
   }
 

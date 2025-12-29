@@ -250,6 +250,9 @@ export default function GamePage() {
     return userPoints === topScore;
   };
 
+  // Check if current user is a participant in this match
+  const isParticipant = user && game.match.participants.some(p => p.user.id === user.id);
+
   // Check if user can upload final score screenshot (IN_PROGRESS only, 1st place only)
   const canUploadScreenshot =
     game.match.status === 'IN_PROGRESS' &&
@@ -316,8 +319,8 @@ export default function GamePage() {
             </Tabs>
           </Card>
 
-          {/* Score Submission Form - always visible below tabs when IN_PROGRESS */}
-          {game.match.status === 'IN_PROGRESS' && user && (
+          {/* Score Submission Form - visible when IN_PROGRESS, participant only, not on mod tab */}
+          {game.match.status === 'IN_PROGRESS' && isParticipant && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
                 <ScoreSubmissionForm
@@ -331,8 +334,8 @@ export default function GamePage() {
             </Card>
           )}
 
-          {/* Individual Screenshot Upload Form - all players during match */}
-          {game.match.status === 'IN_PROGRESS' && user && (
+          {/* Individual Screenshot Upload Form - participants only during match, not on mod tab */}
+          {game.match.status === 'IN_PROGRESS' && isParticipant && activeTab !== 'moderator' && (
             <ScreenshotUploadForm
               gameId={game.id}
               type="INDIVIDUAL"
@@ -340,8 +343,8 @@ export default function GamePage() {
             />
           )}
 
-          {/* Final Score Screenshot Upload Form - 1st place only */}
-          {canUploadScreenshot && (
+          {/* Final Score Screenshot Upload Form - 1st place only, not on mod tab */}
+          {canUploadScreenshot && activeTab !== 'moderator' && (
             <ScreenshotUploadForm
               gameId={game.id}
               type="FINAL_SCORE"
@@ -349,8 +352,8 @@ export default function GamePage() {
             />
           )}
 
-          {/* Screenshots Section - show final score screenshot if exists */}
-          {screenshots.filter(s => s.type === 'FINAL_SCORE').length > 0 && (
+          {/* Screenshots Section - show final score screenshot if exists, not on mod tab */}
+          {screenshots.filter(s => s.type === 'FINAL_SCORE').length > 0 && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
                 <h3 className="text-lg font-bold text-white mb-4">Screenshots</h3>

@@ -316,7 +316,7 @@ export function MatchDetailsTable({
 
               {/* Rating After - hidden on mobile/tablet */}
               <td className="py-2 px-2 text-right text-gray-100 hidden lg:table-cell">
-                {participant.ratingAfter ?? (participant.preGameRating ?? '-')}
+                {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
               </td>
 
               {/* Rating Change */}
