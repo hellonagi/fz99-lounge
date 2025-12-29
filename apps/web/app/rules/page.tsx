@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +76,7 @@ export default function RulesPage() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Card>
-          <Tabs defaultValue="general">
+          <Tabs defaultValue="general" id="rules-tabs">
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="ranking">Ranking</TabsTrigger>
