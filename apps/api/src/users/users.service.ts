@@ -297,6 +297,7 @@ export class UsersService {
     return this.prisma.userSeasonStats.findMany({
       where: {
         seasonId: targetSeasonId,
+        totalMatches: { gte: 1 },
       },
       take: limit,
       orderBy: { displayRating: 'desc' },
@@ -306,6 +307,11 @@ export class UsersService {
             id: true,
             displayName: true,
             avatarHash: true,
+            profile: {
+              select: {
+                country: true,
+              },
+            },
           },
         },
       },

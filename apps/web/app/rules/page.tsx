@@ -48,8 +48,8 @@ const ranks: RankInfo[] = [
   { name: 'Gold', mmrRange: '2000-2499', color: 'bg-yellow-500' },
   { name: 'Platinum', mmrRange: '2500-2999', color: 'bg-cyan-400' },
   { name: 'Diamond', mmrRange: '3000-3499', color: 'bg-violet-500' },
-  { name: 'Master', mmrRange: '3500-3999', color: 'bg-purple-500' },
-  { name: 'Grandmaster', mmrRange: '4000+', color: 'bg-gradient-to-r from-purple-500 to-pink-500' },
+  { name: 'Master', mmrRange: '3500-3999', color: 'bg-emerald-500' },
+  { name: 'Grandmaster', mmrRange: '4000+', color: 'bg-rose-500' },
 ];
 
 

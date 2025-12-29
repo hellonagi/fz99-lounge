@@ -227,6 +227,8 @@ model UserSeasonStats {
 
   // 統計（非正規化 - リーダーボード用）
   totalMatches    Int @default(0) // 参加ゲーム数
+  totalPoints     Int @default(0) // 累計ポイント（平均計算用）
+  totalPositions  Int @default(0) // 累計順位（平均計算用）
   firstPlaces     Int @default(0) // 1位回数
   secondPlaces    Int @default(0) // 2位回数
   thirdPlaces     Int @default(0) // 3位回数
