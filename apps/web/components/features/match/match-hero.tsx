@@ -15,6 +15,7 @@ interface MatchHeroProps {
   isJoining?: boolean;
   errorMessage?: string;
   matchUrl?: string | null;
+  isParticipant?: boolean;
 }
 
 export function MatchHero({
@@ -30,6 +31,7 @@ export function MatchHero({
   isJoining = false,
   errorMessage,
   matchUrl,
+  isParticipant = false,
 }: MatchHeroProps) {
   return (
     <section className="relative min-h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden">
@@ -67,11 +69,13 @@ export function MatchHero({
               {matchUrl ? (
                 <>
                   <div className="mb-4">
-                    <span className="text-lg text-green-400 font-semibold">Match Has Started!</span>
+                    <span className="text-lg text-green-400 font-semibold">Match In Progress</span>
                   </div>
-                  <div className="mb-8">
-                    <p className="text-gray-300">Please go to the match page to check the passcode.</p>
-                  </div>
+                  {isParticipant && (
+                    <div className="mb-8">
+                      <p className="text-gray-300">Please go to the match page to check the passcode.</p>
+                    </div>
+                  )}
                   <Link
                     href={matchUrl}
                     className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"

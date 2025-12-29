@@ -18,12 +18,16 @@ api.interceptors.response.use(
       // If token is invalid (401 Unauthorized only)
       // Note: 403 Forbidden is for permission errors, not authentication errors
       if (error.response?.status === 401) {
-        // Clear authentication data
-        localStorage.removeItem('token');
-        localStorage.removeItem('auth-storage');
+        // Skip redirect for auth profile check (prevents infinite loop for unauthenticated users)
+        const isProfileCheck = error.config?.url?.includes('/auth/profile');
+        if (!isProfileCheck) {
+          // Clear authentication data
+          localStorage.removeItem('token');
+          localStorage.removeItem('auth-storage');
 
-        // Redirect to home page
-        window.location.href = '/';
+          // Redirect to home page
+          window.location.href = '/';
+        }
       }
     }
     return Promise.reject(error);

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { MatchHero } from '@/components/features/match/match-hero';
-import { OngoingMatch } from '@/components/features/match/ongoing-match';
 import { RecentMatches } from '@/components/features/match/recent-matches';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
@@ -81,13 +80,6 @@ export default function Home() {
     return Math.max(0, diff);
   };
 
-  // Mock data for sections that don't have API yet
-  const mockOngoingMatch = {
-    league: 'Knight League',
-    totalPlayers: 99,
-    participants: ['RacerPro', 'SpeedKing', 'TurboJet', 'BluePhoenix'],
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -118,16 +110,11 @@ export default function Home() {
           isJoined={isUserInMatch}
           isJoining={isJoining}
           matchUrl={matchUrl}
+          isParticipant={isUserInMatch}
         />
       )}
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <OngoingMatch
-          league={mockOngoingMatch.league}
-          totalPlayers={mockOngoingMatch.totalPlayers}
-          participants={mockOngoingMatch.participants}
-        />
-
         <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
       </main>
     </>
