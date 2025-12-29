@@ -5,7 +5,9 @@ import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import Image from 'next/image';
 
 interface RaceResult {
@@ -337,7 +339,10 @@ export function MatchDetailsTable({
 
       {/* Screenshot Modal */}
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0">
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-0" aria-describedby={undefined}>
+          <VisuallyHidden>
+            <DialogTitle>Screenshot Preview</DialogTitle>
+          </VisuallyHidden>
           {selectedImage && (
             <div className="relative w-full aspect-video">
               <Image
