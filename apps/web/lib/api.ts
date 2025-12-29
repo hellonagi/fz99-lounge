@@ -56,6 +56,19 @@ export const usersApi = {
     if (seasonNumber) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
   },
+  getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC') => {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (category) params.append('category', category);
+    return api.get(`/users/${userId}/matches?${params.toString()}`);
+  },
+  getRatingHistory: (userId: number, category?: 'GP' | 'CLASSIC') => {
+    const params = category ? `?category=${category}` : '';
+    return api.get(`/users/${userId}/rating-history${params}`);
+  },
+  getTrackStats: (userId: number, category?: 'GP' | 'CLASSIC') => {
+    const params = category ? `?category=${category}` : '';
+    return api.get(`/users/${userId}/track-stats${params}`);
+  },
 };
 
 // Matches API (for waiting room management - was lobbies)

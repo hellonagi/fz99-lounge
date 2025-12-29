@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { toHalfWidth, validateDisplayName } from '../common/utils/string.util';
-import { EventCategory } from '@prisma/client';
+import { EventCategory, MatchStatus } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -63,11 +63,28 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    // Calculate leaderboard rank for each season
+    const seasonStatsWithRank = await Promise.all(
+      user.seasonStats.map(async (stats) => {
+        const rank = await this.prisma.userSeasonStats.count({
+          where: {
+            seasonId: stats.seasonId,
+            displayRating: { gt: stats.displayRating },
+          },
+        });
+        return {
+          ...stats,
+          leaderboardRank: rank + 1,
+        };
+      })
+    );
+
     // Flatten profile.country to country
-    const { profile, ...rest } = user;
+    const { profile, seasonStats, ...rest } = user;
     return {
       ...rest,
       country: profile?.country || null,
+      seasonStats: seasonStatsWithRank,
     };
   }
 
@@ -262,6 +279,192 @@ export class UsersService {
   }
 
   /**
+   * ユーザーの試合履歴を取得
+   */
+  async getUserMatchHistory(
+    userId: number,
+    limit = 20,
+    offset = 0,
+    category?: 'GP' | 'CLASSIC',
+  ) {
+    // ユーザーが参加したゲームを取得（FINALIZEDのみ）
+    const gameParticipants = await this.prisma.gameParticipant.findMany({
+      where: {
+        userId,
+        game: {
+          match: {
+            status: MatchStatus.FINALIZED,
+            ...(category && {
+              season: {
+                event: { category: category as EventCategory },
+              },
+            }),
+          },
+        },
+      },
+      orderBy: { game: { match: { scheduledStart: 'desc' } } },
+      skip: offset,
+      take: limit,
+      select: {
+        totalScore: true,
+        game: {
+          select: {
+            id: true,
+            gameNumber: true,
+            match: {
+              select: {
+                id: true,
+                matchNumber: true,
+                status: true,
+                scheduledStart: true,
+                season: {
+                  select: {
+                    seasonNumber: true,
+                    event: {
+                      select: {
+                        category: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            // 順位を計算するために全参加者のスコアを取得
+            participants: {
+              where: { status: 'SUBMITTED' },
+              select: {
+                userId: true,
+                totalScore: true,
+              },
+              orderBy: { totalScore: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    // レーティング履歴を取得（試合IDごと）
+    const matchIds = [...new Set(gameParticipants.map((gp) => gp.game.match.id))];
+    const ratingHistories = await this.prisma.ratingHistory.findMany({
+      where: {
+        userId,
+        matchId: { in: matchIds },
+      },
+      select: {
+        matchId: true,
+        displayRating: true,
+      },
+    });
+
+    // matchIdごとのレーティングをマップ化
+    const ratingByMatchId = new Map<number, number>();
+    for (const rh of ratingHistories) {
+      ratingByMatchId.set(rh.matchId, rh.displayRating);
+    }
+
+    // 前回のレーティングを取得するため、時系列順にソートした全履歴を取得
+    const allRatingHistory = await this.prisma.ratingHistory.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        matchId: true,
+        displayRating: true,
+      },
+    });
+
+    // matchIdごとの前回レーティングをマップ化
+    const prevRatingByMatchId = new Map<number, number>();
+    let prevRating = 0;
+    for (const rh of allRatingHistory) {
+      prevRatingByMatchId.set(rh.matchId, prevRating);
+      prevRating = rh.displayRating;
+    }
+
+    // 結果を整形
+    return gameParticipants.map((gp) => {
+      const match = gp.game.match;
+      const participants = gp.game.participants;
+
+      // 順位を計算
+      const sortedParticipants = [...participants].sort(
+        (a, b) => (b.totalScore || 0) - (a.totalScore || 0),
+      );
+      const position =
+        sortedParticipants.findIndex((p) => p.userId === userId) + 1 || participants.length;
+
+      const ratingAfter = ratingByMatchId.get(match.id) || 0;
+      const ratingBefore = prevRatingByMatchId.get(match.id) || 0;
+
+      return {
+        matchId: match.id,
+        matchNumber: match.matchNumber,
+        category: match.season.event.category,
+        seasonNumber: match.season.seasonNumber,
+        completedAt: match.scheduledStart,
+        position,
+        totalParticipants: participants.length,
+        totalScore: gp.totalScore,
+        ratingBefore,
+        ratingAfter,
+        ratingChange: ratingAfter - ratingBefore,
+      };
+    });
+  }
+
+  /**
+   * ユーザーのレーティング履歴を取得
+   */
+  async getUserRatingHistory(userId: number, category?: 'GP' | 'CLASSIC') {
+    // カテゴリに対応するアクティブシーズンを取得
+    const activeSeason = await this.prisma.season.findFirst({
+      where: {
+        isActive: true,
+        ...(category && { event: { category: category as EventCategory } }),
+      },
+      select: { id: true },
+    });
+
+    if (!activeSeason?.id) {
+      return [];
+    }
+
+    // 該当シーズンのマッチIDを取得（FINALIZEDのみ）
+    const seasonMatches = await this.prisma.match.findMany({
+      where: { seasonId: activeSeason.id, status: MatchStatus.FINALIZED },
+      select: { id: true },
+    });
+    const matchIds = seasonMatches.map((m) => m.id);
+
+    // レーティング履歴を取得
+    const ratingHistories = await this.prisma.ratingHistory.findMany({
+      where: {
+        userId,
+        matchId: { in: matchIds },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        matchId: true,
+        displayRating: true,
+        internalRating: true,
+        createdAt: true,
+        match: {
+          select: {
+            matchNumber: true,
+          },
+        },
+      },
+    });
+
+    return ratingHistories.map((rh) => ({
+      matchId: rh.matchId,
+      matchNumber: rh.match.matchNumber,
+      displayRating: rh.displayRating,
+      internalRating: rh.internalRating,
+      createdAt: rh.createdAt,
+    }));
+  }
+
+  /**
    * リーダーボード取得
    * GP/CLASSIC両方ともUserSeasonStatsから取得
    */
@@ -315,6 +518,121 @@ export class UsersService {
           },
         },
       },
+    });
+  }
+
+  /**
+   * ユーザーのトラック別成績を取得
+   */
+  async getUserTrackStats(userId: number, category?: 'GP' | 'CLASSIC') {
+    // カテゴリに対応するアクティブシーズンを取得
+    const activeSeason = await this.prisma.season.findFirst({
+      where: {
+        isActive: true,
+        ...(category && { event: { category: category as EventCategory } }),
+      },
+      select: { id: true },
+    });
+
+    if (!activeSeason?.id) {
+      return [];
+    }
+
+    // ユーザーのレース結果を取得（FINALIZEDのみ）
+    const raceResults = await this.prisma.raceResult.findMany({
+      where: {
+        gameParticipant: {
+          userId,
+          game: {
+            match: {
+              seasonId: activeSeason.id,
+              status: MatchStatus.FINALIZED,
+            },
+          },
+        },
+      },
+      select: {
+        raceNumber: true,
+        position: true,
+        isEliminated: true,
+        gameParticipant: {
+          select: {
+            game: {
+              select: {
+                tracks: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // トラック別に集計
+    const trackStats = new Map<number, {
+      trackId: number;
+      races: number;
+      wins: number;
+      podiums: number;
+      totalPosition: number;
+      eliminations: number;
+    }>();
+
+    for (const result of raceResults) {
+      const tracks = result.gameParticipant.game.tracks as (number | null)[] | null;
+      if (!tracks) continue;
+
+      const trackId = tracks[result.raceNumber - 1];
+      if (!trackId) continue;
+
+      if (!trackStats.has(trackId)) {
+        trackStats.set(trackId, {
+          trackId,
+          races: 0,
+          wins: 0,
+          podiums: 0,
+          totalPosition: 0,
+          eliminations: 0,
+        });
+      }
+
+      const stats = trackStats.get(trackId)!;
+      stats.races++;
+
+      if (result.isEliminated) {
+        stats.eliminations++;
+      } else if (result.position) {
+        stats.totalPosition += result.position;
+        if (result.position === 1) stats.wins++;
+        if (result.position <= 3) stats.podiums++;
+      }
+    }
+
+    // 全トラック情報を取得（CLASSICはID 201-220）
+    const allTracks = await this.prisma.track.findMany({
+      where: category === 'CLASSIC' ? { id: { gte: 201, lte: 220 } } : undefined,
+      select: {
+        id: true,
+        name: true,
+        league: true,
+        bannerPath: true,
+      },
+      orderBy: { id: 'asc' },
+    });
+
+    // 結果を整形（全トラックを含む）
+    return allTracks.map((track) => {
+      const stats = trackStats.get(track.id);
+      const finishedRaces = stats ? stats.races - stats.eliminations : 0;
+      return {
+        trackId: track.id,
+        trackName: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+        races: stats?.races || 0,
+        wins: stats?.wins || 0,
+        podiums: stats?.podiums || 0,
+        avgPosition: finishedRaces > 0 ? Math.round((stats!.totalPosition / finishedRaces) * 10) / 10 : null,
+      };
     });
   }
 }

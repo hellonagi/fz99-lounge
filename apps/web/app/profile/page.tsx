@@ -15,9 +15,9 @@ export default function ProfileRedirectPage() {
 
   useEffect(() => {
     if (mounted) {
-      if (isAuthenticated && user && user.profileId) {
-        // ログイン済み: 自分のprofileIdにリダイレクト
-        router.push(`/profile/${user.profileId}`);
+      if (isAuthenticated && user && user.id) {
+        // ログイン済み: 自分のユーザーIDにリダイレクト
+        router.push(`/profile/${user.id}`);
       } else {
         // 未ログイン: トップページにリダイレクト
         router.push('/');

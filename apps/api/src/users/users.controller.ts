@@ -62,4 +62,41 @@ export class UsersController {
   async getUser(@Param('id') id: string) {
     return this.usersService.findById(parseInt(id, 10));
   }
+
+  @Get(':id/matches')
+  async getUserMatchHistory(
+    @Param('id') id: string,
+    @Query('limit') limit: string = '20',
+    @Query('offset') offset: string = '0',
+    @Query('category') category?: 'GP' | 'CLASSIC',
+  ) {
+    return this.usersService.getUserMatchHistory(
+      parseInt(id, 10),
+      parseInt(limit, 10),
+      parseInt(offset, 10),
+      category,
+    );
+  }
+
+  @Get(':id/rating-history')
+  async getUserRatingHistory(
+    @Param('id') id: string,
+    @Query('category') category?: 'GP' | 'CLASSIC',
+  ) {
+    return this.usersService.getUserRatingHistory(
+      parseInt(id, 10),
+      category,
+    );
+  }
+
+  @Get(':id/track-stats')
+  async getUserTrackStats(
+    @Param('id') id: string,
+    @Query('category') category?: 'GP' | 'CLASSIC',
+  ) {
+    return this.usersService.getUserTrackStats(
+      parseInt(id, 10),
+      category,
+    );
+  }
 }

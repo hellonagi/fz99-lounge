@@ -176,6 +176,8 @@ export interface UserSeasonStats {
   thirdPlaces: number;
   survivedCount: number;
   assistUsedCount: number;
+  // リーダーボード順位
+  leaderboardRank?: number;
   // Relations
   season?: Season;
 }
@@ -188,4 +190,28 @@ export interface AuthResponse {
 
 export interface UserProfileResponse extends User {
   seasonStats?: UserSeasonStats[];
+}
+
+// ユーザー試合履歴
+export interface UserMatchHistoryEntry {
+  matchId: number;
+  matchNumber: number;
+  category: EventCategory;
+  seasonNumber: number;
+  completedAt: string;
+  position: number;
+  totalParticipants: number;
+  totalScore: number | null;
+  ratingBefore: number;
+  ratingAfter: number;
+  ratingChange: number;
+}
+
+// ユーザーレーティング履歴
+export interface UserRatingHistoryEntry {
+  matchId: number;
+  matchNumber: number;
+  displayRating: number;
+  internalRating: number;
+  createdAt: string;
 }
