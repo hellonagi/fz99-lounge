@@ -368,6 +368,7 @@ export default function GamePage() {
                   gameParticipants={game.participants}
                   matchParticipants={game.match.participants}
                   screenshots={screenshots}
+                  isClassicMode={category.toLowerCase() === 'classic'}
                 />
               </TabsContent>
 

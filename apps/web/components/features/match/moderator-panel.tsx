@@ -399,7 +399,7 @@ export function ModeratorPanel({
                   <td className="py-2 px-2 text-white truncate max-w-[100px]">
                     <span className="flex items-center gap-1">
                       {participant.user.displayName || `User#${participant.user.id}`}
-                      {participant.assistEnabled && (
+                      {participant.assistEnabled && !isClassic && (
                         <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
                       )}
                     </span>

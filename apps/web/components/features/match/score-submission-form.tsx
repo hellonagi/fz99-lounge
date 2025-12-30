@@ -415,26 +415,6 @@ export function ScoreSubmissionForm({
               )}
             />
 
-            {/* Steer Assist */}
-            <FormField
-              control={classicForm.control}
-              name="assistEnabled"
-              render={({ field }) => (
-                <FormItem className="flex items-center gap-2">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      id="steerAssist"
-                    />
-                  </FormControl>
-                  <Label htmlFor="steerAssist" className="text-gray-300 cursor-pointer">
-                    Steer Assist
-                  </Label>
-                </FormItem>
-              )}
-            />
-
             {/* Race Results */}
             <div className="space-y-3">
               <FormLabel className="text-gray-300">Race Results</FormLabel>

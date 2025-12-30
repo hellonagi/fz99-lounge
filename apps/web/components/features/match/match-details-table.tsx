@@ -83,12 +83,14 @@ interface MatchDetailsTableProps {
   gameParticipants?: GameParticipant[];
   matchParticipants?: MatchParticipant[];
   screenshots?: Screenshot[];
+  isClassicMode?: boolean;
 }
 
 export function MatchDetailsTable({
   gameParticipants = [],
   matchParticipants = [],
   screenshots = [],
+  isClassicMode = false,
 }: MatchDetailsTableProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -257,7 +259,7 @@ export function MatchDetailsTable({
                   >
                     {participant.user.displayName || `User#${participant.user.id}`}
                   </Link>
-                  {participant.assistEnabled && (
+                  {participant.assistEnabled && !isClassicMode && (
                     <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
                   )}
                 </span>
