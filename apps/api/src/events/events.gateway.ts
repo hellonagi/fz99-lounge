@@ -15,6 +15,8 @@ import { Server, Socket } from 'socket.io';
     origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
     credentials: true,
   },
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 export class EventsGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
