@@ -55,8 +55,7 @@ COPY prisma ./prisma/
 # Install only production dependencies with cache mount
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev && \
-    npx prisma generate && \
-    npm cache clean --force
+    npx prisma generate
 
 # =====================================
 # Development stage
