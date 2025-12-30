@@ -50,6 +50,24 @@ export class MatchesController {
     return this.matchesService.getRecent(limitNum);
   }
 
+  @Get('results')
+  async getResults(
+    @Query('category') category: EventCategory,
+    @Query('seasonNumber') seasonNumber: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    const seasonNum = parseInt(seasonNumber, 10);
+    return this.matchesService.getResultsPaginated(
+      category,
+      seasonNum,
+      pageNum,
+      limitNum,
+    );
+  }
+
   @Get(':id')
   async getById(@Param('id') id: string) {
     return this.matchesService.getById(parseInt(id, 10));

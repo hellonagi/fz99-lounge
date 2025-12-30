@@ -94,6 +94,21 @@ export const matchesApi = {
     return api.get(`/matches?${params.toString()}`);
   },
   getRecent: (limit: number = 5) => api.get(`/matches/recent?limit=${limit}`),
+  getResults: (params: {
+    // TODO: 他のモードを実装したら追加する
+    // category: 'GP' | 'CLASSIC' | 'TOURNAMENT';
+    category: 'CLASSIC';
+    seasonNumber: number;
+    page?: number;
+    limit?: number;
+  }) => {
+    const searchParams = new URLSearchParams();
+    searchParams.append('category', params.category);
+    searchParams.append('seasonNumber', String(params.seasonNumber));
+    if (params.page) searchParams.append('page', String(params.page));
+    if (params.limit) searchParams.append('limit', String(params.limit));
+    return api.get(`/matches/results?${searchParams.toString()}`);
+  },
   getById: (id: number) => api.get(`/matches/${id}`),
   join: (id: number) => api.post(`/matches/${id}/join`),
   leave: (id: number) => api.delete(`/matches/${id}/leave`),

@@ -311,6 +311,96 @@ export class MatchesService {
     });
   }
 
+  async getResultsPaginated(
+    category: EventCategory,
+    seasonNumber: number,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where = {
+      status: {
+        in: [MatchStatus.COMPLETED, MatchStatus.FINALIZED],
+      },
+      season: {
+        event: { category },
+        seasonNumber,
+      },
+    };
+
+    const [total, matches] = await Promise.all([
+      this.prisma.match.count({ where }),
+      this.prisma.match.findMany({
+        where,
+        orderBy: { scheduledStart: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          season: {
+            include: {
+              event: true,
+            },
+          },
+          participants: true,
+          games: {
+            include: {
+              participants: {
+                orderBy: { totalScore: 'desc' },
+                take: 1,
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      displayName: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    // Format the response (same as getRecent)
+    const data = matches.map((match) => {
+      const game = match.games[0];
+      const winner = game?.participants[0];
+
+      return {
+        id: match.id,
+        matchNumber: match.matchNumber,
+        category: match.season.event.category,
+        seasonNumber: match.season.seasonNumber,
+        playerCount: match.participants.length,
+        status: match.status,
+        startedAt: match.actualStart,
+        winner: winner
+          ? {
+              id: winner.user.id,
+              displayName: winner.user.displayName,
+              totalScore: winner.totalScore,
+            }
+          : null,
+      };
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    };
+  }
+
   async join(matchId: number, userId: number) {
     const match = await this.getById(matchId);
 
