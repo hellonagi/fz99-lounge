@@ -76,7 +76,6 @@ services:
       DISCORD_MATCH_ROOM_CATEGORY_ID: ${DISCORD_MATCH_ROOM_CATEGORY_ID}
       DISCORD_BOT_ENABLED: ${DISCORD_BOT_ENABLED:-false}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-this}
-      SESSION_SECRET: ${SESSION_SECRET:-your-session-secret-change-this}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
@@ -102,11 +101,7 @@ services:
     ports:
       - "${API_PORT:-3000}:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
-        condition: service_healthy
-      minio:
         condition: service_healthy
     networks:
       - fz99-lounge-network
