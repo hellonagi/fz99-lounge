@@ -3,6 +3,7 @@ import { MatchTimer } from './match-timer';
 import { PlayerCount } from './player-count';
 
 interface MatchHeroProps {
+  category?: string;
   season?: number;
   match?: number;
   league?: string;
@@ -19,6 +20,7 @@ interface MatchHeroProps {
 }
 
 export function MatchHero({
+  category,
   season,
   match,
   league,
@@ -56,14 +58,25 @@ export function MatchHero({
             // Normal state
             <>
               {/* Season & Match info */}
-              <div className="mb-6">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
-                  Season {season} • Match {match}
-                </span>
-              </div>
-
-              {/* League name */}
-              <h1 className="text-4xl md:text-6xl font-black text-white mb-3">{league} LEAGUE</h1>
+              {category?.toLowerCase() === 'classic' ? (
+                <>
+                  <div className="mb-3">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                      SEASON{season} #{match}
+                    </span>
+                  </div>
+                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">CLASSIC MINI</h1>
+                </>
+              ) : (
+                <>
+                  <div className="mb-3">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                      Season {season} #{match}
+                    </span>
+                  </div>
+                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">{league} LEAGUE</h1>
+                </>
+              )}
 
               {/* Match Started or Countdown */}
               {matchUrl ? (

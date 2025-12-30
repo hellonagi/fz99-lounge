@@ -327,7 +327,7 @@ export default function GamePage() {
         <div className="space-y-2 sm:space-y-3">
           {/* Header Card */}
           <MatchHeaderCard
-            gameMode={game.category}
+            gameMode={category}
             seasonNumber={game.match.season?.seasonNumber || null}
             gameNumber={game.match.matchNumber}
             leagueType={game.leagueType}

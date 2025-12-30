@@ -1,3 +1,5 @@
+'use client';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -43,6 +45,18 @@ export function MatchHeaderCard({
   // Determine if match is live
   const isLive = status === 'IN_PROGRESS';
 
+  // Format league type for display
+  const formatLeagueDisplay = (league: string, mode: string) => {
+    if (mode?.toLowerCase() === 'classic') {
+      // CLASSIC_MINI -> Classic Mini Prix
+      return league
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ') + ' Prix';
+    }
+    return `${league} League`;
+  };
+
   return (
     <Card showGradient>
       <CardContent className="text-center p-8">
@@ -56,14 +70,14 @@ export function MatchHeaderCard({
           {formatDate(startedAt)}
         </div>
 
-        {/* Mode Season Game */}
+        {/* Season Game */}
         <div className="text-2xl md:text-3xl font-bold text-white mb-2">
-          {gameMode} Season {seasonNumber} Game #{gameNumber}
+          Season {seasonNumber} #{gameNumber}
         </div>
 
         {/* League */}
         <div className="text-lg text-gray-300 mb-4">
-          {leagueType} League
+          {formatLeagueDisplay(leagueType, gameMode)}
         </div>
 
         {/* Status Badge */}

@@ -104,6 +104,7 @@ export default function Home() {
         <MatchHero errorMessage={error || t('noUpcomingMatch')} />
       ) : (
         <MatchHero
+          category={nextMatch.category || nextMatch.season?.event?.category}
           season={nextMatch.season?.seasonNumber}
           match={nextMatch.matchNumber}
           league={nextMatch.leagueType}
