@@ -12,7 +12,8 @@ async function refreshUserProfile() {
   try {
     console.log('🔄 ユーザー情報を取得中...');
 
-    const response = await fetch('http://localhost:3000/api/auth/profile', {
+    const apiUrl = window.location.origin;
+    const response = await fetch(`${apiUrl}/api/auth/profile`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
