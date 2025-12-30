@@ -83,6 +83,7 @@ jobs:
             --parameters 'commands=[
               "cd /home/ec2-user/fz99-lounge",
               "git fetch origin",
+              "git checkout stg",
               "git reset --hard origin/stg",
               "aws ecr get-login-password --region ap-northeast-1 | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
               "sudo docker compose -f compose.ecr.yaml --env-file .env.stg pull",
