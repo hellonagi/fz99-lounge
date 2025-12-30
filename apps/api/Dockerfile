@@ -38,8 +38,11 @@ RUN npx prisma generate
 # =====================================
 FROM dependencies AS build
 
+# Copy config files needed for build
+COPY nest-cli.json tsconfig.json tsconfig.build.json ./
+
 # Copy source code
-COPY . .
+COPY src ./src
 
 # Build application
 RUN npm run build
