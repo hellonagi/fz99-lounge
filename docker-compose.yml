@@ -138,8 +138,11 @@ services:
       - ./apps/web/hooks:/app/hooks:cached
       - ./apps/web/types:/app/types:cached
       - ./apps/web/public:/app/public:cached
+      - ./apps/web/i18n:/app/i18n:cached
+      - ./apps/web/messages:/app/messages:cached
       - ./apps/web/package.json:/app/package.json:ro
       - ./apps/web/next.config.ts:/app/next.config.ts:ro
+      - ./apps/web/middleware.ts:/app/middleware.ts:ro
       - ./apps/web/tsconfig.json:/app/tsconfig.json:ro
       - ./apps/web/tailwind.config.ts:/app/tailwind.config.ts:ro
       - ./apps/web/postcss.config.mjs:/app/postcss.config.mjs:ro

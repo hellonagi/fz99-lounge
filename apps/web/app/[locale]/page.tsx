@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
 import { useMatch } from '@/hooks/useMatch';
@@ -25,6 +27,9 @@ interface RecentMatch {
 }
 
 export default function Home() {
+  const params = useParams();
+  const locale = params.locale as string;
+  const t = useTranslations('common');
   const [wsConnected, setWsConnected] = useState(false);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
   const [recentMatchesLoading, setRecentMatchesLoading] = useState(true);
@@ -83,20 +88,20 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+        <div className="text-white text-xl">{t('loading')}</div>
       </div>
     );
   }
 
   // Show match page link if user has ongoing match
   const matchUrl = ongoingGameInfo ?
-    `/matches/${ongoingGameInfo.category}/${ongoingGameInfo.season}/${ongoingGameInfo.match}` :
+    `/${locale}/matches/${ongoingGameInfo.category}/${ongoingGameInfo.season}/${ongoingGameInfo.match}` :
     null;
 
   return (
     <>
       {error || !nextMatch ? (
-        <MatchHero errorMessage={error || 'No Upcoming Match'} />
+        <MatchHero errorMessage={error || t('noUpcomingMatch')} />
       ) : (
         <MatchHero
           season={nextMatch.season?.seasonNumber}

@@ -6,7 +6,12 @@ import { authApi } from '@/lib/api';
 import { DisplayNameSetupModal } from '@/components/features/auth/display-name-setup-modal';
 import Header from '@/components/layout/header';
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
+interface ClientLayoutProps {
+  children: React.ReactNode;
+  locale: string;
+}
+
+export function ClientLayout({ children, locale }: ClientLayoutProps) {
   const { isAuthenticated, user, setUser } = useAuthStore();
   const [mounted, setMounted] = useState(false);
   const [ready, setReady] = useState(false);
@@ -47,7 +52,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <Header mounted={mounted} />
+      <Header mounted={mounted} locale={locale} />
       {children}
       {showSetupModal && <DisplayNameSetupModal open={true} />}
     </>

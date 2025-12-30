@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usersApi, seasonsApi } from '@/lib/api';
+import { useTranslations } from 'next-intl';
+import { matchesApi, seasonsApi } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
-import { LeaderboardTable } from '@/components/features/leaderboard/leaderboard-table';
+import { MatchList } from '@/components/features/results/match-list';
+import { ResultsPagination } from '@/components/features/results/results-pagination';
 
 interface Season {
   id: number;
@@ -12,31 +14,37 @@ interface Season {
   isActive: boolean;
 }
 
-interface LeaderboardEntry {
+interface MatchResult {
   id: number;
-  userId: number;
-  displayRating: number;
-  seasonHighRating: number;
-  totalMatches: number;
-  totalPoints: number;
-  totalPositions: number;
-  firstPlaces: number;
-  secondPlaces: number;
-  thirdPlaces: number;
-  survivedCount: number;
-  assistUsedCount: number;
-  user: {
+  matchNumber: number;
+  category: string;
+  seasonNumber: number;
+  playerCount: number;
+  status: string;
+  startedAt: string | null;
+  winner: {
     id: number;
     displayName: string | null;
-    avatarHash: string | null;
-    profile?: { country: string | null } | null;
-  };
+    totalScore: number | null;
+  } | null;
 }
 
-export default function LeaderboardPage() {
+interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export default function ResultsPage() {
+  const t = useTranslations('results');
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [page, setPage] = useState(1);
+  const [matches, setMatches] = useState<MatchResult[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,43 +68,56 @@ export default function LeaderboardPage() {
           setSelectedSeasonNumber(latestSeason.seasonNumber);
         }
       } catch (err) {
-        setError('Failed to load seasons');
+        setError(t('failedToLoadSeasons'));
         setLoading(false);
       }
     };
 
     fetchSeasons();
-  }, []);
+  }, [t]);
 
-  // Fetch leaderboard when season changes
+  // Fetch matches when season or page changes
   useEffect(() => {
     if (selectedSeasonNumber === undefined) return;
 
-    const fetchLeaderboard = async () => {
+    const fetchResults = async () => {
       setLoading(true);
       setError(null);
       try {
-        const response = await usersApi.getLeaderboard('CLASSIC', selectedSeasonNumber, 100);
-        setLeaderboardData(response.data as LeaderboardEntry[]);
+        const response = await matchesApi.getResults({
+          category: 'CLASSIC',
+          seasonNumber: selectedSeasonNumber,
+          page,
+          limit: 20,
+        });
+        setMatches(response.data.data);
+        setMeta(response.data.meta);
       } catch (err) {
-        setError('Failed to load leaderboard');
+        setError(t('failedToLoadResults'));
+        setMatches([]);
+        setMeta(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLeaderboard();
-  }, [selectedSeasonNumber]);
+    fetchResults();
+  }, [selectedSeasonNumber, page, t]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeasonNumber(seasonNumber);
+    setPage(1); // Reset page when season changes
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   return (
     <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
+        <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
         {seasons.length > 0 && (
           <SeasonSelect
             seasons={seasons}
@@ -110,14 +131,29 @@ export default function LeaderboardPage() {
       <div className="bg-gray-800 rounded-lg">
         <Tabs defaultValue="classic">
           <TabsList>
-            <TabsTrigger value="classic">Classic</TabsTrigger>
+            <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="classic">
+          <TabsContent value="classic" className="p-4">
             {error ? (
               <div className="text-center text-red-400 py-8">{error}</div>
             ) : (
-              <LeaderboardTable data={leaderboardData} loading={loading} />
+              <>
+                {meta && (
+                  <div className="text-sm text-gray-400 mb-4">
+                    {t('matchesFound', { count: meta.total })}
+                  </div>
+                )}
+                <MatchList matches={matches} loading={loading} />
+
+                {meta && meta.totalPages > 1 && (
+                  <ResultsPagination
+                    currentPage={page}
+                    totalPages={meta.totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                )}
+              </>
             )}
           </TabsContent>
         </Tabs>

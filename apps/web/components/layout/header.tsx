@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -15,15 +16,18 @@ import {
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { SiDiscord } from 'react-icons/si';
 import { User, LogOut, Shield } from 'lucide-react';
+import { LanguageSwitcher } from './language-switcher';
 
 interface HeaderProps {
   mounted: boolean;
+  locale: string;
 }
 
-export default function Header({ mounted }: HeaderProps) {
+export default function Header({ mounted, locale }: HeaderProps) {
   const { isAuthenticated, user, logout } = useAuthStore();
   const avatarUrl = useAvatarUrl(user?.discordId, user?.avatarHash, 32);
   const router = useRouter();
+  const t = useTranslations('nav');
 
   const handleLogin = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/discord`;
@@ -31,7 +35,7 @@ export default function Header({ mounted }: HeaderProps) {
 
   const handleLogout = () => {
     logout();
-    router.push('/');
+    router.push(`/${locale}`);
   };
 
   return (
@@ -40,36 +44,33 @@ export default function Header({ mounted }: HeaderProps) {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
             <div className="flex-shrink-0">
-              <Link href="/">
+              <Link href={`/${locale}`}>
                 <h1 className="text-xl font-bold text-gray-100">FZ99 Lounge</h1>
               </Link>
             </div>
             <nav className="hidden md:flex space-x-6">
               <Link
-                href="/rules"
+                href={`/${locale}/rules`}
                 className="text-gray-300 hover:text-white text-sm font-medium"
               >
-                Rules
+                {t('rules')}
               </Link>
               <Link
-                href="/leaderboard"
+                href={`/${locale}/leaderboard`}
                 className="text-gray-300 hover:text-white text-sm font-medium"
               >
-                Leaderboard
+                {t('leaderboard')}
               </Link>
               <Link
-                href="/results"
+                href={`/${locale}/results`}
                 className="text-gray-300 hover:text-white text-sm font-medium"
               >
-                Results
+                {t('results')}
               </Link>
             </nav>
           </div>
           <div className="flex items-center space-x-3">
-            <button className="px-3 py-1 text-sm text-gray-300 hover:text-white">
-              <span className="hidden sm:inline">EN</span>
-              <span className="sm:hidden">🌐</span>
-            </button>
+            <LanguageSwitcher currentLocale={locale} />
             {!mounted ? (
               <div className="w-32 h-10" />
             ) : isAuthenticated && user && user.displayName ? (
@@ -84,32 +85,32 @@ export default function Header({ mounted }: HeaderProps) {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => router.push(`/profile/${user.id}`)}>
+                  <DropdownMenuItem onClick={() => router.push(`/${locale}/profile/${user.id}`)}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>{t('profile')}</span>
                   </DropdownMenuItem>
                   {(user.role === 'ADMIN' || user.role === 'MODERATOR') && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => router.push('/admin')}>
+                      <DropdownMenuItem onClick={() => router.push(`/${locale}/admin`)}>
                         <Shield className="mr-2 h-4 w-4" />
-                        <span>Admin Dashboard</span>
+                        <span>{t('admin')}</span>
                       </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Logout</span>
+                    <span>{t('logout')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : isAuthenticated && user ? (
-              <div className="text-gray-400 text-sm">Setting up...</div>
+              <div className="text-gray-400 text-sm">{t('login')}...</div>
             ) : (
               <Button onClick={handleLogin} variant="discord">
                 <SiDiscord className="w-5 h-5 mr-2" />
-                <span>Discord Login</span>
+                <span>{t('login')}</span>
               </Button>
             )}
           </div>

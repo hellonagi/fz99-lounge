@@ -1,0 +1,130 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "noUpcomingMatch": "No Upcoming Match"
+  },
+  "nav": {
+    "rules": "Rules",
+    "leaderboard": "Leaderboard",
+    "results": "Results",
+    "profile": "Profile",
+    "admin": "Admin Dashboard",
+    "logout": "Logout",
+    "login": "Discord Login"
+  },
+  "home": {
+    "recentMatches": "Recent Matches",
+    "settingUp": "Setting up..."
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "classic": "Classic",
+    "failedToLoadSeasons": "Failed to load seasons",
+    "failedToLoadLeaderboard": "Failed to load leaderboard"
+  },
+  "results": {
+    "title": "Match Results",
+    "matchesFound": "{count} matches found",
+    "classic": "Classic",
+    "failedToLoadSeasons": "Failed to load seasons",
+    "failedToLoadResults": "Failed to load results"
+  },
+  "rules": {
+    "title": "FZ99 Lounge Official Ruleset",
+    "subtitle": "Please read all rules carefully before participating in Lounge matches.",
+    "tabs": {
+      "general": "General",
+      "ranking": "Ranking",
+      "match": "Match Rules",
+      "penalty": "Penalties",
+      "conduct": "Conduct"
+    },
+    "general": {
+      "warning": "Please read all rules before participating in Lounge. Rule violations may result in warnings or penalties.",
+      "joiningTitle": "Joining the Lounge",
+      "joining1": "A Discord account is required to join the Lounge.",
+      "joining2": "Log in with Discord on this website to complete your registration.",
+      "joining3": "On your first login, you can set your country and nickname.",
+      "joining3sub1": "Your nickname should be the name you use in-game",
+      "joining3sub2": "Nicknames must be between 1-10 characters",
+      "prohibition1": "Vulgar language or impersonation of other users is strictly prohibited.",
+      "prohibition2": "Creating alternate accounts is forbidden.",
+      "prohibition2note": "Violations will result in severe penalties."
+    },
+    "ranking": {
+      "title": "Ranking System",
+      "note": "Rankings are reset each season. GP Mode and Classic Mode have independent rankings."
+    },
+    "match": {
+      "joiningTitle": "Joining a Match",
+      "beforeMatch": "Before the Match",
+      "beforeMatch1": "Log in with Discord and join from the home page (first come, first served)",
+      "beforeMatch2": "Minimum players: Classic = 12, GP = 40 (match cancelled if not met)",
+      "beforeMatch3": "You can cancel freely before the match starts",
+      "whenStarts": "When the Match Starts",
+      "whenStarts1": "You will be redirected to the match page (push notification sent)",
+      "whenStarts2": "If not redirected, navigate manually from the home page",
+      "whenStarts3": "Use the passcode on the match page to join the in-game room",
+      "passcodeWarning": "Passcode: Do not share with anyone. If streaming, hide it from view.",
+      "splitLobby": "If Split Lobby Occurs",
+      "splitLobby1": "Press the \"Split\" button on the match page",
+      "splitLobby2": "Once 1/3 of players press the button, a new passcode will be generated",
+      "splitLobby3": "Join the room using the new passcode",
+      "gameRulesTitle": "Game Rules",
+      "classicMode": "Classic Mode",
+      "classicRule1": "No reverse driving",
+      "gpMode": "GP Mode",
+      "gpRule1": "No reverse driving",
+      "gpRule2": "No blue bumpers - if you become a blue bumper, do not control and self-destruct immediately",
+      "submittingTitle": "Submitting Scores",
+      "submitting1": "After the match ends, submit your score from the match page",
+      "submitting2": "Enter your placement for each race",
+      "submitting3": "If you crashed out or ranked out, check the corresponding box and enter the race number where it happened. Do not enter placements for races after that.",
+      "submitting4": "The 1st place player must upload a screenshot of the final results screen (page 1 showing places 1-11)",
+      "disconnectionTitle": "Disconnections",
+      "disconnection1": "If you disconnect during a match, check \"Disconnected\" for that race when submitting your score",
+      "disconnection2": "All races after the disconnection will be treated as 0 points"
+    },
+    "penalty": {
+      "strikeWarning": "Strikes expire after 30 days. Players have a limit of 3 strikes.",
+      "strikeTitle": "Strike System",
+      "strikeDescription": "Players who receive MMR penalties for quitting matches, trolling, joining late, targeting specific players, or teaming will also receive a strike.",
+      "punishmentsTitle": "Punishments for reaching 3 strikes:",
+      "offense1": "1st offense",
+      "offense1Penalty": "7 day mute",
+      "offense2": "2nd offense",
+      "offense2Penalty": "14 day mute",
+      "offense3": "3rd offense",
+      "offense3Penalty": "28 day mute",
+      "strikeResetNote": "Strike limits are reset each season.",
+      "commonPenaltiesTitle": "Common Penalties",
+      "violation": "Violation",
+      "penaltyColumn": "Penalty",
+      "penalty1": "Dropping after match starts",
+      "penalty1Value": "-100 MMR + Strike",
+      "penalty2": "Joining room late",
+      "penalty2Value": "-50 MMR + Strike",
+      "penalty3": "Name/tag rule violation",
+      "penalty3Value": "-50 MMR",
+      "penalty4": "Dropping before match starts",
+      "penalty4Value": "-100 MMR + Strike",
+      "penalty5": "Trolling/Targeting",
+      "penalty5Value": "-100 MMR + Strike"
+    },
+    "conduct": {
+      "codeTitle": "Code of Conduct",
+      "code1": "Players who consistently cause disruptions such as trolling, flaming (including in DMs or outside the server), or spamming will receive a chat restriction, mute, or temporary timeout.",
+      "code2": "Players who cause disruptions in matches such as trolling, targeting specific players, or intentionally losing may receive a mute of varying length.",
+      "code3Title": "Targeting is defined as:",
+      "code3": "Disrupting another player's race through excessive item use, significantly impacting their score or placement.",
+      "code4": "Any NSFW content will be promptly deleted and the user will receive an indefinite media restriction.",
+      "code5": "Players who abuse specific features may receive restrictions from those features.",
+      "otherNotesTitle": "Other Notes",
+      "otherNote1": "Chat restriction, mute, and other restricted roles are for punishments only and are not available upon request.",
+      "otherNote2": "Penalties may be more severe at the discretion of Lounge Staff based on severity and history.",
+      "otherNote3": "Lounge Staff will make decisions in the event of unexpected circumstances not listed here.",
+      "otherNote4": "Players who have received indefinite sanctions must wait at least 90 days before appealing."
+    }
+  }
+}

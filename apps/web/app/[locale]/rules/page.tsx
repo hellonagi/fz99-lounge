@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +132,8 @@ const ranks: RankInfo[] = [
 
 
 export default function RulesPage() {
+  const t = useTranslations('rules');
+
   return (
     <div className="min-h-screen bg-gray-900">
       {/* Hero Section */}
@@ -139,10 +142,10 @@ export default function RulesPage() {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              FZ99 Lounge Official Ruleset
+              {t('title')}
             </h1>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              Please read all rules carefully before participating in Lounge matches.
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -153,11 +156,11 @@ export default function RulesPage() {
         <Card>
           <Tabs defaultValue="general" id="rules-tabs">
             <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="ranking">Ranking</TabsTrigger>
-              <TabsTrigger value="match">Match Rules</TabsTrigger>
-              <TabsTrigger value="penalty">Penalties</TabsTrigger>
-              <TabsTrigger value="conduct">Conduct</TabsTrigger>
+              <TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
+              <TabsTrigger value="ranking">{t('tabs.ranking')}</TabsTrigger>
+              <TabsTrigger value="match">{t('tabs.match')}</TabsTrigger>
+              <TabsTrigger value="penalty">{t('tabs.penalty')}</TabsTrigger>
+              <TabsTrigger value="conduct">{t('tabs.conduct')}</TabsTrigger>
             </TabsList>
 
           {/* General Rules */}
@@ -165,26 +168,22 @@ export default function RulesPage() {
             <Alert className="bg-yellow-500/10 border-yellow-500/30">
               <AlertTriangle className="w-5 h-5 text-yellow-400" />
               <AlertDescription className="text-yellow-200">
-                Please read all rules before participating in Lounge. Rule violations may result in warnings or penalties.
+                {t('general.warning')}
               </AlertDescription>
             </Alert>
 
             <RuleSection
-              title="Joining the Lounge"
+              title={t('general.joiningTitle')}
               icon={<UserPlus className="w-5 h-5" />}
             >
               <ol className="list-decimal list-inside space-y-3">
+                <li>{t('general.joining1')}</li>
+                <li>{t('general.joining2')}</li>
                 <li>
-                  A Discord account is required to join the Lounge.
-                </li>
-                <li>
-                  Log in with Discord on this website to complete your registration.
-                </li>
-                <li>
-                  On your first login, you can set your country and nickname.
+                  {t('general.joining3')}
                   <ul className="list-disc list-inside ml-6 mt-2 text-gray-400">
-                    <li>Your nickname should be the name you use in-game</li>
-                    <li>Nicknames must be between 2-16 characters</li>
+                    <li>{t('general.joining3sub1')}</li>
+                    <li>{t('general.joining3sub2')}</li>
                   </ul>
                 </li>
               </ol>
@@ -192,10 +191,10 @@ export default function RulesPage() {
               <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
                 <ul className="list-disc list-inside space-y-2 text-gray-300">
                   <li>
-                    <span className="text-red-300">Vulgar language or impersonation of other users is strictly prohibited.</span>
+                    <span className="text-red-300">{t('general.prohibition1')}</span>
                   </li>
                   <li>
-                    <span className="text-red-300">Creating alternate accounts is forbidden.</span> Violations will result in severe penalties.
+                    <span className="text-red-300">{t('general.prohibition2')}</span> {t('general.prohibition2note')}
                   </li>
                 </ul>
               </div>
@@ -206,7 +205,7 @@ export default function RulesPage() {
           {/* Ranking System */}
           <TabsContent value="ranking" className="space-y-6">
             <RuleSection
-              title="Ranking System"
+              title={t('ranking.title')}
               icon={<Trophy className="w-5 h-5" />}
             >
               <div className="space-y-4">
@@ -232,7 +231,7 @@ export default function RulesPage() {
               </div>
 
               <p className="text-gray-400 text-sm mt-4">
-                Rankings are reset each season. GP Mode and Classic Mode have independent rankings.
+                {t('ranking.note')}
               </p>
             </RuleSection>
 
@@ -241,76 +240,76 @@ export default function RulesPage() {
           {/* Match Rules */}
           <TabsContent value="match" className="space-y-6">
             <RuleSection
-              title="Joining a Match"
+              title={t('match.joiningTitle')}
               icon={<Gamepad2 className="w-5 h-5" />}
             >
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-white font-medium mb-2">Before the Match</h4>
+                  <h4 className="text-white font-medium mb-2">{t('match.beforeMatch')}</h4>
                   <ul className="list-disc list-inside space-y-1 text-gray-300">
-                    <li>Log in with Discord and join from the home page (first come, first served)</li>
-                    <li>Minimum players: Classic = 12, GP = 40 (match cancelled if not met)</li>
-                    <li>You can cancel freely before the match starts</li>
+                    <li>{t('match.beforeMatch1')}</li>
+                    <li>{t('match.beforeMatch2')}</li>
+                    <li>{t('match.beforeMatch3')}</li>
                   </ul>
                 </div>
 
                 <div>
-                  <h4 className="text-white font-medium mb-2">When the Match Starts</h4>
+                  <h4 className="text-white font-medium mb-2">{t('match.whenStarts')}</h4>
                   <ul className="list-disc list-inside space-y-1 text-gray-300">
-                    <li>You will be redirected to the match page (push notification sent)</li>
-                    <li>If not redirected, navigate manually from the home page</li>
-                    <li>Use the passcode on the match page to join the in-game room</li>
+                    <li>{t('match.whenStarts1')}</li>
+                    <li>{t('match.whenStarts2')}</li>
+                    <li>{t('match.whenStarts3')}</li>
                   </ul>
                 </div>
 
                 <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                   <p className="text-red-300 text-sm">
-                    <span className="font-medium">Passcode:</span> Do not share with anyone. If streaming, hide it from view.
+                    {t('match.passcodeWarning')}
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="text-white font-medium mb-2">If Split Lobby Occurs</h4>
+                  <h4 className="text-white font-medium mb-2">{t('match.splitLobby')}</h4>
                   <ul className="list-disc list-inside space-y-1 text-gray-300">
-                    <li>Press the &quot;Split&quot; button on the match page</li>
-                    <li>Once 1/3 of players press the button, a new passcode will be generated</li>
-                    <li>Join the room using the new passcode</li>
+                    <li>{t('match.splitLobby1')}</li>
+                    <li>{t('match.splitLobby2')}</li>
+                    <li>{t('match.splitLobby3')}</li>
                   </ul>
                 </div>
               </div>
             </RuleSection>
 
-            <RuleSection title="Game Rules" icon={<Shield className="w-5 h-5" />}>
+            <RuleSection title={t('match.gameRulesTitle')} icon={<Shield className="w-5 h-5" />}>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-white font-medium mb-2">Classic Mode</h4>
+                  <h4 className="text-white font-medium mb-2">{t('match.classicMode')}</h4>
                   <ul className="list-disc list-inside text-gray-300">
-                    <li>No reverse driving</li>
+                    <li>{t('match.classicRule1')}</li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="text-white font-medium mb-2">GP Mode</h4>
+                  <h4 className="text-white font-medium mb-2">{t('match.gpMode')}</h4>
                   <ul className="list-disc list-inside text-gray-300">
-                    <li>No reverse driving</li>
-                    <li>No blue bumpers - if you become a blue bumper, do not control and self-destruct immediately</li>
+                    <li>{t('match.gpRule1')}</li>
+                    <li>{t('match.gpRule2')}</li>
                   </ul>
                 </div>
               </div>
             </RuleSection>
 
-            <RuleSection title="Submitting Scores" icon={<FileText className="w-5 h-5" />}>
+            <RuleSection title={t('match.submittingTitle')} icon={<FileText className="w-5 h-5" />}>
               <ul className="list-disc list-inside space-y-2 text-gray-300">
-                <li>After the match ends, submit your score from the match page</li>
-                <li>Enter your placement for each race</li>
-                <li>If you crashed out or ranked out, check the corresponding box and enter the race number where it happened. Do not enter placements for races after that.</li>
-                <li>The 1st place player must upload a screenshot of the final results screen (page 1 showing places 1-11)</li>
+                <li>{t('match.submitting1')}</li>
+                <li>{t('match.submitting2')}</li>
+                <li>{t('match.submitting3')}</li>
+                <li>{t('match.submitting4')}</li>
               </ul>
             </RuleSection>
 
-            <RuleSection title="Disconnections" icon={<AlertTriangle className="w-5 h-5" />}>
+            <RuleSection title={t('match.disconnectionTitle')} icon={<AlertTriangle className="w-5 h-5" />}>
               <ul className="list-disc list-inside space-y-2 text-gray-300">
-                <li>If you disconnect during a match, check &quot;Disconnected&quot; for that race when submitting your score</li>
-                <li>All races after the disconnection will be treated as 0 points</li>
+                <li>{t('match.disconnection1')}</li>
+                <li>{t('match.disconnection2')}</li>
               </ul>
             </RuleSection>
           </TabsContent>
@@ -320,70 +319,69 @@ export default function RulesPage() {
             <Alert className="bg-red-500/10 border-red-500/30">
               <AlertTriangle className="w-5 h-5 text-red-400" />
               <AlertDescription className="text-red-200">
-                Strikes expire after 30 days. Players have a limit of 3 strikes.
+                {t('penalty.strikeWarning')}
               </AlertDescription>
             </Alert>
 
             <RuleSection
-              title="Strike System"
+              title={t('penalty.strikeTitle')}
               icon={<AlertTriangle className="w-5 h-5" />}
             >
               <p className="mb-4">
-                Players who receive MMR penalties for quitting matches, trolling, joining late,
-                targeting specific players, or teaming will also receive a strike.
+                {t('penalty.strikeDescription')}
               </p>
 
               <div className="space-y-3">
-                <h4 className="font-semibold text-white">Punishments for reaching 3 strikes:</h4>
+                <h4 className="font-semibold text-white">{t('penalty.punishmentsTitle')}</h4>
                 <div className="grid gap-3">
                   <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <Badge className="bg-yellow-500">1st offense</Badge>
-                    <span className="text-gray-300">7 day mute</span>
+                    <Badge className="bg-yellow-500">{t('penalty.offense1')}</Badge>
+                    <span className="text-gray-300">{t('penalty.offense1Penalty')}</span>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                    <Badge className="bg-orange-500">2nd offense</Badge>
-                    <span className="text-gray-300">14 day mute</span>
+                    <Badge className="bg-orange-500">{t('penalty.offense2')}</Badge>
+                    <span className="text-gray-300">{t('penalty.offense2Penalty')}</span>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <Badge className="bg-red-500">3rd offense</Badge>
-                    <span className="text-gray-300">28 day mute</span>
+                    <Badge className="bg-red-500">{t('penalty.offense3')}</Badge>
+                    <span className="text-gray-300">{t('penalty.offense3Penalty')}</span>
                   </div>
                 </div>
                 <p className="text-gray-400 text-sm mt-2">
-                  Strike limits are reset each season.
+                  {t('penalty.strikeResetNote')}
                 </p>
               </div>
             </RuleSection>
 
-            <RuleSection title="Common Penalties" icon={<Shield className="w-5 h-5" />}>
+            <RuleSection title={t('penalty.commonPenaltiesTitle')} icon={<Shield className="w-5 h-5" />}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-700">
-                      <th className="text-left py-2 text-gray-400">Violation</th>
-                      <th className="text-left py-2 text-gray-400">Penalty</th>
+                      <th className="text-left py-2 text-gray-400">{t('penalty.violation')}</th>
+                      <th className="text-left py-2 text-gray-400">{t('penalty.penaltyColumn')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-700">
                     <tr>
-                      <td className="py-2 text-gray-300">Dropping after match starts</td>
-                      <td className="py-2 text-red-400">-100 MMR + Strike</td>
+                      <td className="py-2 text-gray-300">{t('penalty.penalty1')}</td>
+                      <td className="py-2 text-red-400">{t('penalty.penalty1Value')}</td>
                     </tr>
                     <tr>
-                      <td className="py-2 text-gray-300">Joining room late</td>
-                      <td className="py-2 text-red-400">-50 MMR + Strike</td>
+                      <td className="py-2 text-gray-300">{t('penalty.penalty2')}</td>
+                      <td className="py-2 text-red-400">{t('penalty.penalty2Value')}</td>
                     </tr>
                     <tr>
-                      <td className="py-2 text-gray-300">Name/tag rule violation</td>
-                      <td className="py-2 text-red-400">-50 MMR</td>
+                      <td className="py-2 text-gray-300">{t('penalty.penalty3')}</td>
+                      <td className="py-2 text-red-400">{t('penalty.penalty3Value')}</td>
                     </tr>
                     <tr>
-                      <td className="py-2 text-gray-300">Dropping before match starts</td>
-                      <td className="py-2 text-red-400">-100 MMR + Strike</td>
+                      <td className="py-2 text-gray-300">{t('penalty.penalty4')}</td>
+                      <td className="py-2 text-red-400">{t('penalty.penalty4Value')}</td>
                     </tr>
                     <tr>
-                      <td className="py-2 text-gray-300">Trolling/Targeting</td>
-                      <td className="py-2 text-red-400">-100 MMR + Strike</td>
+                      <td className="py-2 text-gray-300">{t('penalty.penalty5')}</td>
+                      <td className="py-2 text-red-400">{t('penalty.penalty5Value')}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -394,45 +392,26 @@ export default function RulesPage() {
           {/* Conduct */}
           <TabsContent value="conduct" className="space-y-6">
             <RuleSection
-              title="Code of Conduct"
+              title={t('conduct.codeTitle')}
               icon={<MessageSquare className="w-5 h-5" />}
             >
               <ol className="list-decimal list-inside space-y-3">
+                <li>{t('conduct.code1')}</li>
+                <li>{t('conduct.code2')}</li>
                 <li>
-                  Players who consistently cause disruptions such as trolling, flaming (including in DMs or outside the server),
-                  or spamming will receive a chat restriction, mute, or temporary timeout.
+                  <span className="text-white font-medium">{t('conduct.code3Title')}</span> {t('conduct.code3')}
                 </li>
-                <li>
-                  Players who cause disruptions in matches such as trolling, targeting specific players,
-                  or intentionally losing may receive a mute of varying length.
-                </li>
-                <li>
-                  <span className="text-white font-medium">Targeting is defined as:</span> Disrupting another player's race
-                  through excessive item use, significantly impacting their score or placement.
-                </li>
-                <li>
-                  Any NSFW content will be promptly deleted and the user will receive an indefinite media restriction.
-                </li>
-                <li>
-                  Players who abuse specific features may receive restrictions from those features.
-                </li>
+                <li>{t('conduct.code4')}</li>
+                <li>{t('conduct.code5')}</li>
               </ol>
             </RuleSection>
 
-            <RuleSection title="Other Notes" icon={<FileText className="w-5 h-5" />}>
+            <RuleSection title={t('conduct.otherNotesTitle')} icon={<FileText className="w-5 h-5" />}>
               <ul className="list-disc list-inside space-y-3">
-                <li>
-                  Chat restriction, mute, and other restricted roles are for punishments only and are not available upon request.
-                </li>
-                <li>
-                  Penalties may be more severe at the discretion of Lounge Staff based on severity and history.
-                </li>
-                <li>
-                  Lounge Staff will make decisions in the event of unexpected circumstances not listed here.
-                </li>
-                <li>
-                  Players who have received indefinite sanctions must wait at least 90 days before appealing.
-                </li>
+                <li>{t('conduct.otherNote1')}</li>
+                <li>{t('conduct.otherNote2')}</li>
+                <li>{t('conduct.otherNote3')}</li>
+                <li>{t('conduct.otherNote4')}</li>
               </ul>
             </RuleSection>
           </TabsContent>
