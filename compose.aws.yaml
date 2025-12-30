@@ -140,7 +140,7 @@ services:
     volumes:
       - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       # AWS用設定を使用（Cloudflare IP対応）
-      - ./docker/nginx/conf.d/aws.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/aws.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_cache:/var/cache/nginx
     ports:
       - "80:80"
