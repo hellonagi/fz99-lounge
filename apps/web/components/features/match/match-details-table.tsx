@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -250,7 +251,12 @@ export function MatchDetailsTable({
               {/* Player Name */}
               <td className="py-2 px-2 text-white truncate max-w-[120px]">
                 <span className="flex items-center gap-1">
-                  {participant.user.displayName || `User#${participant.user.id}`}
+                  <Link
+                    href={`/profile/${participant.user.id}`}
+                    className="hover:text-blue-400 hover:underline"
+                  >
+                    {participant.user.displayName || `User#${participant.user.id}`}
+                  </Link>
                   {participant.assistEnabled && (
                     <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
                   )}

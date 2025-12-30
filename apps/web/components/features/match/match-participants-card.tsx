@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { getAvatarUrl } from '@/lib/utils';
 import {
@@ -88,9 +89,12 @@ export function MatchParticipantsCard({ participants, embedded = false }: MatchP
 
                     {/* Name and Rating */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-semibold truncate">
+                      <Link
+                        href={`/profile/${participant.user.id}`}
+                        className="text-white font-semibold truncate block hover:text-blue-400 hover:underline"
+                      >
                         {participant.user.displayName || `Player ${participant.user.profileId}`}
-                      </p>
+                      </Link>
                     </div>
 
                     {/* Rating */}
