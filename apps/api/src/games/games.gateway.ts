@@ -14,6 +14,8 @@ import { OnEvent } from '@nestjs/event-emitter';
     credentials: true,
   },
   namespace: '/games',
+  pingTimeout: 60000,
+  pingInterval: 25000,
 })
 export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
