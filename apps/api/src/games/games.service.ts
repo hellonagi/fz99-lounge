@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
@@ -9,6 +10,22 @@ import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClassicRatingService } from '../rating/classic-rating.service';
+
+export interface SplitVoteStatus {
+  currentVotes: number;
+  requiredVotes: number;
+  hasVoted: boolean;
+  passcode: string;
+  passcodeVersion: number;
+}
+
+export interface SplitVoteResult {
+  regenerated: boolean;
+  currentVotes: number;
+  requiredVotes: number;
+  passcode: string;
+  passcodeVersion: number;
+}
 
 @Injectable()
 export class GamesService {
@@ -783,5 +800,216 @@ export class GamesService {
       gameId: updatedGame.id,
       tracks: updatedGame.tracks,
     };
+  }
+
+  // ========================================
+  // Split Vote Methods
+  // ========================================
+
+  /**
+   * Get current split vote status for a game
+   */
+  async getSplitVoteStatus(gameId: number, userId: number): Promise<SplitVoteStatus> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            participants: true,
+          },
+        },
+        splitVotes: {
+          where: {
+            passcodeVersion: undefined, // Will be set dynamically below
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    // Re-fetch split votes for current passcode version
+    const splitVotes = await this.prisma.splitVote.findMany({
+      where: {
+        gameId,
+        passcodeVersion: game.passcodeVersion,
+      },
+    });
+
+    const totalParticipants = game.match.participants.length;
+    const requiredVotes = Math.ceil(totalParticipants / 3);
+    const currentVotes = splitVotes.length;
+    const hasVoted = splitVotes.some((v) => v.userId === userId);
+
+    return {
+      currentVotes,
+      requiredVotes,
+      hasVoted,
+      passcode: game.passcode,
+      passcodeVersion: game.passcodeVersion,
+    };
+  }
+
+  /**
+   * Cast a split vote
+   */
+  async castSplitVote(gameId: number, userId: number): Promise<SplitVoteResult> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            participants: true,
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    // Check if match is IN_PROGRESS
+    if (game.match.status !== MatchStatus.IN_PROGRESS) {
+      throw new BadRequestException('Can only vote during an in-progress match');
+    }
+
+    // Check if user is a participant
+    const isParticipant = game.match.participants.some((p) => p.userId === userId);
+    if (!isParticipant) {
+      throw new ForbiddenException('Only participants can vote');
+    }
+
+    // Check if user already voted for this passcode version
+    const existingVote = await this.prisma.splitVote.findUnique({
+      where: {
+        gameId_userId_passcodeVersion: {
+          gameId,
+          userId,
+          passcodeVersion: game.passcodeVersion,
+        },
+      },
+    });
+
+    if (existingVote) {
+      throw new BadRequestException('Already voted for this passcode version');
+    }
+
+    // Create the vote
+    await this.prisma.splitVote.create({
+      data: {
+        gameId,
+        userId,
+        passcodeVersion: game.passcodeVersion,
+      },
+    });
+
+    // Count current votes
+    const voteCount = await this.prisma.splitVote.count({
+      where: {
+        gameId,
+        passcodeVersion: game.passcodeVersion,
+      },
+    });
+
+    const totalParticipants = game.match.participants.length;
+    const requiredVotes = Math.ceil(totalParticipants / 3);
+
+    // Emit vote update event
+    this.eventEmitter.emit('game.splitVoteUpdated', {
+      gameId,
+      currentVotes: voteCount,
+      requiredVotes,
+      votedBy: userId,
+    });
+
+    // Check if threshold reached
+    if (voteCount >= requiredVotes) {
+      return this.regeneratePasscode(gameId);
+    }
+
+    return {
+      regenerated: false,
+      currentVotes: voteCount,
+      requiredVotes,
+      passcode: game.passcode,
+      passcodeVersion: game.passcodeVersion,
+    };
+  }
+
+  /**
+   * Regenerate passcode (called when vote threshold reached or by moderator)
+   */
+  async regeneratePasscode(gameId: number): Promise<SplitVoteResult> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            participants: true,
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    // Check if match is IN_PROGRESS
+    if (game.match.status !== MatchStatus.IN_PROGRESS) {
+      throw new BadRequestException('Can only regenerate passcode during an in-progress match');
+    }
+
+    // Generate new passcode
+    const newPasscode = this.generatePasscode();
+    const newVersion = game.passcodeVersion + 1;
+
+    // Update game
+    await this.prisma.game.update({
+      where: { id: gameId },
+      data: {
+        passcode: newPasscode,
+        passcodeVersion: newVersion,
+        passcodePublishedAt: new Date(),
+      },
+    });
+
+    const totalParticipants = game.match.participants.length;
+    const requiredVotes = Math.ceil(totalParticipants / 3);
+
+    // Emit passcode regenerated event
+    this.eventEmitter.emit('game.passcodeRegenerated', {
+      gameId,
+      passcode: newPasscode,
+      passcodeVersion: newVersion,
+      requiredVotes,
+    });
+
+    return {
+      regenerated: true,
+      currentVotes: 0,
+      requiredVotes,
+      passcode: newPasscode,
+      passcodeVersion: newVersion,
+    };
+  }
+
+  /**
+   * Force regenerate passcode (moderator only)
+   * Permission check is done in controller
+   */
+  async forceRegeneratePasscode(gameId: number): Promise<SplitVoteResult> {
+    return this.regeneratePasscode(gameId);
+  }
+
+  /**
+   * Generate a random 4-digit passcode
+   */
+  private generatePasscode(): string {
+    const passcode = Math.floor(Math.random() * 10000);
+    return passcode.toString().padStart(4, '0');
   }
 }

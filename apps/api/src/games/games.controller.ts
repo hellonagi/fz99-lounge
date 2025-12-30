@@ -10,9 +10,11 @@ import {
   HttpCode,
   HttpStatus,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { GamesService } from './games.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { EventCategory, UserRole } from '@prisma/client';
@@ -24,6 +26,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 export class GamesController {
   constructor(
     private gamesService: GamesService,
+    private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
   ) {}
 
@@ -205,5 +208,102 @@ export class GamesController {
       matchNumber,
       body.tracks,
     );
+  }
+
+  // ========================================
+  // Split Vote Endpoints
+  // ========================================
+
+  @Get(':category/:season/:match/split-vote')
+  @UseGuards(JwtAuthGuard)
+  async getSplitVoteStatus(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.getSplitVoteStatus(game.id, user.id);
+  }
+
+  @Post(':category/:season/:match/split-vote')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async castSplitVote(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.castSplitVote(game.id, user.id);
+  }
+
+  @Post(':category/:season/:match/regenerate-passcode')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async forceRegeneratePasscode(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+
+    // Only MODERATOR or ADMIN can force regenerate
+    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only moderators and admins can force regenerate passcode',
+      );
+    }
+
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.forceRegeneratePasscode(game.id);
+  }
+
+  // ========================================
+  // Helper Methods
+  // ========================================
+
+  private async findGameByPath(
+    eventCategory: EventCategory,
+    seasonNumber: number,
+    matchNumber: number,
+    gameNumber: number = 1,
+  ) {
+    const game = await this.prisma.game.findFirst({
+      where: {
+        gameNumber,
+        match: {
+          matchNumber,
+          season: {
+            seasonNumber,
+            event: {
+              category: eventCategory,
+            },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    return game;
   }
 }

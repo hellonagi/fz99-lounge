@@ -70,4 +70,37 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`game:${payload.gameId}`).emit('statusChanged', payload.status);
     console.log(`Status change emitted to game room: ${payload.gameId}`);
   }
+
+  @OnEvent('game.splitVoteUpdated')
+  handleSplitVoteUpdated(payload: {
+    gameId: number;
+    currentVotes: number;
+    requiredVotes: number;
+    votedBy: number;
+  }) {
+    // Emit split vote update to all clients in the game room
+    this.server.to(`game:${payload.gameId}`).emit('splitVoteUpdated', {
+      currentVotes: payload.currentVotes,
+      requiredVotes: payload.requiredVotes,
+      votedBy: payload.votedBy,
+    });
+    console.log(`Split vote update emitted to game room: ${payload.gameId}`);
+  }
+
+  @OnEvent('game.passcodeRegenerated')
+  handlePasscodeRegenerated(payload: {
+    gameId: number;
+    passcode: string;
+    passcodeVersion: number;
+    requiredVotes: number;
+  }) {
+    // Emit passcode regenerated to all clients in the game room
+    this.server.to(`game:${payload.gameId}`).emit('passcodeRegenerated', {
+      passcode: payload.passcode,
+      passcodeVersion: payload.passcodeVersion,
+      currentVotes: 0,
+      requiredVotes: payload.requiredVotes,
+    });
+    console.log(`Passcode regenerated event emitted to game room: ${payload.gameId}`);
+  }
 }

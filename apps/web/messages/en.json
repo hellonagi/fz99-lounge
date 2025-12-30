@@ -4,6 +4,17 @@
     "error": "An error occurred",
     "noUpcomingMatch": "No Upcoming Match"
   },
+  "splitVote": {
+    "description": "If the room split, the passcode will be regenerated once 1/3 of players vote",
+    "button": "Vote to Regenerate",
+    "voted": "Voted",
+    "votes": "{current}/{required} votes",
+    "newPasscode": "New Passcode Generated",
+    "newPasscodeDescription": "New passcode: {passcode}",
+    "regenerate": "Regenerate Passcode",
+    "regenerateDescription": "Force generate a new passcode for split lobby",
+    "regenerating": "Regenerating..."
+  },
   "nav": {
     "rules": "Rules",
     "leaderboard": "Leaderboard",

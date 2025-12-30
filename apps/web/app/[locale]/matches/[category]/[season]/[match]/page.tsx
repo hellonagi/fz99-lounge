@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { MatchHeaderCard } from '@/components/features/match/match-header-card';
-import { MatchPasscodeCard } from '@/components/features/match/match-passcode-card';
+import { MatchPasscodeCard, SplitVoteStatus } from '@/components/features/match/match-passcode-card';
 import { MatchDetailsTable } from '@/components/features/match/match-details-table';
 import { ModeratorPanel } from '@/components/features/match/moderator-panel';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
@@ -14,7 +14,8 @@ import { TrackBanners } from '@/components/features/match/track-banners';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { gamesApi, screenshotsApi } from '@/lib/api';
-import { useGameSocket } from '@/hooks/useGameSocket';
+import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate } from '@/hooks/useGameSocket';
+import { useTranslations } from 'next-intl';
 
 interface Game {
   id: number;
@@ -82,12 +83,14 @@ export default function GamePage() {
   const season = parseInt(params.season as string, 10);
   const match = parseInt(params.match as string, 10);
   const { user } = useAuthStore();
+  const t = useTranslations('splitVote');
 
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<string>('results');
+  const [splitVoteStatus, setSplitVoteStatus] = useState<SplitVoteStatus | null>(null);
   const initialTabSet = useRef(false);
 
   const fetchGame = async () => {
@@ -197,11 +200,71 @@ export default function GamePage() {
     });
   }, []);
 
+  // Handle split vote updates
+  const handleSplitVoteUpdated = useCallback((data: SplitVoteUpdate) => {
+    setSplitVoteStatus((prev) => ({
+      currentVotes: data.currentVotes,
+      requiredVotes: data.requiredVotes,
+      hasVoted: prev?.hasVoted ?? false,
+    }));
+  }, []);
+
+  // Handle passcode regeneration
+  const handlePasscodeRegenerated = useCallback((data: PasscodeRegeneratedUpdate) => {
+    // Update passcode in game state
+    setGame((prevGame) => {
+      if (!prevGame) return prevGame;
+      return {
+        ...prevGame,
+        passcode: data.passcode,
+      };
+    });
+
+    // Reset split vote status
+    setSplitVoteStatus({
+      currentVotes: 0,
+      requiredVotes: data.requiredVotes,
+      hasVoted: false,
+    });
+
+    // Show alert notification
+    alert(`${t('newPasscode')}\n${t('newPasscodeDescription', { passcode: data.passcode })}`);
+  }, [t]);
+
+  // Fetch split vote status
+  const fetchSplitVoteStatus = useCallback(async () => {
+    if (!game || game.match.status !== 'IN_PROGRESS') return;
+
+    try {
+      const response = await gamesApi.getSplitVoteStatus(category, season, match);
+      setSplitVoteStatus({
+        currentVotes: response.data.currentVotes,
+        requiredVotes: response.data.requiredVotes,
+        hasVoted: response.data.hasVoted,
+      });
+    } catch (err) {
+      // Ignore errors - user might not be authenticated
+      console.error('Failed to fetch split vote status:', err);
+    }
+  }, [game, category, season, match]);
+
+  // Fetch split vote status when game loads and user is participant
+  useEffect(() => {
+    if (game && user && game.match.status === 'IN_PROGRESS') {
+      const isUserParticipant = game.match.participants.some(p => p.user.id === user.id);
+      if (isUserParticipant) {
+        fetchSplitVoteStatus();
+      }
+    }
+  }, [game, user, fetchSplitVoteStatus]);
+
   // Connect to WebSocket for real-time updates
   useGameSocket({
     gameId: game?.id || 0,
     onScoreUpdated: handleScoreUpdated,
     onStatusChanged: handleStatusChanged,
+    onSplitVoteUpdated: handleSplitVoteUpdated,
+    onPasscodeRegenerated: handlePasscodeRegenerated,
   });
 
   if (loading) {
@@ -279,7 +342,16 @@ export default function GamePage() {
           )}
 
           {/* Passcode Card */}
-          <MatchPasscodeCard passcode={game.passcode} />
+          <MatchPasscodeCard
+            passcode={game.passcode}
+            isParticipant={!!isParticipant}
+            matchStatus={game.match.status}
+            category={category}
+            season={season}
+            match={match}
+            splitVoteStatus={splitVoteStatus}
+            onSplitVote={fetchSplitVoteStatus}
+          />
 
           {/* Results / Moderator Tabs */}
           <Card>

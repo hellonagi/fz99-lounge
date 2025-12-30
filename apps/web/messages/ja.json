@@ -4,6 +4,17 @@
     "error": "エラーが発生しました",
     "noUpcomingMatch": "予定されている試合はありません"
   },
+  "splitVote": {
+    "description": "部屋が分かれてしまった場合、1/3のプレイヤーが投票するとパスコードが再生成されます",
+    "button": "再生成に投票",
+    "voted": "投票済み",
+    "votes": "{current}/{required} 票",
+    "newPasscode": "新しいパスコードが生成されました",
+    "newPasscodeDescription": "新しいパスコード: {passcode}",
+    "regenerate": "パスコード再生成",
+    "regenerateDescription": "Splitロビー用に新しいパスコードを強制生成",
+    "regenerating": "再生成中..."
+  },
   "nav": {
     "rules": "ルール",
     "leaderboard": "リーダーボード",

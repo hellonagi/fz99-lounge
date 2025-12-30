@@ -172,6 +172,31 @@ export const gamesApi = {
     api.post(`/games/${category}/${season}/${match}/end`),
   updateTracks: (category: string, season: number, match: number, tracks: (number | null)[]) =>
     api.patch(`/games/${category}/${season}/${match}/tracks`, { tracks }),
+  // Split vote
+  getSplitVoteStatus: (category: string, season: number, match: number) =>
+    api.get<{
+      currentVotes: number;
+      requiredVotes: number;
+      hasVoted: boolean;
+      passcode: string;
+      passcodeVersion: number;
+    }>(`/games/${category}/${season}/${match}/split-vote`),
+  castSplitVote: (category: string, season: number, match: number) =>
+    api.post<{
+      regenerated: boolean;
+      currentVotes: number;
+      requiredVotes: number;
+      passcode: string;
+      passcodeVersion: number;
+    }>(`/games/${category}/${season}/${match}/split-vote`),
+  regeneratePasscode: (category: string, season: number, match: number) =>
+    api.post<{
+      regenerated: boolean;
+      currentVotes: number;
+      requiredVotes: number;
+      passcode: string;
+      passcodeVersion: number;
+    }>(`/games/${category}/${season}/${match}/regenerate-passcode`),
 };
 
 // Tracks API

@@ -84,6 +84,7 @@ export function ModeratorPanel({
   onUpdate,
 }: ModeratorPanelProps) {
   const [endingMatch, setEndingMatch] = useState(false);
+  const [regeneratingPasscode, setRegeneratingPasscode] = useState(false);
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -163,6 +164,23 @@ export function ModeratorPanel({
     }
   };
 
+  const handleRegeneratePasscode = async () => {
+    if (!confirm('Are you sure you want to regenerate the passcode?')) {
+      return;
+    }
+
+    setRegeneratingPasscode(true);
+    try {
+      await gamesApi.regeneratePasscode(category, season, match);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to regenerate passcode:', error);
+      alert('Failed to regenerate passcode');
+    } finally {
+      setRegeneratingPasscode(false);
+    }
+  };
+
   // Helper to get race position display (same as match-details-table)
   const getRaceDisplay = (result: RaceResult | undefined) => {
     if (!result) return '-';
@@ -229,6 +247,25 @@ export function ModeratorPanel({
 
   return (
     <div className="space-y-4">
+      {/* Regenerate Passcode Button */}
+      {matchStatus === 'IN_PROGRESS' && (
+        <div className="flex items-center justify-between p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
+          <div>
+            <p className="text-blue-400 font-medium text-sm">Regenerate Passcode</p>
+            <p className="text-gray-400 text-xs">Force generate a new passcode for split lobby</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRegeneratePasscode}
+            disabled={regeneratingPasscode}
+            className="border-blue-500 text-blue-400 hover:bg-blue-500/20"
+          >
+            {regeneratingPasscode ? 'Regenerating...' : 'Regenerate'}
+          </Button>
+        </div>
+      )}
+
       {/* Manual Match End / Finalize Button */}
       {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && (
         <div className="flex items-center justify-between p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
