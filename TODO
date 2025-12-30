@@ -1,0 +1,71 @@
+# TODO
+
+## ESLint/TypeScript エラー修正
+
+本番ビルドでは一時的にスキップしている。後で修正すること。
+
+### no-explicit-any エラー（型を明示する）
+- [ ] app/[locale]/admin/seasons/page.tsx:16
+- [ ] app/[locale]/matches/[category]/[season]/[match]/page.tsx:91, 110, 136
+- [ ] components/features/admin/create-match-card.tsx:166
+- [ ] components/features/admin/matches-list-card.tsx:51, 77, 99
+- [ ] components/features/auth/display-name-setup-modal.tsx:119
+- [ ] components/features/match/match-passcode-card.tsx:54
+- [ ] components/features/match/match-result-list.tsx:120
+- [ ] components/features/match/score-submission-form.tsx:260, 340
+- [ ] components/features/seasons/create-season-form.tsx:97
+- [ ] components/features/seasons/edit-season-dialog.tsx:94, 123
+- [ ] components/features/seasons/seasons-list.tsx:46, 66, 80
+
+### no-unused-vars エラー（未使用変数を削除）
+- [ ] app/[locale]/leaderboard/page.tsx:64, 83 (err)
+- [ ] app/[locale]/matches/[category]/[season]/[match]/page.tsx:106 (err)
+- [ ] app/[locale]/results/page.tsx:70, 95 (err)
+- [ ] components/features/admin/matches-list-card.tsx:41, 44 (isDeleting, isCancelling)
+- [ ] components/features/auth/display-name-setup-modal.tsx:58 (isLoadingSuggestion)
+- [ ] components/features/match/match-header-card.tsx:22 (completedAt)
+- [ ] components/features/match/match-passcode-card.tsx:63 (voteProgress)
+- [ ] components/features/match/moderator-panel.tsx:74, 75, 212 (gameId, matchId, getTrackById)
+- [ ] components/features/match/player-count.tsx:12 (min)
+- [ ] components/features/match/score-submission-form.tsx:44 (positionValidation)
+- [ ] components/ui/alert-dialog.tsx:7 (Button)
+
+### no-empty-object-type エラー
+- [ ] components/ui/input.tsx:4
+- [ ] components/ui/textarea.tsx:5
+
+### react-hooks/exhaustive-deps 警告
+- [ ] app/[locale]/matches/[category]/[season]/[match]/page.tsx:119
+- [ ] components/features/auth/display-name-setup-modal.tsx:90
+- [ ] components/features/seasons/edit-season-dialog.tsx:72
+
+### next/no-img-element 警告（Image コンポーネントを使う）
+- [ ] components/features/match/match-participants-card.tsx:83
+- [ ] components/ui/avatar.tsx:19
+
+## Prisma マイグレーション移行
+
+- [ ] `prisma db push` から `prisma migrate` に移行
+  - `npx prisma migrate dev --name init` でマイグレーションファイル生成
+  - `prisma/migrations/` をgit管理に追加
+  - CI/CDで `prisma migrate deploy` を使用
+
+## Nginx APIキャッシュ
+
+- [ ] キャッシュするAPIエンドポイントを検討
+  - 現在は全APIキャッシュ無効（リアルタイム性重視）
+  - キャッシュ候補: `/api/seasons`（変更頻度低い）、`/api/tracks`（静的データ）
+  - 認証系 `/api/auth/*` は絶対にキャッシュしない
+
+## CI/CD
+
+- [ ] GitHub Actions + ECR でビルド・デプロイ自動化
+  - ECRリポジトリ作成（fz99-api, fz99-web）
+  - GitHub ActionsでARM64ビルド → ECRにpush
+  - EC2からECRのイメージをpull
+  - EC2でビルドしない構成に移行（軽量・高速）
+
+- [ ] AWS SSM でのデプロイ自動化（オプション）
+  - EC2に AmazonSSMManagedInstanceCore ポリシーを追加
+  - IAMユーザー作成 (github-actions-deploy)
+  - GitHub Secrets設定 (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, STG_EC2_INSTANCE_ID)
