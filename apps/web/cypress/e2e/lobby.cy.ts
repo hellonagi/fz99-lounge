@@ -1,4 +1,5 @@
 /// <reference types="cypress" />
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 describe('CLASSIC Lobby Flow', () => {
   // N秒後の日時を取得するヘルパー（テスト用に秒単位で指定）

@@ -70,19 +70,18 @@ interface ModeratorPanelProps {
   onUpdate: () => void;
 }
 
-export function ModeratorPanel({
-  gameId,
-  matchId,
-  matchStatus,
-  participants,
-  screenshots = [],
-  category,
-  season,
-  match,
-  deadline,
-  tracks,
-  onUpdate,
-}: ModeratorPanelProps) {
+export function ModeratorPanel(props: ModeratorPanelProps) {
+  const {
+    matchStatus,
+    participants,
+    screenshots = [],
+    category,
+    season,
+    match,
+    deadline,
+    tracks,
+    onUpdate,
+  } = props;
   const [endingMatch, setEndingMatch] = useState(false);
   const [regeneratingPasscode, setRegeneratingPasscode] = useState(false);
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
@@ -207,9 +206,6 @@ export function ModeratorPanel({
     if (bElim === null) return 1;
     return bElim - aElim;
   });
-
-  // Track selection handlers (CLASSIC only)
-  const getTrackById = (id: number) => allTracks.find((t) => t.id === id);
 
   const handleTrackChange = (raceIndex: number, value: string) => {
     const trackId = value === 'none' ? null : parseInt(value, 10);

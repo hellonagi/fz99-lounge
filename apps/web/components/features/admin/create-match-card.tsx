@@ -163,10 +163,11 @@ export function CreateMatchCard() {
         notes: '',
       });
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
       form.setError('root', {
         type: 'manual',
-        message: err.response?.data?.message || 'Failed to create match',
+        message: axiosError.response?.data?.message || 'Failed to create match',
       });
     }
   };

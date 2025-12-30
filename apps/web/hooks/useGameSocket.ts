@@ -14,9 +14,36 @@ export interface PasscodeRegeneratedUpdate {
   requiredVotes: number;
 }
 
+export interface ParticipantUpdate {
+  id: number;
+  userId: number;
+  position: number | null;
+  reportedPoints: number | null;
+  finalPoints: number | null;
+  machine: string;
+  assistEnabled: boolean;
+  totalScore: number | null;
+  eliminatedAtRace: number | null;
+  ratingAfter: number | null;
+  ratingChange: number | null;
+  raceResults?: Array<{
+    raceNumber: number;
+    position: number | null;
+    points: number | null;
+    isEliminated: boolean;
+    isDisconnected: boolean;
+  }>;
+  user: {
+    id: number;
+    profileId: number;
+    displayName: string | null;
+    avatarHash: string | null;
+  };
+}
+
 interface UseGameSocketProps {
   gameId: number;
-  onScoreUpdated?: (participant: any) => void;
+  onScoreUpdated?: (participant: ParticipantUpdate) => void;
   onStatusChanged?: (status: string) => void;
   onSplitVoteUpdated?: (data: SplitVoteUpdate) => void;
   onPasscodeRegenerated?: (data: PasscodeRegeneratedUpdate) => void;

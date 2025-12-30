@@ -65,12 +65,6 @@ export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditS
 
   const { isSubmitting } = form.formState;
 
-  useEffect(() => {
-    if (isOpen && seasonId) {
-      fetchSeasonData();
-    }
-  }, [isOpen, seasonId]);
-
   const fetchSeasonData = async () => {
     try {
       setLoading(true);
@@ -91,7 +85,7 @@ export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditS
         });
         setOriginalCategory(season.event.category);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching season:', err);
       form.setError('root', {
         type: 'manual',
@@ -101,6 +95,13 @@ export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditS
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && seasonId) {
+      fetchSeasonData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, seasonId]);
 
   const onSubmit = async (data: EditSeasonFormData) => {
     try {
@@ -120,11 +121,12 @@ export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditS
           onSuccess();
         }
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating season:', err);
+      const axiosError = err as { response?: { data?: { message?: string } } };
       form.setError('root', {
         type: 'manual',
-        message: err.response?.data?.message || 'シーズンの更新に失敗しました。もう一度お試しください。',
+        message: axiosError.response?.data?.message || 'シーズンの更新に失敗しました。もう一度お試しください。',
       });
     }
   };

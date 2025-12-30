@@ -9,7 +9,8 @@ interface PlayerCountProps {
   isJoining?: boolean;
 }
 
-export function PlayerCount({ current, min, max, onJoin, isJoined = false, isJoining = false }: PlayerCountProps) {
+export function PlayerCount(props: PlayerCountProps) {
+  const { current, max, onJoin, isJoined = false, isJoining = false } = props;
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
       <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-5 py-3 border border-white/20">

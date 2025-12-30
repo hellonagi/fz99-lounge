@@ -40,10 +40,15 @@ const setupSchema = z.object({
     .string()
     .min(1, 'Display name is required')
     .max(10, 'Display name must be 10 characters or less')
-    .refine(
-      (val) => validateDisplayName(val).valid,
-      (val) => ({ message: validateDisplayName(val).error || 'Invalid display name' })
-    ),
+    .superRefine((val, ctx) => {
+      const result = validateDisplayName(val);
+      if (!result.valid) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: result.error || 'Invalid display name',
+        });
+      }
+    }),
   country: z.string().min(1, 'Please select your country'),
 });
 
@@ -55,7 +60,7 @@ interface DisplayNameSetupModalProps {
 
 export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
   const [isComposing, setIsComposing] = useState(false);
-  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+  const [, setIsLoadingSuggestion] = useState(false);
   const { user, updateUser } = useAuthStore();
 
   const form = useForm<SetupFormData>({
@@ -87,7 +92,7 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
           setIsLoadingSuggestion(false);
         });
     }
-  }, [open]);
+  }, [open, country, form]);
 
   const handleCompositionStart = () => {
     setIsComposing(true);
@@ -116,10 +121,11 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
           country: response.data.country,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
       form.setError('displayName', {
         type: 'manual',
-        message: err.response?.data?.message || 'Failed to save profile',
+        message: axiosError.response?.data?.message || 'Failed to save profile',
       });
     }
   };

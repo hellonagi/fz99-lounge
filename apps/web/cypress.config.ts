@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 import { defineConfig } from 'cypress';
 import { execSync } from 'child_process';
 import * as jwt from 'jsonwebtoken';

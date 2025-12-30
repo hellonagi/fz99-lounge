@@ -4,12 +4,12 @@ import { useState } from 'react';
 import Image from 'next/image';
 
 interface Screenshot {
-  id: string;
+  id: number | string;
   imageUrl: string | null;
   uploadedAt: string;
   isDeleted?: boolean;
   user: {
-    id: string;
+    id: number | string;
     displayName: string | null;
     username: string;
     avatarHash: string | null;

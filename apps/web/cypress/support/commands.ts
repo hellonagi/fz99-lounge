@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
 // シードで作成されるテストユーザー（seed.tsと同期）
-const TEST_USERS = {
+const TEST_USERS: Record<string, { id: number; discordId: string; username: string; displayName: string | null; role: string }> = {
   // admin は displayName なし（プロフィール設定モーダルをテストするため）
   admin: { id: 1, discordId: 'admin-001', username: 'test_admin', displayName: null as string | null, role: 'ADMIN' },
   mod1: { id: 2, discordId: 'mod-001', username: 'test_mod_1', displayName: 'Mod1', role: 'MODERATOR' },
@@ -22,9 +22,10 @@ const TEST_USERS = {
   ),
 };
 
-type TestUserKey = keyof typeof TEST_USERS;
+type TestUserKey = 'admin' | 'mod1' | 'mod2' | 'mod3' | `player${number}`;
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     interface Chainable {
       /**
@@ -84,7 +85,7 @@ Cypress.Commands.add('login', (userKey: TestUserKey) => {
   // displayNameがnullの場合はAPIから最新のプロフィールを取得
   // これによりMatch 1ではモーダルが表示され、Match 2以降ではDBのdisplayNameが使われる
   if (user.displayName === null) {
-    cy.task('getUserProfile', { userKey }).then((profile: any) => {
+    cy.task('getUserProfile', { userKey }).then((profile: { id: number; displayName: string | null; role: string }) => {
       cy.window().then((win) => {
         const authStorage = {
           state: {

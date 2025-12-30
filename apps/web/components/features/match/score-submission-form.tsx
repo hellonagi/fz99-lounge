@@ -40,16 +40,6 @@ const gpScoreSchema = z.object({
   assistEnabled: z.boolean(),
 });
 
-// Position validation helper
-const positionValidation = z
-  .string()
-  .min(1, 'Position is required')
-  .refine((val) => !isNaN(parseInt(val, 10)), 'Must be a number')
-  .refine((val) => {
-    const num = parseInt(val, 10);
-    return num >= 1 && num <= 20;
-  }, 'Position must be between 1 and 20');
-
 // CLASSIC mode schema (race-by-race positions with elimination status)
 const classicScoreSchema = z
   .object({
@@ -257,10 +247,11 @@ export function ScoreSubmissionForm({
       }
 
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
       gpForm.setError('root', {
         type: 'manual',
-        message: err.response?.data?.message || err.message || 'Failed to submit score',
+        message: axiosError.response?.data?.message || axiosError.message || 'Failed to submit score',
       });
     }
   };
@@ -337,10 +328,11 @@ export function ScoreSubmissionForm({
       }
 
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
       classicForm.setError('root', {
         type: 'manual',
-        message: err.response?.data?.message || err.message || 'Failed to submit score',
+        message: axiosError.response?.data?.message || axiosError.message || 'Failed to submit score',
       });
     }
   };

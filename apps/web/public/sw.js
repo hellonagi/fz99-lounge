@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 // Service Worker for Push Notifications
 
 self.addEventListener('install', (event) => {
