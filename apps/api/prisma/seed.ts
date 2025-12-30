@@ -57,7 +57,13 @@ const classicTracks = normalTracks.map((track) => ({
 }));
 
 async function main() {
-  console.log('Seeding database...');
+  const env = process.env.NODE_ENV || 'development';
+  const isProduction = env === 'production' || env === 'staging';
+
+  console.log(`Seeding database... (env: ${env})`);
+  if (isProduction) {
+    console.log('Production/Staging mode: Skipping fake users');
+  }
 
   // イベント作成（GP と CLASSIC）
   const gpEvent = await prisma.event.upsert({
@@ -184,57 +190,61 @@ async function main() {
   }
   console.log(`Created ${normalTracks.length + mirrorTracks.length + classicTracks.length + mysteryTracks.length} tracks (${normalTracks.length} GP + ${mirrorTracks.length} mirror + ${classicTracks.length} classic + ${mysteryTracks.length} mystery)`);
 
-  // ユーザー作成: 1 ADMIN + 3 MODERATOR + 26 PLAYER = 30名
-  const users: {
-    discordId: string;
-    username: string;
-    displayName: string | null;
-    country: string | null;
-    role: UserRole;
-  }[] = [
-    // ADMIN (1名) - displayName なし（プロフィール設定モーダルをテストするため）
-    { discordId: 'admin-001', username: 'test_admin', displayName: null, country: null, role: 'ADMIN' },
-    // MODERATOR (3名)
-    { discordId: 'mod-001', username: 'test_mod_1', displayName: 'Mod1', country: 'JP', role: 'MODERATOR' },
-    { discordId: 'mod-002', username: 'test_mod_2', displayName: 'Mod2', country: 'US', role: 'MODERATOR' },
-    { discordId: 'mod-003', username: 'test_mod_3', displayName: 'Mod3', country: 'GB', role: 'MODERATOR' },
-    // PLAYER (26名)
-    ...Array.from({ length: 26 }, (_, i) => ({
-      discordId: `player-${String(i + 1).padStart(3, '0')}`,
-      username: `test_player_${i + 1}`,
-      displayName: `Player${i + 1}`,
-      country: 'JP',
-      role: 'PLAYER' as UserRole,
-    })),
-  ];
+  // Fake ユーザー作成（開発環境のみ）
+  if (!isProduction) {
+    // ユーザー作成: 1 ADMIN + 3 MODERATOR + 26 PLAYER = 30名
+    const users: {
+      discordId: string;
+      username: string;
+      displayName: string | null;
+      country: string | null;
+      role: UserRole;
+    }[] = [
+      // ADMIN (1名) - displayName なし（プロフィール設定モーダルをテストするため）
+      { discordId: 'admin-001', username: 'test_admin', displayName: null, country: null, role: 'ADMIN' },
+      // MODERATOR (3名)
+      { discordId: 'mod-001', username: 'test_mod_1', displayName: 'Mod1', country: 'JP', role: 'MODERATOR' },
+      { discordId: 'mod-002', username: 'test_mod_2', displayName: 'Mod2', country: 'US', role: 'MODERATOR' },
+      { discordId: 'mod-003', username: 'test_mod_3', displayName: 'Mod3', country: 'GB', role: 'MODERATOR' },
+      // PLAYER (26名)
+      ...Array.from({ length: 26 }, (_, i) => ({
+        discordId: `player-${String(i + 1).padStart(3, '0')}`,
+        username: `test_player_${i + 1}`,
+        displayName: `Player${i + 1}`,
+        country: 'JP',
+        role: 'PLAYER' as UserRole,
+      })),
+    ];
 
-  for (const userData of users) {
-    const user = await prisma.user.upsert({
-      where: { discordId: userData.discordId },
-      update: {},
-      create: {
-        discordId: userData.discordId,
-        username: userData.username,
-        displayName: userData.displayName,
-        role: userData.role,
-        isFake: true,
-      },
-    });
-
-    // displayName がある場合は Profile も作成（country を設定）
-    if (userData.displayName && userData.country) {
-      await prisma.profile.upsert({
-        where: { userId: user.id },
+    for (const userData of users) {
+      const user = await prisma.user.upsert({
+        where: { discordId: userData.discordId },
         update: {},
         create: {
-          userId: user.id,
-          country: userData.country,
+          discordId: userData.discordId,
+          username: userData.username,
+          displayName: userData.displayName,
+          role: userData.role,
+          isFake: true,
         },
       });
+
+      // displayName がある場合は Profile も作成（country を設定）
+      if (userData.displayName && userData.country) {
+        await prisma.profile.upsert({
+          where: { userId: user.id },
+          update: {},
+          create: {
+            userId: user.id,
+            country: userData.country,
+          },
+        });
+      }
     }
+
+    console.log(`Created ${users.length} fake test users`);
   }
 
-  console.log(`Created ${users.length} test users`);
   console.log('Seeding completed!');
 }
 
