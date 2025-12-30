@@ -88,7 +88,7 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
-    command: node dist/main
+    command: node dist/src/main
 
   # Next.js Web本番設定
   web:
