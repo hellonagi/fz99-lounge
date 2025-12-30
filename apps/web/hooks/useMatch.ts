@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { matchesApi } from '@/lib/api';
-import { useAuthStore } from '@/store/authStore';
 
 interface Match {
   id: number;
@@ -39,7 +38,6 @@ export function useMatch() {
     season: number;
     match: number;
   } | null>(null);
-  const { isAuthenticated, user } = useAuthStore();
 
   const fetchData = useCallback(async () => {
     try {
@@ -75,7 +73,7 @@ export function useMatch() {
         setNextMatch(null);
         setError('No Upcoming Match Found');
       }
-    } catch (err: any) {
+    } catch {
       setError('Failed to Load Match');
       setNextMatch(null);
       setOngoingGameInfo(null);

@@ -60,15 +60,15 @@ export function MatchResultList({
     const bElim = b.eliminatedAtRace;
 
     // Both finished (no DNF) - sort by score
-    if (aElim === null && bElim === null) {
+    if (aElim == null && bElim == null) {
       const aScore = a.totalScore ?? a.finalPoints ?? a.reportedPoints ?? 0;
       const bScore = b.totalScore ?? b.finalPoints ?? b.reportedPoints ?? 0;
       return bScore - aScore;
     }
 
     // One finished, one DNF - finished player ranks higher
-    if (aElim === null) return -1;
-    if (bElim === null) return 1;
+    if (aElim == null) return -1;
+    if (bElim == null) return 1;
 
     // Both DNF - later race = higher rank (3 > 2 > 1)
     return bElim - aElim;
@@ -117,7 +117,7 @@ export function MatchResultList({
         {currentParticipants.map((participant) => (
           <MatchResultRow
             key={participant.user.id}
-            position={(participant as any)._calculatedPosition}
+            position={participant._calculatedPosition}
             displayName={participant.user.displayName}
             profileId={participant.user.profileId}
             country={participant.user.profile?.country}

@@ -38,17 +38,15 @@ export function MatchesListCard() {
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [matchToCancel, setMatchToCancel] = useState<Match | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
 
   const fetchMatches = async () => {
     try {
       const response = await matchesApi.getAll();
       setMatches(response.data);
       setError(null);
-    } catch (err: any) {
+    } catch {
       setError('Failed to load matches');
     } finally {
       setLoading(false);
@@ -67,17 +65,15 @@ export function MatchesListCard() {
   const handleDeleteConfirm = async () => {
     if (!matchToDelete) return;
 
-    setIsDeleting(true);
     try {
       await matchesApi.delete(matchToDelete.id);
       setDeleteDialogOpen(false);
       setMatchToDelete(null);
       // Refresh list
       await fetchMatches();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete match');
-    } finally {
-      setIsDeleting(false);
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to delete match');
     }
   };
 
@@ -89,17 +85,15 @@ export function MatchesListCard() {
   const handleCancelConfirm = async () => {
     if (!matchToCancel) return;
 
-    setIsCancelling(true);
     try {
       await matchesApi.cancel(matchToCancel.id);
       setCancelDialogOpen(false);
       setMatchToCancel(null);
       // Refresh list
       await fetchMatches();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to cancel match');
-    } finally {
-      setIsCancelling(false);
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to cancel match');
     }
   };
 

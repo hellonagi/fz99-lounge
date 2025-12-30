@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { getAvatarUrl } from '@/lib/utils';
 import {
@@ -79,11 +80,13 @@ export function MatchParticipantsCard({ participants, embedded = false }: MatchP
                 >
                   <div className="flex items-center gap-3">
                     {/* Avatar */}
-                    <div className="relative flex-shrink-0">
-                      <img
+                    <div className="relative flex-shrink-0 w-10 h-10">
+                      <Image
                         src={getUserAvatarUrl(participant.user.discordId, participant.user.avatarHash, startIndex + index)}
                         alt={participant.user.displayName || `Player ${index + 1}`}
-                        className="w-10 h-10 rounded-full border-2 border-gray-700"
+                        fill
+                        className="rounded-full border-2 border-gray-700 object-cover"
+                        unoptimized
                       />
                     </div>
 

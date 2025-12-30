@@ -67,7 +67,7 @@ export default function ResultsPage() {
           );
           setSelectedSeasonNumber(latestSeason.seasonNumber);
         }
-      } catch (err) {
+      } catch {
         setError(t('failedToLoadSeasons'));
         setLoading(false);
       }
@@ -92,7 +92,7 @@ export default function ResultsPage() {
         });
         setMatches(response.data.data);
         setMeta(response.data.meta);
-      } catch (err) {
+      } catch {
         setError(t('failedToLoadResults'));
         setMatches([]);
         setMeta(null);

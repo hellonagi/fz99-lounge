@@ -68,7 +68,7 @@ export function useMatchWebSocket({
     };
 
     // Handle match started event (when match transitions to IN_PROGRESS)
-    const handleMatchStarted = (data: any) => {
+    const handleMatchStarted = (data: { matchId: number; category: string; season: number; match: number }) => {
       console.log('Match started event received:', data);
 
       // Check if current user is in this match
@@ -81,7 +81,7 @@ export function useMatchWebSocket({
     };
 
     // Handle match updated event (player joined/left)
-    const handleMatchUpdated = (data: any) => {
+    const handleMatchUpdated = (data: Match) => {
       console.log('Match updated event received:', data);
 
       // Update match if it's the one we're showing

@@ -51,8 +51,9 @@ export function MatchPasscodeCard({
         alert(`${t('newPasscode')}\n${t('newPasscodeDescription', { passcode: response.data.passcode })}`);
       }
       onSplitVote?.();
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to cast vote');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to cast vote');
     } finally {
       setVoting(false);
     }
@@ -60,9 +61,6 @@ export function MatchPasscodeCard({
 
   const showSplitButton = isParticipant && matchStatus === 'IN_PROGRESS' && category && season !== undefined && match !== undefined;
   const hasVoted = splitVoteStatus?.hasVoted ?? false;
-  const voteProgress = splitVoteStatus
-    ? `${splitVoteStatus.currentVotes}/${splitVoteStatus.requiredVotes}`
-    : '0/0';
   const progressPercent = splitVoteStatus && splitVoteStatus.requiredVotes > 0
     ? Math.min((splitVoteStatus.currentVotes / splitVoteStatus.requiredVotes) * 100, 100)
     : 0;

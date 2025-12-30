@@ -65,8 +65,9 @@ export function useMatchActions(
       // Refresh match data (all categories)
       const response = await matchesApi.getNext();
       setNextMatch(response.data.match);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to join/leave match');
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to join/leave match');
     } finally {
       setIsJoining(false);
     }

@@ -14,7 +14,7 @@ import { TrackBanners } from '@/components/features/match/track-banners';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { gamesApi, screenshotsApi } from '@/lib/api';
-import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate } from '@/hooks/useGameSocket';
+import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate, ParticipantUpdate } from '@/hooks/useGameSocket';
 import { useTranslations } from 'next-intl';
 
 interface Game {
@@ -73,6 +73,7 @@ interface Game {
       position: number | null;
       points: number | null;
       isEliminated: boolean;
+      isDisconnected: boolean;
     }>;
   }>;
 }
@@ -88,12 +89,22 @@ export default function GamePage() {
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [screenshots, setScreenshots] = useState<any[]>([]);
+  const [screenshots, setScreenshots] = useState<Array<{
+    id: number;
+    userId: number;
+    imageUrl: string | null;
+    type: 'INDIVIDUAL' | 'FINAL_SCORE';
+    isVerified: boolean;
+    isRejected?: boolean;
+    isDeleted?: boolean;
+    uploadedAt: string;
+    user: { id: number; displayName: string | null; username: string; avatarHash: string | null };
+  }>>([]);
   const [activeTab, setActiveTab] = useState<string>('results');
   const [splitVoteStatus, setSplitVoteStatus] = useState<SplitVoteStatus | null>(null);
   const initialTabSet = useRef(false);
 
-  const fetchGame = async () => {
+  const fetchGame = useCallback(async () => {
     try {
       const response = await gamesApi.getByCategorySeasonMatch(category, season, match);
       setGame(response.data);
@@ -103,20 +114,22 @@ export default function GamePage() {
         try {
           const screenshotsResponse = await screenshotsApi.getSubmissions(response.data.id);
           setScreenshots(screenshotsResponse.data);
-        } catch (err) {
+        } catch {
           setScreenshots([]);
         }
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load game');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load game';
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      setError(axiosError.response?.data?.message || errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [category, season, match]);
 
   useEffect(() => {
     fetchGame();
-  }, [category, season, match]);
+  }, [fetchGame]);
 
   // Set default tab on first load
   useEffect(() => {
@@ -133,7 +146,7 @@ export default function GamePage() {
   };
 
   // Handle real-time score updates
-  const handleScoreUpdated = useCallback((participant: any) => {
+  const handleScoreUpdated = useCallback((participant: ParticipantUpdate) => {
     setGame((prevGame) => {
       if (!prevGame) return prevGame;
 

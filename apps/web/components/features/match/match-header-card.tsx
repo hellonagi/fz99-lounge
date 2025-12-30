@@ -13,15 +13,8 @@ interface MatchHeaderCardProps {
   status: string;
 }
 
-export function MatchHeaderCard({
-  gameMode,
-  seasonNumber,
-  gameNumber,
-  leagueType,
-  startedAt,
-  completedAt,
-  status,
-}: MatchHeaderCardProps) {
+export function MatchHeaderCard(props: MatchHeaderCardProps) {
+  const { gameMode, seasonNumber, gameNumber, leagueType, startedAt, status } = props;
   // Format time as HH:MM
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);

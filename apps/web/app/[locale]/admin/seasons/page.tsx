@@ -11,15 +11,28 @@ import { seasonsApi } from '@/lib/api';
 
 export default function SeasonsManagementPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [activeSeasons, setActiveSeasons] = useState<any[]>([]);
+  const [activeSeasons, setActiveSeasons] = useState<Array<{
+    id: number;
+    seasonNumber: number;
+    description: string | null;
+    startDate: string;
+    endDate: string | null;
+    isActive: boolean;
+    event: { category: 'GP' | 'CLASSIC' | 'TOURNAMENT'; name: string };
+  }>>([]);
   const [loadingActive, setLoadingActive] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Check authentication
-    if (!authLoading) {
-      if (!user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    // Check authentication after mount
+    if (mounted) {
+      if (!isAuthenticated || !user) {
         router.push('/login');
       } else if (user.role !== 'ADMIN' && user.role !== 'MODERATOR') {
         router.push('/');
@@ -27,7 +40,7 @@ export default function SeasonsManagementPage() {
         fetchActiveSeasons();
       }
     }
-  }, [user, authLoading, router]);
+  }, [mounted, user, isAuthenticated, router]);
 
   const fetchActiveSeasons = async () => {
     try {
@@ -54,7 +67,7 @@ export default function SeasonsManagementPage() {
   };
 
   // Show loading while checking auth
-  if (authLoading) {
+  if (!mounted) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <span className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full" />

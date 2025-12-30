@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
           );
           setSelectedSeasonNumber(latestSeason.seasonNumber);
         }
-      } catch (err) {
+      } catch {
         setError(t('failedToLoadSeasons'));
         setLoading(false);
       }
@@ -80,7 +80,7 @@ export default function LeaderboardPage() {
       try {
         const response = await usersApi.getLeaderboard('CLASSIC', selectedSeasonNumber, 100);
         setLeaderboardData(response.data as LeaderboardEntry[]);
-      } catch (err) {
+      } catch {
         setError(t('failedToLoadLeaderboard'));
       } finally {
         setLoading(false);

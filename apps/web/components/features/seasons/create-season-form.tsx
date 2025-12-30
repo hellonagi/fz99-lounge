@@ -94,11 +94,12 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
 
         setTimeout(() => setSuccess(false), 3000);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error creating season:', err);
+      const axiosError = err as { response?: { data?: { message?: string } } };
       form.setError('root', {
         type: 'manual',
-        message: err.response?.data?.message || 'シーズンの作成に失敗しました。もう一度お試しください。',
+        message: axiosError.response?.data?.message || 'シーズンの作成に失敗しました。もう一度お試しください。',
       });
     }
   };

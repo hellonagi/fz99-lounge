@@ -43,7 +43,7 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
       setError(null);
       const response = await seasonsApi.getAll();
       setSeasons(response.data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching seasons:', err);
       setError('シーズンの取得に失敗しました');
     } finally {
@@ -63,7 +63,7 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
       });
       // Refresh the list
       await fetchSeasons();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error toggling season status:', err);
       alert('ステータスの変更に失敗しました');
     }
@@ -77,9 +77,10 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
     try {
       await seasonsApi.delete(seasonId);
       await fetchSeasons();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting season:', err);
-      alert(err.response?.data?.message || 'シーズンの削除に失敗しました');
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'シーズンの削除に失敗しました');
     }
   };
 
