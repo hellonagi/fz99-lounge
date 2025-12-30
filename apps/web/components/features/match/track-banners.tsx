@@ -12,7 +12,7 @@ interface TrackBannersProps {
 
 const getLeagueColor = (league: string | undefined) => {
   if (!league) return 'bg-gray-600/80';
-  const base = league.replace('MIRROR_', '');
+  const base = league.replace('MIRROR_', '').replace('MYSTERY_', '');
   switch (base) {
     case 'KNIGHT':
       return 'bg-cyan-600/80';

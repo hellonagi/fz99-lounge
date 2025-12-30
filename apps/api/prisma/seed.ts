@@ -30,6 +30,15 @@ const normalTracks: { id: number; name: string; league: League; bannerPath: stri
   { id: 20, name: 'Silence II', league: 'ACE', bannerPath: '/banners/tr20_silence2.png' },
 ];
 
+// Mystery Knight League (ID 51-55)
+const mysteryTracks: { id: number; name: string; league: League; bannerPath: string }[] = [
+  { id: 51, name: '??? - Mute City', league: 'MYSTERY_KNIGHT', bannerPath: '/banners/tr51_mystery_mutecity.png' },
+  { id: 52, name: '??? - Big Blue', league: 'MYSTERY_KNIGHT', bannerPath: '/banners/tr52_mystery_bigblue.png' },
+  { id: 53, name: '??? - Sand Ocean', league: 'MYSTERY_KNIGHT', bannerPath: '/banners/tr53_mystery_sandocean.png' },
+  { id: 54, name: '??? - Death Wind', league: 'MYSTERY_KNIGHT', bannerPath: '/banners/tr54_mystery_deathwind.png' },
+  { id: 55, name: '??? - Silence', league: 'MYSTERY_KNIGHT', bannerPath: '/banners/tr55_mystery_silence.png' },
+];
+
 // ミラートラックを生成（ID 101-120）
 const mirrorTracks = normalTracks.map((track) => ({
   id: track.id + 100,
@@ -155,7 +164,25 @@ async function main() {
       },
     });
   }
-  console.log(`Created ${normalTracks.length + mirrorTracks.length + classicTracks.length} tracks (${normalTracks.length} GP + ${mirrorTracks.length} mirror + ${classicTracks.length} classic)`);
+
+  // トラック作成（Mysteryコース）
+  for (const track of mysteryTracks) {
+    await prisma.track.upsert({
+      where: { id: track.id },
+      update: {
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+      },
+      create: {
+        id: track.id,
+        name: track.name,
+        league: track.league,
+        bannerPath: track.bannerPath,
+      },
+    });
+  }
+  console.log(`Created ${normalTracks.length + mirrorTracks.length + classicTracks.length + mysteryTracks.length} tracks (${normalTracks.length} GP + ${mirrorTracks.length} mirror + ${classicTracks.length} classic + ${mysteryTracks.length} mystery)`);
 
   // ユーザー作成: 1 ADMIN + 3 MODERATOR + 26 PLAYER = 30名
   const users: {

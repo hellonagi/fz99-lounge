@@ -59,6 +59,9 @@ enum League {
   MIRROR_KING
   MIRROR_ACE
 
+  // Mystery用
+  MYSTERY_KNIGHT
+
   // classicモード用
   CLASSIC_MINI
 }
