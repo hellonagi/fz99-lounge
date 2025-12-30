@@ -63,4 +63,4 @@ apps/api/.env.test
 apps/api/test/helpers/
 apps/api/test/load/
 apps/api/prisma/migrations_backup/
-docker-compose.test.yml
+compose.test.yaml

@@ -9,28 +9,16 @@ CREATE EXTENSION IF NOT EXISTS "unaccent"; -- アクセント除去
 -- データベース設定
 ALTER DATABASE fz99_lounge SET timezone TO 'Asia/Tokyo';
 
--- 初期ユーザー作成（開発用）
--- 本番環境では別途セキュアな方法で作成
-DO $$
-BEGIN
-    -- アプリケーション用ユーザー
-    IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'app_user') THEN
-        CREATE USER app_user WITH PASSWORD 'app_password';
-    END IF;
+-- 追加ユーザーが必要な場合は環境変数経由で作成
+-- 開発環境: .envのDB_USER/DB_PASSWORDを使用
+-- 本番環境: RDSのマスターユーザーを使用
 
-    -- 読み取り専用ユーザー（分析用）
-    IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'readonly_user') THEN
-        CREATE USER readonly_user WITH PASSWORD 'readonly_password';
-    END IF;
-END
-$$;
-
--- 権限設定
-GRANT ALL PRIVILEGES ON DATABASE fz99_lounge TO app_user;
-GRANT CONNECT ON DATABASE fz99_lounge TO readonly_user;
-GRANT USAGE ON SCHEMA public TO readonly_user;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly_user;
+-- 権限設定（追加ユーザーを作成した場合のみ有効化）
+-- GRANT ALL PRIVILEGES ON DATABASE fz99_lounge TO app_user;
+-- GRANT CONNECT ON DATABASE fz99_lounge TO readonly_user;
+-- GRANT USAGE ON SCHEMA public TO readonly_user;
+-- GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+-- ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly_user;
 
 -- パフォーマンス設定
 ALTER SYSTEM SET shared_buffers = '256MB';
