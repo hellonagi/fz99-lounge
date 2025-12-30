@@ -25,22 +25,24 @@ export class StorageService {
     // MinIO (開発環境) vs AWS S3 (本番環境)
     const endpoint = this.configService.get<string>('S3_ENDPOINT');
 
-    this.s3Client = new S3Client({
+    // MinIO (開発環境) の場合は明示的な認証情報が必要
+    // AWS S3 (本番環境) の場合はIAMロールを使用するため credentials を指定しない
+    const s3Config: ConstructorParameters<typeof S3Client>[0] = {
       region: this.region,
-      endpoint: endpoint || undefined, // MinIOの場合はendpointを指定
-      forcePathStyle: !!endpoint, // MinIOの場合はtrueにする
-      credentials: endpoint
-        ? {
-            // MinIO用
-            accessKeyId: this.configService.get<string>('S3_ACCESS_KEY_ID') || 'minioadmin',
-            secretAccessKey: this.configService.get<string>('S3_SECRET_ACCESS_KEY') || 'minioadmin',
-          }
-        : {
-            // AWS S3用
-            accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID')!,
-            secretAccessKey: this.configService.get<string>('AWS_SECRET_ACCESS_KEY')!,
-          },
-    });
+    };
+
+    if (endpoint) {
+      // MinIO用設定
+      s3Config.endpoint = endpoint;
+      s3Config.forcePathStyle = true;
+      s3Config.credentials = {
+        accessKeyId: this.configService.get<string>('S3_ACCESS_KEY_ID') || 'minioadmin',
+        secretAccessKey: this.configService.get<string>('S3_SECRET_ACCESS_KEY') || 'minioadmin',
+      };
+    }
+    // AWS S3の場合は credentials を指定しない（IAMロールから自動取得）
+
+    this.s3Client = new S3Client(s3Config);
 
     // ブラウザからアクセス可能なURLを設定
     // MinIOの場合、Docker内部URLではなく、localhost:9000を使用
