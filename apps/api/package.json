@@ -37,6 +37,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
+    "discord.js": "^14.25.1",
     "ioredis": "^5.8.0",
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",

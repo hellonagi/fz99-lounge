@@ -4,6 +4,7 @@ import type { Job } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
+import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { MatchStatus } from '@prisma/client';
 
 @Processor('matches')
@@ -14,6 +15,7 @@ export class MatchesProcessor {
     private prisma: PrismaService,
     private eventsGateway: EventsGateway,
     private pushNotificationsService: PushNotificationsService,
+    private discordBotService: DiscordBotService,
   ) {}
 
   @Process('start-match')
@@ -26,7 +28,13 @@ export class MatchesProcessor {
       const match = await this.prisma.match.findUnique({
         where: { id: matchId },
         include: {
-          participants: true,
+          participants: {
+            include: {
+              user: {
+                select: { discordId: true },
+              },
+            },
+          },
           games: {
             orderBy: { gameNumber: 'desc' },
             take: 1,
@@ -147,6 +155,26 @@ export class MatchesProcessor {
         // Continue even if push notifications fail
       }
 
+      // Create Discord passcode channel for participants
+      try {
+        const participantDiscordIds = match.participants
+          .map((p) => p.user?.discordId)
+          .filter((id): id is string => !!id);
+
+        await this.discordBotService.createPasscodeChannel({
+          gameId: updatedGame.id,
+          category: categoryStr,
+          seasonNumber,
+          matchNumber,
+          passcode,
+          leagueType: updatedGame.leagueType,
+          participantDiscordIds,
+        });
+      } catch (error) {
+        this.logger.error('Failed to create Discord channel:', error);
+        // Continue even if Discord channel creation fails
+      }
+
       return updatedGame;
     } catch (error) {
       this.logger.error(`Failed to start match ${matchId}:`, error);
@@ -158,5 +186,18 @@ export class MatchesProcessor {
     // Generate random 4-digit number (0000-9999)
     const passcode = Math.floor(Math.random() * 10000);
     return passcode.toString().padStart(4, '0');
+  }
+
+  @Process('delete-discord-channel')
+  async handleDeleteDiscordChannel(job: Job<{ gameId: number }>) {
+    const { gameId } = job.data;
+    this.logger.log(`Processing delete-discord-channel job for game ${gameId}`);
+
+    try {
+      await this.discordBotService.deletePasscodeChannel(gameId);
+      this.logger.log(`Deleted Discord channel for game ${gameId}`);
+    } catch (error) {
+      this.logger.error(`Failed to delete Discord channel for game ${gameId}:`, error);
+    }
   }
 }

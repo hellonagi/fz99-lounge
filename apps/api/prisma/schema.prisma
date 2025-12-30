@@ -465,6 +465,9 @@ model Game {
   passcodePublishedAt DateTime?
   passcodeVersion     Int       @default(1)
 
+  // Discord Bot 連携
+  discordChannelId String? @db.VarChar(20)
+
   // totalPlayers は削除 - GameParticipant の COUNT で取得
 
   // CLASSIC用: 各レースのコース (例: ["Mute City I", "Big Blue", "Sand Ocean"])

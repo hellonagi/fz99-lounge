@@ -3,11 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
+import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateMatchDto } from './dto/create-match.dto';
 import { EventCategory, MatchStatus, UserStatus } from '@prisma/client';
 
@@ -69,10 +71,13 @@ export class MatchesService {
     };
   }
 
+  private readonly logger = new Logger(MatchesService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventsGateway: EventsGateway,
     @InjectQueue('matches') private matchQueue: Queue,
+    private discordBotService: DiscordBotService,
   ) {}
 
   async create(createMatchDto: CreateMatchDto, createdBy: number) {
@@ -521,6 +526,22 @@ export class MatchesService {
       data: { status: MatchStatus.CANCELLED },
       include: this.matchDetailInclude,
     });
+
+    // Post cancellation message and schedule channel deletion after 1 hour
+    for (const game of updatedMatch.games) {
+      try {
+        await this.discordBotService.postCancellationMessage(game.id);
+        // Schedule channel deletion after 1 hour
+        await this.matchQueue.add(
+          'delete-discord-channel',
+          { gameId: game.id },
+          { delay: 60 * 60 * 1000 }, // 1 hour
+        );
+      } catch (error) {
+        this.logger.error(`Failed to handle Discord channel for game ${game.id}:`, error);
+        // Continue even if Discord fails
+      }
+    }
 
     // Emit WebSocket event to notify all clients
     this.eventsGateway.emitMatchUpdated(updatedMatch);

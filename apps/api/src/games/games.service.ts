@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
@@ -10,6 +11,7 @@ import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClassicRatingService } from '../rating/classic-rating.service';
+import { DiscordBotService } from '../discord-bot/discord-bot.service';
 
 export interface SplitVoteStatus {
   currentVotes: number;
@@ -29,10 +31,13 @@ export interface SplitVoteResult {
 
 @Injectable()
 export class GamesService {
+  private readonly logger = new Logger(GamesService.name);
+
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
     private classicRatingService: ClassicRatingService,
+    private discordBotService: DiscordBotService,
   ) {}
 
   async getById(gameId: number, userId?: number) {
@@ -720,6 +725,14 @@ export class GamesService {
       finalizedAt: new Date(),
     });
 
+    // Delete Discord passcode channel
+    try {
+      await this.discordBotService.deletePasscodeChannel(game.id);
+    } catch (error) {
+      this.logger.error('Failed to delete Discord channel:', error);
+      // Continue even if Discord fails
+    }
+
     return {
       success: true,
       message: `Match finalized and ratings calculated for game ${game.id}`,
@@ -987,6 +1000,18 @@ export class GamesService {
       passcodeVersion: newVersion,
       requiredVotes,
     });
+
+    // Post new passcode to Discord channel
+    try {
+      await this.discordBotService.postNewPasscode({
+        gameId,
+        passcode: newPasscode,
+        passcodeVersion: newVersion,
+      });
+    } catch (error) {
+      this.logger.error('Failed to post new passcode to Discord:', error);
+      // Continue even if Discord fails
+    }
 
     return {
       regenerated: true,

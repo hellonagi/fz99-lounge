@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
+import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { ScreenshotType } from '@prisma/client';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class ScreenshotsService {
     private prisma: PrismaService,
     private storage: StorageService,
     private classicRatingService: ClassicRatingService,
+    private discordBotService: DiscordBotService,
   ) {}
 
   /**
@@ -435,6 +437,14 @@ export class ScreenshotsService {
       this.logger.log(
         `Match ${game.matchId} automatically set to FINALIZED (all screenshots verified)`,
       );
+
+      // Delete Discord passcode channel
+      try {
+        await this.discordBotService.deletePasscodeChannel(gameId);
+      } catch (error) {
+        this.logger.error(`Failed to delete Discord channel for game ${gameId}: ${error}`);
+        // Continue even if Discord fails
+      }
     }
   }
 

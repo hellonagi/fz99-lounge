@@ -70,6 +70,11 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_CALLBACK_URL: ${DISCORD_CALLBACK_URL:-http://localhost:3000/api/auth/discord/callback}
+      # Discord Bot
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      DISCORD_MATCH_ROOM_CATEGORY_ID: ${DISCORD_MATCH_ROOM_CATEGORY_ID}
+      DISCORD_BOT_ENABLED: ${DISCORD_BOT_ENABLED:-false}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-this}
       SESSION_SECRET: ${SESSION_SECRET:-your-session-secret-change-this}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
