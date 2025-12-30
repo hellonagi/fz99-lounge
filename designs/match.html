@@ -315,7 +315,7 @@
     <footer class="bg-gray-900 border-t border-gray-800 mt-12">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div class="text-center text-sm text-gray-500">
-                <p>&copy; 2024 FZ99 Lounge. All rights reserved.</p>
+                <p>&copy; 2026 FZ99 Lounge. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -323,19 +323,19 @@
     <script>
         // Update timer
         let elapsed = 151; // 2:31 in seconds
-        
+
         function updateTimer() {
             const minutes = Math.floor(elapsed / 60);
             const seconds = elapsed % 60;
-            
+
             const timerElement = document.querySelector('.tabular-nums');
             if (timerElement) {
                 timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             }
-            
+
             elapsed++;
         }
-        
+
         setInterval(updateTimer, 1000);
     </script>
 </body>
