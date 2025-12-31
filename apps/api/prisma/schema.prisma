@@ -317,7 +317,7 @@ model Event {
   // 1:多 リレーション
   seasons Season[]
 
-  @@index([category])
+  @@unique([category])
   @@map("events")
 }
 

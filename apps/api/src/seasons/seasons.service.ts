@@ -14,8 +14,8 @@ export class SeasonsService {
   async create(createSeasonDto: CreateSeasonDto) {
     const { category, seasonNumber, startDate, endDate, description } = createSeasonDto;
 
-    // Find or create the Event for this category
-    let event = await this.prisma.event.findFirst({
+    // Find or create the Event for this category (categoryはユニーク)
+    let event = await this.prisma.event.findUnique({
       where: { category },
     });
 

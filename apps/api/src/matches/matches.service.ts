@@ -292,28 +292,30 @@ export class MatchesService {
       },
     });
 
-    // Format the response
-    return matches.map((match) => {
-      const game = match.games[0];
-      const winner = game?.participants[0];
+    // Format the response and filter out matches without winners
+    return matches
+      .map((match) => {
+        const game = match.games[0];
+        const winner = game?.participants[0];
 
-      return {
-        id: match.id,
-        matchNumber: match.matchNumber,
-        category: match.season.event.category,
-        seasonNumber: match.season.seasonNumber,
-        playerCount: match.participants.length,
-        status: match.status,
-        startedAt: match.actualStart,
-        winner: winner
-          ? {
-              id: winner.user.id,
-              displayName: winner.user.displayName,
-              totalScore: winner.totalScore,
-            }
-          : null,
-      };
-    });
+        return {
+          id: match.id,
+          matchNumber: match.matchNumber,
+          category: match.season.event.category,
+          seasonNumber: match.season.seasonNumber,
+          playerCount: match.participants.length,
+          status: match.status,
+          startedAt: match.actualStart,
+          winner: winner
+            ? {
+                id: winner.user.id,
+                displayName: winner.user.displayName,
+                totalScore: winner.totalScore,
+              }
+            : null,
+        };
+      })
+      .filter((match) => match.winner !== null);
   }
 
   async getResultsPaginated(

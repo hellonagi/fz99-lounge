@@ -65,12 +65,11 @@ async function main() {
     console.log('Production/Staging mode: Skipping fake users');
   }
 
-  // イベント作成（GP と CLASSIC）
+  // イベント作成（GP と CLASSIC）- categoryでupsert
   const gpEvent = await prisma.event.upsert({
-    where: { id: 1 },
+    where: { category: 'GP' },
     update: {},
     create: {
-      id: 1,
       category: 'GP',
       name: 'GP',
       description: 'Grand Prix mode event',
@@ -78,22 +77,25 @@ async function main() {
   });
 
   const classicEvent = await prisma.event.upsert({
-    where: { id: 2 },
+    where: { category: 'CLASSIC' },
     update: {},
     create: {
-      id: 2,
       category: 'CLASSIC',
       name: 'CLASSIC',
       description: 'Classic mode event',
     },
   });
 
-  // シーズン作成
+  // シーズン作成 - eventId_seasonNumber複合キーでupsert
   await prisma.season.upsert({
-    where: { id: 1 },
+    where: {
+      eventId_seasonNumber: {
+        eventId: gpEvent.id,
+        seasonNumber: 1,
+      },
+    },
     update: {},
     create: {
-      id: 1,
       eventId: gpEvent.id,
       seasonNumber: 1,
       startDate: new Date(),
@@ -103,10 +105,14 @@ async function main() {
   });
 
   await prisma.season.upsert({
-    where: { id: 2 },
+    where: {
+      eventId_seasonNumber: {
+        eventId: classicEvent.id,
+        seasonNumber: 1,
+      },
+    },
     update: {},
     create: {
-      id: 2,
       eventId: classicEvent.id,
       seasonNumber: 1,
       startDate: new Date(),
