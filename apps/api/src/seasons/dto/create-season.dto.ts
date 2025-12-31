@@ -6,7 +6,7 @@ export class CreateSeasonDto {
   category: EventCategory;
 
   @IsInt()
-  @Min(1)
+  @Min(0)
   seasonNumber: number;
 
   @IsISO8601()
