@@ -106,13 +106,13 @@ services:
       target: production
       args:
         NODE_VERSION: 20-alpine
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
     container_name: fz99-lounge-web
     restart: always
     user: node
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
       NODE_OPTIONS: "--max-old-space-size=1024"
     volumes: []
     ports: []

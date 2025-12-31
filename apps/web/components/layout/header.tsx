@@ -30,7 +30,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
   const t = useTranslations('nav');
 
   const handleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/discord`;
+    window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/discord`;
   };
 
   const handleLogout = () => {

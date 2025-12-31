@@ -62,8 +62,8 @@ export function useGameSocket({
     if (!gameId) return;
 
     // Connect to the games namespace
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-    const socket = io(`${apiUrl}/games`, {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+    const socket = io(`${baseUrl}/games`, {
       withCredentials: true,
     });
 
