@@ -6,6 +6,7 @@ import { UsersService } from '../users/users.service';
 import { LoginTrackingService } from './login-tracking.service';
 import { DiscordAuthGuard } from './guards/discord-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { setAuthCookie, clearAuthCookie } from './utils/cookie.utils';
 
 @Controller('auth')
@@ -45,9 +46,13 @@ export class AuthController {
   }
 
   @Get('profile')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   async getProfile(@Req() req: Request) {
     const user = req.user as any;
+    // 未認証の場合はnullを返す（401エラーを出さない）
+    if (!user) {
+      return null;
+    }
     return this.usersService.findById(user.id);
   }
 

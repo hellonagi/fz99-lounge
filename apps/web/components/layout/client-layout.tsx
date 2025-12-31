@@ -34,10 +34,13 @@ export function ClientLayout({ children, locale }: ClientLayoutProps) {
       authApi
         .getProfile()
         .then((response) => {
-          setUser(response.data);
+          // 未認証の場合はnullが返るため、nullでない場合のみsetUser
+          if (response.data) {
+            setUser(response.data);
+          }
         })
         .catch(() => {
-          // JWT無効または未認証 → 何もしない
+          // ネットワークエラー等 → 何もしない
         })
         .finally(() => {
           setReady(true);
