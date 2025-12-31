@@ -34,7 +34,7 @@ export function usePushNotifications() {
 
         // Get VAPID public key from API
         const vapidResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/push-notifications/vapid-public-key`
+          `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/push-notifications/vapid-public-key`
         );
         const { publicKey } = await vapidResponse.json();
 
@@ -46,7 +46,7 @@ export function usePushNotifications() {
 
         // Send subscription to backend
         await fetch(
-          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/push-notifications/subscribe`,
+          `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/push-notifications/subscribe`,
           {
             method: 'POST',
             headers: {
