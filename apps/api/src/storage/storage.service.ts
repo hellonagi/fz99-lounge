@@ -7,6 +7,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
+import { fromInstanceMetadata } from '@aws-sdk/credential-providers';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 
@@ -32,15 +33,20 @@ export class StorageService {
     };
 
     if (endpoint) {
-      // MinIO用設定
+      // MinIO用設定（開発環境）
       s3Config.endpoint = endpoint;
       s3Config.forcePathStyle = true;
       s3Config.credentials = {
         accessKeyId: this.configService.get<string>('S3_ACCESS_KEY_ID') || 'minioadmin',
         secretAccessKey: this.configService.get<string>('S3_SECRET_ACCESS_KEY') || 'minioadmin',
       };
+    } else {
+      // AWS S3（本番環境）- EC2インスタンスメタデータから認証情報を取得
+      s3Config.credentials = fromInstanceMetadata({
+        timeout: 1000,
+        maxRetries: 3,
+      });
     }
-    // AWS S3の場合は credentials を指定しない（IAMロールから自動取得）
 
     this.s3Client = new S3Client(s3Config);
 
