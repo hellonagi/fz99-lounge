@@ -5,7 +5,7 @@ import * as jwt from 'jsonwebtoken';
 
 // 環境変数から取得（.envと同じ値）
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
 // テストユーザー情報（seed.tsと同期）
 const TEST_USERS = {
@@ -81,7 +81,7 @@ export default defineConfig({
           if (!user) throw new Error(`Unknown user: ${userKey}`);
 
           const token = generateToken(user.id, user.discordId, user.username);
-          const url = `${API_URL}/api/auth/profile`;
+          const url = `${BASE_URL}/api/auth/profile`;
           console.log(`getUserProfile: Fetching ${url} for user ${userKey}`);
 
           try {
@@ -110,7 +110,7 @@ export default defineConfig({
           if (!user) throw new Error(`Unknown user: ${userKey}`);
 
           const token = generateToken(user.id, user.discordId, user.username);
-          const res = await fetch(`${API_URL}/api/matches/${matchId}/join`, {
+          const res = await fetch(`${BASE_URL}/api/matches/${matchId}/join`, {
             method: 'POST',
             headers: {
               Cookie: `jwt=${token}`,
@@ -133,7 +133,7 @@ export default defineConfig({
             if (!user) throw new Error(`Unknown user: ${userKey}`);
 
             const token = generateToken(user.id, user.discordId, user.username);
-            const res = await fetch(`${API_URL}/api/matches/${matchId}/join`, {
+            const res = await fetch(`${BASE_URL}/api/matches/${matchId}/join`, {
               method: 'POST',
               headers: {
                 Cookie: `jwt=${token}`,
@@ -158,7 +158,7 @@ export default defineConfig({
           if (!user) throw new Error(`Unknown user: ${userKey}`);
 
           const token = generateToken(user.id, user.discordId, user.username);
-          const res = await fetch(`${API_URL}/api/matches/${matchId}/leave`, {
+          const res = await fetch(`${BASE_URL}/api/matches/${matchId}/leave`, {
             method: 'DELETE',
             headers: {
               Cookie: `jwt=${token}`,
@@ -201,7 +201,7 @@ export default defineConfig({
 
           const token = generateToken(user.id, user.discordId, user.username);
           const res = await fetch(
-            `${API_URL}/api/games/${category}/${season}/${match}/score`,
+            `${BASE_URL}/api/games/${category}/${season}/${match}/score`,
             {
               method: 'POST',
               headers: {
@@ -253,7 +253,7 @@ export default defineConfig({
 
             const token = generateToken(user.id, user.discordId, user.username);
             const res = await fetch(
-              `${API_URL}/api/games/${category}/${season}/${match}/score`,
+              `${BASE_URL}/api/games/${category}/${season}/${match}/score`,
               {
                 method: 'POST',
                 headers: {
@@ -290,7 +290,7 @@ export default defineConfig({
           match: number;
         }) {
           const res = await fetch(
-            `${API_URL}/api/games/${category}/${season}/${match}`
+            `${BASE_URL}/api/games/${category}/${season}/${match}`
           );
           if (!res.ok) {
             const body = await res.text();
@@ -303,7 +303,7 @@ export default defineConfig({
         // スクリーンショット一覧取得
         async getScreenshots({ gameId }: { gameId: number }) {
           const res = await fetch(
-            `${API_URL}/api/screenshots/game/${gameId}/submissions`
+            `${BASE_URL}/api/screenshots/game/${gameId}/submissions`
           );
           if (!res.ok) {
             const body = await res.text();
@@ -325,7 +325,7 @@ export default defineConfig({
 
           const token = generateToken(user.id, user.discordId, user.username);
           const res = await fetch(
-            `${API_URL}/api/screenshots/${submissionId}/verify`,
+            `${BASE_URL}/api/screenshots/${submissionId}/verify`,
             {
               method: 'POST',
               headers: {
@@ -355,7 +355,7 @@ export default defineConfig({
 
           const token = generateToken(user.id, user.discordId, user.username);
           const res = await fetch(
-            `${API_URL}/api/screenshots/${submissionId}/reject`,
+            `${BASE_URL}/api/screenshots/${submissionId}/reject`,
             {
               method: 'POST',
               headers: {
@@ -407,7 +407,7 @@ export default defineConfig({
             contentType: 'image/png',
           });
 
-          const res = await nodeFetch(`${API_URL}/api/screenshots/submit`, {
+          const res = await nodeFetch(`${BASE_URL}/api/screenshots/submit`, {
             method: 'POST',
             headers: {
               Cookie: `jwt=${token}`,
@@ -463,7 +463,7 @@ export default defineConfig({
               contentType: 'image/png',
             });
 
-            const res = await nodeFetch(`${API_URL}/api/screenshots/submit`, {
+            const res = await nodeFetch(`${BASE_URL}/api/screenshots/submit`, {
               method: 'POST',
               headers: {
                 Cookie: `jwt=${token}`,
@@ -498,7 +498,7 @@ export default defineConfig({
 
           // Get all pending screenshots for this game
           console.log(`Getting screenshots for gameId: ${gameId}`);
-          const listRes = await fetch(`${API_URL}/api/screenshots/game/${gameId}/submissions`);
+          const listRes = await fetch(`${BASE_URL}/api/screenshots/game/${gameId}/submissions`);
           if (!listRes.ok) {
             const body = await listRes.text();
             throw new Error(`Failed to get screenshots: ${listRes.status} ${body}`);
@@ -521,7 +521,7 @@ export default defineConfig({
           const results = [];
           for (const screenshot of pendingScreenshots) {
             const res = await fetch(
-              `${API_URL}/api/screenshots/${screenshot.id}/verify`,
+              `${BASE_URL}/api/screenshots/${screenshot.id}/verify`,
               {
                 method: 'POST',
                 headers: {
