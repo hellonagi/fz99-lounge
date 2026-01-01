@@ -17,10 +17,11 @@ interface AvatarImageProps {
   className?: string;
   src?: string;
   alt?: string;
+  priority?: boolean;
 }
 
 const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
-  ({ className, src, alt = '', ...props }, ref) => {
+  ({ className, src, alt = '', priority, ...props }, ref) => {
     if (!src) return null;
     return (
       <Image
@@ -28,6 +29,7 @@ const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
         src={src}
         alt={alt}
         fill
+        priority={priority}
         className={cn('aspect-square h-full w-full object-cover', className)}
         unoptimized
         {...props}

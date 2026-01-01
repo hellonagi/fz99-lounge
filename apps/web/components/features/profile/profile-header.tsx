@@ -25,7 +25,7 @@ export function ProfileHeader({ user, seasonStats }: ProfileHeaderProps) {
           {/* Avatar */}
           <div className="relative">
             <Avatar className="w-24 h-24 border-4 border-gray-700">
-              {avatarUrl && <AvatarImage src={avatarUrl} alt={user.displayName || 'User'} />}
+              {avatarUrl && <AvatarImage src={avatarUrl} alt={user.displayName || 'User'} priority />}
               <AvatarFallback className="text-2xl">
                 {user.displayName?.slice(0, 2).toUpperCase() || 'U'}
               </AvatarFallback>
