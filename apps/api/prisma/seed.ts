@@ -65,26 +65,28 @@ async function main() {
     console.log('Production/Staging mode: Skipping fake users');
   }
 
-  // イベント作成（GP と CLASSIC）- categoryでupsert
-  const gpEvent = await prisma.event.upsert({
-    where: { category: 'GP' },
-    update: {},
-    create: {
-      category: 'GP',
-      name: 'GP',
-      description: 'Grand Prix mode event',
-    },
-  });
+  // イベント作成（GP と CLASSIC）
+  let gpEvent = await prisma.event.findFirst({ where: { category: 'GP' } });
+  if (!gpEvent) {
+    gpEvent = await prisma.event.create({
+      data: {
+        category: 'GP',
+        name: 'GP',
+        description: 'Grand Prix mode event',
+      },
+    });
+  }
 
-  const classicEvent = await prisma.event.upsert({
-    where: { category: 'CLASSIC' },
-    update: {},
-    create: {
-      category: 'CLASSIC',
-      name: 'CLASSIC',
-      description: 'Classic mode event',
-    },
-  });
+  let classicEvent = await prisma.event.findFirst({ where: { category: 'CLASSIC' } });
+  if (!classicEvent) {
+    classicEvent = await prisma.event.create({
+      data: {
+        category: 'CLASSIC',
+        name: 'CLASSIC',
+        description: 'Classic mode event',
+      },
+    });
+  }
 
   // シーズン作成 - eventId_seasonNumber複合キーでupsert
   await prisma.season.upsert({
