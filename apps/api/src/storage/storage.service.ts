@@ -18,6 +18,7 @@ export class StorageService {
   private bucketName: string;
   private region: string;
   private baseUrl: string;
+  private usePathStyle: boolean; // MinIO: true, AWS S3: false
 
   constructor(private configService: ConfigService) {
     this.bucketName = this.configService.get<string>('S3_BUCKET_NAME')!;
@@ -40,18 +41,21 @@ export class StorageService {
         accessKeyId: this.configService.get<string>('S3_ACCESS_KEY_ID') || 'minioadmin',
         secretAccessKey: this.configService.get<string>('S3_SECRET_ACCESS_KEY') || 'minioadmin',
       };
+      this.usePathStyle = true;
     } else {
       // AWS S3（本番環境）- EC2インスタンスメタデータから認証情報を取得
       s3Config.credentials = fromInstanceMetadata({
         timeout: 1000,
         maxRetries: 3,
       });
+      this.usePathStyle = false;
     }
 
     this.s3Client = new S3Client(s3Config);
 
     // ブラウザからアクセス可能なURLを設定
-    // MinIOの場合、Docker内部URLではなく、localhost:9000を使用
+    // MinIO: パススタイル (http://localhost:9000/bucket/key)
+    // AWS S3: バーチャルホストスタイル (https://bucket.s3.region.amazonaws.com/key)
     if (endpoint) {
       this.baseUrl = endpoint.replace('minio:9000', 'localhost:9000');
     } else {
@@ -62,6 +66,18 @@ export class StorageService {
       `Storage initialized: ${endpoint ? 'MinIO (dev)' : 'AWS S3 (prod)'} - Bucket: ${this.bucketName}`,
     );
     this.logger.log(`Public URL: ${this.baseUrl}`);
+  }
+
+  /**
+   * S3キーからパブリックURLを生成
+   * MinIO: パススタイル (http://localhost:9000/bucket/key)
+   * AWS S3: バーチャルホストスタイル (https://bucket.s3.region.amazonaws.com/key)
+   */
+  private buildUrl(key: string): string {
+    if (this.usePathStyle) {
+      return `${this.baseUrl}/${this.bucketName}/${key}`;
+    }
+    return `${this.baseUrl}/${key}`;
   }
 
   /**
@@ -99,7 +115,7 @@ export class StorageService {
       }),
     );
 
-    const url = `${this.baseUrl}/${this.bucketName}/${key}`;
+    const url = this.buildUrl(key);
     const originalSize = (file.size / 1024 / 1024).toFixed(2);
     const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
     this.logger.log(
@@ -130,7 +146,7 @@ export class StorageService {
       }),
     );
 
-    const url = `${this.baseUrl}/${this.bucketName}/${key}`;
+    const url = this.buildUrl(key);
     const originalSize = (file.size / 1024 / 1024).toFixed(2);
     const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
     this.logger.log(
@@ -160,7 +176,7 @@ export class StorageService {
       }),
     );
 
-    const url = `${this.baseUrl}/${this.bucketName}/${key}`;
+    const url = this.buildUrl(key);
     const originalSize = (file.size / 1024 / 1024).toFixed(2);
     const compressedSize = (compressedBuffer.length / 1024 / 1024).toFixed(2);
     this.logger.log(
@@ -184,7 +200,7 @@ export class StorageService {
       }),
     );
 
-    const url = `${this.baseUrl}/${this.bucketName}/${permanentKey}`;
+    const url = this.buildUrl(permanentKey);
     this.logger.log(`Copied to permanent: ${url}`);
     return url;
   }
