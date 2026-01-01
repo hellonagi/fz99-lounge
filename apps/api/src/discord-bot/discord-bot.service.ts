@@ -198,7 +198,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Post initial passcode message
-      const matchUrl = `https://fz99lounge.com/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
+      const baseUrl = this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+      const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
       const leagueDisplay = params.leagueType.replace(/_/g, ' ');
 
       await channel.send({
@@ -206,16 +207,12 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         embeds: [
           {
             title: `${leagueDisplay} passcode: ${params.passcode}`,
+            description: 'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
             color: 0x00ff00,
             fields: [
               {
-                name: 'Score Submission',
-                value: `Submit your scores here: ${matchUrl}`,
-                inline: false,
-              },
-              {
-                name: 'Streamers',
-                value: 'Please hide the passcode on your stream!',
+                name: 'Score Submission / スコア提出',
+                value: matchUrl,
                 inline: false,
               },
             ],
