@@ -18,6 +18,7 @@ export class StorageService {
   private bucketName: string;
   private region: string;
   private baseUrl: string;
+  private cdnUrl: string | undefined;
   private usePathStyle: boolean; // MinIO: true, AWS S3: false
 
   constructor(private configService: ConfigService) {
@@ -62,21 +63,31 @@ export class StorageService {
       this.baseUrl = `https://${this.bucketName}.s3.${this.region}.amazonaws.com`;
     }
 
+    // CDN URL (CloudFront) - 設定されていればCDN経由で配信
+    this.cdnUrl = this.configService.get<string>('CDN_URL');
+
     this.logger.log(
       `Storage initialized: ${endpoint ? 'MinIO (dev)' : 'AWS S3 (prod)'} - Bucket: ${this.bucketName}`,
     );
-    this.logger.log(`Public URL: ${this.baseUrl}`);
+    this.logger.log(`Public URL: ${this.cdnUrl || this.baseUrl}`);
   }
 
   /**
    * S3キーからパブリックURLを生成
+   * CDN (CloudFront): https://cdn.example.com/key
    * MinIO: パススタイル (http://localhost:9000/bucket/key)
    * AWS S3: バーチャルホストスタイル (https://bucket.s3.region.amazonaws.com/key)
    */
   private buildUrl(key: string): string {
+    // CDN URLが設定されていればCloudFront経由で配信
+    if (this.cdnUrl) {
+      return `${this.cdnUrl}/${key}`;
+    }
+    // MinIO (開発環境)
     if (this.usePathStyle) {
       return `${this.baseUrl}/${this.bucketName}/${key}`;
     }
+    // AWS S3 (フォールバック)
     return `${this.baseUrl}/${key}`;
   }
 
@@ -126,16 +137,17 @@ export class StorageService {
 
   /**
    * 個人成績スクショをアップロード
-   * フォルダ: screenshots/individual/{gameId}/{userId}_{timestamp}.jpg
+   * フォルダ: screenshots/{category}/{gameId}/{userId}_{timestamp}.jpg
    * 7日後にクリーンアップ対象
    */
   async uploadIndividualScreenshot(
+    category: string,
     gameId: string,
     userId: string,
     file: Express.Multer.File,
   ): Promise<string> {
     const compressedBuffer = await this.compressImage(file.buffer);
-    const key = `screenshots/individual/${gameId}/${userId}_${Date.now()}.jpg`;
+    const key = `screenshots/${category}/${gameId}/${userId}_${Date.now()}.jpg`;
 
     await this.s3Client.send(
       new PutObjectCommand({
@@ -157,15 +169,16 @@ export class StorageService {
 
   /**
    * 全体スコアスクショをアップロード（1位のみ）
-   * フォルダ: screenshots/final/{gameId}/{timestamp}.jpg
+   * フォルダ: screenshots/{category}/final/{gameId}/{timestamp}.jpg
    * 永久保存
    */
   async uploadFinalScoreScreenshot(
+    category: string,
     gameId: string,
     file: Express.Multer.File,
   ): Promise<string> {
     const compressedBuffer = await this.compressImage(file.buffer);
-    const key = `screenshots/final/${gameId}/${Date.now()}.jpg`;
+    const key = `screenshots/${category}/final/${gameId}/${Date.now()}.jpg`;
 
     await this.s3Client.send(
       new PutObjectCommand({
