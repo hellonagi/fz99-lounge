@@ -56,7 +56,15 @@ export class ScreenshotsService {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: {
-        match: true,
+        match: {
+          include: {
+            season: {
+              include: {
+                event: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -117,15 +125,17 @@ export class ScreenshotsService {
     }
 
     // S3/MinIOにアップロード
+    const category = game.match.season.event.category.toLowerCase();
     let imageUrl: string;
     if (type === ScreenshotType.INDIVIDUAL) {
       imageUrl = await this.storage.uploadIndividualScreenshot(
+        category,
         String(gameId),
         String(userId),
         file,
       );
     } else {
-      imageUrl = await this.storage.uploadFinalScoreScreenshot(String(gameId), file);
+      imageUrl = await this.storage.uploadFinalScoreScreenshot(category, String(gameId), file);
     }
 
     // DBに保存
