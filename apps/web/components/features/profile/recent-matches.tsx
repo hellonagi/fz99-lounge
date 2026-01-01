@@ -145,7 +145,7 @@ export function RecentMatches({ userId, category, initialLimit = 10 }: RecentMat
           {matches.map((match) => (
             <Link
               key={`${match.matchId}-${match.completedAt}`}
-              href={`/match/${match.category.toLowerCase()}/s${match.seasonNumber}/m${match.matchNumber}`}
+              href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
               className="flex items-center gap-3 px-4 py-3 hover:bg-gray-700/30 transition-colors"
             >
               {/* Position */}
