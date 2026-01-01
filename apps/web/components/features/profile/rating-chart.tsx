@@ -136,7 +136,7 @@ export function RatingChart({ userId, category }: RatingChartProps) {
       </CardHeader>
       <CardContent>
         <div className="h-[200px] sm:h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
