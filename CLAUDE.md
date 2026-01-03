@@ -39,6 +39,10 @@ docker logs fz99-lounge-api --tail 20
 - **"column does not exist"エラー**: コンテナ内のPrismaクライアントが古い
 - **型エラー**: TypeScriptの定義が更新されていない → コンテナ再起動が必要
 
+## 環境変数追加時
+
+`compose.yaml`, `compose.ecr.yaml`, `compose.aws.yaml` すべてに追加すること。
+
 ## フロントエンドの開発方針
 
 - Next.js App Router + TypeScript + shadcn/ui を前提とする

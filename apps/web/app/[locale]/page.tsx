@@ -43,6 +43,7 @@ export default function Home() {
     setError,
     ongoingGameInfo,
     fetchData,
+    timeOffset,
   } = useMatch();
 
   useMatchWebSocket({
@@ -76,15 +77,6 @@ export default function Home() {
     fetchRecentMatches();
   }, []);
 
-  // Calculate countdown seconds
-  const getCountdownSeconds = () => {
-    if (!nextMatch) return 0;
-    const now = new Date().getTime();
-    const start = new Date(nextMatch.scheduledStart).getTime();
-    const diff = Math.floor((start - now) / 1000);
-    return Math.max(0, diff);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -111,7 +103,8 @@ export default function Home() {
           currentPlayers={nextMatch.participants?.length ?? 0}
           minPlayers={nextMatch.minPlayers}
           maxPlayers={nextMatch.maxPlayers}
-          countdownSeconds={getCountdownSeconds()}
+          scheduledStart={nextMatch.scheduledStart}
+          timeOffset={timeOffset}
           onJoinClick={handleJoinClick}
           isJoined={isUserInMatch}
           isJoining={isJoining}

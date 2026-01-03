@@ -41,7 +41,10 @@ export class MatchesController {
   @Get('next')
   async getNext(@Query('category') category?: EventCategory) {
     const match = await this.matchesService.getNext(category);
-    return { match };
+    return {
+      match,
+      serverTime: new Date().toISOString(),
+    };
   }
 
   @Get('recent')

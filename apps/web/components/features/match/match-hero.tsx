@@ -10,7 +10,8 @@ interface MatchHeroProps {
   currentPlayers?: number;
   minPlayers?: number;
   maxPlayers?: number;
-  countdownSeconds?: number;
+  scheduledStart?: string;
+  timeOffset?: number;
   onJoinClick?: () => void;
   isJoined?: boolean;
   isJoining?: boolean;
@@ -27,7 +28,8 @@ export function MatchHero({
   currentPlayers,
   minPlayers,
   maxPlayers,
-  countdownSeconds = 165,
+  scheduledStart,
+  timeOffset = 0,
   onJoinClick,
   isJoined = false,
   isJoining = false,
@@ -102,7 +104,9 @@ export function MatchHero({
                   <div className="mb-2">
                     <span className="text-sm text-gray-400">Starts in</span>
                   </div>
-                  <MatchTimer initialSeconds={countdownSeconds} />
+                  {scheduledStart && (
+                    <MatchTimer scheduledStart={scheduledStart} timeOffset={timeOffset} />
+                  )}
 
                   {/* Player count & Join button */}
                   {currentPlayers !== undefined && maxPlayers !== undefined && (
