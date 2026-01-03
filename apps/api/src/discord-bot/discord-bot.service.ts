@@ -31,6 +31,19 @@ export interface PostNewPasscodeParams {
   passcodeVersion: number;
 }
 
+export interface AnnounceMatchCreatedParams {
+  matchNumber: number;
+  seasonNumber: number;
+  category: string;
+  seasonName: string;
+  inGameMode: string;
+  leagueType: string;
+  scheduledStart: Date;
+  minPlayers: number;
+  maxPlayers: number;
+  creatorDisplayName: string;
+}
+
 @Injectable()
 export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private client: Client;
@@ -88,6 +101,14 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
   private getCategoryId(): string | undefined {
     return this.configService.get<string>('DISCORD_MATCH_ROOM_CATEGORY_ID');
+  }
+
+  private getMatchAnnounceChannelId(): string | undefined {
+    return this.configService.get<string>('DISCORD_MATCH_ANNOUNCE_CHANNEL_ID');
+  }
+
+  private getMatchNotifyRoleId(): string | undefined {
+    return this.configService.get<string>('DISCORD_MATCH_NOTIFY_ROLE_ID');
   }
 
   private async connect(): Promise<void> {
@@ -393,6 +414,79 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error(
         `Failed to delete Discord channel for game ${gameId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Announce match creation to a dedicated channel with role mention
+   */
+  async announceMatchCreated(
+    params: AnnounceMatchCreatedParams,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping match announcement',
+      );
+      return false;
+    }
+
+    const channelId = this.getMatchAnnounceChannelId();
+    if (!channelId) {
+      this.logger.debug('Match announce channel not configured');
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Announce channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      // Format the scheduled start time as Discord timestamp
+      const startTime = Math.floor(params.scheduledStart.getTime() / 1000);
+
+      // Build role mention (if configured)
+      const roleId = this.getMatchNotifyRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : '';
+
+      // Format display values
+      const inGameModeDisplay = params.inGameMode.replace(/_/g, ' ');
+      const leagueDisplay = params.leagueType.replace(/_/g, ' ');
+
+      // Build join link
+      const baseUrl =
+        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+
+      // Build message content (plain text for mobile notification visibility)
+      const messageContent = `${roleMention}
+**New match scheduled!**
+
+${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber}
+Mode: ${inGameModeDisplay} / League: ${leagueDisplay}
+Start: <t:${startTime}:F> (<t:${startTime}:R>)
+Players: ${params.minPlayers}-${params.maxPlayers}
+Created by: ${params.creatorDisplayName}
+
+Join: ${baseUrl}`;
+
+      await (channel as TextChannel).send({
+        content: messageContent,
+      });
+
+      this.logger.log(
+        `Announced match #${params.matchNumber} creation to channel ${channelId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce match #${params.matchNumber} creation:`,
         error,
       );
       return false;
