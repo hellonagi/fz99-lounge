@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { CreateMatchCard } from '@/components/features/admin/create-match-card';
 import { MatchesListCard } from '@/components/features/admin/matches-list-card';
+import { RatingRecalculationCard } from '@/components/features/admin/rating-recalculation-card';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -108,6 +109,11 @@ export default function AdminPage() {
                   Coming Soon
                 </button>
               </div>
+
+              {/* Rating Recalculation (Admin only) */}
+              {user.role === 'ADMIN' && (
+                <RatingRecalculationCard />
+              )}
             </div>
           </div>
 

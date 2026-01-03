@@ -240,3 +240,14 @@ export const screenshotsApi = {
   reject: (submissionId: number) => api.post(`/screenshots/${submissionId}/reject`),
   getProgress: (gameId: number) => api.get(`/screenshots/game/${gameId}/progress`),
 };
+
+// Admin API
+export const adminApi = {
+  recalculateRatings: (category: string, season: number, fromMatchNumber: number) =>
+    api.post<{
+      success: boolean;
+      message: string;
+      recalculatedMatches: number;
+      affectedUsers: number;
+    }>(`/admin/rating/recalculate/${category}/${season}/from/${fromMatchNumber}`),
+};
