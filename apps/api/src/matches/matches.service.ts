@@ -187,6 +187,32 @@ export class MatchesService {
       );
     }
 
+    // Announce match creation to Discord (fire and forget - don't block on errors)
+    if (matchWithIncludes && matchWithIncludes.games[0]) {
+      try {
+        const creator = await this.prisma.user.findUnique({
+          where: { id: createdBy },
+          select: { displayName: true, username: true },
+        });
+
+        await this.discordBotService.announceMatchCreated({
+          matchNumber: match.matchNumber,
+          seasonNumber: season.seasonNumber,
+          category: season.event.category,
+          seasonName: season.event.name,
+          inGameMode: matchWithIncludes.games[0].inGameMode,
+          leagueType: matchWithIncludes.games[0].leagueType,
+          scheduledStart: new Date(scheduledStart),
+          minPlayers: match.minPlayers,
+          maxPlayers: match.maxPlayers,
+          creatorDisplayName: creator?.displayName || creator?.username || 'Unknown',
+        });
+      } catch (error) {
+        this.logger.error('Failed to announce match creation to Discord:', error);
+        // Don't throw - Discord failure should not block match creation
+      }
+    }
+
     return matchWithIncludes;
   }
 
