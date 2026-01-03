@@ -38,6 +38,7 @@ export function useMatch() {
     season: number;
     match: number;
   } | null>(null);
+  const [timeOffset, setTimeOffset] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -66,6 +67,13 @@ export function useMatch() {
       const response = await matchesApi.getNext();
       const match = response.data.match;
 
+      // Calculate time offset between server and client
+      if (response.data.serverTime) {
+        const serverTime = new Date(response.data.serverTime).getTime();
+        const clientTime = Date.now();
+        setTimeOffset(serverTime - clientTime);
+      }
+
       if (match) {
         setNextMatch(match);
         setError(null);
@@ -90,5 +98,6 @@ export function useMatch() {
     setError,
     ongoingGameInfo,
     fetchData,
+    timeOffset,
   };
 }
