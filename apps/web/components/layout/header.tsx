@@ -116,6 +116,29 @@ export default function Header({ mounted, locale }: HeaderProps) {
           </div>
         </div>
       </div>
+      {/* モバイル用ナビ */}
+      <nav className="md:hidden border-t border-gray-700">
+        <div className="flex justify-around py-2 px-4">
+          <Link
+            href={`/${locale}/rules`}
+            className="text-gray-300 hover:text-white text-xs font-medium"
+          >
+            {t('rules')}
+          </Link>
+          <Link
+            href={`/${locale}/leaderboard`}
+            className="text-gray-300 hover:text-white text-xs font-medium"
+          >
+            {t('leaderboard')}
+          </Link>
+          <Link
+            href={`/${locale}/results`}
+            className="text-gray-300 hover:text-white text-xs font-medium"
+          >
+            {t('results')}
+          </Link>
+        </div>
+      </nav>
     </header>
   );
 }
