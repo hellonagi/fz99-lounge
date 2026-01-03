@@ -195,6 +195,7 @@ export class ClassicRatingService {
             matchId: game.matchId,
             internalRating: change.newInternalRating,
             displayRating: change.newDisplayRating,
+            convergencePoints: change.newConvergencePoints,
           },
         });
       }
@@ -721,13 +722,11 @@ export class ClassicRatingService {
         });
 
         for (const rh of prevHistories) {
-          // convergencePointsはUserSeasonStatsから計算が必要
-          // ここでは現在の値から再計算対象分を引く
           baseRatingsByUser.set(rh.userId, {
             internalRating: rh.internalRating,
             displayRating: rh.displayRating,
-            convergencePoints: 0, // 後で計算
-            totalMatches: 0, // 後で計算
+            convergencePoints: rh.convergencePoints, // 履歴から復元
+            totalMatches: 0, // 後でカウント
           });
         }
       }
@@ -773,9 +772,9 @@ export class ClassicRatingService {
           update: {
             internalRating: base.internalRating,
             displayRating: base.displayRating,
+            seasonHighRating: base.displayRating,
+            convergencePoints: base.convergencePoints, // 履歴から復元
             totalMatches: prevHistoryCount,
-            // convergencePointsは順位によって異なるため、ここでは0にして再計算時に更新
-            // 注: これは近似値。正確には各マッチの順位から再計算が必要
             totalPoints: 0,
             totalPositions: 0,
             firstPlaces: 0,
