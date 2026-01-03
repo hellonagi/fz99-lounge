@@ -8,10 +8,15 @@ import { ConfigService } from '@nestjs/config';
 import {
   Client,
   GatewayIntentBits,
+  Partials,
   ChannelType,
   PermissionFlagsBits,
   TextChannel,
   OverwriteType,
+  MessageReaction,
+  PartialMessageReaction,
+  User,
+  PartialUser,
 } from 'discord.js';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -55,16 +60,30 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     private prisma: PrismaService,
   ) {
     this.client = new Client({
-      intents: [GatewayIntentBits.Guilds],
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessageReactions,
+      ],
+      partials: [Partials.Message, Partials.Reaction, Partials.User],
     });
 
-    this.client.on('ready', () => {
+    this.client.on('ready', async () => {
       this.isReady = true;
       this.logger.log(`Discord bot logged in as ${this.client.user?.tag}`);
+      await this.setupReactionRoleMessage();
     });
 
     this.client.on('error', (error) => {
       this.logger.error('Discord client error:', error);
+    });
+
+    this.client.on('messageReactionAdd', (reaction, user) => {
+      this.handleReactionAdd(reaction, user);
+    });
+
+    this.client.on('messageReactionRemove', (reaction, user) => {
+      this.handleReactionRemove(reaction, user);
     });
   }
 
@@ -109,6 +128,177 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
   private getMatchNotifyRoleId(): string | undefined {
     return this.configService.get<string>('DISCORD_MATCH_NOTIFY_ROLE_ID');
+  }
+
+  private getReactionRoleChannelId(): string | undefined {
+    return this.configService.get<string>('DISCORD_REACTION_ROLE_CHANNEL_ID');
+  }
+
+  private getReactionRoleEmoji(): string {
+    return this.configService.get<string>('DISCORD_REACTION_ROLE_EMOJI') || '🔔';
+  }
+
+  private async getReactionRoleMessageId(): Promise<string | undefined> {
+    const config = await this.prisma.discordBotConfig.findUnique({
+      where: { key: 'reaction_role_message_id' },
+    });
+    return config?.value;
+  }
+
+  private async setReactionRoleMessageId(messageId: string): Promise<void> {
+    await this.prisma.discordBotConfig.upsert({
+      where: { key: 'reaction_role_message_id' },
+      update: { value: messageId },
+      create: { key: 'reaction_role_message_id', value: messageId },
+    });
+  }
+
+  /**
+   * Setup reaction role message on bot ready
+   */
+  private async setupReactionRoleMessage(): Promise<void> {
+    const channelId = this.getReactionRoleChannelId();
+    if (!channelId) {
+      this.logger.debug('Reaction role channel not configured');
+      return;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(`Reaction role channel ${channelId} not found or not text-based`);
+        return;
+      }
+
+      const textChannel = channel as TextChannel;
+      const existingMessageId = await this.getReactionRoleMessageId();
+
+      // Check if existing message still exists
+      if (existingMessageId) {
+        try {
+          await textChannel.messages.fetch(existingMessageId);
+          this.logger.log(`Reaction role message already exists: ${existingMessageId}`);
+          return;
+        } catch {
+          this.logger.log('Existing reaction role message not found, creating new one');
+        }
+      }
+
+      // Create new message
+      const emoji = this.getReactionRoleEmoji();
+      const messageContent = `**Match Notifications / マッチ通知設定**
+
+React with the ${emoji} emoji to receive notifications when a new match is created.
+Remove your reaction to stop receiving notifications.
+
+このメッセージに ${emoji} の絵文字でリアクションすると、新しいマッチが作成されたときに通知が届きます。
+外すと通知は止まります。`;
+
+      const message = await textChannel.send({ content: messageContent });
+      await message.react(emoji);
+      await this.setReactionRoleMessageId(message.id);
+
+      this.logger.log(`Created reaction role message: ${message.id}`);
+    } catch (error) {
+      this.logger.error('Failed to setup reaction role message:', error);
+    }
+  }
+
+  /**
+   * Handle reaction add event for role assignment
+   */
+  private async handleReactionAdd(
+    reaction: MessageReaction | PartialMessageReaction,
+    user: User | PartialUser,
+  ): Promise<void> {
+    if (user.bot) return;
+
+    const targetMessageId = await this.getReactionRoleMessageId();
+    if (!targetMessageId || reaction.message.id !== targetMessageId) return;
+
+    // Fetch partial reaction if needed
+    if (reaction.partial) {
+      try {
+        await reaction.fetch();
+      } catch (error) {
+        this.logger.error('Failed to fetch reaction:', error);
+        return;
+      }
+    }
+
+    // Check emoji
+    const targetEmoji = this.getReactionRoleEmoji();
+    const reactionEmoji = reaction.emoji.name || reaction.emoji.id;
+    if (reactionEmoji !== targetEmoji) return;
+
+    // Add role
+    const roleId = this.getMatchNotifyRoleId();
+    if (!roleId) {
+      this.logger.warn('Match notify role ID not configured');
+      return;
+    }
+
+    try {
+      const guildId = this.getGuildId();
+      if (!guildId) return;
+
+      const guild = await this.client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(user.id);
+
+      if (!member.roles.cache.has(roleId)) {
+        await member.roles.add(roleId);
+        this.logger.log(`Added match notify role to user ${user.id}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to add role to user ${user.id}:`, error);
+    }
+  }
+
+  /**
+   * Handle reaction remove event for role removal
+   */
+  private async handleReactionRemove(
+    reaction: MessageReaction | PartialMessageReaction,
+    user: User | PartialUser,
+  ): Promise<void> {
+    if (user.bot) return;
+
+    const targetMessageId = await this.getReactionRoleMessageId();
+    if (!targetMessageId || reaction.message.id !== targetMessageId) return;
+
+    // Fetch partial reaction if needed
+    if (reaction.partial) {
+      try {
+        await reaction.fetch();
+      } catch (error) {
+        this.logger.error('Failed to fetch reaction:', error);
+        return;
+      }
+    }
+
+    // Check emoji
+    const targetEmoji = this.getReactionRoleEmoji();
+    const reactionEmoji = reaction.emoji.name || reaction.emoji.id;
+    if (reactionEmoji !== targetEmoji) return;
+
+    // Remove role
+    const roleId = this.getMatchNotifyRoleId();
+    if (!roleId) return;
+
+    try {
+      const guildId = this.getGuildId();
+      if (!guildId) return;
+
+      const guild = await this.client.guilds.fetch(guildId);
+      const member = await guild.members.fetch(user.id);
+
+      if (member.roles.cache.has(roleId)) {
+        await member.roles.remove(roleId);
+        this.logger.log(`Removed match notify role from user ${user.id}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to remove role from user ${user.id}:`, error);
+    }
   }
 
   private async connect(): Promise<void> {
