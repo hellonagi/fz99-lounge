@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Param, Query, UseGuards, ForbiddenException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, UseGuards, ForbiddenException, Req, BadRequestException } from '@nestjs/common';
 import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LoginTrackingService } from '../auth/login-tracking.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
-import { UserRole } from '@prisma/client';
+import { UserRole, EventCategory } from '@prisma/client';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
@@ -160,6 +160,52 @@ export class AdminController {
     return {
       success: true,
       message: `Rating calculation completed for game ${gameIdNum}`,
+    };
+  }
+
+  /**
+   * Recalculate ratings from a specific match number
+   * POST /admin/rating/recalculate/:category/:season/from/:matchNumber
+   * Example: POST /admin/rating/recalculate/classic/1/from/5
+   */
+  @Post('rating/recalculate/:category/:season/from/:matchNumber')
+  async recalculateRatingsFromMatch(
+    @Req() req: Request,
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('matchNumber') matchNumber: string,
+  ) {
+    this.checkAdminAccess(req);
+
+    // Validate category
+    const categoryUpper = category.toUpperCase();
+    if (categoryUpper !== 'CLASSIC') {
+      throw new BadRequestException('Only CLASSIC category is supported for now');
+    }
+    const eventCategory = categoryUpper as EventCategory;
+
+    // Validate season number
+    const seasonNumber = parseInt(season, 10);
+    if (isNaN(seasonNumber) || seasonNumber < 1) {
+      throw new BadRequestException('Invalid season number');
+    }
+
+    // Validate match number
+    const fromMatchNumber = parseInt(matchNumber, 10);
+    if (isNaN(fromMatchNumber) || fromMatchNumber < 1) {
+      throw new BadRequestException('Invalid match number');
+    }
+
+    const result = await this.classicRatingService.recalculateFromMatch(
+      eventCategory,
+      seasonNumber,
+      fromMatchNumber,
+    );
+
+    return {
+      success: true,
+      message: `Rating recalculation completed from match ${fromMatchNumber}`,
+      ...result,
     };
   }
 }

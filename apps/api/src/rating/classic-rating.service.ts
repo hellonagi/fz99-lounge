@@ -105,6 +105,14 @@ export class ClassicRatingService {
     // 参加者を順位でソート
     const sortedParticipants = this.sortAndRankParticipants(game.participants);
 
+    // 参加者が2人未満の場合はスキップ（Elo計算には最低2人必要）
+    if (sortedParticipants.length < 2) {
+      this.logger.warn(
+        `[CLASSIC] Skipping rating calculation for game ${gameId}: only ${sortedParticipants.length} participant(s)`,
+      );
+      return;
+    }
+
     // 各参加者のシーズンスタッツを取得または作成
     const participantsWithRatings: ParticipantWithRating[] = [];
 
@@ -595,6 +603,8 @@ export class ClassicRatingService {
 
   /**
    * 表示レート計算（収束ポイント方式）
+   * displayRating = newInternalRating × convergenceMultiplier
+   * これにより、deltaも収束率でスケールされ、試合数が少ないほど変動が大きくなる
    */
   private calculateDisplayRating(
     oldInternalRating: number,
@@ -609,8 +619,207 @@ export class ClassicRatingService {
       convergenceMultiplier = 1.0;
     }
 
-    const displayRating = oldInternalRating * convergenceMultiplier + delta;
+    const newInternalRating = oldInternalRating + delta;
+    const displayRating = newInternalRating * convergenceMultiplier;
 
     return Math.max(0, Math.ceil(displayRating));
+  }
+
+  /**
+   * 指定マッチ以降のレートを再計算
+   * @param category イベントカテゴリ（CLASSIC）
+   * @param seasonNumber シーズン番号
+   * @param fromMatchNumber 再計算開始マッチ番号（この番号以降を再計算）
+   */
+  async recalculateFromMatch(
+    category: EventCategory,
+    seasonNumber: number,
+    fromMatchNumber: number,
+  ): Promise<{ recalculatedMatches: number; recalculatedGames: number }> {
+    this.logger.log(
+      `[RECALC] Starting recalculation from match ${fromMatchNumber} for ${category} season ${seasonNumber}`,
+    );
+
+    // Step 1: 対象マッチを取得
+    const matches = await this.prisma.match.findMany({
+      where: {
+        season: {
+          seasonNumber,
+          event: { category },
+        },
+        matchNumber: { gte: fromMatchNumber },
+        status: 'FINALIZED',
+      },
+      orderBy: { matchNumber: 'asc' },
+      include: {
+        games: {
+          include: {
+            participants: {
+              where: { status: 'SUBMITTED' },
+            },
+          },
+        },
+        season: true,
+      },
+    });
+
+    if (matches.length === 0) {
+      this.logger.warn(`[RECALC] No finalized matches found from matchNumber ${fromMatchNumber}`);
+      return { recalculatedMatches: 0, recalculatedGames: 0 };
+    }
+
+    const matchIds = matches.map((m) => m.id);
+    const seasonId = matches[0].seasonId;
+
+    // Step 2: 対象マッチに参加した全ユーザーを特定
+    const allUserIds = new Set<number>();
+    for (const match of matches) {
+      for (const game of match.games) {
+        for (const p of game.participants) {
+          allUserIds.add(p.userId);
+        }
+      }
+    }
+    const userIds = Array.from(allUserIds);
+
+    this.logger.log(
+      `[RECALC] Found ${matches.length} matches, ${userIds.length} users to recalculate`,
+    );
+
+    // Step 3: fromMatchNumber-1 時点の状態を取得（リセット用）
+    let baseRatingsByUser: Map<number, { internalRating: number; displayRating: number; convergencePoints: number; totalMatches: number }>;
+
+    if (fromMatchNumber === 1) {
+      // マッチ1から再計算する場合は初期値にリセット
+      baseRatingsByUser = new Map();
+      for (const userId of userIds) {
+        baseRatingsByUser.set(userId, {
+          internalRating: CLASSIC_CONFIG.INITIAL_RATING,
+          displayRating: 0,
+          convergencePoints: 0,
+          totalMatches: 0,
+        });
+      }
+    } else {
+      // fromMatchNumber-1 の rating_history から取得
+      const prevMatch = await this.prisma.match.findFirst({
+        where: {
+          seasonId,
+          matchNumber: fromMatchNumber - 1,
+          status: 'FINALIZED',
+        },
+      });
+
+      baseRatingsByUser = new Map();
+
+      if (prevMatch) {
+        const prevHistories = await this.prisma.ratingHistory.findMany({
+          where: {
+            matchId: prevMatch.id,
+            userId: { in: userIds },
+          },
+        });
+
+        for (const rh of prevHistories) {
+          // convergencePointsはUserSeasonStatsから計算が必要
+          // ここでは現在の値から再計算対象分を引く
+          baseRatingsByUser.set(rh.userId, {
+            internalRating: rh.internalRating,
+            displayRating: rh.displayRating,
+            convergencePoints: 0, // 後で計算
+            totalMatches: 0, // 後で計算
+          });
+        }
+      }
+
+      // 対象外のユーザー（fromMatchNumber以降に初参加）は初期値
+      for (const userId of userIds) {
+        if (!baseRatingsByUser.has(userId)) {
+          baseRatingsByUser.set(userId, {
+            internalRating: CLASSIC_CONFIG.INITIAL_RATING,
+            displayRating: 0,
+            convergencePoints: 0,
+            totalMatches: 0,
+          });
+        }
+      }
+    }
+
+    // Step 4: トランザクション内で再計算
+    await this.prisma.$transaction(async (tx) => {
+      // 4-1: 対象マッチのrating_historiesを削除
+      await tx.ratingHistory.deleteMany({
+        where: { matchId: { in: matchIds } },
+      });
+      this.logger.log(`[RECALC] Deleted rating histories for ${matchIds.length} matches`);
+
+      // 4-2: UserSeasonStatsをリセット
+      for (const userId of userIds) {
+        const base = baseRatingsByUser.get(userId)!;
+
+        // fromMatchNumber-1までのマッチ数とconvergencePointsを計算
+        const prevHistoryCount = await tx.ratingHistory.count({
+          where: {
+            userId,
+            match: { seasonId },
+          },
+        });
+
+        // 統計値も再計算が必要なのでリセット
+        await tx.userSeasonStats.upsert({
+          where: {
+            userId_seasonId: { userId, seasonId },
+          },
+          update: {
+            internalRating: base.internalRating,
+            displayRating: base.displayRating,
+            totalMatches: prevHistoryCount,
+            // convergencePointsは順位によって異なるため、ここでは0にして再計算時に更新
+            // 注: これは近似値。正確には各マッチの順位から再計算が必要
+            totalPoints: 0,
+            totalPositions: 0,
+            firstPlaces: 0,
+            secondPlaces: 0,
+            thirdPlaces: 0,
+            survivedCount: 0,
+          },
+          create: {
+            userId,
+            seasonId,
+            internalRating: CLASSIC_CONFIG.INITIAL_RATING,
+            displayRating: 0,
+            convergencePoints: 0,
+            totalMatches: 0,
+          },
+        });
+      }
+      this.logger.log(`[RECALC] Reset UserSeasonStats for ${userIds.length} users`);
+    });
+
+    // Step 5: 各マッチを順番に再計算
+    let recalculatedGames = 0;
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i];
+      this.logger.log(
+        `[RECALC] Processing match ${i + 1}/${matches.length} (matchNumber=${match.matchNumber})`,
+      );
+
+      for (const game of match.games) {
+        if (game.participants.length >= 2) {
+          await this.calculateAndUpdateRatings(game.id);
+          recalculatedGames++;
+        } else {
+          this.logger.warn(
+            `[RECALC] Skipping game ${game.id}: only ${game.participants.length} participant(s)`,
+          );
+        }
+      }
+    }
+
+    this.logger.log(
+      `[RECALC] Completed: ${matches.length} matches, ${recalculatedGames} games recalculated`,
+    );
+
+    return { recalculatedMatches: matches.length, recalculatedGames };
   }
 }
