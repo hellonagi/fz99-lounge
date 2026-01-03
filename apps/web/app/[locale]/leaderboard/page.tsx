@@ -6,6 +6,7 @@ import { usersApi, seasonsApi } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
 import { LeaderboardTable } from '@/components/features/leaderboard/leaderboard-table';
+import { LeaderboardPagination } from '@/components/features/leaderboard/leaderboard-pagination';
 
 interface Season {
   id: number;
@@ -41,6 +42,8 @@ export default function LeaderboardPage() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Fetch seasons on mount
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function LeaderboardPage() {
     fetchSeasons();
   }, [t]);
 
-  // Fetch leaderboard when season changes
+  // Fetch leaderboard when season or page changes
   useEffect(() => {
     if (selectedSeasonNumber === undefined) return;
 
@@ -78,8 +81,10 @@ export default function LeaderboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await usersApi.getLeaderboard('CLASSIC', selectedSeasonNumber, 100);
-        setLeaderboardData(response.data as LeaderboardEntry[]);
+        const response = await usersApi.getLeaderboard('CLASSIC', selectedSeasonNumber, page);
+        const result = response.data as { data: LeaderboardEntry[]; meta: { totalPages: number } };
+        setLeaderboardData(result.data);
+        setTotalPages(result.meta.totalPages);
       } catch {
         setError(t('failedToLoadLeaderboard'));
       } finally {
@@ -88,10 +93,15 @@ export default function LeaderboardPage() {
     };
 
     fetchLeaderboard();
-  }, [selectedSeasonNumber, t]);
+  }, [selectedSeasonNumber, page, t]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeasonNumber(seasonNumber);
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   return (
@@ -119,7 +129,14 @@ export default function LeaderboardPage() {
             {error ? (
               <div className="text-center text-red-400 py-8">{error}</div>
             ) : (
-              <LeaderboardTable data={leaderboardData} loading={loading} />
+              <>
+                <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} />
+                <LeaderboardPagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </>
             )}
           </TabsContent>
         </Tabs>

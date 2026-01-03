@@ -468,7 +468,12 @@ export class UsersService {
    * リーダーボード取得
    * GP/CLASSIC両方ともUserSeasonStatsから取得
    */
-  async getLeaderboard(eventCategory: 'GP' | 'CLASSIC', seasonNumber?: number, limit = 100) {
+  async getLeaderboard(
+    eventCategory: 'GP' | 'CLASSIC',
+    seasonNumber?: number,
+    page = 1,
+    limit = 20,
+  ) {
     // シーズンを特定
     let targetSeasonId: number | undefined;
 
@@ -494,31 +499,54 @@ export class UsersService {
     }
 
     if (!targetSeasonId) {
-      return [];
+      return {
+        data: [],
+        meta: { total: 0, page, limit, totalPages: 0, hasNext: false, hasPrev: false },
+      };
     }
 
-    return this.prisma.userSeasonStats.findMany({
-      where: {
-        seasonId: targetSeasonId,
-        totalMatches: { gte: 1 },
-      },
-      take: limit,
-      orderBy: { displayRating: 'desc' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            displayName: true,
-            avatarHash: true,
-            profile: {
-              select: {
-                country: true,
+    const skip = (page - 1) * limit;
+    const where = {
+      seasonId: targetSeasonId,
+      totalMatches: { gte: 1 },
+    };
+
+    const [total, data] = await Promise.all([
+      this.prisma.userSeasonStats.count({ where }),
+      this.prisma.userSeasonStats.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { displayRating: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              avatarHash: true,
+              profile: {
+                select: {
+                  country: true,
+                },
               },
             },
           },
         },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
       },
-    });
+    };
   }
 
   /**

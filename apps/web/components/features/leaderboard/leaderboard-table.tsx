@@ -28,9 +28,10 @@ interface LeaderboardEntry {
 interface LeaderboardTableProps {
   data: LeaderboardEntry[];
   loading?: boolean;
+  startRank?: number;
 }
 
-export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
+export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTableProps) {
   if (loading) {
     return (
       <div className="text-center text-gray-400 py-8">
@@ -69,7 +70,7 @@ export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
         </thead>
         <tbody>
           {data.map((entry, index) => {
-            const rank = index + 1;
+            const rank = startRank + index;
             const rankInfo = getRankInfo(entry.displayRating);
             const avgPosition = entry.totalMatches > 0
               ? (entry.totalPositions / entry.totalMatches).toFixed(1)

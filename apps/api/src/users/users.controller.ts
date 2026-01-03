@@ -47,10 +47,16 @@ export class UsersController {
   async getLeaderboard(
     @Query('mode') mode: 'GP' | 'CLASSIC' = 'GP',
     @Query('seasonNumber') seasonNumber?: string,
-    @Query('limit') limit: string = '100',
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
   ) {
     const parsedSeason = seasonNumber ? parseInt(seasonNumber, 10) : undefined;
-    return this.usersService.getLeaderboard(mode, parsedSeason, parseInt(limit, 10));
+    return this.usersService.getLeaderboard(
+      mode,
+      parsedSeason,
+      parseInt(page, 10),
+      parseInt(limit, 10),
+    );
   }
 
   @Get('profile/:profileId')
