@@ -142,7 +142,7 @@ export function ScoreSubmissionForm({
     resolver: zodResolver(gpScoreSchema),
     defaultValues: {
       points: '',
-      machine: 'Blue Falcon',
+      machine: '',
       assistEnabled: false,
     },
   });
@@ -151,7 +151,7 @@ export function ScoreSubmissionForm({
   const classicForm = useForm<ClassicScoreFormData>({
     resolver: zodResolver(classicScoreSchema),
     defaultValues: {
-      machine: 'Blue Falcon',
+      machine: '',
       assistEnabled: false,
       race1Position: '',
       race1Out: false,
