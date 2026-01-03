@@ -211,19 +211,19 @@ export function MatchDetailsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[700px]">
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium">#</th>
             <th className="py-2 px-1 w-6"></th>
             <th className="text-left py-2 px-2 font-medium">Player</th>
-            <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">Machine</th>
-            <th className="text-center py-2 px-1 font-medium w-10 hidden md:table-cell">R1</th>
-            <th className="text-center py-2 px-1 font-medium w-10 hidden md:table-cell">R2</th>
-            <th className="text-center py-2 px-1 font-medium w-10 hidden md:table-cell">R3</th>
+            <th className="text-left py-2 px-2 font-medium">Machine</th>
+            <th className="text-center py-2 px-1 font-medium w-10">R1</th>
+            <th className="text-center py-2 px-1 font-medium w-10">R2</th>
+            <th className="text-center py-2 px-1 font-medium w-10">R3</th>
             <th className="text-right py-2 px-2 font-medium">Pts</th>
             <th className="text-center py-2 px-2 font-medium">Status</th>
-            <th className="text-right py-2 px-2 font-medium hidden lg:table-cell">Rating</th>
+            <th className="text-right py-2 px-2 font-medium">Rating</th>
             <th className="text-right py-2 px-2 font-medium">+/-</th>
           </tr>
         </thead>
@@ -265,23 +265,23 @@ export function MatchDetailsTable({
                 </span>
               </td>
 
-              {/* Machine - hidden on mobile */}
-              <td className="py-2 px-2 text-gray-100 truncate max-w-[100px] hidden sm:table-cell">
+              {/* Machine */}
+              <td className="py-2 px-2 text-gray-100 truncate max-w-[100px]">
                 {participant.machine || '-'}
               </td>
 
-              {/* R1 - hidden on mobile/tablet */}
-              <td className="py-2 px-1 text-center text-gray-100 hidden md:table-cell">
+              {/* R1 */}
+              <td className="py-2 px-1 text-center text-gray-100">
                 {getRaceDisplay(participant, 1)}
               </td>
 
-              {/* R2 - hidden on mobile/tablet */}
-              <td className="py-2 px-1 text-center text-gray-100 hidden md:table-cell">
+              {/* R2 */}
+              <td className="py-2 px-1 text-center text-gray-100">
                 {getRaceDisplay(participant, 2)}
               </td>
 
-              {/* R3 - hidden on mobile/tablet */}
-              <td className="py-2 px-1 text-center text-gray-100 hidden md:table-cell">
+              {/* R3 */}
+              <td className="py-2 px-1 text-center text-gray-100">
                 {getRaceDisplay(participant, 3)}
               </td>
 
@@ -324,8 +324,8 @@ export function MatchDetailsTable({
                 )}
               </td>
 
-              {/* Rating After - hidden on mobile/tablet */}
-              <td className="py-2 px-2 text-right text-gray-100 hidden lg:table-cell">
+              {/* Rating After */}
+              <td className="py-2 px-2 text-right text-gray-100">
                 {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
               </td>
 
