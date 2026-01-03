@@ -49,7 +49,7 @@ export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[900px]">
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium w-12">#</th>
@@ -57,14 +57,14 @@ export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
             <th className="text-left py-2 px-2 font-medium">Player</th>
             <th className="text-left py-2 px-1 font-medium">Rank</th>
             <th className="text-right py-2 px-2 font-medium">Rating</th>
-            <th className="text-right py-2 px-2 font-medium hidden sm:table-cell">Peak</th>
-            <th className="text-right py-2 px-2 font-medium hidden sm:table-cell">Matches</th>
-            <th className="text-right py-2 px-2 font-medium hidden md:table-cell w-12">1st</th>
-            <th className="text-right py-2 px-2 font-medium hidden md:table-cell w-12">2nd</th>
-            <th className="text-right py-2 px-2 font-medium hidden md:table-cell w-12">3rd</th>
-            <th className="text-right py-2 px-2 font-medium hidden lg:table-cell">Avg Pos</th>
-            <th className="text-right py-2 px-2 font-medium hidden lg:table-cell">Avg Pts</th>
-            <th className="text-right py-2 px-2 font-medium hidden lg:table-cell">Finish%</th>
+            <th className="text-right py-2 px-2 font-medium">Peak</th>
+            <th className="text-right py-2 px-2 font-medium">Matches</th>
+            <th className="text-right py-2 px-2 font-medium w-12">1st</th>
+            <th className="text-right py-2 px-2 font-medium w-12">2nd</th>
+            <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
+            <th className="text-right py-2 px-2 font-medium">Avg Pos</th>
+            <th className="text-right py-2 px-2 font-medium">Avg Pts</th>
+            <th className="text-right py-2 px-2 font-medium">Finish%</th>
           </tr>
         </thead>
         <tbody>
@@ -129,42 +129,42 @@ export function LeaderboardTable({ data, loading }: LeaderboardTableProps) {
                 </td>
 
                 {/* Peak (Season High) */}
-                <td className="py-2 px-2 text-right text-gray-100 hidden sm:table-cell">
+                <td className="py-2 px-2 text-right text-gray-100">
                   {entry.seasonHighRating}
                 </td>
 
                 {/* Matches */}
-                <td className="py-2 px-2 text-right text-gray-100 hidden sm:table-cell">
+                <td className="py-2 px-2 text-right text-gray-100">
                   {entry.totalMatches}
                 </td>
 
                 {/* 1st Place */}
-                <td className="py-2 px-2 text-right text-yellow-400 hidden md:table-cell">
+                <td className="py-2 px-2 text-right text-yellow-400">
                   {entry.firstPlaces}
                 </td>
 
                 {/* 2nd Place */}
-                <td className="py-2 px-2 text-right text-gray-300 hidden md:table-cell">
+                <td className="py-2 px-2 text-right text-gray-300">
                   {entry.secondPlaces}
                 </td>
 
                 {/* 3rd Place */}
-                <td className="py-2 px-2 text-right text-orange-400 hidden md:table-cell">
+                <td className="py-2 px-2 text-right text-orange-400">
                   {entry.thirdPlaces}
                 </td>
 
                 {/* Avg Position */}
-                <td className="py-2 px-2 text-right text-gray-100 hidden lg:table-cell">
+                <td className="py-2 px-2 text-right text-gray-100">
                   {avgPosition}
                 </td>
 
                 {/* Avg Points */}
-                <td className="py-2 px-2 text-right text-gray-100 hidden lg:table-cell">
+                <td className="py-2 px-2 text-right text-gray-100">
                   {avgPoints}
                 </td>
 
                 {/* Finish Rate */}
-                <td className="py-2 px-2 text-right text-gray-100 hidden lg:table-cell">
+                <td className="py-2 px-2 text-right text-gray-100">
                   {finishRate}%
                 </td>
               </tr>
