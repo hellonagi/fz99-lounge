@@ -51,8 +51,8 @@ export const usersApi = {
   getSuggestedCountry: () => api.get<{ country: string | null }>('/users/me/suggested-country'),
   getUser: (id: string) => api.get(`/users/${id}`),
   getUserByProfileId: (profileId: number) => api.get(`/users/profile/${profileId}`),
-  getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', seasonNumber?: number, limit = 100) => {
-    const params = new URLSearchParams({ mode, limit: String(limit) });
+  getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
+    const params = new URLSearchParams({ mode, page: String(page), limit: String(limit) });
     if (seasonNumber) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
   },
