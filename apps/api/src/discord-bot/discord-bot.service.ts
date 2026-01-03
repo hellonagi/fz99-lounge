@@ -223,24 +223,15 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
       const leagueDisplay = params.leagueType.replace(/_/g, ' ');
 
-      await channel.send({
-        content: '@here',
-        embeds: [
-          {
-            title: `${leagueDisplay} passcode: ${params.passcode}`,
-            description: 'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
-            color: 0x00ff00,
-            fields: [
-              {
-                name: 'Score Submission / スコア提出',
-                value: matchUrl,
-                inline: false,
-              },
-            ],
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
+      const messageContent = `@here
+**${leagueDisplay} passcode: ${params.passcode}**
+
+Please hide the passcode on your stream!
+配信者はパスコードを隠してください！
+
+Score Submission: ${matchUrl}`;
+
+      await channel.send({ content: messageContent });
 
       // Save channel ID to database
       await this.prisma.game.update({
@@ -290,17 +281,13 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
 
-      await (channel as TextChannel).send({
-        content: '@here',
-        embeds: [
-          {
-            title: `New Passcode: ${params.passcode}`,
-            description: 'Split Vote triggered. Please rejoin with the new passcode.',
-            color: 0xffaa00,
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
+      const messageContent = `@here
+**New Passcode: ${params.passcode}**
+
+Split Vote triggered. Please rejoin with the new passcode.
+スプリット投票が成立しました。新しいパスコードで再参加してください。`;
+
+      await (channel as TextChannel).send({ content: messageContent });
 
       this.logger.log(
         `Posted new passcode to channel ${game.discordChannelId} for game ${params.gameId}`,
@@ -344,16 +331,12 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
 
-      await (channel as TextChannel).send({
-        embeds: [
-          {
-            title: 'Match Cancelled',
-            description: 'This match has been cancelled by an administrator.',
-            color: 0xff0000,
-            timestamp: new Date().toISOString(),
-          },
-        ],
-      });
+      const messageContent = `**Match Cancelled**
+
+This match has been cancelled by an administrator.
+このマッチは管理者によってキャンセルされました。`;
+
+      await (channel as TextChannel).send({ content: messageContent });
 
       this.logger.log(
         `Posted cancellation message to channel ${game.discordChannelId} for game ${gameId}`,
