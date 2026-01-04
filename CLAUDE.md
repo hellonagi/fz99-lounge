@@ -55,6 +55,7 @@ docker logs fz99-lounge-api --tail 20
 - globals.css にはリセットとベーススタイル以外を極力書かない
 - フォームは可能な限り react-hook-form + zod + shadcn Form で実装する
 - **絵文字は基本的に使わない**。アイコンが必要な場合は `lucide-react` を使用する
+- **翻訳**: next-intl使用。`messages/en.json`, `messages/ja.json` に追加し、`useTranslations`で参照。TSXに直接日本語を書かない
 
 
 ## 🧪 テスト実装の手順
