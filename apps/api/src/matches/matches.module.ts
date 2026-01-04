@@ -8,6 +8,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EventsModule } from '../events/events.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 import { RatingModule } from '../rating/rating.module';
+import { TracksModule } from '../tracks/tracks.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { RatingModule } from '../rating/rating.module';
     EventsModule,
     PushNotificationsModule,
     RatingModule,
+    TracksModule,
     BullModule.registerQueue({
       name: 'matches',
     }),

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   DropdownMenu,
@@ -16,6 +17,11 @@ interface LanguageSwitcherProps {
 export function LanguageSwitcher({ currentLocale }: LanguageSwitcherProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLocaleChange = (newLocale: Locale) => {
     const segments = pathname.split('/');
@@ -23,6 +29,16 @@ export function LanguageSwitcher({ currentLocale }: LanguageSwitcherProps) {
     const newPath = segments.join('/');
     router.push(newPath);
   };
+
+  // SSR時はプレースホルダーを表示してhydration mismatchを防ぐ
+  if (!mounted) {
+    return (
+      <button className="flex items-center gap-2 px-3 py-1 text-sm text-gray-300 hover:text-white">
+        <span className={`fi fi-${localeFlags[currentLocale as Locale]}`} />
+        <span className="hidden sm:inline">{localeNames[currentLocale as Locale]}</span>
+      </button>
+    );
+  }
 
   return (
     <DropdownMenu>

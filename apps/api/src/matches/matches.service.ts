@@ -10,8 +10,9 @@ import type { Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
+import { TracksService } from '../tracks/tracks.service';
 import { CreateMatchDto } from './dto/create-match.dto';
-import { EventCategory, MatchStatus, UserStatus } from '@prisma/client';
+import { EventCategory, League, MatchStatus, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class MatchesService {
@@ -78,6 +79,7 @@ export class MatchesService {
     private eventsGateway: EventsGateway,
     @InjectQueue('matches') private matchQueue: Queue,
     private discordBotService: DiscordBotService,
+    private tracksService: TracksService,
   ) {}
 
   async create(createMatchDto: CreateMatchDto, createdBy: number) {
@@ -127,6 +129,12 @@ export class MatchesService {
 
     const matchNumber = lastMatch ? lastMatch.matchNumber + 1 : 1;
 
+    // CLASSIC_MINIリーグの場合、トラックセットを自動計算
+    let tracks: number[] | null = null;
+    if (leagueType === League.CLASSIC_MINI) {
+      tracks = this.tracksService.calculateClassicMiniTracks(new Date(scheduledStart));
+    }
+
     // Create match and game in a transaction
     const match = await this.prisma.$transaction(async (tx) => {
       const scheduledDate = new Date(scheduledStart);
@@ -155,6 +163,7 @@ export class MatchesService {
           leagueType,
           gameNumber: 1,
           passcode: '', // Empty until scheduledStart
+          ...(tracks && { tracks }), // CLASSIC_MINI_PRIXの場合は自動計算されたトラックが設定される
         },
       });
 
