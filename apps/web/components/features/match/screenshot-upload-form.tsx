@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { Alert } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import {
   Form,
@@ -23,6 +24,8 @@ interface ScreenshotUploadFormProps {
   type?: ScreenshotType;
   title?: string;
   description?: string;
+  disabled?: boolean;
+  isFirstPlace?: boolean;
   onUploadSuccess?: () => void;
 }
 
@@ -31,8 +34,11 @@ export function ScreenshotUploadForm({
   type = 'INDIVIDUAL',
   title,
   description,
+  disabled = false,
+  isFirstPlace = false,
   onUploadSuccess,
 }: ScreenshotUploadFormProps) {
+  const t = useTranslations('screenshotUpload');
   const [preview, setPreview] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,14 +51,14 @@ export function ScreenshotUploadForm({
 
   const { isSubmitting } = form.formState;
 
-  // デフォルトのタイトルと説明
+  // Default title and description
   const displayTitle = title || (type === 'FINAL_SCORE'
-    ? 'Submit Final Score Screenshot'
-    : 'Submit Individual Score Screenshot');
+    ? t('finalScoreTitle')
+    : t('individualTitle'));
 
   const displayDescription = description || (type === 'FINAL_SCORE'
-    ? 'As 1st place, submit the final results screen showing all scores'
-    : 'Submit your personal score screenshot for verification');
+    ? t('finalScoreDescription')
+    : t('individualDescription'));
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,13 +70,13 @@ export function ScreenshotUploadForm({
 
     // Validate file type
     if (!file.type.match(/^image\/(jpg|jpeg|png|webp)$/i)) {
-      setError('Only JPG, PNG, and WebP images are allowed');
+      setError(t('invalidFileType'));
       return;
     }
 
     // Validate file size (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
+      setError(t('fileTooLarge'));
       return;
     }
 
@@ -87,7 +93,7 @@ export function ScreenshotUploadForm({
 
   const onSubmit = async (data: { file: File | null }) => {
     if (!data.file) {
-      setError('Please select a file');
+      setError(t('selectFile'));
       return;
     }
 
@@ -97,7 +103,7 @@ export function ScreenshotUploadForm({
       setSuccess(true);
       setPreview(null);
       form.reset();
-      // ファイルinputをリセット
+      // Reset file input
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
 
@@ -113,18 +119,51 @@ export function ScreenshotUploadForm({
     }
   };
 
+  // Determine card style based on state
+  const cardClassName = disabled ? 'opacity-60' : '';
+
   return (
-    <Card>
+    <Card className={cardClassName}>
       <CardContent className="pt-6">
         <div className="space-y-4">
           <div>
             <h3 className="text-lg font-bold text-white mb-2">
               {displayTitle}
             </h3>
+
+            {/* First place alert */}
+            {isFirstPlace && (
+              <Alert variant="danger" className="mb-2">
+                <AlertDescription>{t('firstPlaceAlert')}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Disabled message */}
+            {disabled && !isFirstPlace && (
+              <Alert variant="default" className="mb-2">
+                <AlertDescription>{t('disabledMessage')}</AlertDescription>
+              </Alert>
+            )}
+
             <p className="text-sm text-gray-400">
               {displayDescription}
             </p>
           </div>
+
+          {/* Example image for FINAL_SCORE type */}
+          {type === 'FINAL_SCORE' && (
+            <div className="relative w-full max-w-md">
+              <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                <Image
+                  src="/ss/ex2.webp"
+                  alt="Example final score screenshot"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 448px"
+                  className="object-contain"
+                />
+              </div>
+            </div>
+          )}
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -135,18 +174,19 @@ export function ScreenshotUploadForm({
                 render={() => (
                   <FormItem>
                     <FormLabel className="text-gray-300">
-                      Screenshot <span className="text-red-500">*</span>
+                      {t('screenshot')}
                     </FormLabel>
                     <FormControl>
                       <Input
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,image/webp"
                         onChange={handleFileChange}
-                        className="h-auto py-1.5 bg-gray-700 border-gray-600 text-white cursor-pointer file:bg-blue-600 file:text-white file:border-0 file:mr-4 file:my-0 file:py-1.5 file:px-4 file:rounded file:cursor-pointer hover:file:bg-blue-700"
+                        disabled={disabled}
+                        className="h-auto py-1.5 bg-gray-700 border-gray-600 text-white cursor-pointer file:bg-blue-600 file:text-white file:border-0 file:mr-4 file:my-0 file:py-1.5 file:px-4 file:rounded file:cursor-pointer hover:file:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </FormControl>
                     <FormDescription className="text-gray-500">
-                      JPG, PNG, or WebP. Max 10MB.
+                      {t('screenshotDescription')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -174,16 +214,16 @@ export function ScreenshotUploadForm({
 
               {/* Success Message */}
               {success && (
-                <Alert variant="success">Screenshot uploaded successfully!</Alert>
+                <Alert variant="success">{t('success')}</Alert>
               )}
 
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={isSubmitting || !form.watch('file')}
+                disabled={disabled || isSubmitting || !form.watch('file')}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700"
               >
-                {isSubmitting ? 'Uploading...' : 'Upload Screenshot'}
+                {isSubmitting ? t('uploading') : t('uploadButton')}
               </Button>
             </form>
           </Form>

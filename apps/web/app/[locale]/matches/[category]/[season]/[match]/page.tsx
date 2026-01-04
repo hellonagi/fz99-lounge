@@ -329,10 +329,10 @@ export default function GamePage() {
   // Check if current user is a participant in this match
   const isParticipant = user && game.match.participants.some(p => p.user.id === user.id);
 
-  // Check if user can upload final score screenshot (IN_PROGRESS only, 1st place only)
-  const canUploadScreenshot =
+  // Check if final score screenshot form should be shown (IN_PROGRESS, participant)
+  const showFinalScoreForm =
     game.match.status === 'IN_PROGRESS' &&
-    isFirstPlace();
+    isParticipant;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 overflow-x-hidden">
@@ -405,7 +405,7 @@ export default function GamePage() {
             </Tabs>
           </Card>
 
-          {/* Score Submission Form - visible when IN_PROGRESS, participant only, not on mod tab */}
+          {/* Score Submission Form with integrated Screenshot Upload - visible when IN_PROGRESS, participant only, not on mod tab */}
           {game.match.status === 'IN_PROGRESS' && isParticipant && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
@@ -415,25 +415,20 @@ export default function GamePage() {
                   game={match}
                   deadline={game.match.deadline}
                   onScoreSubmitted={handleScoreSubmitted}
+                  gameId={game.id}
+                  enableScreenshotUpload={true}
                 />
               </CardContent>
             </Card>
           )}
 
-          {/* Individual Screenshot Upload Form - participants only during match, not on mod tab */}
-          {game.match.status === 'IN_PROGRESS' && isParticipant && activeTab !== 'moderator' && (
-            <ScreenshotUploadForm
-              gameId={game.id}
-              type="INDIVIDUAL"
-              onUploadSuccess={fetchGame}
-            />
-          )}
-
-          {/* Final Score Screenshot Upload Form - 1st place only, not on mod tab */}
-          {canUploadScreenshot && activeTab !== 'moderator' && (
+          {/* Final Score Screenshot Upload Form - all participants, not on mod tab */}
+          {showFinalScoreForm && activeTab !== 'moderator' && (
             <ScreenshotUploadForm
               gameId={game.id}
               type="FINAL_SCORE"
+              disabled={!isFirstPlace()}
+              isFirstPlace={isFirstPlace()}
               onUploadSuccess={fetchGame}
             />
           )}

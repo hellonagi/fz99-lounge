@@ -26,7 +26,17 @@
   },
   "home": {
     "recentMatches": "最近の試合",
+    "noRecentMatches": "最近の試合はありません",
+    "inProgress": "進行中",
     "settingUp": "設定中..."
+  },
+  "matchHero": {
+    "checkNextMatch": "次回の試合開催までお待ちください",
+    "matchInProgress": "進行中",
+    "goToMatchPage": "参加者は試合ページに移動してパスコードを確認してください。",
+    "goToMatchButton": "試合ページへ",
+    "startsIn": "あと",
+    "reviewRules": "参加前に<matchRules>ルール</matchRules>をご確認ください"
   },
   "leaderboard": {
     "title": "リーダーボード",
@@ -137,5 +147,50 @@
       "otherNote3": "ここに記載されていない予期しない状況が発生した場合は、ラウンジスタッフが判断を下します。",
       "otherNote4": "無期限の制裁を受けたプレイヤーは、異議申し立てまで少なくとも90日間待つ必要があります。"
     }
+  },
+  "scoreSubmission": {
+    "title": "結果入力フォーム",
+    "moderatorTitle": "プレイヤーのスコアを編集",
+    "description": "{deadline}までにスコアを送信してください。",
+    "moderatorDescription": "プレイヤーを選択してスコアを入力してください。",
+    "targetPlayer": "対象プレイヤー",
+    "selectPlayer": "プレイヤーを選択...",
+    "points": "ポイント",
+    "machine": "マシン",
+    "raceResults": "レース結果",
+    "raceResultsDescription": "各レースの順位を入力してください。",
+    "race": "レース {number}",
+    "positionPlaceholder": "1-20",
+    "rankedOut": "ランクアウト / クラッシュアウト",
+    "disconnected": "切断",
+    "steerAssist": "ステアリングアシスト",
+    "screenshot": "スクリーンショット",
+    "screenshotOptional": "個人結果のスクリーンショット",
+    "screenshotDescription": "JPG、PNG、WebP形式。最大10MB。",
+    "screenshotExample": "以下の画面と同じ画面を撮影して投稿してください。",
+    "submitButton": "送信",
+    "submitting": "送信中...",
+    "scoreSuccess": "結果を送信しました！",
+    "scoreAndScreenshotSuccess": "結果とスクリーンショットを送信しました！",
+    "screenshotFailed": "結果は送信されましたが、スクリーンショットのアップロードに失敗しました: {error}",
+    "positionRange": "{races}: 順位は1から20の間で入力してください。",
+    "enterAllResults": "すべてのレース結果を入力してください。"
+  },
+  "screenshotUpload": {
+    "individualTitle": "個人結果のスクリーンショットを送信",
+    "individualDescription": "確認用に個人結果のスクリーンショットを送信してください",
+    "finalScoreTitle": "最終結果のスクリーンショット",
+    "finalScoreDescription": "以下の画面と同じ画面を撮影して投稿してください。",
+    "firstPlaceAlert": "現在1位です。最終結果のスクリーンショットを送信してください。",
+    "disabledMessage": "1位のプレイヤーは最終結果画面のスクリーンショットを提出する義務があります。1位になるとこのフォームが有効化されます。",
+    "exampleImage": "スクリーンショット例",
+    "screenshot": "スクリーンショット",
+    "screenshotDescription": "JPG、PNG、WebP形式。最大10MB。",
+    "uploadButton": "送信",
+    "uploading": "アップロード中...",
+    "success": "スクリーンショットをアップロードしました！",
+    "selectFile": "ファイルを選択してください",
+    "invalidFileType": "JPG、PNG、WebP画像のみ許可されています",
+    "fileTooLarge": "ファイルサイズは10MB以下にしてください"
   }
 }

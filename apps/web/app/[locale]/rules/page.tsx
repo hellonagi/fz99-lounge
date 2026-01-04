@@ -188,16 +188,14 @@ export default function RulesPage() {
                 </li>
               </ol>
 
-              <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                <ul className="list-disc list-inside space-y-2 text-gray-300">
-                  <li>
-                    <span className="text-red-300">{t('general.prohibition1')}</span>
-                  </li>
-                  <li>
-                    <span className="text-red-300">{t('general.prohibition2')}</span> {t('general.prohibition2note')}
-                  </li>
-                </ul>
-              </div>
+              <Alert variant="danger" className="mt-6">
+                <AlertDescription>
+                  <ul className="list-disc list-inside space-y-2">
+                    <li>{t('general.prohibition1')}</li>
+                    <li>{t('general.prohibition2')} {t('general.prohibition2note')}</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
             </RuleSection>
 
           </TabsContent>
@@ -262,11 +260,11 @@ export default function RulesPage() {
                   </ul>
                 </div>
 
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <p className="text-red-300 text-sm">
+                <Alert variant="danger">
+                  <AlertDescription>
                     {t('match.passcodeWarning')}
-                  </p>
-                </div>
+                  </AlertDescription>
+                </Alert>
 
                 <div>
                   <h4 className="text-white font-medium mb-2">{t('match.splitLobby')}</h4>
@@ -316,9 +314,9 @@ export default function RulesPage() {
 
           {/* Penalty System */}
           <TabsContent value="penalty" className="space-y-6">
-            <Alert className="bg-red-500/10 border-red-500/30">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
-              <AlertDescription className="text-red-200">
+            <Alert variant="danger">
+              <AlertTriangle className="w-5 h-5" />
+              <AlertDescription>
                 {t('penalty.strikeWarning')}
               </AlertDescription>
             </Alert>
