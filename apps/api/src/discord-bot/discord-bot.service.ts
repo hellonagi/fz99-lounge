@@ -186,12 +186,12 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       // Create new message
       const emoji = this.getReactionRoleEmoji();
-      const messageContent = `**Match Notifications / マッチ通知設定**
+      const messageContent = `**Match Notifications / 試合通知設定**
 
 React with the ${emoji} emoji to receive notifications when a new match is created.
 Remove your reaction to stop receiving notifications.
 
-このメッセージに ${emoji} の絵文字でリアクションすると、新しいマッチが作成されたときに通知が届きます。
+このメッセージに ${emoji} の絵文字でリアクションすると、新しい試合が作成されたときに通知が届きます。
 外すと通知は止まります。`;
 
       const message = await textChannel.send({ content: messageContent });
