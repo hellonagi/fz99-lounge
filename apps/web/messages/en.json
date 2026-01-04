@@ -53,14 +53,13 @@
     "failedToLoadResults": "Failed to load results"
   },
   "rules": {
-    "title": "FZ99 Lounge Official Ruleset",
+    "title": "FZ99 Lounge Ruleset",
     "subtitle": "Please read all rules carefully before participating in Lounge matches.",
     "tabs": {
       "general": "General",
       "ranking": "Ranking",
       "match": "Match Rules",
-      "penalty": "Penalties",
-      "conduct": "Conduct"
+      "penalty": "Penalties"
     },
     "general": {
       "warning": "Please read all rules before participating in Lounge. Rule violations may result in warnings or penalties.",
@@ -85,7 +84,7 @@
       "beforeMatch2": "Minimum players: Classic = 12, GP = 40 (match cancelled if not met)",
       "beforeMatch3": "You can cancel freely before the match starts",
       "whenStarts": "When the Match Starts",
-      "whenStarts1": "You will be redirected to the match page (push notification sent)",
+      "whenStarts1": "You will be redirected to the match page (you will receive a Discord mention if you are in the <discordLink>Discord server</discordLink>)",
       "whenStarts2": "If not redirected, navigate manually from the home page",
       "whenStarts3": "Use the passcode on the match page to join the in-game room",
       "passcodeWarning": "Passcode: Do not share with anyone. If streaming, hide it from view.",
@@ -98,12 +97,16 @@
       "classicRule1": "No reverse driving",
       "gpMode": "GP Mode",
       "gpRule1": "No reverse driving",
-      "gpRule2": "No blue bumpers - if you become a blue bumper, do not control and self-destruct immediately",
+      "gpRule2": "No blue bumper - if you become a blue bumper, do not control and self-destruct immediately",
       "submittingTitle": "Submitting Scores",
       "submitting1": "After the match ends, submit your score from the match page",
       "submitting2": "Enter your placement for each race",
-      "submitting3": "If you crashed out or ranked out, check the corresponding box and enter the race number where it happened. Do not enter placements for races after that.",
-      "submitting4": "The 1st place player must upload a screenshot of the final results screen (page 1 showing places 1-11)",
+      "submitting3": "If you crashed out or ranked out, check the box for that race number",
+      "submitting4": "Submit screenshots of your results",
+      "screenshotAllPlayers": "All Players",
+      "screenshotAllPlayersDesc": "Please submit a screenshot showing your results for each race",
+      "screenshotFirstPlace": "1st Place Only",
+      "screenshotFirstPlaceDesc": "Please also submit a screenshot of the overall results screen",
       "disconnectionTitle": "Disconnections",
       "disconnection1": "If you disconnect during a match, check \"Disconnected\" for that race when submitting your score",
       "disconnection2": "All races after the disconnection will be treated as 0 points"
@@ -133,22 +136,7 @@
       "penalty4Value": "-100 MMR + Strike",
       "penalty5": "Trolling/Targeting",
       "penalty5Value": "-100 MMR + Strike"
-    },
-    "conduct": {
-      "codeTitle": "Code of Conduct",
-      "code1": "Players who consistently cause disruptions such as trolling, flaming (including in DMs or outside the server), or spamming will receive a chat restriction, mute, or temporary timeout.",
-      "code2": "Players who cause disruptions in matches such as trolling, targeting specific players, or intentionally losing may receive a mute of varying length.",
-      "code3Title": "Targeting is defined as:",
-      "code3": "Disrupting another player's race through excessive item use, significantly impacting their score or placement.",
-      "code4": "Any NSFW content will be promptly deleted and the user will receive an indefinite media restriction.",
-      "code5": "Players who abuse specific features may receive restrictions from those features.",
-      "otherNotesTitle": "Other Notes",
-      "otherNote1": "Chat restriction, mute, and other restricted roles are for punishments only and are not available upon request.",
-      "otherNote2": "Penalties may be more severe at the discretion of Lounge Staff based on severity and history.",
-      "otherNote3": "Lounge Staff will make decisions in the event of unexpected circumstances not listed here.",
-      "otherNote4": "Players who have received indefinite sanctions must wait at least 90 days before appealing."
-    }
-  },
+    }  },
   "scoreSubmission": {
     "title": "Submit Your Result",
     "moderatorTitle": "Edit Player Score",

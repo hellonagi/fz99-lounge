@@ -1,9 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   UserPlus,
@@ -11,7 +12,6 @@ import {
   Gamepad2,
   AlertTriangle,
   Shield,
-  MessageSquare,
   FileText,
 } from 'lucide-react';
 
@@ -133,6 +133,11 @@ const ranks: RankInfo[] = [
 
 export default function RulesPage() {
   const t = useTranslations('rules');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -154,14 +159,13 @@ export default function RulesPage() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Card>
-          <Tabs defaultValue="general" id="rules-tabs">
+          {mounted ? (
+          <Tabs defaultValue="general">
             <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
               <TabsTrigger value="ranking">{t('tabs.ranking')}</TabsTrigger>
               <TabsTrigger value="match">{t('tabs.match')}</TabsTrigger>
-              <TabsTrigger value="penalty">{t('tabs.penalty')}</TabsTrigger>
-              <TabsTrigger value="conduct">{t('tabs.conduct')}</TabsTrigger>
-            </TabsList>
+                          </TabsList>
 
           {/* General Rules */}
           <TabsContent value="general" className="space-y-6">
@@ -254,7 +258,18 @@ export default function RulesPage() {
                 <div>
                   <h4 className="text-white font-medium mb-2">{t('match.whenStarts')}</h4>
                   <ul className="list-disc list-inside space-y-1 text-gray-300">
-                    <li>{t('match.whenStarts1')}</li>
+                    <li>{t.rich('match.whenStarts1', {
+                      discordLink: (chunks) => (
+                        <a
+                          href="https://discord.gg/Pxdxp8kH6c"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-400 hover:text-indigo-300 underline"
+                        >
+                          {chunks}
+                        </a>
+                      ),
+                    })}</li>
                     <li>{t('match.whenStarts2')}</li>
                     <li>{t('match.whenStarts3')}</li>
                   </ul>
@@ -302,6 +317,40 @@ export default function RulesPage() {
                 <li>{t('match.submitting3')}</li>
                 <li>{t('match.submitting4')}</li>
               </ul>
+
+              <div className="mt-6 space-y-6">
+                <div>
+                  <h4 className="text-white font-medium mb-2">{t('match.screenshotAllPlayers')}</h4>
+                  <p className="text-sm text-gray-400 mb-3">{t('match.screenshotAllPlayersDesc')}</p>
+                  <div className="relative w-full max-w-md">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                      <Image
+                        src="/ss/ex1.webp"
+                        alt="Individual result screenshot example"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 448px"
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-white font-medium mb-2">{t('match.screenshotFirstPlace')}</h4>
+                  <p className="text-sm text-gray-400 mb-3">{t('match.screenshotFirstPlaceDesc')}</p>
+                  <div className="relative w-full max-w-md">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                      <Image
+                        src="/ss/ex2.webp"
+                        alt="Final score screenshot example"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 448px"
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </RuleSection>
 
             <RuleSection title={t('match.disconnectionTitle')} icon={<AlertTriangle className="w-5 h-5" />}>
@@ -312,108 +361,13 @@ export default function RulesPage() {
             </RuleSection>
           </TabsContent>
 
-          {/* Penalty System */}
-          <TabsContent value="penalty" className="space-y-6">
-            <Alert variant="danger">
-              <AlertTriangle className="w-5 h-5" />
-              <AlertDescription>
-                {t('penalty.strikeWarning')}
-              </AlertDescription>
-            </Alert>
-
-            <RuleSection
-              title={t('penalty.strikeTitle')}
-              icon={<AlertTriangle className="w-5 h-5" />}
-            >
-              <p className="mb-4">
-                {t('penalty.strikeDescription')}
-              </p>
-
-              <div className="space-y-3">
-                <h4 className="font-semibold text-white">{t('penalty.punishmentsTitle')}</h4>
-                <div className="grid gap-3">
-                  <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                    <Badge className="bg-yellow-500">{t('penalty.offense1')}</Badge>
-                    <span className="text-gray-300">{t('penalty.offense1Penalty')}</span>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-                    <Badge className="bg-orange-500">{t('penalty.offense2')}</Badge>
-                    <span className="text-gray-300">{t('penalty.offense2Penalty')}</span>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                    <Badge className="bg-red-500">{t('penalty.offense3')}</Badge>
-                    <span className="text-gray-300">{t('penalty.offense3Penalty')}</span>
-                  </div>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">
-                  {t('penalty.strikeResetNote')}
-                </p>
-              </div>
-            </RuleSection>
-
-            <RuleSection title={t('penalty.commonPenaltiesTitle')} icon={<Shield className="w-5 h-5" />}>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-2 text-gray-400">{t('penalty.violation')}</th>
-                      <th className="text-left py-2 text-gray-400">{t('penalty.penaltyColumn')}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    <tr>
-                      <td className="py-2 text-gray-300">{t('penalty.penalty1')}</td>
-                      <td className="py-2 text-red-400">{t('penalty.penalty1Value')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 text-gray-300">{t('penalty.penalty2')}</td>
-                      <td className="py-2 text-red-400">{t('penalty.penalty2Value')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 text-gray-300">{t('penalty.penalty3')}</td>
-                      <td className="py-2 text-red-400">{t('penalty.penalty3Value')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 text-gray-300">{t('penalty.penalty4')}</td>
-                      <td className="py-2 text-red-400">{t('penalty.penalty4Value')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 text-gray-300">{t('penalty.penalty5')}</td>
-                      <td className="py-2 text-red-400">{t('penalty.penalty5Value')}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </RuleSection>
-          </TabsContent>
-
-          {/* Conduct */}
-          <TabsContent value="conduct" className="space-y-6">
-            <RuleSection
-              title={t('conduct.codeTitle')}
-              icon={<MessageSquare className="w-5 h-5" />}
-            >
-              <ol className="list-decimal list-inside space-y-3">
-                <li>{t('conduct.code1')}</li>
-                <li>{t('conduct.code2')}</li>
-                <li>
-                  <span className="text-white font-medium">{t('conduct.code3Title')}</span> {t('conduct.code3')}
-                </li>
-                <li>{t('conduct.code4')}</li>
-                <li>{t('conduct.code5')}</li>
-              </ol>
-            </RuleSection>
-
-            <RuleSection title={t('conduct.otherNotesTitle')} icon={<FileText className="w-5 h-5" />}>
-              <ul className="list-disc list-inside space-y-3">
-                <li>{t('conduct.otherNote1')}</li>
-                <li>{t('conduct.otherNote2')}</li>
-                <li>{t('conduct.otherNote3')}</li>
-                <li>{t('conduct.otherNote4')}</li>
-              </ul>
-            </RuleSection>
-          </TabsContent>
           </Tabs>
+          ) : (
+            <div className="p-6 space-y-4">
+              <div className="h-10 bg-gray-700/50 rounded animate-pulse w-full max-w-md" />
+              <div className="h-64 bg-gray-700/30 rounded animate-pulse" />
+            </div>
+          )}
         </Card>
       </main>
     </div>
