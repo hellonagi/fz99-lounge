@@ -49,22 +49,29 @@ export function TrackBanners({ tracks }: TrackBannersProps) {
         const bannerSrc = getTrackBanner(trackId);
 
         return (
-          <div
-            key={index}
-            className="relative aspect-[252/64] rounded-lg overflow-hidden"
-          >
-            <Image
-              src={bannerSrc}
-              alt={track?.name || 'Not set'}
-              fill
-              className="object-cover object-bottom"
-              sizes="(max-width: 640px) 33vw, 400px"
-            />
+          <div key={index} className="flex flex-col">
+            <div className="relative aspect-[252/64] rounded-t-lg sm:rounded-lg overflow-hidden">
+              <Image
+                src={bannerSrc}
+                alt={track?.name || 'Not set'}
+                fill
+                className="object-cover object-bottom"
+                sizes="(max-width: 640px) 33vw, 400px"
+              />
+              <div className={cn(
+                "absolute bottom-0 left-0 right-0 px-2 py-1 hidden sm:block",
+                getLeagueColor(track?.league)
+              )}>
+                <span className="text-white text-xs font-medium truncate block text-center drop-shadow-md">
+                  {track?.name || '???'}
+                </span>
+              </div>
+            </div>
             <div className={cn(
-              "absolute bottom-0 left-0 right-0 px-2 py-1",
+              "px-2 py-0.5 rounded-b-lg sm:hidden",
               getLeagueColor(track?.league)
             )}>
-              <span className="text-white text-xs font-medium truncate block text-center drop-shadow-md">
+              <span className="text-white text-xs font-medium truncate block text-center">
                 {track?.name || '???'}
               </span>
             </div>
