@@ -14,7 +14,7 @@ import { TrackBanners } from '@/components/features/match/track-banners';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { gamesApi, screenshotsApi } from '@/lib/api';
-import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate, ParticipantUpdate } from '@/hooks/useGameSocket';
+import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate, ParticipantUpdate, ScreenshotUpdate } from '@/hooks/useGameSocket';
 import { useTranslations } from 'next-intl';
 
 interface Game {
@@ -244,6 +244,42 @@ export default function GamePage() {
     alert(`${t('newPasscode')}\n${t('newPasscodeDescription', { passcode: data.passcode })}`);
   }, [t]);
 
+  // Handle screenshot updates
+  const handleScreenshotUpdated = useCallback((data: ScreenshotUpdate) => {
+    setScreenshots((prevScreenshots) => {
+      const existingIndex = prevScreenshots.findIndex(
+        (s) => s.id === data.id
+      );
+
+      const updatedScreenshot = {
+        id: data.id,
+        userId: data.userId,
+        imageUrl: data.imageUrl,
+        type: data.type,
+        isVerified: data.isVerified,
+        isRejected: data.isRejected,
+        isDeleted: data.isDeleted,
+        uploadedAt: data.uploadedAt,
+        user: {
+          id: data.user.id,
+          displayName: data.user.displayName,
+          username: data.user.username,
+          avatarHash: null,
+        },
+      };
+
+      if (existingIndex >= 0) {
+        // Update existing screenshot
+        const updated = [...prevScreenshots];
+        updated[existingIndex] = updatedScreenshot;
+        return updated;
+      } else {
+        // Add new screenshot
+        return [...prevScreenshots, updatedScreenshot];
+      }
+    });
+  }, []);
+
   // Fetch split vote status
   const fetchSplitVoteStatus = useCallback(async () => {
     if (!game || game.match.status !== 'IN_PROGRESS') return;
@@ -278,6 +314,7 @@ export default function GamePage() {
     onStatusChanged: handleStatusChanged,
     onSplitVoteUpdated: handleSplitVoteUpdated,
     onPasscodeRegenerated: handlePasscodeRegenerated,
+    onScreenshotUpdated: handleScreenshotUpdated,
   });
 
   if (loading) {

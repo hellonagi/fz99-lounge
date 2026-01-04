@@ -105,4 +105,28 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
     console.log(`Passcode regenerated event emitted to game room: ${payload.gameId}`);
   }
+
+  @OnEvent('game.screenshotUpdated')
+  handleScreenshotUpdated(payload: {
+    gameId: number;
+    screenshot: {
+      id: number;
+      userId: number;
+      imageUrl: string | null;
+      type: string;
+      isVerified: boolean;
+      isRejected: boolean;
+      isDeleted?: boolean;
+      uploadedAt: Date;
+      user: {
+        id: number;
+        displayName: string | null;
+        username: string;
+      };
+    };
+  }) {
+    // Emit screenshot update to all clients in the game room
+    this.server.to(`game:${payload.gameId}`).emit('screenshotUpdated', payload.screenshot);
+    console.log(`Screenshot update emitted to game room: ${payload.gameId}`);
+  }
 }
