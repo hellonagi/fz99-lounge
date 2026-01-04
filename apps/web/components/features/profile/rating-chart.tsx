@@ -135,52 +135,50 @@ export function RatingChart({ userId, category }: RatingChartProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[200px] sm:h-[250px]">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis
-                dataKey="date"
-                stroke="#9ca3af"
-                tick={{ fill: '#9ca3af', fontSize: 12 }}
+        <ResponsiveContainer width="100%" height={250} minWidth={0}>
+          <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis
+              dataKey="date"
+              stroke="#9ca3af"
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+            />
+            <YAxis
+              domain={[yMin, yMax]}
+              stroke="#9ca3af"
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              width={50}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1f2937',
+                border: '1px solid #374151',
+                borderRadius: '8px',
+              }}
+              labelStyle={{ color: '#9ca3af' }}
+              itemStyle={{ color: '#fff' }}
+              formatter={(value) => [value, 'Rating']}
+              labelFormatter={(label) => label}
+            />
+            {visibleThresholds.map((threshold) => (
+              <ReferenceLine
+                key={threshold.rating}
+                y={threshold.rating}
+                stroke={threshold.color}
+                strokeDasharray="5 5"
+                strokeOpacity={0.5}
               />
-              <YAxis
-                domain={[yMin, yMax]}
-                stroke="#9ca3af"
-                tick={{ fill: '#9ca3af', fontSize: 12 }}
-                width={50}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: '#9ca3af' }}
-                itemStyle={{ color: '#fff' }}
-                formatter={(value) => [value, 'Rating']}
-                labelFormatter={(label) => label}
-              />
-              {visibleThresholds.map((threshold) => (
-                <ReferenceLine
-                  key={threshold.rating}
-                  y={threshold.rating}
-                  stroke={threshold.color}
-                  strokeDasharray="5 5"
-                  strokeOpacity={0.5}
-                />
-              ))}
-              <Line
-                type="monotone"
-                dataKey="displayRating"
-                stroke={lineColor}
-                strokeWidth={2}
-                dot={{ fill: lineColor, strokeWidth: 0, r: 3 }}
-                activeDot={{ fill: lineColor, strokeWidth: 2, stroke: '#fff', r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+            ))}
+            <Line
+              type="monotone"
+              dataKey="displayRating"
+              stroke={lineColor}
+              strokeWidth={2}
+              dot={{ fill: lineColor, strokeWidth: 0, r: 3 }}
+              activeDot={{ fill: lineColor, strokeWidth: 2, stroke: '#fff', r: 5 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );

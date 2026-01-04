@@ -110,6 +110,7 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
                 <td className="py-2 px-2">
                   <Link
                     href={`/profile/${entry.user.id}`}
+                    prefetch={false}
                     className="text-white truncate max-w-[150px] hover:text-blue-400"
                   >
                     {entry.user.displayName || `User#${entry.user.id}`}
