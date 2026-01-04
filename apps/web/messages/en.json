@@ -170,7 +170,7 @@
     "individualDescription": "Submit your personal score screenshot for verification",
     "finalScoreTitle": "Submit Final Score Screenshot",
     "finalScoreDescription": "Please take a screenshot of the same screen as the example below and submit it.",
-    "firstPlaceAlert": "You are currently in 1st place. Please submit the final results screenshot.",
+    "firstPlaceAlert": "If you are in 1st place, please submit the final results screenshot using the form below.",
     "disabledMessage": "The 1st place player is responsible for submitting a screenshot of the final results. This form will be enabled when you are in 1st place.",
     "exampleImage": "Example screenshot",
     "screenshot": "Screenshot",

@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ScreenshotType } from '@prisma/client';
 
 @Injectable()
@@ -20,6 +21,7 @@ export class ScreenshotsService {
     private storage: StorageService,
     private classicRatingService: ClassicRatingService,
     private discordBotService: DiscordBotService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -161,6 +163,21 @@ export class ScreenshotsService {
       `${type} screenshot submitted for game ${gameId} by user ${userId}`,
     );
 
+    // Emit event for real-time update
+    this.eventEmitter.emit('game.screenshotUpdated', {
+      gameId,
+      screenshot: {
+        id: submission.id,
+        userId: submission.userId,
+        imageUrl: submission.imageUrl,
+        type: submission.type,
+        isVerified: submission.isVerified,
+        isRejected: submission.isRejected,
+        uploadedAt: submission.uploadedAt,
+        user: submission.user,
+      },
+    });
+
     return submission;
   }
 
@@ -266,6 +283,21 @@ export class ScreenshotsService {
     this.logger.log(
       `Screenshot ${submissionId} verified by moderator ${moderatorId}`,
     );
+
+    // Emit event for real-time update
+    this.eventEmitter.emit('game.screenshotUpdated', {
+      gameId: submission.gameId,
+      screenshot: {
+        id: updated.id,
+        userId: updated.userId,
+        imageUrl: updated.imageUrl,
+        type: updated.type,
+        isVerified: updated.isVerified,
+        isRejected: updated.isRejected,
+        uploadedAt: updated.uploadedAt,
+        user: updated.user,
+      },
+    });
 
     // FINAL_SCOREの場合、永久保存 + 他の未verifyのFINAL_SCOREを削除
     if (submission.type === ScreenshotType.FINAL_SCORE) {
@@ -376,6 +408,22 @@ export class ScreenshotsService {
     this.logger.log(
       `Screenshot ${submissionId} rejected by moderator ${moderatorId}`,
     );
+
+    // Emit event for real-time update
+    this.eventEmitter.emit('game.screenshotUpdated', {
+      gameId: submission.gameId,
+      screenshot: {
+        id: updated.id,
+        userId: updated.userId,
+        imageUrl: null, // Image deleted on reject
+        type: updated.type,
+        isVerified: updated.isVerified,
+        isRejected: updated.isRejected,
+        isDeleted: true,
+        uploadedAt: updated.uploadedAt,
+        user: updated.user,
+      },
+    });
 
     return updated;
   }
