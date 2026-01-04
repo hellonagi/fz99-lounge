@@ -26,7 +26,18 @@
   },
   "home": {
     "recentMatches": "Recent Matches",
+    "noRecentMatches": "No recent matches",
+    "players": "{count} players",
+    "inProgress": "In Progress",
     "settingUp": "Setting up..."
+  },
+  "matchHero": {
+    "checkNextMatch": "Check back soon for the next match",
+    "matchInProgress": "Match In Progress",
+    "goToMatchPage": "Please go to the match page to check the passcode.",
+    "goToMatchButton": "Go to Match Page",
+    "startsIn": "Starts in",
+    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -137,5 +148,50 @@
       "otherNote3": "Lounge Staff will make decisions in the event of unexpected circumstances not listed here.",
       "otherNote4": "Players who have received indefinite sanctions must wait at least 90 days before appealing."
     }
+  },
+  "scoreSubmission": {
+    "title": "Submit Your Result",
+    "moderatorTitle": "Edit Player Score",
+    "description": "Please submit your score by {deadline}.",
+    "moderatorDescription": "Select a player and enter their score.",
+    "targetPlayer": "Target Player",
+    "selectPlayer": "Select a player...",
+    "points": "Points",
+    "machine": "Machine",
+    "raceResults": "Race Results",
+    "raceResultsDescription": "Enter your finishing position for each race.",
+    "race": "Race {number}",
+    "positionPlaceholder": "1-20",
+    "rankedOut": "Ranked out / Crashed out",
+    "disconnected": "Disconnected",
+    "steerAssist": "Steer Assist",
+    "screenshot": "Screenshot",
+    "screenshotOptional": "Individual results screenshot",
+    "screenshotDescription": "JPG, PNG, or WebP. Max 10MB.",
+    "screenshotExample": "Please take a screenshot of this screen and submit it.",
+    "submitButton": "Submit Result",
+    "submitting": "Submitting...",
+    "scoreSuccess": "Score submitted successfully!",
+    "scoreAndScreenshotSuccess": "Score and screenshot submitted successfully!",
+    "screenshotFailed": "Score submitted, but screenshot upload failed: {error}",
+    "positionRange": "{races}: Position must be between 1 and 20.",
+    "enterAllResults": "Please enter all race results."
+  },
+  "screenshotUpload": {
+    "individualTitle": "Submit Individual Score Screenshot",
+    "individualDescription": "Submit your personal score screenshot for verification",
+    "finalScoreTitle": "Submit Final Score Screenshot",
+    "finalScoreDescription": "Please take a screenshot of the same screen as the example below and submit it.",
+    "firstPlaceAlert": "You are currently in 1st place. Please submit the final results screenshot.",
+    "disabledMessage": "The 1st place player is responsible for submitting a screenshot of the final results. This form will be enabled when you are in 1st place.",
+    "exampleImage": "Example screenshot",
+    "screenshot": "Screenshot",
+    "screenshotDescription": "JPG, PNG, or WebP. Max 10MB.",
+    "uploadButton": "Upload Screenshot",
+    "uploading": "Uploading...",
+    "success": "Screenshot uploaded successfully!",
+    "selectFile": "Please select a file",
+    "invalidFileType": "Only JPG, PNG, and WebP images are allowed",
+    "fileTooLarge": "File size must be less than 10MB"
   }
 }
