@@ -79,10 +79,10 @@ export function useMatch() {
         setError(null);
       } else {
         setNextMatch(null);
-        setError('No Upcoming Match Found');
+        setError('NO_UPCOMING_MATCH');
       }
     } catch {
-      setError('Failed to Load Match');
+      setError('FAILED_TO_LOAD');
       setNextMatch(null);
       setOngoingGameInfo(null);
     } finally {

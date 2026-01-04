@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { MatchTimer } from './match-timer';
 import { PlayerCount } from './player-count';
 
@@ -37,6 +40,8 @@ export function MatchHero({
   matchUrl,
   isParticipant = false,
 }: MatchHeroProps) {
+  const t = useTranslations('matchHero');
+
   return (
     <section className="relative min-h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden">
       {/* Background gradient */}
@@ -53,7 +58,7 @@ export function MatchHero({
                 {errorMessage}
               </h1>
               <p className="text-gray-400">
-                Check back soon for the next match
+                {t('checkNextMatch')}
               </p>
             </div>
           ) : (
@@ -84,25 +89,25 @@ export function MatchHero({
               {matchUrl ? (
                 <>
                   <div className="mb-4">
-                    <span className="text-lg text-green-400 font-semibold">Match In Progress</span>
+                    <span className="text-lg text-green-400 font-semibold">{t('matchInProgress')}</span>
                   </div>
                   {isParticipant && (
                     <div className="mb-8">
-                      <p className="text-gray-300">Please go to the match page to check the passcode.</p>
+                      <p className="text-gray-300">{t('goToMatchPage')}</p>
                     </div>
                   )}
                   <Link
                     href={matchUrl}
                     className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
                   >
-                    Go to Match Page →
+                    {t('goToMatchButton')}
                   </Link>
                 </>
               ) : (
                 <>
                   {/* Countdown timer */}
                   <div className="mb-2">
-                    <span className="text-sm text-gray-400">Starts in</span>
+                    <span className="text-sm text-gray-400">{t('startsIn')}</span>
                   </div>
                   {scheduledStart && (
                     <MatchTimer scheduledStart={scheduledStart} timeOffset={timeOffset} />
@@ -125,11 +130,13 @@ export function MatchHero({
               {/* Rules link */}
               <div className="mt-6">
                 <p className="text-sm text-gray-400">
-                  Please review the{' '}
-                  <Link href="/rules" className="text-blue-400 underline">
-                    match rules
-                  </Link>{' '}
-                  before joining
+                  {t.rich('reviewRules', {
+                    matchRules: (chunks) => (
+                      <Link href="/rules" className="text-blue-400 underline">
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
                 </p>
               </div>
             </>

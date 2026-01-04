@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -25,14 +26,17 @@ interface RecentMatchesProps {
 }
 
 export function RecentMatches({ matches, loading }: RecentMatchesProps) {
+  const t = useTranslations('home');
+  const tCommon = useTranslations('common');
+
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Matches</CardTitle>
+          <CardTitle className="text-lg">{t('recentMatches')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-gray-400 text-sm">Loading...</div>
+          <div className="text-gray-400 text-sm">{tCommon('loading')}</div>
         </CardContent>
       </Card>
     );
@@ -42,10 +46,10 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Recent Matches</CardTitle>
+          <CardTitle className="text-lg">{t('recentMatches')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-gray-400 text-sm">No recent matches</div>
+          <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
         </CardContent>
       </Card>
     );
@@ -54,7 +58,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Recent Matches</CardTitle>
+        <CardTitle className="text-lg">{t('recentMatches')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {matches.map((match) => (
@@ -80,7 +84,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                   S{match.seasonNumber} #{match.matchNumber}
                 </span>
                 <span className="text-gray-500 text-sm">
-                  {match.playerCount} players
+                  {t('players', { count: match.playerCount })}
                 </span>
               </div>
 
@@ -99,7 +103,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                     )}
                   </>
                 ) : (
-                  <span className="text-gray-500 text-sm">In Progress</span>
+                  <span className="text-gray-500 text-sm">{t('inProgress')}</span>
                 )}
               </div>
             </div>

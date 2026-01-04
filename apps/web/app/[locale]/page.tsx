@@ -90,10 +90,18 @@ export default function Home() {
     `/${locale}/matches/${ongoingGameInfo.category}/${ongoingGameInfo.season}/${ongoingGameInfo.match}` :
     null;
 
+  // Translate error keys
+  const getErrorMessage = () => {
+    if (!error && !nextMatch) return t('noUpcomingMatch');
+    if (error === 'NO_UPCOMING_MATCH') return t('noUpcomingMatch');
+    if (error === 'FAILED_TO_LOAD') return t('error');
+    return error;
+  };
+
   return (
     <>
       {error || !nextMatch ? (
-        <MatchHero errorMessage={error || t('noUpcomingMatch')} />
+        <MatchHero errorMessage={getErrorMessage()} />
       ) : (
         <MatchHero
           category={nextMatch.category || nextMatch.season?.event?.category}
