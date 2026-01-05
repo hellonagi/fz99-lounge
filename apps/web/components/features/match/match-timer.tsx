@@ -38,15 +38,28 @@ export function MatchTimer({ scheduledStart, timeOffset }: MatchTimerProps) {
     };
   }, [calculateTimeLeft]);
 
-  const minutes = Math.floor(timeLeft / 60);
+  const hours = Math.floor(timeLeft / 3600);
+  const minutes = Math.floor((timeLeft % 3600) / 60);
   const seconds = timeLeft % 60;
 
   return (
     <div className="mb-8">
       <div className="inline-flex items-baseline space-x-2 text-white">
-        <span className="text-6xl md:text-7xl font-black tabular-nums">{minutes.toString().padStart(2, '0')}</span>
+        {hours > 0 && (
+          <>
+            <span className="text-6xl md:text-7xl font-black tabular-nums">
+              {hours.toString().padStart(2, '0')}
+            </span>
+            <span className="text-5xl md:text-6xl font-thin opacity-50">:</span>
+          </>
+        )}
+        <span className="text-6xl md:text-7xl font-black tabular-nums">
+          {minutes.toString().padStart(2, '0')}
+        </span>
         <span className="text-5xl md:text-6xl font-thin opacity-50">:</span>
-        <span className="text-6xl md:text-7xl font-black tabular-nums">{seconds.toString().padStart(2, '0')}</span>
+        <span className="text-6xl md:text-7xl font-black tabular-nums">
+          {seconds.toString().padStart(2, '0')}
+        </span>
       </div>
     </div>
   );
