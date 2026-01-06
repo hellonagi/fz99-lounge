@@ -28,10 +28,12 @@ services:
     restart: always
     ports: []  # 外部公開しない
     logging:
-      driver: "json-file"
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: ap-northeast-1
+        awslogs-group: /fz99-lounge/redis
+        awslogs-stream-prefix: redis
+        awslogs-create-group: "true"
 
   # NestJS API本番設定
   api:
@@ -90,10 +92,12 @@ services:
           cpus: '0.25'
           memory: 256M
     logging:
-      driver: "json-file"
+      driver: awslogs
       options:
-        max-size: "50m"
-        max-file: "10"
+        awslogs-region: ap-northeast-1
+        awslogs-group: /fz99-lounge/api
+        awslogs-stream-prefix: api
+        awslogs-create-group: "true"
     command: node dist/src/main
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
@@ -132,10 +136,12 @@ services:
           cpus: '0.25'
           memory: 256M
     logging:
-      driver: "json-file"
+      driver: awslogs
       options:
-        max-size: "50m"
-        max-file: "10"
+        awslogs-region: ap-northeast-1
+        awslogs-group: /fz99-lounge/web
+        awslogs-stream-prefix: web
+        awslogs-create-group: "true"
     command: node server.js
 
   # Nginx (Cloudflare対応)
@@ -159,10 +165,12 @@ services:
           cpus: '0.5'
           memory: 128M
     logging:
-      driver: "json-file"
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "5"
+        awslogs-region: ap-northeast-1
+        awslogs-group: /fz99-lounge/nginx
+        awslogs-stream-prefix: nginx
+        awslogs-create-group: "true"
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
