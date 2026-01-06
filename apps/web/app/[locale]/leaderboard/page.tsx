@@ -37,6 +37,7 @@ interface LeaderboardEntry {
 
 export default function LeaderboardPage() {
   const t = useTranslations('leaderboard');
+  const [mounted, setMounted] = useState(false);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -44,6 +45,10 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch seasons on mount
   useEffect(() => {
@@ -120,26 +125,33 @@ export default function LeaderboardPage() {
 
       {/* Tabs */}
       <div className="bg-gray-800 rounded-lg">
-        <Tabs defaultValue="classic">
-          <TabsList>
-            <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
-          </TabsList>
+        {mounted ? (
+          <Tabs defaultValue="classic">
+            <TabsList>
+              <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="classic">
-            {error ? (
-              <div className="text-center text-red-400 py-8">{error}</div>
-            ) : (
-              <>
-                <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} />
-                <LeaderboardPagination
-                  currentPage={page}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="classic">
+              {error ? (
+                <div className="text-center text-red-400 py-8">{error}</div>
+              ) : (
+                <>
+                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} />
+                  <LeaderboardPagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="p-6">
+            <div className="h-10 bg-gray-700/50 rounded animate-pulse w-32 mb-4" />
+            <div className="h-64 bg-gray-700/30 rounded animate-pulse" />
+          </div>
+        )}
       </div>
     </main>
   );

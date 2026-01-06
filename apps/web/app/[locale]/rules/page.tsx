@@ -32,7 +32,7 @@ function RuleSection({ title, icon, children }: RuleSectionProps) {
           <span className="text-white">{title}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="sm:pt-2">
         <div className="text-gray-300 space-y-4">{children}</div>
       </CardContent>
     </Card>
@@ -140,7 +140,7 @@ export default function RulesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div>
       {/* Hero Section */}
       <section className="relative bg-gradient-to-b from-gray-900 to-gray-800 py-16">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20"></div>
