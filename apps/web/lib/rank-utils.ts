@@ -13,7 +13,7 @@ export function getRankInfo(rating: number): RankInfo {
   // Grandmaster: 4000+ (100 per tier)
   if (rating >= 4000) {
     const tierIndex = Math.min(Math.floor((rating - 4000) / 100), 4);
-    return { name: `GM ${tiers[tierIndex]}`, color: 'bg-rose-500', tier: 'GM', division: tiers[tierIndex] };
+    return { name: `Grandmaster ${tiers[tierIndex]}`, color: 'bg-rose-500', tier: 'Grandmaster', division: tiers[tierIndex] };
   }
   // Master: 3500-3999 (100 per tier)
   if (rating >= 3500) {
@@ -28,7 +28,7 @@ export function getRankInfo(rating: number): RankInfo {
   // Platinum: 2500-2999 (100 per tier)
   if (rating >= 2500) {
     const tierIndex = Math.floor((rating - 2500) / 100);
-    return { name: `Plat ${tiers[tierIndex]}`, color: 'bg-cyan-400', tier: 'Plat', division: tiers[tierIndex] };
+    return { name: `Platinum ${tiers[tierIndex]}`, color: 'bg-cyan-400', tier: 'Platinum', division: tiers[tierIndex] };
   }
   // Gold: 2000-2499 (100 per tier)
   if (rating >= 2000) {

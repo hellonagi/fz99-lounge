@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { getMachineAbbr } from '@/lib/machines';
 import {
   Dialog,
   DialogContent,
@@ -211,13 +212,16 @@ export function MatchDetailsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[700px]">
+      <table className="w-full text-sm min-w-[500px] sm:min-w-[700px]">
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium">#</th>
             <th className="py-2 px-1 w-6"></th>
             <th className="text-left py-2 px-2 font-medium">Player</th>
-            <th className="text-left py-2 px-2 font-medium">Machine</th>
+            <th className="text-left py-2 px-2 font-medium w-8 sm:w-auto">
+              <span className="sm:hidden">MC</span>
+              <span className="hidden sm:inline">Machine</span>
+            </th>
             <th className="text-center py-2 px-1 font-medium w-10">R1</th>
             <th className="text-center py-2 px-1 font-medium w-10">R2</th>
             <th className="text-center py-2 px-1 font-medium w-10">R3</th>
@@ -251,7 +255,7 @@ export function MatchDetailsTable({
               </td>
 
               {/* Player Name */}
-              <td className="py-2 px-2 text-white truncate max-w-[120px]">
+              <td className="py-2 px-2 text-white whitespace-nowrap">
                 <span className="flex items-center gap-1">
                   <Link
                     href={`/profile/${participant.user.id}`}
@@ -266,8 +270,9 @@ export function MatchDetailsTable({
               </td>
 
               {/* Machine */}
-              <td className="py-2 px-2 text-gray-100 truncate max-w-[100px]">
-                {participant.machine || '-'}
+              <td className="py-2 px-2 text-gray-100 w-8 sm:w-auto">
+                <span className="sm:hidden">{getMachineAbbr(participant.machine)}</span>
+                <span className="hidden sm:inline">{participant.machine || '-'}</span>
               </td>
 
               {/* R1 */}

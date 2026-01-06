@@ -108,8 +108,8 @@ export default function Header({ mounted, locale }: HeaderProps) {
             ) : isAuthenticated && user ? (
               <div className="text-gray-400 text-sm">{t('login')}...</div>
             ) : (
-              <Button onClick={handleLogin} variant="discord">
-                <SiDiscord className="w-5 h-5 mr-2" />
+              <Button onClick={handleLogin} variant="discord" size="sm">
+                <SiDiscord className="w-4 h-4 mr-1.5" />
                 <span>{t('login')}</span>
               </Button>
             )}

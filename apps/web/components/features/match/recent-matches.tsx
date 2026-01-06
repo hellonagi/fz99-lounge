@@ -83,7 +83,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                 <span className="text-gray-300 text-sm">
                   S{match.seasonNumber} #{match.matchNumber}
                 </span>
-                <span className="text-gray-500 text-sm">
+                <span className="hidden sm:inline text-gray-500 text-sm">
                   {t('players', { count: match.playerCount })}
                 </span>
               </div>
@@ -92,9 +92,8 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
               <div className="flex items-center gap-2">
                 {match.winner ? (
                   <>
-                    <span className="text-yellow-400">👑</span>
-                    <span className="text-white text-sm font-medium">
-                      {match.winner.displayName || `User#${match.winner.id}`}
+                    <span className="text-white text-sm font-medium text-left truncate">
+                      🏆{match.winner.displayName || `User#${match.winner.id}`}
                     </span>
                     {match.winner.totalScore !== null && (
                       <span className="text-gray-400 text-xs">
@@ -103,7 +102,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                     )}
                   </>
                 ) : (
-                  <span className="text-gray-500 text-sm">{t('inProgress')}</span>
+                  <span className="w-32 sm:w-40 text-gray-500 text-sm text-left">{t('inProgress')}</span>
                 )}
               </div>
             </div>

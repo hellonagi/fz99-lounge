@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Trophy } from 'lucide-react';
 
 interface MatchResult {
   id: number;
@@ -31,7 +30,12 @@ export function MatchList({ matches, loading }: MatchListProps) {
     );
   }
 
-  if (!matches || matches.length === 0) {
+  // Filter out matches with no winner or only 1 player
+  const filteredMatches = matches?.filter(
+    (match) => match.winner && match.playerCount > 1
+  ) ?? [];
+
+  if (filteredMatches.length === 0) {
     return (
       <div className="text-gray-400 text-sm py-8 text-center">
         No matches found
@@ -41,7 +45,7 @@ export function MatchList({ matches, loading }: MatchListProps) {
 
   return (
     <div className="space-y-2">
-      {matches.map((match) => (
+      {filteredMatches.map((match) => (
         <Link
           key={match.id}
           href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
@@ -65,7 +69,7 @@ export function MatchList({ matches, loading }: MatchListProps) {
               <span className="text-gray-300 text-sm">
                 S{match.seasonNumber} #{match.matchNumber}
               </span>
-              <span className="text-gray-500 text-sm">
+              <span className="hidden sm:inline text-gray-500 text-sm">
                 {match.playerCount} players
               </span>
             </div>
@@ -74,9 +78,8 @@ export function MatchList({ matches, loading }: MatchListProps) {
             <div className="flex items-center gap-2">
               {match.winner ? (
                 <>
-                  <Trophy className="w-4 h-4 text-yellow-400" />
-                  <span className="text-white text-sm font-medium">
-                    {match.winner.displayName || `User#${match.winner.id}`}
+                  <span className="text-white text-sm font-medium text-left truncate">
+                    🏆{match.winner.displayName || `User#${match.winner.id}`}
                   </span>
                   {match.winner.totalScore !== null && (
                     <span className="text-gray-400 text-xs">
@@ -85,7 +88,7 @@ export function MatchList({ matches, loading }: MatchListProps) {
                   )}
                 </>
               ) : (
-                <span className="text-gray-500 text-sm">
+                <span className="text-gray-500 text-sm text-left">
                   {match.status === 'IN_PROGRESS' ? 'In Progress' : 'No winner'}
                 </span>
               )}

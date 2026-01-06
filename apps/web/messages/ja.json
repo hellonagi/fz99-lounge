@@ -22,7 +22,7 @@
     "profile": "プロフィール",
     "admin": "管理画面",
     "logout": "ログアウト",
-    "login": "Discordでログイン"
+    "login": "Discordログイン"
   },
   "home": {
     "recentMatches": "最近の試合",
@@ -146,11 +146,13 @@
     "points": "ポイント",
     "machine": "マシン",
     "raceResults": "レース結果",
-    "raceResultsDescription": "各レースの順位を入力してください。",
+    "raceResultsDescription": "各レースの順位を入力してください。ランクアウト/クラッシュアウトした場合は、脱落にチェックを入れその時の順位を入力してください。",
     "race": "レース {number}",
     "positionPlaceholder": "1-20",
     "rankedOut": "ランクアウト / クラッシュアウト",
+    "rankedOutShort": "脱落",
     "disconnected": "切断",
+    "disconnectedShort": "切断/不参加",
     "steerAssist": "ステアリングアシスト",
     "screenshot": "スクリーンショット",
     "screenshotOptional": "個人結果のスクリーンショット",

@@ -526,193 +526,205 @@ export function ScoreSubmissionForm({
               <p className="text-sm text-gray-400">{t('raceResultsDescription')}</p>
 
               {/* Race 1 */}
-              <div className="p-3 bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="w-16 font-medium text-gray-300">{t('race', { number: 1 })}</div>
+              <div className="p-2 bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 text-sm font-medium text-gray-300">Race 1</div>
                   <FormField
                     control={classicForm.control}
                     name="race1Position"
                     render={({ field, fieldState }) => (
-                      <FormItem className="w-24">
+                      <FormItem className="w-14">
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder={t('positionPlaceholder')}
+                            placeholder="#"
                             min="1"
                             max="20"
                             disabled={isRace1PositionDisabled}
-                            className={`bg-gray-700 border-gray-600 text-white disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
+                            className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
                             {...field}
                           />
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={classicForm.control}
-                    name="race1Out"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={race1Dc}
-                            id="race1Out"
-                          />
-                        </FormControl>
-                        <Label htmlFor="race1Out" className={`text-sm cursor-pointer ${race1Dc ? 'text-gray-500' : 'text-gray-300'}`}>
-                          {t('rankedOut')}
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={classicForm.control}
-                    name="race1Dc"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            id="race1Dc"
-                          />
-                        </FormControl>
-                        <Label htmlFor="race1Dc" className="text-gray-300 text-sm cursor-pointer">
-                          {t('disconnected')}
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex items-center gap-3 ml-2">
+                    <FormField
+                      control={classicForm.control}
+                      name="race1Out"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={race1Dc}
+                              id="race1Out"
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <Label htmlFor="race1Out" className={`text-xs cursor-pointer ${race1Dc ? 'text-gray-500' : 'text-gray-300'}`}>
+                            {t('rankedOutShort')}
+                          </Label>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={classicForm.control}
+                      name="race1Dc"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              id="race1Dc"
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <Label htmlFor="race1Dc" className="text-gray-300 text-xs cursor-pointer">
+                            {t('disconnectedShort')}
+                          </Label>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Race 2 */}
-              <div className="p-3 bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="w-16 font-medium text-gray-300">{t('race', { number: 2 })}</div>
+              <div className="p-2 bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 text-sm font-medium text-gray-300">Race 2</div>
                   <FormField
                     control={classicForm.control}
                     name="race2Position"
                     render={({ field, fieldState }) => (
-                      <FormItem className="w-24">
+                      <FormItem className="w-14">
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder={t('positionPlaceholder')}
+                            placeholder="#"
                             min="1"
                             max="20"
                             disabled={isRace2PositionDisabled}
-                            className={`bg-gray-700 border-gray-600 text-white disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
+                            className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
                             {...field}
                           />
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={classicForm.control}
-                    name="race2Out"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isRace2Disabled || race2Dc}
-                            id="race2Out"
-                          />
-                        </FormControl>
-                        <Label htmlFor="race2Out" className={`text-sm cursor-pointer ${isRace2Disabled || race2Dc ? 'text-gray-500' : 'text-gray-300'}`}>
-                          {t('rankedOut')}
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={classicForm.control}
-                    name="race2Dc"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isRace2Disabled}
-                            id="race2Dc"
-                          />
-                        </FormControl>
-                        <Label htmlFor="race2Dc" className={`text-sm cursor-pointer ${isRace2Disabled ? 'text-gray-500' : 'text-gray-300'}`}>
-                          {t('disconnected')}
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex items-center gap-3 ml-2">
+                    <FormField
+                      control={classicForm.control}
+                      name="race2Out"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isRace2Disabled || race2Dc}
+                              id="race2Out"
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <Label htmlFor="race2Out" className={`text-xs cursor-pointer ${isRace2Disabled || race2Dc ? 'text-gray-500' : 'text-gray-300'}`}>
+                            {t('rankedOutShort')}
+                          </Label>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={classicForm.control}
+                      name="race2Dc"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isRace2Disabled}
+                              id="race2Dc"
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <Label htmlFor="race2Dc" className={`text-xs cursor-pointer ${isRace2Disabled ? 'text-gray-500' : 'text-gray-300'}`}>
+                            {t('disconnectedShort')}
+                          </Label>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Race 3 */}
-              <div className="p-3 bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <div className="w-16 font-medium text-gray-300">{t('race', { number: 3 })}</div>
+              <div className="p-2 bg-gray-800 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 text-sm font-medium text-gray-300">Race 3</div>
                   <FormField
                     control={classicForm.control}
                     name="race3Position"
                     render={({ field, fieldState }) => (
-                      <FormItem className="w-24">
+                      <FormItem className="w-14">
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder={t('positionPlaceholder')}
+                            placeholder="#"
                             min="1"
                             max="20"
                             disabled={isRace3PositionDisabled}
-                            className={`bg-gray-700 border-gray-600 text-white disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
+                            className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
                             {...field}
                           />
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={classicForm.control}
-                    name="race3Out"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isRace3Disabled || race3Dc}
-                            id="race3Out"
-                          />
-                        </FormControl>
-                        <Label htmlFor="race3Out" className={`text-sm cursor-pointer ${isRace3Disabled || race3Dc ? 'text-gray-500' : 'text-gray-300'}`}>
-                          {t('rankedOut')}
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={classicForm.control}
-                    name="race3Dc"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center gap-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isRace3Disabled}
-                            id="race3Dc"
-                          />
-                        </FormControl>
-                        <Label htmlFor="race3Dc" className={`text-sm cursor-pointer ${isRace3Disabled ? 'text-gray-500' : 'text-gray-300'}`}>
-                          {t('disconnected')}
-                        </Label>
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex items-center gap-3 ml-2">
+                    <FormField
+                      control={classicForm.control}
+                      name="race3Out"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isRace3Disabled || race3Dc}
+                              id="race3Out"
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <Label htmlFor="race3Out" className={`text-xs cursor-pointer ${isRace3Disabled || race3Dc ? 'text-gray-500' : 'text-gray-300'}`}>
+                            {t('rankedOutShort')}
+                          </Label>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={classicForm.control}
+                      name="race3Dc"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isRace3Disabled}
+                              id="race3Dc"
+                              className="h-4 w-4"
+                            />
+                          </FormControl>
+                          <Label htmlFor="race3Dc" className={`text-xs cursor-pointer ${isRace3Disabled ? 'text-gray-500' : 'text-gray-300'}`}>
+                            {t('disconnectedShort')}
+                          </Label>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
               </div>
 
