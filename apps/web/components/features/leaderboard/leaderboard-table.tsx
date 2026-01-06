@@ -50,7 +50,7 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[900px]">
+      <table className="w-full text-sm min-w-[800px] sm:min-w-[900px]">
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium w-12">#</th>

@@ -350,7 +350,7 @@ export class MatchesService {
             : null,
         };
       })
-      .filter((match) => match.winner !== null);
+      .filter((match) => match.winner !== null && match.playerCount > 1);
   }
 
   async getResultsPaginated(
@@ -359,8 +359,6 @@ export class MatchesService {
     page: number = 1,
     limit: number = 20,
   ) {
-    const skip = (page - 1) * limit;
-
     const where = {
       status: {
         in: [MatchStatus.COMPLETED, MatchStatus.FINALIZED],
@@ -369,41 +367,67 @@ export class MatchesService {
         event: { category },
         seasonNumber,
       },
+      // Only matches with winner (game with participants)
+      games: {
+        some: {
+          participants: {
+            some: {},
+          },
+        },
+      },
     };
 
-    const [total, matches] = await Promise.all([
-      this.prisma.match.count({ where }),
-      this.prisma.match.findMany({
-        where,
-        orderBy: { scheduledStart: 'desc' },
-        skip,
-        take: limit,
-        include: {
-          season: {
-            include: {
-              event: true,
-            },
+    // Get all matching IDs with participant count to filter
+    const allMatches = await this.prisma.match.findMany({
+      where,
+      select: {
+        id: true,
+        _count: {
+          select: { participants: true },
+        },
+      },
+      orderBy: { scheduledStart: 'desc' },
+    });
+
+    // Filter to only matches with 2+ participants
+    const validMatchIds = allMatches
+      .filter((m) => m._count.participants >= 2)
+      .map((m) => m.id);
+
+    const total = validMatchIds.length;
+    const skip = (page - 1) * limit;
+    const paginatedIds = validMatchIds.slice(skip, skip + limit);
+
+    const matches = await this.prisma.match.findMany({
+      where: {
+        id: { in: paginatedIds },
+      },
+      orderBy: { scheduledStart: 'desc' },
+      include: {
+        season: {
+          include: {
+            event: true,
           },
-          participants: true,
-          games: {
-            include: {
-              participants: {
-                orderBy: { totalScore: 'desc' },
-                take: 1,
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      displayName: true,
-                    },
+        },
+        participants: true,
+        games: {
+          include: {
+            participants: {
+              orderBy: { totalScore: 'desc' },
+              take: 1,
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    displayName: true,
                   },
                 },
               },
             },
           },
         },
-      }),
-    ]);
+      },
+    });
 
     // Format the response (same as getRecent)
     const data = matches.map((match) => {
