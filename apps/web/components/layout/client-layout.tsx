@@ -54,10 +54,10 @@ export function ClientLayout({ children, locale }: ClientLayoutProps) {
   const showSetupModal = mounted && ready && isAuthenticated && user && !user.displayName;
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800">
       <Header mounted={mounted} locale={locale} />
       {children}
       {showSetupModal && <DisplayNameSetupModal open={true} />}
-    </>
+    </div>
   );
 }

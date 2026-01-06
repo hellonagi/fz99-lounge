@@ -372,7 +372,7 @@ export default function GamePage() {
     isParticipant;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 overflow-x-hidden">
+    <div className="overflow-x-hidden">
       <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
         <div className="space-y-2 sm:space-y-3">
           {/* Header Card */}
