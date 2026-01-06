@@ -37,7 +37,11 @@
     "goToMatchPage": "Please go to the match page to check the passcode.",
     "goToMatchButton": "Go to Match Page",
     "startsIn": "Starts in",
-    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining"
+    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining",
+    "join": "JOIN",
+    "leave": "LEAVE",
+    "joining": "Loading...",
+    "passcodeNotice": "The passcode will be available when the match starts."
   },
   "leaderboard": {
     "title": "Leaderboard",

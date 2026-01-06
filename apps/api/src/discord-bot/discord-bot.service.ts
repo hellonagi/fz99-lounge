@@ -49,6 +49,20 @@ export interface AnnounceMatchCreatedParams {
   creatorDisplayName: string;
 }
 
+export interface AnnounceMatchReminderParams {
+  matchNumber: number;
+  seasonNumber: number;
+  category: string;
+  seasonName: string;
+}
+
+export interface AnnounceMatchCancelledParams {
+  matchNumber: number;
+  seasonNumber: number;
+  category: string;
+  seasonName: string;
+}
+
 @Injectable()
 export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private client: Client;
@@ -660,6 +674,120 @@ Join: ${baseUrl}`;
     } catch (error) {
       this.logger.error(
         `Failed to announce match #${params.matchNumber} creation:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Announce match reminder (5 minutes before start) to announce channel
+   */
+  async announceMatchReminder(
+    params: AnnounceMatchReminderParams,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping match reminder',
+      );
+      return false;
+    }
+
+    const channelId = this.getMatchAnnounceChannelId();
+    if (!channelId) {
+      this.logger.debug('Match announce channel not configured');
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Announce channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const roleId = this.getMatchNotifyRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : '';
+
+      const baseUrl =
+        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+
+      const messageContent = `${roleMention}
+**Match starting in 5 minutes!**
+
+${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber}
+
+Join: ${baseUrl}`;
+
+      await (channel as TextChannel).send({
+        content: messageContent,
+      });
+
+      this.logger.log(
+        `Announced match #${params.matchNumber} reminder to channel ${channelId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce match #${params.matchNumber} reminder:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Announce match cancellation to announce channel
+   */
+  async announceMatchCancelled(
+    params: AnnounceMatchCancelledParams,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping match cancellation announcement',
+      );
+      return false;
+    }
+
+    const channelId = this.getMatchAnnounceChannelId();
+    if (!channelId) {
+      this.logger.debug('Match announce channel not configured');
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Announce channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const roleId = this.getMatchNotifyRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : '';
+
+      const messageContent = `${roleMention}
+**Match Cancelled**
+
+${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber} has been cancelled.
+${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} はキャンセルされました。`;
+
+      await (channel as TextChannel).send({
+        content: messageContent,
+      });
+
+      this.logger.log(
+        `Announced match #${params.matchNumber} cancellation to channel ${channelId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce match #${params.matchNumber} cancellation:`,
         error,
       );
       return false;
