@@ -194,6 +194,22 @@ export class MatchesService {
           },
         },
       );
+
+      // Schedule 5-minute reminder only if match is scheduled 1+ hour ahead
+      const ONE_HOUR = 60 * 60 * 1000;
+      const FIVE_MINUTES = 5 * 60 * 1000;
+      if (delay >= ONE_HOUR) {
+        const reminderDelay = delay - FIVE_MINUTES;
+        await this.matchQueue.add(
+          'reminder-match',
+          { matchId: match.id },
+          {
+            delay: reminderDelay,
+            removeOnComplete: true,
+            jobId: `reminder-${match.id}`,
+          },
+        );
+      }
     }
 
     // Announce match creation to Discord (fire and forget - don't block on errors)
@@ -574,7 +590,21 @@ export class MatchesService {
   }
 
   async cancel(matchId: number) {
-    const match = await this.getById(matchId);
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: {
+        ...this.matchDetailInclude,
+        season: {
+          include: {
+            event: true,
+          },
+        },
+      },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
 
     // Only allow cancellation of WAITING or IN_PROGRESS matches
     if (match.status !== MatchStatus.WAITING && match.status !== MatchStatus.IN_PROGRESS) {
@@ -588,7 +618,18 @@ export class MatchesService {
       include: this.matchDetailInclude,
     });
 
-    // Post cancellation message and schedule channel deletion after 1 hour
+    // Remove scheduled reminder job if exists
+    try {
+      const reminderJob = await this.matchQueue.getJob(`reminder-${matchId}`);
+      if (reminderJob) {
+        await reminderJob.remove();
+        this.logger.log(`Removed reminder job for match ${matchId}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to remove reminder job for match ${matchId}:`, error);
+    }
+
+    // Post cancellation message to passcode channel and schedule channel deletion after 1 hour
     for (const game of updatedMatch.games) {
       try {
         await this.discordBotService.postCancellationMessage(game.id);
@@ -602,6 +643,18 @@ export class MatchesService {
         this.logger.error(`Failed to handle Discord channel for game ${game.id}:`, error);
         // Continue even if Discord fails
       }
+    }
+
+    // Announce cancellation to Discord announce channel
+    try {
+      await this.discordBotService.announceMatchCancelled({
+        matchNumber: match.matchNumber,
+        seasonNumber: match.season.seasonNumber,
+        category: match.season.event.category,
+        seasonName: match.season.event.name,
+      });
+    } catch (error) {
+      this.logger.error('Failed to announce match cancellation to Discord:', error);
     }
 
     // Emit WebSocket event to notify all clients

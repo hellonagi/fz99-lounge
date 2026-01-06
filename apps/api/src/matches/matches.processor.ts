@@ -80,6 +80,18 @@ export class MatchesProcessor {
         // Emit WebSocket event to notify clients
         this.eventsGateway.emitMatchCancelled(matchId);
 
+        // Announce cancellation to Discord
+        try {
+          await this.discordBotService.announceMatchCancelled({
+            matchNumber: match.matchNumber,
+            seasonNumber: match.season.seasonNumber,
+            category: match.season.event.category,
+            seasonName: match.season.event.name,
+          });
+        } catch (error) {
+          this.logger.error('Failed to announce match cancellation to Discord:', error);
+        }
+
         return;
       }
 
@@ -198,6 +210,49 @@ export class MatchesProcessor {
       this.logger.log(`Deleted Discord channel for game ${gameId}`);
     } catch (error) {
       this.logger.error(`Failed to delete Discord channel for game ${gameId}:`, error);
+    }
+  }
+
+  @Process('reminder-match')
+  async handleReminderMatch(job: Job<{ matchId: number }>) {
+    const { matchId } = job.data;
+    this.logger.log(`Processing reminder-match job for match ${matchId}`);
+
+    try {
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        include: {
+          season: {
+            include: {
+              event: true,
+            },
+          },
+        },
+      });
+
+      if (!match) {
+        this.logger.warn(`Match ${matchId} not found for reminder`);
+        return;
+      }
+
+      // Only send reminder if match is still in WAITING status
+      if (match.status !== MatchStatus.WAITING) {
+        this.logger.log(
+          `Skipping reminder for match ${matchId} (status: ${match.status})`,
+        );
+        return;
+      }
+
+      await this.discordBotService.announceMatchReminder({
+        matchNumber: match.matchNumber,
+        seasonNumber: match.season.seasonNumber,
+        category: match.season.event.category,
+        seasonName: match.season.event.name,
+      });
+
+      this.logger.log(`Sent reminder for match ${matchId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send reminder for match ${matchId}:`, error);
     }
   }
 }
