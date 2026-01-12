@@ -33,6 +33,10 @@ interface GameParticipant {
   raceResults?: RaceResult[];
   ratingAfter?: number | null;
   ratingChange?: number | null;
+  // Score verification fields
+  status?: string;
+  isVerified?: boolean;
+  isRejected?: boolean;
 }
 
 interface MatchParticipant {
@@ -78,6 +82,10 @@ interface MergedParticipant {
   preGameRating?: number | null;
   hasSubmitted: boolean;
   screenshot?: Screenshot;
+  // Score verification fields
+  status?: string;
+  isVerified?: boolean;
+  isRejected?: boolean;
 }
 
 interface MatchDetailsTableProps {
@@ -122,6 +130,10 @@ export function MatchDetailsTable({
       preGameRating: mp.user.seasonStats?.[0]?.displayRating ?? null,
       hasSubmitted: !!gameData,
       screenshot: userScreenshot,
+      // Score verification fields
+      status: gameData?.status,
+      isVerified: gameData?.isVerified,
+      isRejected: gameData?.isRejected,
     });
   }
 
@@ -138,6 +150,7 @@ export function MatchDetailsTable({
         preGameRating: null,
         hasSubmitted: true,
         screenshot: userScreenshot,
+        // Score verification fields (already in gp via spread)
       });
     }
   }
@@ -295,22 +308,23 @@ export function MatchDetailsTable({
                 {participant.totalScore ?? '-'}
               </td>
 
-              {/* Status */}
+              {/* Status - Based on score verification */}
               <td className="py-2 px-2 text-center">
-                {participant.screenshot ? (
+                {participant.hasSubmitted ? (
                   (() => {
-                    const statusText = participant.screenshot.isVerified
+                    const statusText = participant.isVerified
                       ? 'Verified'
-                      : participant.screenshot.isRejected
+                      : participant.isRejected
                       ? 'Rejected'
                       : 'Submitted';
-                    const statusColor = participant.screenshot.isVerified
+                    const statusColor = participant.isVerified
                       ? 'text-green-400'
-                      : participant.screenshot.isRejected
+                      : participant.isRejected
                       ? 'text-red-400'
                       : 'text-blue-400';
 
-                    return participant.screenshot.imageUrl ? (
+                    // If screenshot exists, make it clickable
+                    return participant.screenshot?.imageUrl ? (
                       <button
                         onClick={() => setSelectedImage(participant.screenshot!.imageUrl!)}
                         className={cn("text-xs font-medium hover:underline", statusColor)}

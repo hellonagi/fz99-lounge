@@ -276,6 +276,62 @@ export class GamesController {
   }
 
   // ========================================
+  // Score Verification Endpoints
+  // ========================================
+
+  @Post(':category/:season/:match/participants/:userId/verify')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async verifyParticipantScore(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+
+    // Only MODERATOR or ADMIN can verify scores
+    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only moderators and admins can verify scores');
+    }
+
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+    const targetId = parseInt(targetUserId, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.verifyParticipantScore(game.id, targetId, user.id);
+  }
+
+  @Post(':category/:season/:match/participants/:userId/reject')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async rejectParticipantScore(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+
+    // Only MODERATOR or ADMIN can reject scores
+    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only moderators and admins can reject scores');
+    }
+
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+    const targetId = parseInt(targetUserId, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.rejectParticipantScore(game.id, targetId, user.id);
+  }
+
+  // ========================================
   // Helper Methods
   // ========================================
 
