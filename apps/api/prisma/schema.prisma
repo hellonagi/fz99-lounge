@@ -520,6 +520,14 @@ model GameParticipant {
   totalScore       Int? // 全レースのポイント合計
   eliminatedAtRace Int? // ランクアウトしたレース番号（null=全レース完走）
 
+  // スコアの検証状態（Moderatorによる承認/却下）
+  isVerified Boolean   @default(false)
+  verifiedBy Int?
+  verifiedAt DateTime?
+  isRejected Boolean   @default(false)
+  rejectedBy Int?
+  rejectedAt DateTime?
+
   // 各レースの結果
   raceResults RaceResult[]
 
@@ -527,6 +535,7 @@ model GameParticipant {
   @@index([gameId])
   @@index([userId])
   @@index([status])
+  @@index([isVerified])
   @@map("game_participants")
 }
 

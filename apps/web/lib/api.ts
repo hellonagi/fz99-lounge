@@ -197,6 +197,11 @@ export const gamesApi = {
       passcode: string;
       passcodeVersion: number;
     }>(`/games/${category}/${season}/${match}/regenerate-passcode`),
+  // Score verification
+  verifyScore: (category: string, season: number, match: number, userId: number) =>
+    api.post(`/games/${category}/${season}/${match}/participants/${userId}/verify`),
+  rejectScore: (category: string, season: number, match: number, userId: number) =>
+    api.post(`/games/${category}/${season}/${match}/participants/${userId}/reject`),
 };
 
 // Tracks API

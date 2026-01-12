@@ -68,6 +68,10 @@ interface Game {
     eliminatedAtRace: number | null;
     ratingAfter: number | null;
     ratingChange: number | null;
+    // Score verification fields
+    status?: string;
+    isVerified?: boolean;
+    isRejected?: boolean;
     raceResults?: Array<{
       raceNumber: number;
       position: number | null;

@@ -429,18 +429,15 @@ export class ScreenshotsService {
   }
 
   /**
-   * 全スクショがverifiedかチェックし、条件を満たせばマッチをFINALIZEDに変更
-   * 条件: 全参加者のINDIVIDUALがverify済み + FINAL_SCOREが1つ以上verify済み
+   * 全スコアがverifiedかチェックし、条件を満たせばマッチをFINALIZEDに変更
+   * 条件: 全参加者のスコアがverify済み + FINAL_SCOREスクショが1つ以上verify済み
    */
   private async checkAllVerifiedAndFinalize(gameId: number) {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: {
-        match: {
-          include: {
-            participants: true,
-          },
-        },
+        match: true,
+        participants: true,
       },
     });
 
@@ -449,17 +446,12 @@ export class ScreenshotsService {
       return;
     }
 
-    const totalParticipants = game.match.participants.length;
+    if (game.participants.length === 0) {
+      return;
+    }
 
-    // INDIVIDUAL: 全参加者分がverify済みか
-    const verifiedIndividualCount = await this.prisma.gameScreenshotSubmission.count({
-      where: {
-        gameId,
-        type: ScreenshotType.INDIVIDUAL,
-        isVerified: true,
-        deletedAt: null,
-      },
-    });
+    // NEW: 全参加者のスコアがverify済みかチェック（INDIVIDUALスクショではなくスコア提出に対して）
+    const allScoresVerified = game.participants.every(p => p.isVerified === true);
 
     // FINAL_SCORE: 1つ以上verify済みか
     const verifiedFinalScoreCount = await this.prisma.gameScreenshotSubmission.count({
@@ -472,11 +464,11 @@ export class ScreenshotsService {
     });
 
     this.logger.log(
-      `Game ${gameId}: INDIVIDUAL ${verifiedIndividualCount}/${totalParticipants}, FINAL_SCORE ${verifiedFinalScoreCount}/1`,
+      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScoreCount}/1`,
     );
 
-    // 条件: 全参加者のINDIVIDUAL + FINAL_SCOREが1つ以上
-    const isReadyToFinalize = verifiedIndividualCount >= totalParticipants && verifiedFinalScoreCount >= 1;
+    // 条件: 全スコアverify + FINAL_SCOREが1つ以上
+    const isReadyToFinalize = allScoresVerified && verifiedFinalScoreCount >= 1;
 
     if (isReadyToFinalize) {
       // レート計算をトリガー
@@ -493,7 +485,7 @@ export class ScreenshotsService {
       });
 
       this.logger.log(
-        `Match ${game.matchId} automatically set to FINALIZED (all screenshots verified)`,
+        `Match ${game.matchId} automatically set to FINALIZED (all scores + FINAL_SCORE verified)`,
       );
 
       // Delete Discord passcode channel

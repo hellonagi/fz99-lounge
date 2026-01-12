@@ -54,6 +54,10 @@ interface Participant {
   machine: string;
   assistEnabled: boolean;
   raceResults?: RaceResult[];
+  // Score verification fields
+  status?: string;
+  isVerified?: boolean;
+  isRejected?: boolean;
 }
 
 interface ModeratorPanelProps {
@@ -87,6 +91,9 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  // Score verification state
+  const [verifyingScoreUserId, setVerifyingScoreUserId] = useState<number | null>(null);
+  const [rejectingScoreUserId, setRejectingScoreUserId] = useState<number | null>(null);
 
   // Track selection state (CLASSIC only)
   const [selectedTracks, setSelectedTracks] = useState<(number | null)[]>([
@@ -109,9 +116,11 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const individualScreenshots = screenshots.filter(s => s.type === 'INDIVIDUAL');
   const finalScoreScreenshots = screenshots.filter(s => s.type === 'FINAL_SCORE');
 
-  // Calculate verification progress
-  const totalRequired = participants.length + 1; // participants + 1 final score
-  const verifiedCount = screenshots.filter(s => s.isVerified).length;
+  // Calculate verification progress (scores + final score screenshot)
+  const scoresVerifiedCount = participants.filter(p => p.isVerified).length;
+  const finalScoreVerified = finalScoreScreenshots.some(s => s.isVerified);
+  const totalRequired = participants.length + 1; // all scores + 1 final score
+  const verifiedCount = scoresVerifiedCount + (finalScoreVerified ? 1 : 0);
 
   // Get screenshot for a specific user
   const getScreenshotForUser = (userId: number) => {
@@ -143,6 +152,34 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       alert('Failed to reject screenshot');
     } finally {
       setRejectingId(null);
+    }
+  };
+
+  // Verify a participant's score
+  const handleVerifyScore = async (userId: number) => {
+    setVerifyingScoreUserId(userId);
+    try {
+      await gamesApi.verifyScore(category, season, match, userId);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to verify score:', error);
+      alert('Failed to verify score');
+    } finally {
+      setVerifyingScoreUserId(null);
+    }
+  };
+
+  // Reject a participant's score
+  const handleRejectScore = async (userId: number) => {
+    setRejectingScoreUserId(userId);
+    try {
+      await gamesApi.rejectScore(category, season, match, userId);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to reject score:', error);
+      alert('Failed to reject score');
+    } finally {
+      setRejectingScoreUserId(null);
     }
   };
 
@@ -426,65 +463,50 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                     {participant.totalScore ?? '-'}
                   </td>
 
-                  {/* Status */}
+                  {/* Status - Show screenshot availability */}
                   <td className="py-2 px-2 text-center">
-                    {screenshot ? (
-                      (() => {
-                        const statusText = screenshot.isVerified
-                          ? 'Verified'
-                          : screenshot.isRejected
-                          ? 'Rejected'
-                          : 'Submitted';
-                        const statusColor = screenshot.isVerified
-                          ? 'text-green-400'
-                          : screenshot.isRejected
-                          ? 'text-red-400'
-                          : 'text-blue-400';
-
-                        return screenshot.imageUrl ? (
-                          <button
-                            onClick={() => setSelectedImage(screenshot.imageUrl!)}
-                            className={cn("text-xs font-medium hover:underline", statusColor)}
-                            title="View screenshot"
-                          >
-                            {statusText}
-                          </button>
-                        ) : (
-                          <span className={cn("text-xs font-medium", statusColor)}>
-                            {statusText}
-                          </span>
-                        );
-                      })()
+                    {screenshot && screenshot.imageUrl ? (
+                      <button
+                        onClick={() => setSelectedImage(screenshot.imageUrl!)}
+                        className="text-xs font-medium text-blue-400 hover:underline"
+                        title="View screenshot"
+                      >
+                        SS
+                      </button>
                     ) : (
                       <span className="text-gray-500">-</span>
                     )}
                   </td>
 
-                  {/* Verify/Reject */}
+                  {/* Score Verify/Reject - Based on participant.isVerified */}
                   <td className="py-2 px-2 text-center">
-                    {screenshot && !screenshot.isVerified && !screenshot.isRejected ? (
+                    {participant.isVerified ? (
+                      <span className="text-green-400 text-xs font-medium">Verified</span>
+                    ) : participant.isRejected ? (
+                      <span className="text-red-400 text-xs font-medium">Rejected</span>
+                    ) : participant.status === 'SUBMITTED' ? (
                       <div className="flex items-center justify-center gap-1">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleVerify(screenshot.id)}
-                          disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
+                          onClick={() => handleVerifyScore(participant.user.id)}
+                          disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
                           className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
                         >
-                          {verifyingId === screenshot.id ? '...' : 'Verify'}
+                          {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleReject(screenshot.id)}
-                          disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
+                          onClick={() => handleRejectScore(participant.user.id)}
+                          disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
                           className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
                         >
-                          {rejectingId === screenshot.id ? '...' : 'Reject'}
+                          {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
                         </Button>
                       </div>
                     ) : (
-                      <span className="text-gray-500">-</span>
+                      <span className="text-gray-500 text-xs">-</span>
                     )}
                   </td>
                 </tr>

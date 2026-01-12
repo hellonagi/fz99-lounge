@@ -303,6 +303,10 @@ export class GamesService {
           assistEnabled: submitScoreDto.assistEnabled,
           status: ResultStatus.SUBMITTED,
           submittedAt: now,
+          // Reset rejection status on resubmit
+          isRejected: false,
+          rejectedBy: null,
+          rejectedAt: null,
         },
       });
       participantId = game.participants[0].id;
@@ -617,6 +621,10 @@ export class GamesService {
         eliminatedAtRace,
         status: ResultStatus.SUBMITTED,
         submittedAt: new Date(),
+        // Reset rejection status on resubmit
+        isRejected: false,
+        rejectedBy: null,
+        rejectedAt: null,
       },
     });
 
@@ -1036,5 +1044,186 @@ export class GamesService {
   private generatePasscode(): string {
     const passcode = Math.floor(Math.random() * 10000);
     return passcode.toString().padStart(4, '0');
+  }
+
+  /**
+   * Verify a participant's score (moderator action)
+   */
+  async verifyParticipantScore(
+    gameId: number,
+    targetUserId: number,
+    moderatorId: number,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { match: true },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId, userId: targetUserId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    if (participant.status !== ResultStatus.SUBMITTED) {
+      throw new BadRequestException('Can only verify submitted scores');
+    }
+
+    if (participant.isVerified) {
+      return participant;
+    }
+
+    const updated = await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        isVerified: true,
+        verifiedBy: moderatorId,
+        verifiedAt: new Date(),
+        isRejected: false,
+        rejectedBy: null,
+        rejectedAt: null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    this.eventEmitter.emit('game.participantVerified', {
+      gameId,
+      participant: updated,
+    });
+
+    await this.checkAllScoresVerifiedAndFinalize(gameId);
+
+    return updated;
+  }
+
+  /**
+   * Reject a participant's score (moderator action)
+   */
+  async rejectParticipantScore(
+    gameId: number,
+    targetUserId: number,
+    moderatorId: number,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { match: true },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId, userId: targetUserId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    if (participant.isVerified) {
+      throw new BadRequestException('Cannot reject a verified score');
+    }
+
+    const updated = await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        isRejected: true,
+        rejectedBy: moderatorId,
+        rejectedAt: new Date(),
+        status: ResultStatus.PENDING,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    this.eventEmitter.emit('game.participantRejected', {
+      gameId,
+      participant: updated,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Check if all scores are verified and finalize match
+   * Condition: All participants verified + FINAL_SCORE screenshot verified
+   */
+  private async checkAllScoresVerifiedAndFinalize(gameId: number) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: true,
+        participants: true,
+      },
+    });
+
+    if (!game || (game.match.status !== MatchStatus.IN_PROGRESS && game.match.status !== MatchStatus.COMPLETED)) {
+      return;
+    }
+
+    if (game.participants.length === 0) {
+      return;
+    }
+
+    const allScoresVerified = game.participants.every(p => p.isVerified);
+
+    const verifiedFinalScore = await this.prisma.gameScreenshotSubmission.count({
+      where: {
+        gameId,
+        type: 'FINAL_SCORE',
+        isVerified: true,
+        deletedAt: null,
+      },
+    });
+
+    this.logger.log(
+      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScore}/1`,
+    );
+
+    if (allScoresVerified && verifiedFinalScore >= 1) {
+      try {
+        await this.classicRatingService.calculateAndUpdateRatings(gameId);
+        this.logger.log(`Rating calculation completed for game ${gameId}`);
+      } catch (error) {
+        this.logger.error(`Failed to calculate ratings for game ${gameId}: ${error}`);
+      }
+
+      await this.prisma.match.update({
+        where: { id: game.matchId },
+        data: { status: MatchStatus.FINALIZED },
+      });
+
+      this.logger.log(`Match ${game.matchId} automatically FINALIZED`);
+
+      try {
+        await this.discordBotService.deletePasscodeChannel(gameId);
+      } catch (error) {
+        this.logger.error(`Failed to delete Discord channel: ${error}`);
+      }
+    }
   }
 }
