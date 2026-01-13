@@ -73,7 +73,7 @@ export class ClassicRatingService {
       include: {
         participants: {
           where: {
-            status: 'SUBMITTED',
+            status: 'VERIFIED',
           },
           include: {
             user: true,
@@ -656,7 +656,7 @@ export class ClassicRatingService {
         games: {
           include: {
             participants: {
-              where: { status: 'SUBMITTED' },
+              where: { status: 'VERIFIED' },
             },
           },
         },

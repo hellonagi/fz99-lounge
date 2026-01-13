@@ -508,6 +508,54 @@ Split Vote triggered. Please rejoin with the new passcode.
   }
 
   /**
+   * Post screenshot request to channel with user mention
+   */
+  async postScreenshotRequest(
+    channelId: string,
+    discordId: string,
+    matchUrl: string,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping screenshot request',
+      );
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const messageContent = `<@${discordId}>
+**Screenshot Request / スクリーンショット提出依頼**
+
+A moderator has requested you to submit a screenshot for verification.
+モデレーターからスクリーンショットの提出を依頼されました。
+
+Please check the match page: ${matchUrl}`;
+
+      await (channel as TextChannel).send({ content: messageContent });
+
+      this.logger.log(
+        `Posted screenshot request to channel ${channelId} for user ${discordId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post screenshot request to channel ${channelId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Post cancellation message to existing channel
    */
   async postCancellationMessage(gameId: number): Promise<boolean> {

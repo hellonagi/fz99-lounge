@@ -81,6 +81,7 @@ services:
       DISCORD_REACTION_ROLE_EMOJI: ${DISCORD_REACTION_ROLE_EMOJI:-🔔}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-change-this}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3001}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3001}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_SUBJECT: ${VAPID_SUBJECT}

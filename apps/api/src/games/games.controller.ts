@@ -331,6 +331,38 @@ export class GamesController {
     return this.gamesService.rejectParticipantScore(game.id, targetId, user.id);
   }
 
+  @Post(':category/:season/:match/participants/:userId/request-screenshot')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async requestScreenshot(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as any;
+
+    // Only MODERATOR or ADMIN can request screenshots
+    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only moderators and admins can request screenshots',
+      );
+    }
+
+    const eventCategory = category.toUpperCase() as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+    const targetId = parseInt(targetUserId, 10);
+
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
+    return this.gamesService.requestScreenshot(game.id, targetId, user.id);
+  }
+
   // ========================================
   // Helper Methods
   // ========================================

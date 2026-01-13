@@ -1,16 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { getMachineAbbr } from '@/lib/machines';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import Image from 'next/image';
 
 interface RaceResult {
   raceNumber: number;
@@ -33,10 +26,8 @@ interface GameParticipant {
   raceResults?: RaceResult[];
   ratingAfter?: number | null;
   ratingChange?: number | null;
-  // Score verification fields
+  // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
-  isVerified?: boolean;
-  isRejected?: boolean;
 }
 
 interface MatchParticipant {
@@ -82,10 +73,8 @@ interface MergedParticipant {
   preGameRating?: number | null;
   hasSubmitted: boolean;
   screenshot?: Screenshot;
-  // Score verification fields
+  // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
-  isVerified?: boolean;
-  isRejected?: boolean;
 }
 
 interface MatchDetailsTableProps {
@@ -101,7 +90,7 @@ export function MatchDetailsTable({
   screenshots = [],
   isClassicMode = false,
 }: MatchDetailsTableProps) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const t = useTranslations('screenshotStatus');
 
   // Merge match participants with game participants
   const mergedParticipants: MergedParticipant[] = [];
@@ -130,10 +119,8 @@ export function MatchDetailsTable({
       preGameRating: mp.user.seasonStats?.[0]?.displayRating ?? null,
       hasSubmitted: !!gameData,
       screenshot: userScreenshot,
-      // Score verification fields
+      // Score verification status
       status: gameData?.status,
-      isVerified: gameData?.isVerified,
-      isRejected: gameData?.isRejected,
     });
   }
 
@@ -310,34 +297,21 @@ export function MatchDetailsTable({
 
               {/* Status - Based on score verification */}
               <td className="py-2 px-2 text-center">
-                {participant.hasSubmitted ? (
-                  (() => {
-                    const statusText = participant.isVerified
-                      ? 'Verified'
-                      : participant.isRejected
-                      ? 'Rejected'
-                      : 'Submitted';
-                    const statusColor = participant.isVerified
+                {participant.status && participant.status !== 'UNSUBMITTED' ? (
+                  <span className={cn(
+                    "text-xs font-medium",
+                    participant.status === 'VERIFIED'
                       ? 'text-green-400'
-                      : participant.isRejected
+                      : participant.status === 'REJECTED'
                       ? 'text-red-400'
-                      : 'text-blue-400';
-
-                    // If screenshot exists, make it clickable
-                    return participant.screenshot?.imageUrl ? (
-                      <button
-                        onClick={() => setSelectedImage(participant.screenshot!.imageUrl!)}
-                        className={cn("text-xs font-medium hover:underline", statusColor)}
-                        title="View screenshot"
-                      >
-                        {statusText}
-                      </button>
-                    ) : (
-                      <span className={cn("text-xs font-medium", statusColor)}>
-                        {statusText}
-                      </span>
-                    );
-                  })()
+                      : 'text-blue-400'
+                  )}>
+                    {participant.status === 'VERIFIED'
+                      ? t('ok')
+                      : participant.status === 'REJECTED'
+                      ? t('ng')
+                      : t('pending')}
+                  </span>
                 ) : (
                   <span className="text-gray-500">-</span>
                 )}
@@ -363,26 +337,6 @@ export function MatchDetailsTable({
           ))}
         </tbody>
       </table>
-
-      {/* Screenshot Modal */}
-      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0" aria-describedby={undefined}>
-          <VisuallyHidden>
-            <DialogTitle>Screenshot Preview</DialogTitle>
-          </VisuallyHidden>
-          {selectedImage && (
-            <div className="relative w-full aspect-video">
-              <Image
-                src={selectedImage}
-                alt="Screenshot"
-                fill
-                className="object-contain rounded-lg"
-                unoptimized
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

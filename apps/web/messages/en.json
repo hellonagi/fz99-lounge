@@ -171,6 +171,11 @@
     "positionRange": "{races}: Position must be between 1 and 20.",
     "enterAllResults": "Please enter all race results."
   },
+  "screenshotStatus": {
+    "ok": "OK",
+    "ng": "NG",
+    "pending": "Pending"
+  },
   "screenshotUpload": {
     "individualTitle": "Submit Individual Score Screenshot",
     "individualDescription": "Submit your personal score screenshot for verification",
@@ -187,5 +192,24 @@
     "selectFile": "Please select a file",
     "invalidFileType": "Only JPG, PNG, and WebP images are allowed",
     "fileTooLarge": "File size must be less than 10MB"
+  },
+  "positionConflict": {
+    "title": "Position Conflict Detected",
+    "checkButton": "Check Conflicts",
+    "noConflicts": "No conflicts detected",
+    "race": "Race {raceNumber}",
+    "conflictFound": "Conflict found",
+    "requireScreenshot": "Requires screenshot verification:",
+    "positionLabel": "({position})"
+  },
+  "screenshotRequest": {
+    "title": "Screenshot Required",
+    "description": "A moderator has requested you to submit screenshots. Please submit 2 screenshots of the following screens.",
+    "screenshot1Label": "Screenshot 1",
+    "screenshot2Label": "Screenshot 2"
+  },
+  "screenshotReminder": {
+    "title": "About Screenshots",
+    "description": "If there are discrepancies in reported rankings, you may be asked to submit screenshots. Please keep the following 2 screenshots ready."
   }
 }
