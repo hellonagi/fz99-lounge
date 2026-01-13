@@ -75,11 +75,12 @@ enum MatchStatus {
 }
 
 enum ResultStatus {
-  PENDING // 未入力（deadline前）
-  SUBMITTED // 提出済
-  UNSUBMITTED // 未提出（deadline後に自動設定）
-  DISPUTED // 異議審査中
-  INVALIDATED // 無効化（不正等）
+  UNSUBMITTED // 未提出（初期状態）
+  PENDING     // 提出済・検証待ち
+  VERIFIED    // 検証済み
+  REJECTED    // 却下
+  DISPUTED    // 異議審査中（将来用）
+  INVALIDATED // 無効化（将来用）
 }
 
 enum ResultReliability {
@@ -109,8 +110,12 @@ enum DisputeStatus {
 }
 
 enum ScreenshotType {
-  INDIVIDUAL  // 個人成績スクショ（7日後に自動削除）
-  FINAL_SCORE // 全体スコアスクショ（1位のみ提出可、永久保存）
+  INDIVIDUAL    // 個人成績スクショ（7日後に自動削除）- 後方互換用
+  INDIVIDUAL_1  // SS1: 個人成績スクショ1枚目
+  INDIVIDUAL_2  // SS2: 個人成績スクショ2枚目
+  FINAL_SCORE   // 全体スコアスクショ（永久保存）- 後方互換用
+  FINAL_SCORE_1 // 全体スコアスクショ1枚目（1-11位）
+  FINAL_SCORE_2 // 全体スコアスクショ2枚目（10-20位）
 }
 
 enum PenaltyType {
@@ -510,8 +515,8 @@ model GameParticipant {
   machine       String
   assistEnabled Boolean @default(false)
 
-  // 結果ステータス
-  status ResultStatus @default(PENDING)
+  // 結果ステータス（UNSUBMITTED→PENDING→VERIFIED/REJECTED）
+  status ResultStatus @default(UNSUBMITTED)
 
   // スコア提出
   submittedAt DateTime?
@@ -520,13 +525,16 @@ model GameParticipant {
   totalScore       Int? // 全レースのポイント合計
   eliminatedAtRace Int? // ランクアウトしたレース番号（null=全レース完走）
 
-  // スコアの検証状態（Moderatorによる承認/却下）
-  isVerified Boolean   @default(false)
+  // 検証/却下の監査用（statusで管理、メタデータとして保持）
   verifiedBy Int?
   verifiedAt DateTime?
-  isRejected Boolean   @default(false)
   rejectedBy Int?
   rejectedAt DateTime?
+
+  // スクリーンショット提出依頼
+  screenshotRequested   Boolean   @default(false)
+  screenshotRequestedBy Int?
+  screenshotRequestedAt DateTime?
 
   // 各レースの結果
   raceResults RaceResult[]
@@ -535,7 +543,6 @@ model GameParticipant {
   @@index([gameId])
   @@index([userId])
   @@index([status])
-  @@index([isVerified])
   @@map("game_participants")
 }
 

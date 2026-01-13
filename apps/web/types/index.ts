@@ -131,9 +131,10 @@ export interface RaceResult {
 }
 
 export type ResultStatus =
-  | 'PENDING'
-  | 'SUBMITTED'
   | 'UNSUBMITTED'
+  | 'PENDING'
+  | 'VERIFIED'
+  | 'REJECTED'
   | 'DISPUTED'
   | 'INVALIDATED';
 

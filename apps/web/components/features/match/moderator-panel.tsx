@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { gamesApi, screenshotsApi, tracksApi, Track } from '@/lib/api';
@@ -18,8 +19,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Image from 'next/image';
-import { Check } from 'lucide-react';
+import { Check, AlertTriangle } from 'lucide-react';
 import { ScoreSubmissionForm } from './score-submission-form';
+import {
+  detectAllPositionConflicts,
+  type ConflictResult,
+} from '@/lib/position-conflict-detector';
 
 interface RaceResult {
   raceNumber: number;
@@ -33,7 +38,7 @@ interface Screenshot {
   id: number;
   userId: number;
   imageUrl: string | null;
-  type: 'INDIVIDUAL' | 'FINAL_SCORE';
+  type: 'INDIVIDUAL' | 'INDIVIDUAL_1' | 'INDIVIDUAL_2' | 'FINAL_SCORE' | 'FINAL_SCORE_1' | 'FINAL_SCORE_2';
   isVerified: boolean;
   isRejected?: boolean;
   isDeleted?: boolean;
@@ -54,10 +59,10 @@ interface Participant {
   machine: string;
   assistEnabled: boolean;
   raceResults?: RaceResult[];
-  // Score verification fields
+  // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
-  isVerified?: boolean;
-  isRejected?: boolean;
+  // Screenshot request
+  screenshotRequested?: boolean;
 }
 
 interface ModeratorPanelProps {
@@ -75,6 +80,8 @@ interface ModeratorPanelProps {
 }
 
 export function ModeratorPanel(props: ModeratorPanelProps) {
+  const t = useTranslations('screenshotStatus');
+  const tConflict = useTranslations('positionConflict');
   const {
     matchStatus,
     participants,
@@ -94,6 +101,8 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   // Score verification state
   const [verifyingScoreUserId, setVerifyingScoreUserId] = useState<number | null>(null);
   const [rejectingScoreUserId, setRejectingScoreUserId] = useState<number | null>(null);
+  const [uploadingFinalScore1, setUploadingFinalScore1] = useState(false);
+  const [uploadingFinalScore2, setUploadingFinalScore2] = useState(false);
 
   // Track selection state (CLASSIC only)
   const [selectedTracks, setSelectedTracks] = useState<(number | null)[]>([
@@ -113,19 +122,44 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   }, [isClassic]);
 
   // Get screenshots by type
-  const individualScreenshots = screenshots.filter(s => s.type === 'INDIVIDUAL');
-  const finalScoreScreenshots = screenshots.filter(s => s.type === 'FINAL_SCORE');
+  const individualScreenshots = screenshots.filter(s =>
+    s.type === 'INDIVIDUAL' || s.type === 'INDIVIDUAL_1' || s.type === 'INDIVIDUAL_2'
+  );
+  const finalScoreScreenshots = screenshots.filter(s =>
+    s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2'
+  );
 
   // Calculate verification progress (scores + final score screenshot)
-  const scoresVerifiedCount = participants.filter(p => p.isVerified).length;
+  const scoresVerifiedCount = participants.filter(p => p.status === 'VERIFIED').length;
   const finalScoreVerified = finalScoreScreenshots.some(s => s.isVerified);
   const totalRequired = participants.length + 1; // all scores + 1 final score
   const verifiedCount = scoresVerifiedCount + (finalScoreVerified ? 1 : 0);
 
-  // Get screenshot for a specific user
-  const getScreenshotForUser = (userId: number) => {
-    return individualScreenshots.find(s => s.userId === userId);
+  // Position conflict detection (CLASSIC mode only)
+  const [showConflictCheck, setShowConflictCheck] = useState(false);
+  const submittedCount = participants.filter(p => p.status !== 'UNSUBMITTED').length;
+  const allSubmitted = submittedCount === participants.length && participants.length > 0;
+
+  const positionConflicts = useMemo<ConflictResult[]>(() => {
+    if (!isClassic) return [];
+    if (!showConflictCheck && !allSubmitted) return [];
+    return detectAllPositionConflicts(participants);
+  }, [isClassic, showConflictCheck, allSubmitted, participants]);
+
+  // Get screenshot for a specific user by type (only non-deleted ones with imageUrl)
+  const getScreenshotForUser = (userId: number, type?: string) => {
+    if (type) {
+      return individualScreenshots.find(s => s.userId === userId && s.type === type && s.imageUrl);
+    }
+    // Fallback: return first individual screenshot for backwards compatibility
+    return individualScreenshots.find(s => s.userId === userId && s.imageUrl);
   };
+
+  // Get SS1 screenshot (INDIVIDUAL_1)
+  const getSS1 = (userId: number) => getScreenshotForUser(userId, 'INDIVIDUAL_1');
+
+  // Get SS2 screenshot (INDIVIDUAL_2)
+  const getSS2 = (userId: number) => getScreenshotForUser(userId, 'INDIVIDUAL_2');
 
   // Verify a screenshot
   const handleVerify = async (submissionId: number) => {
@@ -183,6 +217,38 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     }
   };
 
+  // Upload final score screenshot (moderator only)
+  const handleFinalScoreUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'FINAL_SCORE_1' | 'FINAL_SCORE_2') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.match(/^image\/(jpg|jpeg|png|webp)$/i)) {
+      alert('Only JPG, PNG, and WebP images are allowed');
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    const setUploading = type === 'FINAL_SCORE_1' ? setUploadingFinalScore1 : setUploadingFinalScore2;
+    setUploading(true);
+    try {
+      await screenshotsApi.submit(props.gameId, file, type);
+      onUpdate();
+      // Reset file input
+      e.target.value = '';
+    } catch (error) {
+      console.error(`Failed to upload ${type} screenshot:`, error);
+      alert('Failed to upload screenshot');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleEndMatch = async () => {
     if (!confirm('Are you sure you want to end this match and calculate ratings?')) {
       return;
@@ -232,17 +298,10 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     return result.position;
   };
 
-  // Sort participants
-  const sortedParticipants = [...participants].sort((a, b) => {
-    const aElim = a.eliminatedAtRace;
-    const bElim = b.eliminatedAtRace;
-    if (aElim === null && bElim === null) {
-      return (b.totalScore ?? 0) - (a.totalScore ?? 0);
-    }
-    if (aElim === null) return -1;
-    if (bElim === null) return 1;
-    return bElim - aElim;
-  });
+  // Sort participants by totalScore descending
+  const sortedParticipants = useMemo(() => {
+    return [...participants].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+  }, [participants]);
 
   const handleTrackChange = (raceIndex: number, value: string) => {
     const trackId = value === 'none' ? null : parseInt(value, 10);
@@ -383,6 +442,59 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
         </div>
       </div>
 
+      {/* Position Conflict Detection (CLASSIC only) */}
+      {isClassic && (
+        <div className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-sm">Position Conflict Check</span>
+            {!allSubmitted && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowConflictCheck(true)}
+                className="h-7 px-3 text-xs"
+              >
+                {tConflict('checkButton')}
+              </Button>
+            )}
+          </div>
+
+          {/* Show conflicts if any */}
+          {(showConflictCheck || allSubmitted) && (
+            <div className="mt-2">
+              {positionConflicts.length === 0 ? (
+                <p className="text-green-400 text-sm">{tConflict('noConflicts')}</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-yellow-400">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="font-medium text-sm">{tConflict('title')}</span>
+                  </div>
+                  {positionConflicts.map((conflict, idx) => (
+                    <div
+                      key={`${conflict.raceNumber}-${conflict.invalidPosition}-${idx}`}
+                      className="p-2 bg-yellow-900/20 border border-yellow-700/50 rounded text-sm"
+                    >
+                      <p className="text-yellow-300 font-medium">
+                        {tConflict('race', { raceNumber: conflict.raceNumber })}: {tConflict('conflictFound')}
+                      </p>
+                      <p className="text-gray-400 mt-1">{tConflict('requireScreenshot')}</p>
+                      <ul className="ml-4 text-yellow-100">
+                        {conflict.allInvolvedUsers.map((user) => (
+                          <li key={user.userId}>
+                            - {user.userName} {tConflict('positionLabel', { position: user.position })}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Results Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -397,6 +509,8 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
               <th className="text-center py-2 px-1 font-medium w-10">R3</th>
               <th className="text-right py-2 px-2 font-medium">Pts</th>
               <th className="text-center py-2 px-2 font-medium">Status</th>
+              <th className="text-center py-2 px-1 font-medium">SS1</th>
+              <th className="text-center py-2 px-1 font-medium">SS2</th>
               <th className="text-center py-2 px-2 font-medium">Verify</th>
             </tr>
           </thead>
@@ -405,7 +519,8 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
               const r1 = participant.raceResults?.find(r => r.raceNumber === 1);
               const r2 = participant.raceResults?.find(r => r.raceNumber === 2);
               const r3 = participant.raceResults?.find(r => r.raceNumber === 3);
-              const screenshot = getScreenshotForUser(participant.user.id);
+              const ss1 = getSS1(participant.user.id);
+              const ss2 = getSS2(participant.user.id);
 
               return (
                 <tr
@@ -463,57 +578,136 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                     {participant.totalScore ?? '-'}
                   </td>
 
-                  {/* Status - Show screenshot availability */}
+                  {/* Status */}
                   <td className="py-2 px-2 text-center">
-                    {screenshot && screenshot.imageUrl ? (
+                    {participant.status !== 'UNSUBMITTED' ? (
+                      <span className={cn(
+                        "text-xs font-medium",
+                        participant.status === 'VERIFIED'
+                          ? 'text-green-400'
+                          : participant.status === 'REJECTED'
+                          ? 'text-red-400'
+                          : 'text-blue-400'
+                      )}>
+                        {participant.status === 'VERIFIED'
+                          ? t('ok')
+                          : participant.status === 'REJECTED'
+                          ? t('ng')
+                          : t('pending')}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500 text-xs">-</span>
+                    )}
+                  </td>
+
+                  {/* SS1 Column */}
+                  <td className="py-2 px-1 text-center">
+                    {ss1?.imageUrl ? (
                       <button
-                        onClick={() => setSelectedImage(screenshot.imageUrl!)}
+                        onClick={() => setSelectedImage(ss1.imageUrl!)}
                         className="text-xs font-medium text-blue-400 hover:underline"
-                        title="View screenshot"
+                        title="View SS1"
                       >
-                        SS
+                        SS1
                       </button>
                     ) : (
                       <span className="text-gray-500">-</span>
                     )}
                   </td>
 
-                  {/* Score Verify/Reject - Based on participant.isVerified */}
-                  <td className="py-2 px-2 text-center">
-                    {participant.isVerified ? (
-                      <span className="text-green-400 text-xs font-medium">Verified</span>
-                    ) : participant.isRejected ? (
-                      <span className="text-red-400 text-xs font-medium">Rejected</span>
-                    ) : participant.status === 'SUBMITTED' ? (
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleVerifyScore(participant.user.id)}
-                          disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
-                          className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
-                        >
-                          {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRejectScore(participant.user.id)}
-                          disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
-                          className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
-                        >
-                          {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
-                        </Button>
-                      </div>
+                  {/* SS2 Column */}
+                  <td className="py-2 px-1 text-center">
+                    {ss2?.imageUrl ? (
+                      <button
+                        onClick={() => setSelectedImage(ss2.imageUrl!)}
+                        className="text-xs font-medium text-blue-400 hover:underline"
+                        title="View SS2"
+                      >
+                        SS2
+                      </button>
                     ) : (
-                      <span className="text-gray-500 text-xs">-</span>
+                      <span className="text-gray-500">-</span>
                     )}
+                  </td>
+
+                  {/* Score Verify/Reject - Based on participant.status */}
+                  <td className="py-2 px-2 text-center">
+                    {(() => {
+                      const hasSS = !!(ss1?.imageUrl || ss2?.imageUrl);
+
+                      if (participant.status === 'VERIFIED') {
+                        return <span className="text-green-400 text-xs font-medium">{t('ok')}</span>;
+                      }
+
+                      // Show buttons if: pending OR (rejected + SS submitted)
+                      if (participant.status === 'PENDING' || (participant.status === 'REJECTED' && hasSS)) {
+                        return (
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleVerifyScore(participant.user.id)}
+                              disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
+                              className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
+                            >
+                              {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRejectScore(participant.user.id)}
+                              disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
+                              className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
+                            >
+                              {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
+                            </Button>
+                          </div>
+                        );
+                      }
+
+                      return <span className="text-gray-500 text-xs">-</span>;
+                    })()}
                   </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Final Score Screenshot Upload */}
+      <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+        <h3 className="text-sm font-medium text-white mb-3">Final Score Screenshot</h3>
+
+        {/* 1-11 positions */}
+        <div className="mb-4">
+          <p className="text-xs text-gray-400 mb-2">1-11位 (Positions 1-11)</p>
+          <input
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={(e) => handleFinalScoreUpload(e, 'FINAL_SCORE_1')}
+            disabled={uploadingFinalScore1}
+            className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
+          />
+          {uploadingFinalScore1 && (
+            <p className="text-xs text-blue-400 mt-1">Uploading...</p>
+          )}
+        </div>
+
+        {/* 10-20 positions */}
+        <div>
+          <p className="text-xs text-gray-400 mb-2">10-20位 (Positions 10-20)</p>
+          <input
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={(e) => handleFinalScoreUpload(e, 'FINAL_SCORE_2')}
+            disabled={uploadingFinalScore2}
+            className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
+          />
+          {uploadingFinalScore2 && (
+            <p className="text-xs text-blue-400 mt-1">Uploading...</p>
+          )}
+        </div>
       </div>
 
       {/* Screenshots Section */}
@@ -555,10 +749,10 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                   {/* Verify Status */}
                   {screenshot.isVerified ? (
                     <span className="text-green-400 text-sm font-medium flex items-center gap-1">
-                      <Check className="w-4 h-4" /> Verified
+                      <Check className="w-4 h-4" /> {t('ok')}
                     </span>
                   ) : screenshot.isRejected ? (
-                    <span className="text-red-400 text-sm font-medium">Rejected</span>
+                    <span className="text-red-400 text-sm font-medium">{t('ng')}</span>
                   ) : screenshot.imageUrl ? (
                     <div className="flex items-center gap-2">
                       <Button

@@ -170,6 +170,11 @@
     "positionRange": "{races}: 順位は1から20の間で入力してください。",
     "enterAllResults": "すべてのレース結果を入力してください。"
   },
+  "screenshotStatus": {
+    "ok": "OK",
+    "ng": "NG",
+    "pending": "承認待ち"
+  },
   "screenshotUpload": {
     "individualTitle": "個人結果のスクリーンショットを送信",
     "individualDescription": "確認用に個人結果のスクリーンショットを送信してください",
@@ -186,5 +191,24 @@
     "selectFile": "ファイルを選択してください",
     "invalidFileType": "JPG、PNG、WebP画像のみ許可されています",
     "fileTooLarge": "ファイルサイズは10MB以下にしてください"
+  },
+  "positionConflict": {
+    "title": "順位申告の不整合を検知",
+    "checkButton": "不整合チェック",
+    "noConflicts": "不整合は検出されませんでした",
+    "race": "レース {raceNumber}",
+    "conflictFound": "矛盾あり",
+    "requireScreenshot": "要スクショ確認:",
+    "positionLabel": "({position}位)"
+  },
+  "screenshotRequest": {
+    "title": "スクリーンショット提出依頼",
+    "description": "モデレーターからスクリーンショットの提出を依頼されました。以下の画面のスクリーンショットを2枚提出してください。",
+    "screenshot1Label": "スクリーンショット1",
+    "screenshot2Label": "スクリーンショット2"
+  },
+  "screenshotReminder": {
+    "title": "スクリーンショットについて",
+    "description": "報告された順位に不備があった場合、スクリーンショットの提出を求められる場合があります。以下の2枚のスクリーンショットを控えてください。"
   }
 }

@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { gamesApi, screenshotsApi } from '@/lib/api';
+import { gamesApi } from '@/lib/api';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,9 +115,6 @@ interface ScoreSubmissionFormProps {
   // Moderator mode: show player selector
   participants?: Participant[];
   title?: string;
-  // Screenshot upload integration
-  gameId?: number;
-  enableScreenshotUpload?: boolean;
 }
 
 export function ScoreSubmissionForm({
@@ -129,18 +125,11 @@ export function ScoreSubmissionForm({
   onScoreSubmitted,
   participants,
   title,
-  gameId,
-  enableScreenshotUpload = true,
 }: ScoreSubmissionFormProps) {
   const t = useTranslations('scoreSubmission');
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
-
-  // Screenshot upload state
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [screenshotError, setScreenshotError] = useState<string | null>(null);
 
   // Is this moderator mode?
   const isModeratorMode = !!participants && participants.length > 0;
@@ -235,52 +224,6 @@ export function ScoreSubmissionForm({
     ? classicForm.watch('machine')
     : gpForm.watch('machine');
 
-  // Show screenshot upload only in non-moderator mode when enabled
-  const showScreenshotUpload = enableScreenshotUpload && !isModeratorMode && gameId;
-
-  // File change handler for screenshot upload
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setPreview(null);
-      setScreenshotFile(null);
-      setScreenshotError(null);
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.match(/^image\/(jpg|jpeg|png|webp)$/i)) {
-      setScreenshotError('Only JPG, PNG, and WebP images are allowed');
-      return;
-    }
-
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setScreenshotError('File size must be less than 10MB');
-      return;
-    }
-
-    setScreenshotError(null);
-    setScreenshotFile(file);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Reset screenshot state
-  const resetScreenshotState = () => {
-    setScreenshotFile(null);
-    setPreview(null);
-    setScreenshotError(null);
-    // Reset file input
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-  };
-
   const onSubmitGp = async (data: GpScoreFormData) => {
     // In moderator mode, require target user selection
     if (isModeratorMode && !targetUserId) {
@@ -300,34 +243,12 @@ export function ScoreSubmissionForm({
         targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
 
-      // Step 2: Upload screenshot if provided (non-moderator mode only)
-      let screenshotUploaded = false;
-      if (showScreenshotUpload && screenshotFile && gameId) {
-        try {
-          await screenshotsApi.submit(gameId, screenshotFile, 'INDIVIDUAL');
-          screenshotUploaded = true;
-        } catch (err: unknown) {
-          // Score succeeded but screenshot failed - show warning
-          const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
-          setScreenshotError(
-            t('screenshotFailed', { error: axiosError.response?.data?.message || axiosError.message || 'Unknown error' })
-          );
-        }
-      }
-
       // Show success message
       setSuccess(true);
-      if (screenshotFile && showScreenshotUpload) {
-        setSuccessMessage(screenshotUploaded
-          ? t('scoreAndScreenshotSuccess')
-          : t('scoreSuccess'));
-      } else {
-        setSuccessMessage(t('scoreSuccess'));
-      }
+      setSuccessMessage(t('scoreSuccess'));
 
       // Reset form state
       gpForm.reset();
-      resetScreenshotState();
       if (isModeratorMode) setTargetUserId(null);
 
       if (onScoreSubmitted) {
@@ -400,7 +321,7 @@ export function ScoreSubmissionForm({
         });
       }
 
-      // Step 1: Submit score (always)
+      // Submit score
       await gamesApi.submitScore(mode, season, game, {
         machine: data.machine,
         assistEnabled: data.assistEnabled,
@@ -408,34 +329,12 @@ export function ScoreSubmissionForm({
         targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
 
-      // Step 2: Upload screenshot if provided (non-moderator mode only)
-      let screenshotUploaded = false;
-      if (showScreenshotUpload && screenshotFile && gameId) {
-        try {
-          await screenshotsApi.submit(gameId, screenshotFile, 'INDIVIDUAL');
-          screenshotUploaded = true;
-        } catch (err: unknown) {
-          // Score succeeded but screenshot failed - show warning
-          const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
-          setScreenshotError(
-            t('screenshotFailed', { error: axiosError.response?.data?.message || axiosError.message || 'Unknown error' })
-          );
-        }
-      }
-
       // Show success message
       setSuccess(true);
-      if (screenshotFile && showScreenshotUpload) {
-        setSuccessMessage(screenshotUploaded
-          ? t('scoreAndScreenshotSuccess')
-          : t('scoreSuccess'));
-      } else {
-        setSuccessMessage(t('scoreSuccess'));
-      }
+      setSuccessMessage(t('scoreSuccess'));
 
       // Reset form state
       classicForm.reset();
-      resetScreenshotState();
       if (isModeratorMode) setTargetUserId(null);
 
       if (onScoreSubmitted) {
@@ -762,61 +661,9 @@ export function ScoreSubmissionForm({
 
             </div>
 
-            {/* Screenshot Upload Section */}
-            {showScreenshotUpload && (
-              <div className="space-y-3">
-                <FormLabel className="text-gray-300">
-                  {t('screenshotOptional')}
-                </FormLabel>
-
-                {/* Example Screenshot */}
-                <p className="text-sm text-gray-400">{t('screenshotExample')}</p>
-                <div className="relative w-full max-w-md">
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-                    <Image
-                      src="/ss/ex1.webp"
-                      alt="Example screenshot"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 448px"
-                      className="object-contain"
-                    />
-                  </div>
-                </div>
-
-                <Input
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleFileChange}
-                  className="h-auto py-1.5 bg-gray-700 border-gray-600 text-white cursor-pointer file:bg-blue-600 file:text-white file:border-0 file:mr-4 file:my-0 file:py-1.5 file:px-4 file:rounded file:cursor-pointer hover:file:bg-blue-700"
-                />
-                <FormDescription className="text-gray-500">
-                  {t('screenshotDescription')}
-                </FormDescription>
-
-                {/* Preview */}
-                {preview && (
-                  <div className="relative w-full max-w-md">
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-                      <Image
-                        src={preview}
-                        alt="Screenshot preview"
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Error Message */}
             {classicForm.formState.errors.root && (
               <Alert variant="destructive">{classicForm.formState.errors.root.message}</Alert>
-            )}
-
-            {/* Screenshot Error (warning - score succeeded but screenshot failed) */}
-            {screenshotError && (
-              <Alert variant="warning">{screenshotError}</Alert>
             )}
 
             {/* Success Message */}
@@ -914,61 +761,9 @@ export function ScoreSubmissionForm({
               )}
             />
 
-            {/* Screenshot Upload Section */}
-            {showScreenshotUpload && (
-              <div className="space-y-3">
-                <FormLabel className="text-gray-300">
-                  {t('screenshotOptional')}
-                </FormLabel>
-
-                {/* Example Screenshot */}
-                <p className="text-sm text-gray-400">{t('screenshotExample')}</p>
-                <div className="relative w-full max-w-md">
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-                    <Image
-                      src="/ss/ex1.webp"
-                      alt="Example screenshot"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 448px"
-                      className="object-contain"
-                    />
-                  </div>
-                </div>
-
-                <Input
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleFileChange}
-                  className="h-auto py-1.5 bg-gray-700 border-gray-600 text-white cursor-pointer file:bg-blue-600 file:text-white file:border-0 file:mr-4 file:my-0 file:py-1.5 file:px-4 file:rounded file:cursor-pointer hover:file:bg-blue-700"
-                />
-                <FormDescription className="text-gray-500">
-                  {t('screenshotDescription')}
-                </FormDescription>
-
-                {/* Preview */}
-                {preview && (
-                  <div className="relative w-full max-w-md">
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-                      <Image
-                        src={preview}
-                        alt="Screenshot preview"
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Error Message */}
             {gpForm.formState.errors.root && (
               <Alert variant="destructive">{gpForm.formState.errors.root.message}</Alert>
-            )}
-
-            {/* Screenshot Error (warning - score succeeded but screenshot failed) */}
-            {screenshotError && (
-              <Alert variant="warning">{screenshotError}</Alert>
             )}
 
             {/* Success Message */}

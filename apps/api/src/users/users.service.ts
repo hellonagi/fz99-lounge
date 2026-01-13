@@ -329,9 +329,9 @@ export class UsersService {
                 },
               },
             },
-            // 順位を計算するために全参加者のスコアを取得
+            // 順位を計算するために全参加者のスコアを取得 (提出済み = PENDING, VERIFIED, REJECTED)
             participants: {
-              where: { status: 'SUBMITTED' },
+              where: { status: { not: 'UNSUBMITTED' } },
               select: {
                 userId: true,
                 totalScore: true,
