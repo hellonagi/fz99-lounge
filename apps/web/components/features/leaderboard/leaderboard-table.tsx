@@ -17,6 +17,9 @@ interface LeaderboardEntry {
   thirdPlaces: number;
   survivedCount: number;
   assistUsedCount: number;
+  medianPosition: number | null;
+  medianPoints: number | null;
+  favoriteMachine: string | null;
   user: {
     id: number;
     displayName: string | null;
@@ -24,6 +27,14 @@ interface LeaderboardEntry {
     profile?: { country: string | null } | null;
   };
 }
+
+// Machine name abbreviations for mobile display
+const machineAbbreviations: Record<string, string> = {
+  'Blue Falcon': 'BF',
+  'Golden Fox': 'GF',
+  'Wild Goose': 'WG',
+  'Fire Stingray': 'FS',
+};
 
 interface LeaderboardTableProps {
   data: LeaderboardEntry[];
@@ -50,7 +61,7 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[800px] sm:min-w-[900px]">
+      <table className="w-full text-sm min-w-[850px] sm:min-w-[1000px]">
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium w-12">#</th>
@@ -63,24 +74,28 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
             <th className="text-right py-2 px-2 font-medium w-12">1st</th>
             <th className="text-right py-2 px-2 font-medium w-12">2nd</th>
             <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
-            <th className="text-right py-2 px-2 font-medium">Avg Pos</th>
-            <th className="text-right py-2 px-2 font-medium">Avg Pts</th>
+            <th className="text-right py-2 px-2 font-medium">Med Pos</th>
+            <th className="text-right py-2 px-2 font-medium">Med Pts</th>
             <th className="text-right py-2 px-2 font-medium">Finish%</th>
+            <th className="text-right py-2 px-2 font-medium">Machine</th>
           </tr>
         </thead>
         <tbody>
           {data.map((entry, index) => {
             const rank = startRank + index;
             const rankInfo = getRankInfo(entry.displayRating);
-            const avgPosition = entry.totalMatches > 0
-              ? (entry.totalPositions / entry.totalMatches).toFixed(1)
+            const medianPosition = entry.medianPosition !== null
+              ? entry.medianPosition.toFixed(1)
               : '-';
-            const avgPoints = entry.totalMatches > 0
-              ? (entry.totalPoints / entry.totalMatches).toFixed(1)
+            const medianPoints = entry.medianPoints !== null
+              ? entry.medianPoints.toFixed(1)
               : '-';
             const finishRate = entry.totalMatches > 0
               ? Math.round((entry.survivedCount / entry.totalMatches) * 100)
               : 0;
+            const machineAbbr = entry.favoriteMachine
+              ? machineAbbreviations[entry.favoriteMachine] || entry.favoriteMachine
+              : '-';
 
             return (
               <tr
@@ -155,19 +170,25 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
                   {entry.thirdPlaces}
                 </td>
 
-                {/* Avg Position */}
+                {/* Median Position */}
                 <td className="py-2 px-2 text-right text-gray-100">
-                  {avgPosition}
+                  {medianPosition}
                 </td>
 
-                {/* Avg Points */}
+                {/* Median Points */}
                 <td className="py-2 px-2 text-right text-gray-100">
-                  {avgPoints}
+                  {medianPoints}
                 </td>
 
                 {/* Finish Rate */}
                 <td className="py-2 px-2 text-right text-gray-100">
                   {finishRate}%
+                </td>
+
+                {/* Machine */}
+                <td className="py-2 px-2 text-right text-gray-100">
+                  <span className="sm:hidden">{machineAbbr}</span>
+                  <span className="hidden sm:inline">{entry.favoriteMachine || '-'}</span>
                 </td>
               </tr>
             );
