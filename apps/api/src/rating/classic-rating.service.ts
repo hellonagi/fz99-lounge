@@ -14,6 +14,126 @@ export class ClassicRatingService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Calculate median of an array of numbers
+   */
+  private calculateMedian(values: number[]): number | null {
+    if (values.length === 0) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+      return (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    return sorted[mid];
+  }
+
+  /**
+   * Calculate median stats for a user in a season
+   */
+  private async calculateMedianStats(
+    tx: any,
+    userId: number,
+    seasonId: number,
+  ): Promise<{
+    medianPosition: number | null;
+    medianPoints: number | null;
+    favoriteMachine: string | null;
+  }> {
+    // Get all verified game participations for this user in this season
+    const userParticipations = await tx.gameParticipant.findMany({
+      where: {
+        userId,
+        status: 'VERIFIED',
+        game: { match: { seasonId } },
+      },
+      select: {
+        totalScore: true,
+        machine: true,
+        gameId: true,
+      },
+    });
+
+    if (userParticipations.length === 0) {
+      return { medianPosition: null, medianPoints: null, favoriteMachine: null };
+    }
+
+    // Get all game IDs
+    const gameIds = userParticipations.map((p: { gameId: number }) => p.gameId);
+
+    // Get all participants for these games to calculate positions
+    const allParticipants = await tx.gameParticipant.findMany({
+      where: {
+        gameId: { in: gameIds },
+        status: 'VERIFIED',
+      },
+      select: {
+        gameId: true,
+        userId: true,
+        totalScore: true,
+      },
+    });
+
+    // Group participants by game and calculate positions
+    const gameParticipantsMap = new Map<number, Array<{ userId: number; totalScore: number }>>();
+    for (const p of allParticipants) {
+      const list = gameParticipantsMap.get(p.gameId) || [];
+      list.push({ userId: p.userId, totalScore: p.totalScore ?? 0 });
+      gameParticipantsMap.set(p.gameId, list);
+    }
+
+    // Calculate user's position in each game
+    const positions: number[] = [];
+    const points: number[] = [];
+    const machineCount = new Map<string, number>();
+
+    for (const userPart of userParticipations) {
+      const gameParticipants = gameParticipantsMap.get(userPart.gameId) || [];
+      // Sort by score descending
+      const sorted = [...gameParticipants].sort((a, b) => b.totalScore - a.totalScore);
+
+      // Find user's position (with tie handling)
+      let position = 1;
+      let prevScore: number | null = null;
+      let sameCount = 0;
+      for (const p of sorted) {
+        if (prevScore !== null && p.totalScore === prevScore) {
+          sameCount++;
+        } else {
+          position += sameCount;
+          sameCount = 1;
+        }
+        if (p.userId === userId) {
+          positions.push(position);
+          break;
+        }
+        prevScore = p.totalScore;
+      }
+
+      points.push(userPart.totalScore ?? 0);
+
+      // Count machine usage
+      if (userPart.machine) {
+        machineCount.set(userPart.machine, (machineCount.get(userPart.machine) || 0) + 1);
+      }
+    }
+
+    // Find favorite machine
+    let favoriteMachine: string | null = null;
+    let maxCount = 0;
+    for (const [machine, count] of machineCount.entries()) {
+      if (count > maxCount) {
+        maxCount = count;
+        favoriteMachine = machine;
+      }
+    }
+
+    return {
+      medianPosition: this.calculateMedian(positions),
+      medianPoints: this.calculateMedian(points),
+      favoriteMachine,
+    };
+  }
+
+  /**
    * Main entry point: Calculate and update ratings for all participants in a game
    */
   async calculateAndUpdateRatings(gameId: number): Promise<void> {
@@ -118,6 +238,13 @@ export class ClassicRatingService {
           (p) => p.userId === change.userId,
         )!;
 
+        // Calculate median stats for this user
+        const medianStats = await this.calculateMedianStats(
+          tx,
+          change.userId,
+          seasonId,
+        );
+
         // Update UserSeasonStats
         await tx.userSeasonStats.update({
           where: {
@@ -147,6 +274,9 @@ export class ClassicRatingService {
               participant.eliminatedAtRace === null
                 ? { increment: 1 }
                 : undefined,
+            medianPosition: medianStats.medianPosition,
+            medianPoints: medianStats.medianPoints,
+            favoriteMachine: medianStats.favoriteMachine,
           },
         });
 

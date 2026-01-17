@@ -243,6 +243,11 @@ model UserSeasonStats {
   survivedCount   Int @default(0) // 生き残り回数（脱落せず完走）
   assistUsedCount Int @default(0) // アシスト使用回数
 
+  // リーダーボード用（事前計算）
+  medianPosition  Float?  // 順位の中央値
+  medianPoints    Float?  // ポイントの中央値
+  favoriteMachine String? // 最も使用しているマシン
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
