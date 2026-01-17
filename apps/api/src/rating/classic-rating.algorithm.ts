@@ -422,9 +422,11 @@ function calculateDisplayRating(
 ): number {
   let convergenceMultiplier: number;
 
-  if (convergencePoints < CLASSIC_CONFIG.CONVERGENCE_THRESHOLD) {
-    // Sine curve provides smooth acceleration
-    convergenceMultiplier = Math.sin(0.08 * convergencePoints);
+  if (convergencePoints <= CLASSIC_CONFIG.CONVERGENCE_THRESHOLD) {
+    // Sine curve provides smooth acceleration (reaches 1.0 exactly at threshold)
+    convergenceMultiplier = Math.sin(
+      (Math.PI / (2 * CLASSIC_CONFIG.CONVERGENCE_THRESHOLD)) * convergencePoints,
+    );
   } else {
     // Fully converged
     convergenceMultiplier = 1.0;
