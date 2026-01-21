@@ -1,4 +1,30 @@
 {
+  "landing": {
+    "howToJoin": {
+      "title": "How to Join",
+      "subtitle": "Get started in 4 simple steps",
+      "steps": {
+        "login": {
+          "title": "Login with Discord",
+          "description": "Sign in with your Discord account to create your profile"
+        },
+        "displayName": {
+          "title": "Set Display Name",
+          "description": "Choose a display name that matches your in-game name"
+        },
+        "join": {
+          "title": "Join a Match",
+          "description": "Find and join an upcoming match from the top page"
+        },
+        "submit": {
+          "title": "Submit Results",
+          "description": "After the match, submit your scores"
+        }
+      },
+      "cta": "Ready to compete? Join now",
+      "ctaButton": "Login with Discord"
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",

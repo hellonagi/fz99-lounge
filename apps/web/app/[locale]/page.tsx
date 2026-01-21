@@ -5,10 +5,12 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
+import { HowToJoinSection } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useAuthStore } from '@/store/authStore';
 import { matchesApi } from '@/lib/api';
 
 interface RecentMatch {
@@ -62,6 +64,8 @@ export default function Home() {
 
   usePushNotifications();
 
+  const { isAuthenticated } = useAuthStore();
+
   // Fetch recent matches
   useEffect(() => {
     const fetchRecentMatches = async () => {
@@ -100,27 +104,34 @@ export default function Home() {
 
   return (
     <>
-      {error || !nextMatch ? (
-        <MatchHero errorMessage={getErrorMessage()} />
-      ) : (
-        <MatchHero
-          category={nextMatch.category || nextMatch.season?.event?.category}
-          season={nextMatch.season?.seasonNumber}
-          match={nextMatch.matchNumber}
-          league={nextMatch.leagueType}
-          currentPlayers={nextMatch.participants?.length ?? 0}
-          minPlayers={nextMatch.minPlayers}
-          maxPlayers={nextMatch.maxPlayers}
-          scheduledStart={nextMatch.scheduledStart}
-          timeOffset={timeOffset}
-          onJoinClick={handleJoinClick}
-          isJoined={isUserInMatch}
-          isJoining={isJoining}
-          matchUrl={matchUrl}
-          isParticipant={isUserInMatch}
-        />
-      )}
+      {/* Next Match Section */}
+      <div>
+        {error || !nextMatch ? (
+          <MatchHero errorMessage={getErrorMessage()} />
+        ) : (
+          <MatchHero
+            category={nextMatch.category || nextMatch.season?.event?.category}
+            season={nextMatch.season?.seasonNumber}
+            match={nextMatch.matchNumber}
+            league={nextMatch.leagueType}
+            currentPlayers={nextMatch.participants?.length ?? 0}
+            minPlayers={nextMatch.minPlayers}
+            maxPlayers={nextMatch.maxPlayers}
+            scheduledStart={nextMatch.scheduledStart}
+            timeOffset={timeOffset}
+            onJoinClick={handleJoinClick}
+            isJoined={isUserInMatch}
+            isJoining={isJoining}
+            matchUrl={matchUrl}
+            isParticipant={isUserInMatch}
+          />
+        )}
+      </div>
 
+      {/* How to Join Section - only for non-authenticated users */}
+      {!isAuthenticated && <HowToJoinSection />}
+
+      {/* Recent Matches Section */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
       </main>

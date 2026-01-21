@@ -1,4 +1,30 @@
 {
+  "landing": {
+    "howToJoin": {
+      "title": "参加方法",
+      "subtitle": "4つの簡単なステップで始めよう",
+      "steps": {
+        "login": {
+          "title": "Discordでログイン",
+          "description": "Discordアカウントでログインしてプロフィールを作成"
+        },
+        "displayName": {
+          "title": "表示名を設定",
+          "description": "ゲーム内で使用する名前を設定"
+        },
+        "join": {
+          "title": "試合に参加",
+          "description": "トップページから試合を見つけて参加"
+        },
+        "submit": {
+          "title": "結果を送信",
+          "description": "マッチ終了後、スコアを送信"
+        }
+      },
+      "cta": "準備はできましたか？今すぐ参加しよう",
+      "ctaButton": "Discordでログイン"
+    }
+  },
   "common": {
     "loading": "読み込み中...",
     "error": "エラーが発生しました",

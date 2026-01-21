@@ -23,3 +23,17 @@ button,
 a {
   cursor: pointer;
 }
+
+/* バナー無限スクロールアニメーション */
+@keyframes banner-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100vw);
+  }
+}
+
+.animate-banner-scroll {
+  animation: banner-scroll 30s linear infinite;
+}

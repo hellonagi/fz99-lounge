@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { MatchTimer } from './match-timer';
 import { PlayerCount } from './player-count';
+import { BannerMosaic } from '@/components/features/home/banner-mosaic';
 
 interface MatchHeroProps {
   category?: string;
@@ -43,13 +44,11 @@ export function MatchHero({
   const t = useTranslations('matchHero');
 
   return (
-    <section className="relative min-h-[500px] bg-gradient-to-b from-gray-900 to-gray-800 overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-purple-900/20 to-pink-900/20"></div>
-      </div>
+    <section className="relative min-h-[500px] overflow-hidden">
+      {/* Animated banner background */}
+      <BannerMosaic />
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
           {errorMessage ? (
             // Error state
