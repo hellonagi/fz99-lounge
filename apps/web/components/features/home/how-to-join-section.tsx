@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { LogIn, UserCog, Gamepad2, Send } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
+import { SiDiscord } from 'react-icons/si';
 import { useAuthStore } from '@/store/authStore';
 
 interface StepProps {
@@ -80,6 +81,7 @@ export function HowToJoinSection() {
               href={`${baseUrl}/api/auth/discord`}
               className="inline-flex items-center justify-center bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
             >
+              <SiDiscord className="w-5 h-5 mr-2" />
               {t('ctaButton')}
             </Link>
           </div>

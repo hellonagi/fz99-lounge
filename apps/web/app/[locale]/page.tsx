@@ -124,6 +124,7 @@ export default function Home() {
             isJoining={isJoining}
             matchUrl={matchUrl}
             isParticipant={isUserInMatch}
+            isAuthenticated={isAuthenticated}
           />
         )}
       </div>
