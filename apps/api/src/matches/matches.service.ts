@@ -652,6 +652,7 @@ export class MatchesService {
         seasonNumber: match.season.seasonNumber,
         category: match.season.event.category,
         seasonName: match.season.event.name,
+        reason: 'admin_cancelled',
       });
     } catch (error) {
       this.logger.error('Failed to announce match cancellation to Discord:', error);
