@@ -22,7 +22,9 @@
         }
       },
       "cta": "Ready to compete? Join now",
-      "ctaButton": "Login with Discord"
+      "ctaButton": "Login with Discord",
+      "discordNotice": "Join our Discord community for match notifications",
+      "discordLink": "Join Discord"
     }
   },
   "common": {
