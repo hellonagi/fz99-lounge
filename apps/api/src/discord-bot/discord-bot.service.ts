@@ -61,6 +61,7 @@ export interface AnnounceMatchCancelledParams {
   seasonNumber: number;
   category: string;
   seasonName: string;
+  reason?: 'insufficient_players' | 'admin_cancelled';
 }
 
 @Injectable()
@@ -818,11 +819,20 @@ Join: ${baseUrl}`;
       const roleId = this.getMatchNotifyRoleId();
       const roleMention = roleId ? `<@&${roleId}>` : '';
 
+      let reasonText = '';
+      if (params.reason === 'insufficient_players') {
+        reasonText =
+          '\nReason: Not enough players / 理由: 参加者が規定人数に達しませんでした';
+      } else if (params.reason === 'admin_cancelled') {
+        reasonText =
+          '\nReason: Cancelled by administrator / 理由: 管理者によりキャンセルされました';
+      }
+
       const messageContent = `${roleMention}
 **Match Cancelled**
 
 ${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber} has been cancelled.
-${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} はキャンセルされました。`;
+${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} はキャンセルされました。${reasonText}`;
 
       await (channel as TextChannel).send({
         content: messageContent,
