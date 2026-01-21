@@ -22,6 +22,7 @@ interface MatchHeroProps {
   errorMessage?: string;
   matchUrl?: string | null;
   isParticipant?: boolean;
+  isAuthenticated?: boolean;
 }
 
 export function MatchHero({
@@ -40,6 +41,7 @@ export function MatchHero({
   errorMessage,
   matchUrl,
   isParticipant = false,
+  isAuthenticated = true,
 }: MatchHeroProps) {
   const t = useTranslations('matchHero');
 
@@ -121,6 +123,7 @@ export function MatchHero({
                       onJoin={onJoinClick}
                       isJoined={isJoined}
                       isJoining={isJoining}
+                      isAuthenticated={isAuthenticated}
                     />
                   )}
                 </>

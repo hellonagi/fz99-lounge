@@ -22,7 +22,7 @@
         }
       },
       "cta": "準備はできましたか？今すぐ参加しよう",
-      "ctaButton": "Discordでログイン"
+      "ctaButton": "Discordログイン"
     }
   },
   "common": {
@@ -64,6 +64,7 @@
     "startsIn": "あと",
     "reviewRules": "参加前に<matchRules>ルール</matchRules>をご確認ください",
     "join": "参加",
+    "loginToJoin": "Discordログインして参加",
     "leave": "キャンセル",
     "joining": "読み込み中...",
     "passcodeNotice": "試合時間になるとパスコードが公開されます。"

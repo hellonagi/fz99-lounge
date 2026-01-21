@@ -1,5 +1,8 @@
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
+import { cn } from '@/lib/utils';
+import { SiDiscord } from 'react-icons/si';
 
 interface PlayerCountProps {
   current: number;
@@ -8,11 +11,13 @@ interface PlayerCountProps {
   onJoin?: () => void;
   isJoined?: boolean;
   isJoining?: boolean;
+  isAuthenticated?: boolean;
 }
 
 export function PlayerCount(props: PlayerCountProps) {
-  const { current, max, onJoin, isJoined = false, isJoining = false } = props;
+  const { current, max, onJoin, isJoined = false, isJoining = false, isAuthenticated = true } = props;
   const t = useTranslations('matchHero');
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 mb-8">
@@ -29,7 +34,15 @@ export function PlayerCount(props: PlayerCountProps) {
           </div>
           <span className="text-sm text-gray-300">Players</span>
         </div>
-        {onJoin && (
+        {!isAuthenticated ? (
+          <Link
+            href={`${baseUrl}/api/auth/discord`}
+            className={cn(buttonVariants({ size: 'lg', variant: 'discord' }), 'rounded-full')}
+          >
+            <SiDiscord className="w-5 h-5 mr-2" />
+            {t('loginToJoin')}
+          </Link>
+        ) : onJoin && (
           <Button
             onClick={onJoin}
             size="lg"

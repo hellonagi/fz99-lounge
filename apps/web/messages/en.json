@@ -65,6 +65,7 @@
     "startsIn": "Starts in",
     "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining",
     "join": "JOIN",
+    "loginToJoin": "Login with Discord to Join",
     "leave": "LEAVE",
     "joining": "Loading...",
     "passcodeNotice": "The passcode will be available when the match starts."
