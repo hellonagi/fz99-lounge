@@ -22,7 +22,9 @@
         }
       },
       "cta": "準備はできましたか？今すぐ参加しよう",
-      "ctaButton": "Discordログイン"
+      "ctaButton": "Discordログイン",
+      "discordNotice": "Discordコミュニティに参加して試合通知を受け取りましょう",
+      "discordLink": "Discordに参加"
     }
   },
   "common": {

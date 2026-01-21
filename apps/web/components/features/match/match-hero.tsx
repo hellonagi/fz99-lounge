@@ -50,7 +50,7 @@ export function MatchHero({
       {/* Animated banner background */}
       <BannerMosaic />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
           {errorMessage ? (
             // Error state

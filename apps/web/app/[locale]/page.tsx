@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
-import { HowToJoinSection } from '@/components/features/home';
+import { HowToJoinSection, DiscordCommunitySection } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
@@ -132,9 +132,14 @@ export default function Home() {
       {/* How to Join Section - only for non-authenticated users */}
       {!isAuthenticated && <HowToJoinSection />}
 
+      {/* Discord Community Section - always visible */}
+      <DiscordCommunitySection />
+
       {/* Recent Matches Section */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
+      <main className="py-16 bg-gray-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
+        </div>
       </main>
     </>
   );
