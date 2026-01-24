@@ -354,8 +354,16 @@ export class GamesService {
 
       let totalScore = 0;
       let eliminatedAtRace: number | null = null;
+      const raceResultsData: {
+        gameParticipantId: number;
+        raceNumber: number;
+        position: number | null;
+        points: number;
+        isEliminated: boolean;
+        isDisconnected: boolean;
+      }[] = [];
 
-      // Create new race results and calculate totals
+      // Calculate race results data
       for (const raceResult of submitScoreDto.raceResults) {
         // 既にDNF/DCしている場合、以降のレースはnull（参加していない）
         const isAfterElimination = eliminatedAtRace !== null;
@@ -390,19 +398,20 @@ export class GamesService {
           }
         }
 
-        await this.prisma.raceResult.create({
-          data: {
-            gameParticipantId: participantId,
-            raceNumber: raceResult.raceNumber,
-            position,
-            points,
-            isEliminated,
-            isDisconnected,
-          },
+        raceResultsData.push({
+          gameParticipantId: participantId,
+          raceNumber: raceResult.raceNumber,
+          position,
+          points,
+          isEliminated,
+          isDisconnected,
         });
 
         totalScore += points;
       }
+
+      // Batch insert all race results
+      await this.prisma.raceResult.createMany({ data: raceResultsData });
 
       // Update participant with calculated totals
       await this.prisma.gameParticipant.update({
@@ -562,8 +571,16 @@ export class GamesService {
 
     let totalScore = 0;
     let eliminatedAtRace: number | null = null;
+    const raceResultsData: {
+      gameParticipantId: number;
+      raceNumber: number;
+      position: number | null;
+      points: number;
+      isEliminated: boolean;
+      isDisconnected: boolean;
+    }[] = [];
 
-    // Create new race results and calculate totals
+    // Calculate race results data
     for (const raceResult of updateScoreDto.raceResults) {
       // 既にDNF/DCしている場合、以降のレースはnull（参加していない）
       const isAfterElimination = eliminatedAtRace !== null;
@@ -598,19 +615,20 @@ export class GamesService {
         }
       }
 
-      await this.prisma.raceResult.create({
-        data: {
-          gameParticipantId: participant.id,
-          raceNumber: raceResult.raceNumber,
-          position,
-          points,
-          isEliminated,
-          isDisconnected,
-        },
+      raceResultsData.push({
+        gameParticipantId: participant.id,
+        raceNumber: raceResult.raceNumber,
+        position,
+        points,
+        isEliminated,
+        isDisconnected,
       });
 
       totalScore += points;
     }
+
+    // Batch insert all race results
+    await this.prisma.raceResult.createMany({ data: raceResultsData });
 
     // Update participant with calculated totals
     await this.prisma.gameParticipant.update({

@@ -28,7 +28,7 @@ import { adminApi } from '@/lib/api';
 
 const recalculateSchema = z.object({
   category: z.enum(['classic']),
-  season: z.coerce.number().min(1, 'Season must be at least 1'),
+  season: z.coerce.number().min(0, 'Season must be at least 0'),
   fromMatchNumber: z.coerce.number().min(1, 'Match number must be at least 1'),
 });
 
@@ -120,9 +120,9 @@ export function RatingRecalculationCard() {
                   <FormControl>
                     <Input
                       type="number"
-                      min="1"
+                      min="0"
                       {...field}
-                      onChange={(e) => field.onChange(e.target.valueAsNumber || 1)}
+                      onChange={(e) => field.onChange(e.target.valueAsNumber ?? 0)}
                     />
                   </FormControl>
                   <FormMessage />

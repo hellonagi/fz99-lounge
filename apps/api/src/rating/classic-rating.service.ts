@@ -27,40 +27,71 @@ export class ClassicRatingService {
   }
 
   /**
-   * Calculate median stats for a user in a season
+   * Calculate median stats for multiple users in a season (batch version)
+   * This reduces N+1 queries by fetching all data upfront
    */
-  private async calculateMedianStats(
+  private async calculateMedianStatsBatch(
     tx: any,
-    userId: number,
+    userIds: number[],
     seasonId: number,
-  ): Promise<{
-    medianPosition: number | null;
-    medianPoints: number | null;
-    favoriteMachine: string | null;
-  }> {
-    // Get all verified game participations for this user in this season
-    const userParticipations = await tx.gameParticipant.findMany({
+  ): Promise<
+    Map<
+      number,
+      {
+        medianPosition: number | null;
+        medianPoints: number | null;
+        favoriteMachine: string | null;
+      }
+    >
+  > {
+    const result = new Map<
+      number,
+      {
+        medianPosition: number | null;
+        medianPoints: number | null;
+        favoriteMachine: string | null;
+      }
+    >();
+
+    // Initialize all users with null values
+    for (const userId of userIds) {
+      result.set(userId, {
+        medianPosition: null,
+        medianPoints: null,
+        favoriteMachine: null,
+      });
+    }
+
+    if (userIds.length === 0) {
+      return result;
+    }
+
+    // 1 query: Get all verified game participations for all users in this season
+    const allUserParticipations = await tx.gameParticipant.findMany({
       where: {
-        userId,
+        userId: { in: userIds },
         status: 'VERIFIED',
         game: { match: { seasonId } },
       },
       select: {
+        userId: true,
         totalScore: true,
         machine: true,
         gameId: true,
       },
     });
 
-    if (userParticipations.length === 0) {
-      return { medianPosition: null, medianPoints: null, favoriteMachine: null };
+    if (allUserParticipations.length === 0) {
+      return result;
     }
 
-    // Get all game IDs
-    const gameIds = userParticipations.map((p: { gameId: number }) => p.gameId);
+    // Collect all game IDs
+    const gameIds = [
+      ...new Set(allUserParticipations.map((p: { gameId: number }) => p.gameId)),
+    ];
 
-    // Get all participants for these games to calculate positions
-    const allParticipants = await tx.gameParticipant.findMany({
+    // 1 query: Get all participants for these games to calculate positions
+    const allGameParticipants = await tx.gameParticipant.findMany({
       where: {
         gameId: { in: gameIds },
         status: 'VERIFIED',
@@ -72,65 +103,97 @@ export class ClassicRatingService {
       },
     });
 
-    // Group participants by game and calculate positions
-    const gameParticipantsMap = new Map<number, Array<{ userId: number; totalScore: number }>>();
-    for (const p of allParticipants) {
+    // Group participants by game
+    const gameParticipantsMap = new Map<
+      number,
+      Array<{ userId: number; totalScore: number }>
+    >();
+    for (const p of allGameParticipants) {
       const list = gameParticipantsMap.get(p.gameId) || [];
       list.push({ userId: p.userId, totalScore: p.totalScore ?? 0 });
       gameParticipantsMap.set(p.gameId, list);
     }
 
-    // Calculate user's position in each game
-    const positions: number[] = [];
-    const points: number[] = [];
-    const machineCount = new Map<string, number>();
-
-    for (const userPart of userParticipations) {
-      const gameParticipants = gameParticipantsMap.get(userPart.gameId) || [];
-      // Sort by score descending
-      const sorted = [...gameParticipants].sort((a, b) => b.totalScore - a.totalScore);
-
-      // Find user's position (with tie handling)
-      let position = 1;
-      let prevScore: number | null = null;
-      let sameCount = 0;
-      for (const p of sorted) {
-        if (prevScore !== null && p.totalScore === prevScore) {
-          sameCount++;
-        } else {
-          position += sameCount;
-          sameCount = 1;
-        }
-        if (p.userId === userId) {
-          positions.push(position);
-          break;
-        }
-        prevScore = p.totalScore;
-      }
-
-      points.push(userPart.totalScore ?? 0);
-
-      // Count machine usage
-      if (userPart.machine) {
-        machineCount.set(userPart.machine, (machineCount.get(userPart.machine) || 0) + 1);
-      }
+    // Group user participations by user
+    const userParticipationsMap = new Map<
+      number,
+      Array<{ totalScore: number | null; machine: string | null; gameId: number }>
+    >();
+    for (const p of allUserParticipations) {
+      const list = userParticipationsMap.get(p.userId) || [];
+      list.push({
+        totalScore: p.totalScore,
+        machine: p.machine,
+        gameId: p.gameId,
+      });
+      userParticipationsMap.set(p.userId, list);
     }
 
-    // Find favorite machine
-    let favoriteMachine: string | null = null;
-    let maxCount = 0;
-    for (const [machine, count] of machineCount.entries()) {
-      if (count > maxCount) {
-        maxCount = count;
-        favoriteMachine = machine;
+    // Calculate stats for each user in memory
+    for (const userId of userIds) {
+      const userParticipations = userParticipationsMap.get(userId);
+      if (!userParticipations || userParticipations.length === 0) {
+        continue;
       }
+
+      const positions: number[] = [];
+      const points: number[] = [];
+      const machineCount = new Map<string, number>();
+
+      for (const userPart of userParticipations) {
+        const gameParticipants = gameParticipantsMap.get(userPart.gameId) || [];
+        // Sort by score descending
+        const sorted = [...gameParticipants].sort(
+          (a, b) => b.totalScore - a.totalScore,
+        );
+
+        // Find user's position (with tie handling)
+        let position = 1;
+        let prevScore: number | null = null;
+        let sameCount = 0;
+        for (const p of sorted) {
+          if (prevScore !== null && p.totalScore === prevScore) {
+            sameCount++;
+          } else {
+            position += sameCount;
+            sameCount = 1;
+          }
+          if (p.userId === userId) {
+            positions.push(position);
+            break;
+          }
+          prevScore = p.totalScore;
+        }
+
+        points.push(userPart.totalScore ?? 0);
+
+        // Count machine usage
+        if (userPart.machine) {
+          machineCount.set(
+            userPart.machine,
+            (machineCount.get(userPart.machine) || 0) + 1,
+          );
+        }
+      }
+
+      // Find favorite machine
+      let favoriteMachine: string | null = null;
+      let maxCount = 0;
+      for (const [machine, count] of machineCount.entries()) {
+        if (count > maxCount) {
+          maxCount = count;
+          favoriteMachine = machine;
+        }
+      }
+
+      result.set(userId, {
+        medianPosition: this.calculateMedian(positions),
+        medianPoints: this.calculateMedian(points),
+        favoriteMachine,
+      });
     }
 
-    return {
-      medianPosition: this.calculateMedian(positions),
-      medianPoints: this.calculateMedian(points),
-      favoriteMachine,
-    };
+    return result;
   }
 
   /**
@@ -233,20 +296,22 @@ export class ClassicRatingService {
 
     // Update database in transaction
     await this.prisma.$transaction(async (tx) => {
-      for (const change of ratingChanges) {
+      // Batch fetch median stats for all users (2 queries instead of 2*N)
+      const userIds = ratingChanges.map((c) => c.userId);
+      const allMedianStats = await this.calculateMedianStatsBatch(
+        tx,
+        userIds,
+        seasonId,
+      );
+
+      // Update UserSeasonStats for each participant
+      const updatePromises = ratingChanges.map((change) => {
         const participant = participantsWithRatings.find(
           (p) => p.userId === change.userId,
         )!;
+        const medianStats = allMedianStats.get(change.userId)!;
 
-        // Calculate median stats for this user
-        const medianStats = await this.calculateMedianStats(
-          tx,
-          change.userId,
-          seasonId,
-        );
-
-        // Update UserSeasonStats
-        await tx.userSeasonStats.update({
+        return tx.userSeasonStats.update({
           where: {
             userId_seasonId: {
               userId: change.userId,
@@ -279,18 +344,22 @@ export class ClassicRatingService {
             favoriteMachine: medianStats.favoriteMachine,
           },
         });
+      });
 
-        // Record rating history
-        await tx.ratingHistory.create({
-          data: {
-            userId: change.userId,
-            matchId: game.matchId,
-            internalRating: change.newInternalRating,
-            displayRating: change.newDisplayRating,
-            convergencePoints: change.newConvergencePoints,
-          },
-        });
-      }
+      // Prepare rating history data for batch insert
+      const historyData = ratingChanges.map((change) => ({
+        userId: change.userId,
+        matchId: game.matchId,
+        internalRating: change.newInternalRating,
+        displayRating: change.newDisplayRating,
+        convergencePoints: change.newConvergencePoints,
+      }));
+
+      // Execute updates in parallel and batch insert history
+      await Promise.all([
+        ...updatePromises,
+        tx.ratingHistory.createMany({ data: historyData }),
+      ]);
     });
 
     this.logger.log(
