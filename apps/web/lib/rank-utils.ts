@@ -10,10 +10,9 @@ export interface RankInfo {
 }
 
 export function getRankInfo(rating: number): RankInfo {
-  // Grandmaster: 4000+ (100 per tier)
+  // Grandmaster: 4000+ (no tiers)
   if (rating >= 4000) {
-    const tierIndex = Math.min(Math.floor((rating - 4000) / 100), 4);
-    return { name: `Grandmaster ${tiers[tierIndex]}`, color: 'bg-rose-500', tier: 'Grandmaster', division: tiers[tierIndex] };
+    return { name: 'Grandmaster', color: 'bg-rose-500', tier: 'Grandmaster', division: 'I' };
   }
   // Master: 3500-3999 (100 per tier)
   if (rating >= 3500) {

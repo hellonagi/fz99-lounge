@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Shield,
   FileText,
+  Users,
 } from 'lucide-react';
 
 type RuleSectionProps = {
@@ -121,11 +122,7 @@ const ranks: RankInfo[] = [
     name: 'Grandmaster',
     color: 'bg-rose-500',
     tiers: [
-      { name: 'Grandmaster V', mmrRange: '4000-4099' },
-      { name: 'Grandmaster IV', mmrRange: '4100-4199' },
-      { name: 'Grandmaster III', mmrRange: '4200-4299' },
-      { name: 'Grandmaster II', mmrRange: '4300-4399' },
-      { name: 'Grandmaster I', mmrRange: '4400+' },
+      { name: 'Grandmaster', mmrRange: '4000+' },
     ],
   },
 ];
@@ -165,7 +162,8 @@ export default function RulesPage() {
               <TabsTrigger value="general">{t('tabs.general')}</TabsTrigger>
               <TabsTrigger value="ranking">{t('tabs.ranking')}</TabsTrigger>
               <TabsTrigger value="match">{t('tabs.match')}</TabsTrigger>
-                          </TabsList>
+              <TabsTrigger value="community">{t('tabs.community')}</TabsTrigger>
+            </TabsList>
 
           {/* General Rules */}
           <TabsContent value="general" className="space-y-6">
@@ -217,16 +215,19 @@ export default function RulesPage() {
                       <div className={`w-4 h-4 rounded-full ${rank.color}`}></div>
                       <h4 className="text-white font-medium">{rank.name}</h4>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                      {rank.tiers.map((tier) => (
-                        <div
-                          key={tier.name}
-                          className="flex flex-col p-2 bg-gray-800/50 rounded text-center"
-                        >
-                          <span className="text-xs text-gray-300">{tier.name.split(' ')[1]}</span>
-                          <span className="text-xs text-gray-500">{tier.mmrRange}</span>
-                        </div>
-                      ))}
+                    <div className={`grid gap-2 ${rank.tiers.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5'}`}>
+                      {rank.tiers.map((tier) => {
+                        const tierLabel = tier.name.split(' ')[1];
+                        return (
+                          <div
+                            key={tier.name}
+                            className="flex flex-col p-2 bg-gray-800/50 rounded text-center"
+                          >
+                            {tierLabel && <span className="text-xs text-gray-300">{tierLabel}</span>}
+                            <span className="text-xs text-gray-500">{tier.mmrRange}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -315,38 +316,38 @@ export default function RulesPage() {
                 <li>{t('match.submitting1')}</li>
                 <li>{t('match.submitting2')}</li>
                 <li>{t('match.submitting3')}</li>
-                <li>{t('match.submitting4')}</li>
               </ul>
 
-              <div className="mt-6 space-y-6">
-                <div>
-                  <h4 className="text-white font-medium mb-2">{t('match.screenshotAllPlayers')}</h4>
-                  <p className="text-sm text-gray-400 mb-3">{t('match.screenshotAllPlayersDesc')}</p>
-                  <div className="relative w-full max-w-md">
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-                      <Image
-                        src="/ss/ex1.webp"
-                        alt="Individual result screenshot example"
-                        fill
-                        sizes="(max-width: 768px) 100vw, 448px"
-                        className="object-contain"
-                      />
+              <div className="mt-6">
+                <p className="text-gray-300 mb-4">{t('match.screenshotNotice')}</p>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-white font-medium mb-2">{t('match.screenshotExample1Title')}</h4>
+                    <div className="relative w-full max-w-md">
+                      <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                        <Image
+                          src="/rules/cmini_example_1.webp"
+                          alt="Individual result screenshot example"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 448px"
+                          className="object-contain"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div>
-                  <h4 className="text-white font-medium mb-2">{t('match.screenshotFirstPlace')}</h4>
-                  <p className="text-sm text-gray-400 mb-3">{t('match.screenshotFirstPlaceDesc')}</p>
-                  <div className="relative w-full max-w-md">
-                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
-                      <Image
-                        src="/ss/ex2.webp"
-                        alt="Final score screenshot example"
-                        fill
-                        sizes="(max-width: 768px) 100vw, 448px"
-                        className="object-contain"
-                      />
+                  <div>
+                    <h4 className="text-white font-medium mb-2">{t('match.screenshotExample2Title')}</h4>
+                    <div className="relative w-full max-w-md">
+                      <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                        <Image
+                          src="/rules/cmini_example_2.webp"
+                          alt="Final score screenshot example"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 448px"
+                          className="object-contain"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -358,6 +359,55 @@ export default function RulesPage() {
                 <li>{t('match.disconnection1')}</li>
                 <li>{t('match.disconnection2')}</li>
               </ul>
+            </RuleSection>
+          </TabsContent>
+
+          {/* Community */}
+          <TabsContent value="community" className="space-y-6">
+            <RuleSection
+              title={t('community.discordTitle')}
+              icon={<Users className="w-5 h-5" />}
+            >
+              <p className="text-gray-300 mb-4">{t('community.discordDesc')}</p>
+              <iframe
+                src="https://discord.com/widget?id=1455513103692202098&theme=dark"
+                sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
+                className="w-full h-[400px] rounded-lg border-0"
+              />
+            </RuleSection>
+
+            <RuleSection
+              title={t('community.title')}
+              icon={<Shield className="w-5 h-5" />}
+            >
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-white font-medium mb-2">{t('community.generalRulesTitle')}</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-300">
+                    <li>{t('community.rule1')}</li>
+                    <li>{t('community.rule2')}</li>
+                    <li>{t('community.rule3')}</li>
+                    <li>{t('community.rule4')}</li>
+                    <li>{t('community.rule5')}</li>
+                    <li>{t('community.rule6')}</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="text-white font-medium mb-2">{t('community.loungeRulesTitle')}</h4>
+                  <p className="text-gray-300">{t('community.loungeRulesDesc')}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-white font-medium mb-2">{t('community.moderationTitle')}</h4>
+                  <ul className="list-disc list-inside space-y-1 text-gray-300">
+                    <li>{t('community.moderation1')}</li>
+                    <li>{t('community.moderation2')}</li>
+                  </ul>
+                </div>
+
+                <p className="text-gray-400 text-sm italic">{t('community.agreement')}</p>
+              </div>
             </RuleSection>
           </TabsContent>
 

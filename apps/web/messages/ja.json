@@ -97,7 +97,26 @@
       "general": "一般",
       "ranking": "ランキング",
       "match": "試合ルール",
-      "penalty": "ペナルティ"
+      "penalty": "ペナルティ",
+      "community": "コミュニティ"
+    },
+    "community": {
+      "title": "コミュニティガイドライン",
+      "generalRulesTitle": "一般ルール",
+      "rule1": "敬意を持って接する - 嫌がらせ、いじめ、個人攻撃は禁止",
+      "rule2": "差別禁止 - ヘイトスピーチや差別的発言は禁止",
+      "rule3": "不適切なコンテンツ禁止 - NSFW、スパム、違法コンテンツは禁止",
+      "rule4": "なりすまし禁止 - 他のプレイヤーやスタッフになりすまさない",
+      "rule5": "サブアカウント禁止 - 複数アカウントの作成は厳禁",
+      "rule6": "Discord利用規約の遵守 - Discord利用規約に従うこと",
+      "loungeRulesTitle": "ラウンジルール",
+      "loungeRulesDesc": "試合ルール、ランキングシステムの詳細は「試合ルール」タブをご確認ください。",
+      "moderationTitle": "モデレーション",
+      "moderation1": "上記に記載されていない行為についてもモデレーターが対応する場合があります",
+      "moderation2": "異議申し立てはモデレーターへDMでお願いします",
+      "agreement": "このサーバーに参加することで、これらのガイドラインに同意したものとみなされます。",
+      "discordTitle": "Discordサーバー",
+      "discordDesc": "試合通知を受け取ったり、他のプレイヤーと交流できます。参加前に以下のコミュニティガイドラインをご確認ください。"
     },
     "general": {
       "warning": "ラウンジに参加する前にすべてのルールをお読みください。ルール違反は警告またはペナルティの対象となる場合があります。",
@@ -140,11 +159,9 @@
       "submitting1": "試合終了後、試合ページからスコアを提出してください。",
       "submitting2": "各レースの順位を入力してください。",
       "submitting3": "クラッシュアウト/ランクアウトした場合は該当レースにチェックを入れてください。",
-      "submitting4": "結果のスクリーンショットを提出してください。",
-      "screenshotAllPlayers": "全員",
-      "screenshotAllPlayersDesc": "各レース結果が写っている画面のスクリーンショットを提出してください。",
-      "screenshotFirstPlace": "1位のプレイヤーのみ",
-      "screenshotFirstPlaceDesc": "全体結果の画面のスクリーンショットも提出してください。",
+      "screenshotNotice": "スコアに不整合が見つかった場合、確認のためスクリーンショットの提出をお願いすることがあります。以下の画面を保存しておいてください。",
+      "screenshotExample1Title": "個人結果画面",
+      "screenshotExample2Title": "最終結果画面",
       "disconnectionTitle": "切断について",
       "disconnection1": "試合中に切断した場合、スコア提出時に該当レースの「Disconnected」にチェックを入れてください。",
       "disconnection2": "切断後のすべてのレースは0ポイントとして扱われます。"
