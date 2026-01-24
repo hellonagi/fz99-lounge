@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
-import { HowToJoinSection, DiscordCommunitySection } from '@/components/features/home';
+import { HowToJoinSection } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
@@ -129,11 +129,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* How to Join Section - only for non-authenticated users */}
-      {!isAuthenticated && <HowToJoinSection />}
-
-      {/* Discord Community Section - always visible */}
-      <DiscordCommunitySection />
+      {/* How to Join Section */}
+      <HowToJoinSection />
 
       {/* Recent Matches Section */}
       <main className="py-16 bg-gray-800">
