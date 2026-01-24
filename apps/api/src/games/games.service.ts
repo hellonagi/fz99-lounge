@@ -1218,8 +1218,6 @@ export class GamesService {
       participant: updated,
     });
 
-    await this.checkAllScoresVerifiedAndFinalize(gameId);
-
     return updated;
   }
 
@@ -1397,65 +1395,4 @@ export class GamesService {
     return updated;
   }
 
-  /**
-   * Check if all scores are verified and finalize match
-   * Condition: All participants verified + FINAL_SCORE screenshot verified
-   */
-  private async checkAllScoresVerifiedAndFinalize(gameId: number) {
-    const game = await this.prisma.game.findUnique({
-      where: { id: gameId },
-      include: {
-        match: true,
-        participants: true,
-      },
-    });
-
-    if (!game || (game.match.status !== MatchStatus.IN_PROGRESS && game.match.status !== MatchStatus.COMPLETED)) {
-      return;
-    }
-
-    if (game.participants.length === 0) {
-      return;
-    }
-
-    const allScoresVerified = game.participants.every(p => p.status === ResultStatus.VERIFIED);
-
-    const verifiedFinalScore = await this.prisma.gameScreenshotSubmission.count({
-      where: {
-        gameId,
-        type: 'FINAL_SCORE',
-        isVerified: true,
-        deletedAt: null,
-      },
-    });
-
-    this.logger.log(
-      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScore}/1`,
-    );
-
-    if (allScoresVerified && verifiedFinalScore >= 1) {
-      try {
-        await this.classicRatingService.calculateAndUpdateRatings(gameId);
-        this.logger.log(`Rating calculation completed for game ${gameId}`);
-      } catch (error) {
-        this.logger.error(`Failed to calculate ratings for game ${gameId}: ${error}`);
-      }
-
-      await this.prisma.match.update({
-        where: { id: game.matchId },
-        data: { status: MatchStatus.FINALIZED },
-      });
-
-      this.logger.log(`Match ${game.matchId} automatically FINALIZED`);
-
-      // Announce match results to Discord
-      await this.announceMatchResultsToDiscord(gameId);
-
-      try {
-        await this.discordBotService.deletePasscodeChannel(gameId);
-      } catch (error) {
-        this.logger.error(`Failed to delete Discord channel: ${error}`);
-      }
-    }
-  }
 }
