@@ -905,22 +905,15 @@ ${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} 
         3: '\u{1F949}', // Bronze medal
       };
 
-      const positionLabels: Record<number, string> = {
-        1: '1st',
-        2: '2nd',
-        3: '3rd',
-      };
-
       const positionLines = params.topParticipants.map((p) => {
         const emoji = positionEmojis[p.position] || '';
-        const label = positionLabels[p.position] || `${p.position}th`;
-        return `${emoji} ${label}: ${p.displayName} (${p.totalScore}pts)`;
+        return `${emoji} ${p.displayName} (${p.totalScore}pts)`;
       });
 
       const messageContent = `**Match Results**
 
-${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber} has ended!
-${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} が終了しました!
+${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!
+${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!
 
 ${positionLines.join('\n')}
 
