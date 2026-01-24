@@ -1,4 +1,9 @@
 {
+  "adminTabs": {
+    "matches": "マッチ",
+    "seasons": "シーズン",
+    "settings": "設定"
+  },
   "landing": {
     "howToJoin": {
       "title": "参加方法",

@@ -1,4 +1,9 @@
 {
+  "adminTabs": {
+    "matches": "Matches",
+    "seasons": "Seasons",
+    "settings": "Settings"
+  },
   "landing": {
     "howToJoin": {
       "title": "How to Join",
