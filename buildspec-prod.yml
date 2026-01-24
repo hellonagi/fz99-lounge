@@ -1,0 +1,25 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: ap-northeast-1
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+  build:
+    commands:
+      - echo Building API image...
+      - docker build -f apps/api/Dockerfile -t $ECR_REGISTRY/fz99-lounge-api:$IMAGE_TAG -t $ECR_REGISTRY/fz99-lounge-api:prod apps/api
+      - echo Building Web image...
+      - docker build -f apps/web/Dockerfile -t $ECR_REGISTRY/fz99-lounge-web:$IMAGE_TAG -t $ECR_REGISTRY/fz99-lounge-web:prod --build-arg NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL apps/web
+  post_build:
+    commands:
+      - echo Pushing images to ECR...
+      - docker push $ECR_REGISTRY/fz99-lounge-api:$IMAGE_TAG
+      - docker push $ECR_REGISTRY/fz99-lounge-api:prod
+      - docker push $ECR_REGISTRY/fz99-lounge-web:$IMAGE_TAG
+      - docker push $ECR_REGISTRY/fz99-lounge-web:prod
+      - echo Build completed on `date`

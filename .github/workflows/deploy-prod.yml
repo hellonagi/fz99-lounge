@@ -1,7 +1,9 @@
-name: Deploy to Staging
+name: Deploy to Production
 
 on:
-  workflow_dispatch:  # Manual trigger only - stg disabled for prod deployment
+  push:
+    branches:
+      - main
 
 env:
   AWS_REGION: ap-northeast-1
@@ -31,6 +33,7 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: fz99-lounge-build-stg
+          buildspec-override: buildspec-prod.yml
           env-vars-for-codebuild: |
             ECR_REGISTRY,
             IMAGE_TAG,
@@ -38,7 +41,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
           IMAGE_TAG: ${{ steps.set-tag.outputs.tag }}
-          NEXT_PUBLIC_BASE_URL: https://beta.fz99lounge.com
+          NEXT_PUBLIC_BASE_URL: https://fz99lounge.com
 
   deploy:
     needs: build-and-push
@@ -56,13 +59,13 @@ jobs:
       - name: Deploy via SSM
         run: |
           aws ssm send-command \
-            --instance-ids ${{ secrets.STG_EC2_INSTANCE_ID }} \
+            --instance-ids ${{ secrets.PROD_EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "cd /home/ec2-user/fz99-lounge && sudo -u ec2-user git fetch origin && sudo -u ec2-user git checkout stg && sudo -u ec2-user git reset --hard origin/stg",
+              "cd /home/ec2-user/fz99-lounge && sudo -u ec2-user git fetch origin && sudo -u ec2-user git checkout main && sudo -u ec2-user git reset --hard origin/main",
               "cd /home/ec2-user/fz99-lounge && aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
-              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg pull",
-              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg up -d",
-              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg exec -T api npx prisma migrate deploy"
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod pull",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod up -d",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod exec -T api npx prisma migrate deploy"
             ]' \
             --output text
