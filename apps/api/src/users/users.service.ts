@@ -476,16 +476,19 @@ export class UsersService {
   ) {
     // シーズンを特定
     let targetSeasonId: number | undefined;
+    let targetSeasonNumber: number | undefined;
 
     if (seasonNumber !== undefined) {
+      // シーズン番号が指定された場合はそのシーズンを使用
       const season = await this.prisma.season.findFirst({
         where: {
           seasonNumber,
           event: { category: eventCategory as EventCategory },
         },
-        select: { id: true },
+        select: { id: true, seasonNumber: true },
       });
       targetSeasonId = season?.id;
+      targetSeasonNumber = season?.seasonNumber;
     } else {
       // アクティブシーズンを取得
       const activeSeason = await this.prisma.season.findFirst({
@@ -493,9 +496,37 @@ export class UsersService {
           isActive: true,
           event: { category: eventCategory as EventCategory },
         },
-        select: { id: true },
+        select: { id: true, seasonNumber: true, eventId: true },
       });
-      targetSeasonId = activeSeason?.id;
+
+      if (activeSeason) {
+        // アクティブシーズンにデータがあるかチェック
+        const count = await this.prisma.userSeasonStats.count({
+          where: { seasonId: activeSeason.id, totalMatches: { gte: 1 } },
+        });
+
+        if (count === 0) {
+          // データがない → 前のシーズンを探す
+          const previousSeason = await this.prisma.season.findFirst({
+            where: {
+              eventId: activeSeason.eventId,
+              seasonNumber: activeSeason.seasonNumber - 1,
+            },
+            select: { id: true, seasonNumber: true },
+          });
+          if (previousSeason) {
+            targetSeasonId = previousSeason.id;
+            targetSeasonNumber = previousSeason.seasonNumber;
+          } else {
+            // 前シーズンがなければアクティブのまま（空でも表示）
+            targetSeasonId = activeSeason.id;
+            targetSeasonNumber = activeSeason.seasonNumber;
+          }
+        } else {
+          targetSeasonId = activeSeason.id;
+          targetSeasonNumber = activeSeason.seasonNumber;
+        }
+      }
     }
 
     if (!targetSeasonId) {
@@ -545,6 +576,7 @@ export class UsersService {
         totalPages,
         hasNext: page < totalPages,
         hasPrev: page > 1,
+        seasonNumber: targetSeasonNumber,
       },
     };
   }

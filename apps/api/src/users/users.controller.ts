@@ -50,7 +50,7 @@ export class UsersController {
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
   ) {
-    const parsedSeason = seasonNumber ? parseInt(seasonNumber, 10) : undefined;
+    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getLeaderboard(
       mode,
       parsedSeason,
