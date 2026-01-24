@@ -47,7 +47,7 @@ export function MatchHero({
 
   return (
     <section className="relative min-h-[500px] overflow-hidden">
-      {/* Animated banner background */}
+      {/* Hero background */}
       <BannerMosaic />
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

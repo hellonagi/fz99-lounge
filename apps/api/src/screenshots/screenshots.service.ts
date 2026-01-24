@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import { ClassicRatingService } from '../rating/classic-rating.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ScreenshotType, ResultStatus } from '@prisma/client';
@@ -19,7 +18,6 @@ export class ScreenshotsService {
   constructor(
     private prisma: PrismaService,
     private storage: StorageService,
-    private classicRatingService: ClassicRatingService,
     private discordBotService: DiscordBotService,
     private eventEmitter: EventEmitter2,
   ) {}
@@ -381,9 +379,6 @@ export class ScreenshotsService {
       }
     }
 
-    // 全スクショがverifiedかチェックし、条件を満たせば自動完了
-    await this.checkAllVerifiedAndFinalize(submission.gameId);
-
     return updated;
   }
 
@@ -452,76 +447,6 @@ export class ScreenshotsService {
     });
 
     return updated;
-  }
-
-  /**
-   * 全スコアがverifiedかチェックし、条件を満たせばマッチをFINALIZEDに変更
-   * 条件: 全参加者のスコアがverify済み + FINAL_SCOREスクショが1つ以上verify済み
-   */
-  private async checkAllVerifiedAndFinalize(gameId: number) {
-    const game = await this.prisma.game.findUnique({
-      where: { id: gameId },
-      include: {
-        match: true,
-        participants: true,
-      },
-    });
-
-    // IN_PROGRESSまたはCOMPLETED（deadline経過後）の場合のみFINALIZEに遷移可能
-    if (!game || (game.match.status !== 'IN_PROGRESS' && game.match.status !== 'COMPLETED')) {
-      return;
-    }
-
-    if (game.participants.length === 0) {
-      return;
-    }
-
-    // NEW: 全参加者のスコアがverify済みかチェック（INDIVIDUALスクショではなくスコア提出に対して）
-    const allScoresVerified = game.participants.every(p => p.status === ResultStatus.VERIFIED);
-
-    // FINAL_SCORE: 1つ以上verify済みか
-    const verifiedFinalScoreCount = await this.prisma.gameScreenshotSubmission.count({
-      where: {
-        gameId,
-        type: ScreenshotType.FINAL_SCORE,
-        isVerified: true,
-        deletedAt: null,
-      },
-    });
-
-    this.logger.log(
-      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScoreCount}/1`,
-    );
-
-    // 条件: 全スコアverify + FINAL_SCOREが1つ以上
-    const isReadyToFinalize = allScoresVerified && verifiedFinalScoreCount >= 1;
-
-    if (isReadyToFinalize) {
-      // レート計算をトリガー
-      try {
-        await this.classicRatingService.calculateAndUpdateRatings(gameId);
-        this.logger.log(`Rating calculation completed for game ${gameId}`);
-      } catch (error) {
-        this.logger.error(`Failed to calculate ratings for game ${gameId}: ${error}`);
-      }
-
-      await this.prisma.match.update({
-        where: { id: game.matchId },
-        data: { status: 'FINALIZED' },
-      });
-
-      this.logger.log(
-        `Match ${game.matchId} automatically set to FINALIZED (all scores + FINAL_SCORE verified)`,
-      );
-
-      // Delete Discord passcode channel
-      try {
-        await this.discordBotService.deletePasscodeChannel(gameId);
-      } catch (error) {
-        this.logger.error(`Failed to delete Discord channel for game ${gameId}: ${error}`);
-        // Continue even if Discord fails
-      }
-    }
   }
 
   /**

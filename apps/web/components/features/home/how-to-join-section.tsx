@@ -28,7 +28,7 @@ export function HowToJoinSection() {
           {/* Left: Join steps */}
           <div className="flex justify-center">
             <div className="space-y-6">
-              <p className="text-gray-400">{t('subtitle')}</p>
+              <p className="text-gray-400 text-center">{t('subtitle')}</p>
 
               {steps.map((step) => (
                 <div key={step.number} className="flex items-start gap-4">
@@ -43,20 +43,22 @@ export function HowToJoinSection() {
               ))}
 
               {/* CTA Button */}
-              <Link
-                href={`${baseUrl}/api/auth/discord`}
-                className="inline-flex items-center justify-center bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
-              >
-                <SiDiscord className="w-5 h-5 mr-2" />
-                {t('ctaButton')}
-              </Link>
+              <div className="flex justify-center mt-12">
+                <Link
+                  href={`${baseUrl}/api/auth/discord`}
+                  className="inline-flex items-center justify-center bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
+                >
+                  <SiDiscord className="w-5 h-5 mr-2" />
+                  {t('ctaButton')}
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* Right: Discord Widget */}
           <div className="flex flex-col items-center md:justify-center mt-12 md:mt-0">
-            <h3 className="text-xl font-semibold text-white mb-2">{t('discord.title')}</h3>
-            <p className="text-gray-400 text-sm mb-4 md:text-center">{t('discord.description')}</p>
+            <h3 className="text-xl font-semibold text-white mb-2 md:hidden">{t('discord.title')}</h3>
+            <p className="text-gray-400 text-center mb-4">{t('discord.description')}</p>
             <iframe
               src="https://discord.com/widget?id=1455513103692202098&theme=dark"
               width="375"

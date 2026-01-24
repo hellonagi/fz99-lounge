@@ -10,6 +10,8 @@ import { EventCategory, MatchStatus, ResultStatus, ScreenshotType } from '@prism
 import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
 import { ClassicRatingService } from '../rating/classic-rating.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 
@@ -38,6 +40,7 @@ export class GamesService {
     private eventEmitter: EventEmitter2,
     private classicRatingService: ClassicRatingService,
     private discordBotService: DiscordBotService,
+    @InjectQueue('matches') private matchQueue: Queue,
   ) {}
 
   async getById(gameId: number, userId?: number) {
@@ -752,12 +755,18 @@ export class GamesService {
     // Announce match results to Discord
     await this.announceMatchResultsToDiscord(game.id);
 
-    // Delete Discord passcode channel
+    // Post match results to match channel
+    await this.postMatchResultsToChannel(game.id);
+
+    // Schedule Discord channel deletion after 1 hour
     try {
-      await this.discordBotService.deletePasscodeChannel(game.id);
+      await this.matchQueue.add(
+        'delete-discord-channel',
+        { gameId: game.id },
+        { delay: 60 * 60 * 1000 }, // 1 hour
+      );
     } catch (error) {
-      this.logger.error('Failed to delete Discord channel:', error);
-      // Continue even if Discord fails
+      this.logger.error('Failed to schedule Discord channel deletion:', error);
     }
 
     return {
@@ -932,6 +941,73 @@ export class GamesService {
     } catch (error) {
       this.logger.error(`Failed to announce match results for game ${gameId}:`, error);
       // Continue even if Discord fails
+    }
+  }
+
+  /**
+   * Post match results embed to the match Discord channel
+   * Shows all participants with medals for top 3, numbers for rest
+   */
+  private async postMatchResultsToChannel(gameId: number): Promise<void> {
+    try {
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        include: {
+          participants: {
+            where: {
+              status: ResultStatus.VERIFIED,
+            },
+            include: {
+              user: {
+                select: {
+                  displayName: true,
+                },
+              },
+            },
+            orderBy: {
+              totalScore: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!game || game.participants.length === 0) {
+        this.logger.debug(`No verified participants for game ${gameId}, skipping channel results`);
+        return;
+      }
+
+      // Calculate positions with ties
+      const participantsWithPositions: Array<{
+        position: number;
+        displayName: string;
+        totalScore: number;
+      }> = [];
+
+      let currentPosition = 1;
+      let previousScore: number | null = null;
+
+      for (const participant of game.participants) {
+        if (previousScore !== null && participant.totalScore !== previousScore) {
+          currentPosition = participantsWithPositions.length + 1;
+        }
+
+        participantsWithPositions.push({
+          position: currentPosition,
+          displayName: participant.user.displayName ?? 'Unknown',
+          totalScore: participant.totalScore ?? 0,
+        });
+
+        previousScore = participant.totalScore;
+      }
+
+      await this.discordBotService.postMatchResultsToChannel({
+        gameId,
+        participants: participantsWithPositions,
+      });
+
+      this.logger.log(`Posted match results to channel for game ${gameId}`);
+    } catch (error) {
+      this.logger.error(`Failed to post match results to channel for game ${gameId}:`, error);
     }
   }
 
@@ -1218,8 +1294,6 @@ export class GamesService {
       participant: updated,
     });
 
-    await this.checkAllScoresVerifiedAndFinalize(gameId);
-
     return updated;
   }
 
@@ -1397,65 +1471,4 @@ export class GamesService {
     return updated;
   }
 
-  /**
-   * Check if all scores are verified and finalize match
-   * Condition: All participants verified + FINAL_SCORE screenshot verified
-   */
-  private async checkAllScoresVerifiedAndFinalize(gameId: number) {
-    const game = await this.prisma.game.findUnique({
-      where: { id: gameId },
-      include: {
-        match: true,
-        participants: true,
-      },
-    });
-
-    if (!game || (game.match.status !== MatchStatus.IN_PROGRESS && game.match.status !== MatchStatus.COMPLETED)) {
-      return;
-    }
-
-    if (game.participants.length === 0) {
-      return;
-    }
-
-    const allScoresVerified = game.participants.every(p => p.status === ResultStatus.VERIFIED);
-
-    const verifiedFinalScore = await this.prisma.gameScreenshotSubmission.count({
-      where: {
-        gameId,
-        type: 'FINAL_SCORE',
-        isVerified: true,
-        deletedAt: null,
-      },
-    });
-
-    this.logger.log(
-      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScore}/1`,
-    );
-
-    if (allScoresVerified && verifiedFinalScore >= 1) {
-      try {
-        await this.classicRatingService.calculateAndUpdateRatings(gameId);
-        this.logger.log(`Rating calculation completed for game ${gameId}`);
-      } catch (error) {
-        this.logger.error(`Failed to calculate ratings for game ${gameId}: ${error}`);
-      }
-
-      await this.prisma.match.update({
-        where: { id: game.matchId },
-        data: { status: MatchStatus.FINALIZED },
-      });
-
-      this.logger.log(`Match ${game.matchId} automatically FINALIZED`);
-
-      // Announce match results to Discord
-      await this.announceMatchResultsToDiscord(gameId);
-
-      try {
-        await this.discordBotService.deletePasscodeChannel(gameId);
-      } catch (error) {
-        this.logger.error(`Failed to delete Discord channel: ${error}`);
-      }
-    }
-  }
 }

@@ -18,6 +18,9 @@ import { RatingModule } from '../rating/rating.module';
     BullModule.registerQueue({
       name: 'games',
     }),
+    BullModule.registerQueue({
+      name: 'matches',
+    }),
   ],
   controllers: [GamesController],
   providers: [GamesService, GamesProcessor, GamesGateway],

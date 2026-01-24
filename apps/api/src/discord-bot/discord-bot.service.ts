@@ -17,6 +17,7 @@ import {
   PartialMessageReaction,
   User,
   PartialUser,
+  EmbedBuilder,
 } from 'discord.js';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -440,17 +441,20 @@ Remove your reaction to stop receiving notifications.
       // Post initial passcode message
       const baseUrl = this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
-      const leagueDisplay = params.leagueType.replace(/_/g, ' ');
+      const leagueDisplay = params.leagueType
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 
-      const messageContent = `@here
-**${leagueDisplay} passcode: ${params.passcode}**
+      const embed = new EmbedBuilder()
+        .setTitle(`${leagueDisplay}\npasscode: ${params.passcode}`)
+        .setColor(0x3498db)
+        .setDescription(
+          'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
+        )
+        .addFields({ name: 'Score Submission', value: matchUrl });
 
-Please hide the passcode on your stream!
-配信者はパスコードを隠してください！
-
-Score Submission: ${matchUrl}`;
-
-      await channel.send({ content: messageContent });
+      await channel.send({ content: '@here', embeds: [embed] });
 
       // Save channel ID to database
       await this.prisma.game.update({
@@ -500,13 +504,14 @@ Score Submission: ${matchUrl}`;
         return false;
       }
 
-      const messageContent = `@here
-**New Passcode: ${params.passcode}**
+      const embed = new EmbedBuilder()
+        .setTitle(`New Passcode: ${params.passcode}`)
+        .setColor(0xf1c40f)
+        .setDescription(
+          'Split Vote triggered. Please rejoin with the new passcode.\nスプリット投票が成立しました。新しいパスコードで再参加してください。',
+        );
 
-Split Vote triggered. Please rejoin with the new passcode.
-スプリット投票が成立しました。新しいパスコードで再参加してください。`;
-
-      await (channel as TextChannel).send({ content: messageContent });
+      await (channel as TextChannel).send({ content: '@here', embeds: [embed] });
 
       this.logger.log(
         `Posted new passcode to channel ${game.discordChannelId} for game ${params.gameId}`,
@@ -620,6 +625,80 @@ This match has been cancelled by an administrator.
   }
 
   /**
+   * Post match results embed to the match channel
+   */
+  async postMatchResultsToChannel(params: {
+    gameId: number;
+    participants: Array<{
+      position: number;
+      displayName: string;
+      totalScore: number;
+    }>;
+  }): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug('Discord bot not ready or disabled, skipping match results to channel');
+      return false;
+    }
+
+    try {
+      const game = await this.prisma.game.findUnique({
+        where: { id: params.gameId },
+        select: { discordChannelId: true },
+      });
+
+      if (!game?.discordChannelId) {
+        this.logger.debug(`No Discord channel found for game ${params.gameId}`);
+        return false;
+      }
+
+      const channel = await this.client.channels.fetch(game.discordChannelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Channel ${game.discordChannelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      // Build position lines
+      const positionEmojis: Record<number, string> = {
+        1: '\u{1F947}', // 🥇
+        2: '\u{1F948}', // 🥈
+        3: '\u{1F949}', // 🥉
+      };
+
+      const positionLines = params.participants.map((p) => {
+        if (p.position <= 3) {
+          const emoji = positionEmojis[p.position];
+          return `${emoji} **${p.displayName}** - ${p.totalScore}`;
+        }
+        return `${p.position}. **${p.displayName}** - ${p.totalScore}`;
+      });
+
+      const embed = new EmbedBuilder()
+        .setTitle('Match Results')
+        .setColor(0xf39c12)
+        .setDescription(positionLines.join('\n'))
+        .setFooter({
+          text: 'This channel will be deleted in 1 hour. / このチャンネルは1時間後に削除されます。',
+        });
+
+      await (channel as TextChannel).send({ embeds: [embed] });
+
+      this.logger.log(
+        `Posted match results to channel ${game.discordChannelId} for game ${params.gameId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post match results to channel for game ${params.gameId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Delete passcode channel when match is finalized or cancelled
    */
   async deletePasscodeChannel(gameId: number): Promise<boolean> {
@@ -701,33 +780,34 @@ This match has been cancelled by an administrator.
       // Format the scheduled start time as Discord timestamp
       const startTime = Math.floor(params.scheduledStart.getTime() / 1000);
 
-      // Build role mention (if configured)
-      const roleId = this.getMatchNotifyRoleId();
-      const roleMention = roleId ? `<@&${roleId}>` : '';
-
-      // Format display values
-      const inGameModeDisplay = params.inGameMode.replace(/_/g, ' ');
-      const leagueDisplay = params.leagueType.replace(/_/g, ' ');
-
       // Build join link
       const baseUrl =
         this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
 
-      // Build message content (plain text for mobile notification visibility)
-      const messageContent = `${roleMention}
-**New match scheduled!**
+      // Build role mention
+      const roleId = this.getMatchNotifyRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
-${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber}
-Mode: ${inGameModeDisplay} / League: ${leagueDisplay}
-Start: <t:${startTime}:F> (<t:${startTime}:R>)
-Players: ${params.minPlayers}-${params.maxPlayers}
-Created by: ${params.creatorDisplayName}
+      // Build embed
+      const embed = new EmbedBuilder()
+        .setTitle('New match scheduled!')
+        .setColor(0x3498db)
+        .addFields(
+          {
+            name: 'Match',
+            value: `${params.seasonName} season${params.seasonNumber} #${params.matchNumber}`,
+          },
+          { name: 'Start', value: `<t:${startTime}:F> (<t:${startTime}:R>)` },
+          {
+            name: 'Players',
+            value: `${params.minPlayers}-${params.maxPlayers}`,
+            inline: true,
+          },
+          { name: 'Created by', value: params.creatorDisplayName, inline: true },
+          { name: 'Join', value: baseUrl },
+        );
 
-Join: ${baseUrl}`;
-
-      await (channel as TextChannel).send({
-        content: messageContent,
-      });
+      await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
 
       this.logger.log(
         `Announced match #${params.matchNumber} creation to channel ${channelId}`,
@@ -771,22 +851,23 @@ Join: ${baseUrl}`;
         return false;
       }
 
-      const roleId = this.getMatchNotifyRoleId();
-      const roleMention = roleId ? `<@&${roleId}>` : '';
-
       const baseUrl =
         this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
 
-      const messageContent = `${roleMention}
-**Match starting in 5 minutes!**
+      // Build role mention
+      const roleId = this.getMatchNotifyRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
-${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber}
+      // Build embed
+      const embed = new EmbedBuilder()
+        .setTitle('Match starting in 5 minutes!')
+        .setColor(0xf1c40f)
+        .setDescription(
+          `${params.seasonName} season${params.seasonNumber} #${params.matchNumber}`,
+        )
+        .addFields({ name: 'Join', value: baseUrl });
 
-Join: ${baseUrl}`;
-
-      await (channel as TextChannel).send({
-        content: messageContent,
-      });
+      await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
 
       this.logger.log(
         `Announced match #${params.matchNumber} reminder to channel ${channelId}`,
@@ -830,27 +911,32 @@ Join: ${baseUrl}`;
         return false;
       }
 
+      // Build role mention
       const roleId = this.getMatchNotifyRoleId();
-      const roleMention = roleId ? `<@&${roleId}>` : '';
+      const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
-      let reasonText = '';
+      // Build embed
+      const embed = new EmbedBuilder()
+        .setTitle('Match Cancelled')
+        .setColor(0xe74c3c)
+        .setDescription(
+          `${params.seasonName} season${params.seasonNumber} #${params.matchNumber} has been cancelled.\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} はキャンセルされました。`,
+        );
+
+      // Add reason field if provided
       if (params.reason === 'insufficient_players') {
-        reasonText =
-          '\nReason: Not enough players / 理由: 参加者が規定人数に達しませんでした';
+        embed.addFields({
+          name: 'Reason / 理由',
+          value: 'Not enough players / 参加者が規定人数に達しませんでした',
+        });
       } else if (params.reason === 'admin_cancelled') {
-        reasonText =
-          '\nReason: Cancelled by administrator / 理由: 管理者によりキャンセルされました';
+        embed.addFields({
+          name: 'Reason / 理由',
+          value: 'Cancelled by administrator / 管理者によりキャンセルされました',
+        });
       }
 
-      const messageContent = `${roleMention}
-**Match Cancelled**
-
-${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber} has been cancelled.
-${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} はキャンセルされました。${reasonText}`;
-
-      await (channel as TextChannel).send({
-        content: messageContent,
-      });
+      await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
 
       this.logger.log(
         `Announced match #${params.matchNumber} cancellation to channel ${channelId}`,
@@ -907,21 +993,19 @@ ${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} 
 
       const positionLines = params.topParticipants.map((p) => {
         const emoji = positionEmojis[p.position] || '';
-        return `${emoji} ${p.displayName} (${p.totalScore}pts)`;
+        return `${emoji} **${p.displayName}** - ${p.totalScore}`;
       });
 
-      const messageContent = `**Match Results**
+      // Build embed
+      const embed = new EmbedBuilder()
+        .setTitle('Match Results')
+        .setColor(0xf39c12)
+        .setDescription(
+          `${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!\n\n${positionLines.join('\n')}`,
+        )
+        .addFields({ name: 'View results', value: matchUrl });
 
-${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!
-${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!
-
-${positionLines.join('\n')}
-
-View results: ${matchUrl}`;
-
-      await (channel as TextChannel).send({
-        content: messageContent,
-      });
+      await (channel as TextChannel).send({ embeds: [embed] });
 
       this.logger.log(
         `Announced match #${params.matchNumber} results to channel ${channelId}`,
