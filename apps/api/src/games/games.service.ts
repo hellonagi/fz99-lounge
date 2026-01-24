@@ -199,11 +199,14 @@ export class GamesService {
     }
 
     // Get previous ratings for each user to calculate change
+    // Important: Filter by the SAME season to avoid cross-season rating comparison
     const userIds = game.participants.map(p => p.userId);
+    const seasonId = game.match?.seasonId;
     const previousRatings = await this.prisma.ratingHistory.findMany({
       where: {
         userId: { in: userIds },
-        matchId: { lt: game.matchId }, // Matches before this one
+        matchId: { lt: game.matchId },
+        match: { seasonId }, // Only consider matches in the same season
       },
       orderBy: { createdAt: 'desc' },
       distinct: ['userId'],
