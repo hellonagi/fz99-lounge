@@ -129,8 +129,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* How to Join Section */}
-      <HowToJoinSection />
+      {/* How to Join Section - only show when not logged in */}
+      {!isAuthenticated && <HowToJoinSection />}
 
       {/* Recent Matches Section */}
       <main className="py-16 bg-gray-800">
