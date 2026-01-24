@@ -7,7 +7,6 @@ import { z } from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Alert } from '@/components/ui/alert';
 import {
   Select,
@@ -72,7 +71,6 @@ const matchSchema = z.object({
     .string()
     .min(1, 'Max players is required')
     .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 1, 'Max players must be at least 1'),
-  notes: z.string().optional(),
 }).refine(
   (data) => parseInt(data.maxPlayers) >= parseInt(data.minPlayers),
   { message: 'Max players must be greater than or equal to min players', path: ['maxPlayers'] }
@@ -102,7 +100,6 @@ export function CreateMatchCard() {
       scheduledStart: '',
       minPlayers: '40',
       maxPlayers: '99',
-      notes: '',
     },
   });
 
@@ -153,14 +150,12 @@ export function CreateMatchCard() {
         scheduledStart: new Date(data.scheduledStart).toISOString(),
         minPlayers: parseInt(data.minPlayers),
         maxPlayers: parseInt(data.maxPlayers),
-        notes: data.notes || undefined,
       });
 
       setSuccess(true);
       form.reset({
         ...form.getValues(),
         scheduledStart: '',
-        notes: '',
       });
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
@@ -339,25 +334,6 @@ export function CreateMatchCard() {
                 )}
               />
             </div>
-
-            {/* Notes */}
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any special notes for this match..."
-                      rows={3}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             {/* Error/Success Messages */}
             {form.formState.errors.root && (

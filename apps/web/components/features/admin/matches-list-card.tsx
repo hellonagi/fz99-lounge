@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { matchesApi } from '@/lib/api';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
-import { Trash2, Ban } from 'lucide-react';
+import { Trash2, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Match {
   id: number;
@@ -32,6 +32,8 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: 'bg-red-500/20 text-red-300 border-red-500/50',
 };
 
+const ITEMS_PER_PAGE = 20;
+
 export function MatchesListCard() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,11 +42,16 @@ export function MatchesListCard() {
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [matchToCancel, setMatchToCancel] = useState<Match | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchMatches = async () => {
     try {
       const response = await matchesApi.getAll();
-      setMatches(response.data);
+      // Sort by createdAt descending (newest first)
+      const sorted = [...response.data].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setMatches(sorted);
       setError(null);
     } catch {
       setError('Failed to load matches');
@@ -56,6 +63,13 @@ export function MatchesListCard() {
   useEffect(() => {
     fetchMatches();
   }, []);
+
+  // Pagination
+  const totalPages = Math.ceil(matches.length / ITEMS_PER_PAGE);
+  const paginatedMatches = matches.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const handleDeleteClick = (match: Match) => {
     setMatchToDelete(match);
@@ -69,7 +83,8 @@ export function MatchesListCard() {
       await matchesApi.delete(matchToDelete.id);
       setDeleteDialogOpen(false);
       setMatchToDelete(null);
-      // Refresh list
+      // Refresh list and reset to first page
+      setCurrentPage(1);
       await fetchMatches();
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } } };
@@ -152,7 +167,7 @@ export function MatchesListCard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {matches.map((match) => {
+                  {paginatedMatches.map((match) => {
                     const category = match.season?.event?.category;
                     const currentPlayers = match.participants?.length ?? 0;
                     const leagueType = match.games?.[0]?.leagueType ?? '-';
@@ -216,6 +231,36 @@ export function MatchesListCard() {
                   );})}
                 </tbody>
               </table>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-700">
+                  <div className="text-sm text-gray-400">
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, matches.length)} of {matches.length}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-sm text-gray-300 px-2">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
