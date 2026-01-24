@@ -57,18 +57,7 @@ export default function LeaderboardPage() {
         const response = await seasonsApi.getAll('CLASSIC');
         const seasonList = response.data as Season[];
         setSeasons(seasonList);
-
-        // Find active season and set as default
-        const activeSeason = seasonList.find((s: Season) => s.isActive);
-        if (activeSeason) {
-          setSelectedSeasonNumber(activeSeason.seasonNumber);
-        } else if (seasonList.length > 0) {
-          // Fallback to latest season
-          const latestSeason = seasonList.reduce((prev: Season, curr: Season) =>
-            curr.seasonNumber > prev.seasonNumber ? curr : prev
-          );
-          setSelectedSeasonNumber(latestSeason.seasonNumber);
-        }
+        // シーズン選択はleaderboard取得時にバックエンドから返されるseasonNumberで設定する
       } catch {
         setError(t('failedToLoadSeasons'));
         setLoading(false);
@@ -80,16 +69,22 @@ export default function LeaderboardPage() {
 
   // Fetch leaderboard when season or page changes
   useEffect(() => {
-    if (selectedSeasonNumber === undefined) return;
+    // 初回はseasons取得を待つ
+    if (seasons.length === 0) return;
 
     const fetchLeaderboard = async () => {
       setLoading(true);
       setError(null);
       try {
         const response = await usersApi.getLeaderboard('CLASSIC', selectedSeasonNumber, page);
-        const result = response.data as { data: LeaderboardEntry[]; meta: { totalPages: number } };
+        const result = response.data as { data: LeaderboardEntry[]; meta: { totalPages: number; seasonNumber?: number } };
         setLeaderboardData(result.data);
         setTotalPages(result.meta.totalPages);
+
+        // バックエンドから返されたシーズン番号で選択を同期
+        if (result.meta.seasonNumber !== undefined && result.meta.seasonNumber !== selectedSeasonNumber) {
+          setSelectedSeasonNumber(result.meta.seasonNumber);
+        }
       } catch {
         setError(t('failedToLoadLeaderboard'));
       } finally {
@@ -98,7 +93,7 @@ export default function LeaderboardPage() {
     };
 
     fetchLeaderboard();
-  }, [selectedSeasonNumber, page, t]);
+  }, [seasons, selectedSeasonNumber, page, t]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeasonNumber(seasonNumber);
@@ -114,7 +109,7 @@ export default function LeaderboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
-        {seasons.length > 0 && (
+        {seasons.length > 0 && selectedSeasonNumber !== undefined && (
           <SeasonSelect
             seasons={seasons}
             selectedSeasonNumber={selectedSeasonNumber}

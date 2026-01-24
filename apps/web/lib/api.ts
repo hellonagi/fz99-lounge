@@ -53,7 +53,7 @@ export const usersApi = {
   getUserByProfileId: (profileId: number) => api.get(`/users/profile/${profileId}`),
   getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
     const params = new URLSearchParams({ mode, page: String(page), limit: String(limit) });
-    if (seasonNumber) params.append('seasonNumber', String(seasonNumber));
+    if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
   },
   getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC') => {
