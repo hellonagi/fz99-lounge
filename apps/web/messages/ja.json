@@ -21,10 +21,11 @@
           "description": "マッチ終了後、スコアを送信"
         }
       },
-      "cta": "準備はできましたか？今すぐ参加しよう",
-      "ctaButton": "Discordログイン",
-      "discordNotice": "Discordコミュニティに参加して試合通知を受け取りましょう",
-      "discordLink": "Discordに参加"
+      "ctaButton": "Discordでログイン",
+      "discord": {
+        "title": "Discordコミュニティ",
+        "description": "試合通知を受け取ったり、他のプレイヤーと交流しましょう"
+      }
     }
   },
   "common": {

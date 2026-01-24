@@ -21,10 +21,11 @@
           "description": "After the match, submit your scores"
         }
       },
-      "cta": "Ready to compete? Join now",
       "ctaButton": "Login with Discord",
-      "discordNotice": "Join our Discord community for match notifications",
-      "discordLink": "Join Discord"
+      "discord": {
+        "title": "Discord Community",
+        "description": "Get match notifications and connect with other players"
+      }
     }
   },
   "common": {
