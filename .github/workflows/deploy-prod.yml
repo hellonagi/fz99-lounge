@@ -1,0 +1,71 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-1.amazonaws.com
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: set-tag
+        run: echo "tag=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run CodeBuild
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: fz99-lounge-build-stg
+          buildspec-override: buildspec-prod.yml
+          env-vars-for-codebuild: |
+            ECR_REGISTRY,
+            IMAGE_TAG,
+            NEXT_PUBLIC_BASE_URL
+        env:
+          ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
+          IMAGE_TAG: ${{ steps.set-tag.outputs.tag }}
+          NEXT_PUBLIC_BASE_URL: https://fz99lounge.com
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy via SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.PROD_EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters 'commands=[
+              "cd /home/ec2-user/fz99-lounge && sudo -u ec2-user git fetch origin && sudo -u ec2-user git checkout main && sudo -u ec2-user git reset --hard origin/main",
+              "cd /home/ec2-user/fz99-lounge && aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod pull",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod up -d",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod exec -T api npx prisma migrate deploy"
+            ]' \
+            --output text

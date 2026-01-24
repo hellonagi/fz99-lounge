@@ -61,6 +61,21 @@ export interface AnnounceMatchCancelledParams {
   seasonNumber: number;
   category: string;
   seasonName: string;
+  reason?: 'insufficient_players' | 'admin_cancelled';
+}
+
+export interface MatchResultParticipant {
+  position: number;
+  displayName: string;
+  totalScore: number;
+}
+
+export interface AnnounceMatchResultsParams {
+  matchNumber: number;
+  seasonNumber: number;
+  category: string;
+  seasonName: string;
+  topParticipants: MatchResultParticipant[];
 }
 
 @Injectable()
@@ -508,6 +523,54 @@ Split Vote triggered. Please rejoin with the new passcode.
   }
 
   /**
+   * Post screenshot request to channel with user mention
+   */
+  async postScreenshotRequest(
+    channelId: string,
+    discordId: string,
+    matchUrl: string,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping screenshot request',
+      );
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const messageContent = `<@${discordId}>
+**Screenshot Request / スクリーンショット提出依頼**
+
+A moderator has requested you to submit a screenshot for verification.
+モデレーターからスクリーンショットの提出を依頼されました。
+
+Please check the match page: ${matchUrl}`;
+
+      await (channel as TextChannel).send({ content: messageContent });
+
+      this.logger.log(
+        `Posted screenshot request to channel ${channelId} for user ${discordId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post screenshot request to channel ${channelId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Post cancellation message to existing channel
    */
   async postCancellationMessage(gameId: number): Promise<boolean> {
@@ -770,11 +833,20 @@ Join: ${baseUrl}`;
       const roleId = this.getMatchNotifyRoleId();
       const roleMention = roleId ? `<@&${roleId}>` : '';
 
+      let reasonText = '';
+      if (params.reason === 'insufficient_players') {
+        reasonText =
+          '\nReason: Not enough players / 理由: 参加者が規定人数に達しませんでした';
+      } else if (params.reason === 'admin_cancelled') {
+        reasonText =
+          '\nReason: Cancelled by administrator / 理由: 管理者によりキャンセルされました';
+      }
+
       const messageContent = `${roleMention}
 **Match Cancelled**
 
 ${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber} has been cancelled.
-${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} はキャンセルされました。`;
+${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} はキャンセルされました。${reasonText}`;
 
       await (channel as TextChannel).send({
         content: messageContent,
@@ -788,6 +860,77 @@ ${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} 
     } catch (error) {
       this.logger.error(
         `Failed to announce match #${params.matchNumber} cancellation:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Announce match results to announce channel
+   */
+  async announceMatchResults(
+    params: AnnounceMatchResultsParams,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping match results announcement',
+      );
+      return false;
+    }
+
+    const channelId = this.getMatchAnnounceChannelId();
+    if (!channelId) {
+      this.logger.debug('Match announce channel not configured');
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Announce channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const baseUrl =
+        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+      const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
+
+      // Build position lines with medals
+      const positionEmojis: Record<number, string> = {
+        1: '\u{1F947}', // Gold medal
+        2: '\u{1F948}', // Silver medal
+        3: '\u{1F949}', // Bronze medal
+      };
+
+      const positionLines = params.topParticipants.map((p) => {
+        const emoji = positionEmojis[p.position] || '';
+        return `${emoji} ${p.displayName} (${p.totalScore}pts)`;
+      });
+
+      const messageContent = `**Match Results**
+
+${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!
+${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!
+
+${positionLines.join('\n')}
+
+View results: ${matchUrl}`;
+
+      await (channel as TextChannel).send({
+        content: messageContent,
+      });
+
+      this.logger.log(
+        `Announced match #${params.matchNumber} results to channel ${channelId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce match #${params.matchNumber} results:`,
         error,
       );
       return false;

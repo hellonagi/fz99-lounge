@@ -1,4 +1,38 @@
 {
+  "adminTabs": {
+    "matches": "マッチ",
+    "seasons": "シーズン",
+    "settings": "設定"
+  },
+  "landing": {
+    "howToJoin": {
+      "title": "参加方法",
+      "subtitle": "4つの簡単なステップで始めよう",
+      "steps": {
+        "login": {
+          "title": "Discordでログイン",
+          "description": "Discordアカウントでログインしてプロフィールを作成"
+        },
+        "displayName": {
+          "title": "表示名を設定",
+          "description": "ゲーム内で使用する名前を設定"
+        },
+        "join": {
+          "title": "試合に参加",
+          "description": "トップページから試合を見つけて参加"
+        },
+        "submit": {
+          "title": "結果を送信",
+          "description": "マッチ終了後、スコアを送信"
+        }
+      },
+      "ctaButton": "Discordでログイン",
+      "discord": {
+        "title": "Discordコミュニティ",
+        "description": "試合通知を受け取ったり、他のプレイヤーと交流しましょう"
+      }
+    }
+  },
   "common": {
     "loading": "読み込み中...",
     "error": "エラーが発生しました",
@@ -38,6 +72,7 @@
     "startsIn": "あと",
     "reviewRules": "参加前に<matchRules>ルール</matchRules>をご確認ください",
     "join": "参加",
+    "loginToJoin": "Discordログインして参加",
     "leave": "キャンセル",
     "joining": "読み込み中...",
     "passcodeNotice": "試合時間になるとパスコードが公開されます。"
@@ -62,7 +97,26 @@
       "general": "一般",
       "ranking": "ランキング",
       "match": "試合ルール",
-      "penalty": "ペナルティ"
+      "penalty": "ペナルティ",
+      "community": "コミュニティ"
+    },
+    "community": {
+      "title": "コミュニティガイドライン",
+      "generalRulesTitle": "一般ルール",
+      "rule1": "敬意を持って接する - 嫌がらせ、いじめ、個人攻撃は禁止",
+      "rule2": "差別禁止 - ヘイトスピーチや差別的発言は禁止",
+      "rule3": "不適切なコンテンツ禁止 - NSFW、スパム、違法コンテンツは禁止",
+      "rule4": "なりすまし禁止 - 他のプレイヤーやスタッフになりすまさない",
+      "rule5": "サブアカウント禁止 - 複数アカウントの作成は厳禁",
+      "rule6": "Discord利用規約の遵守 - Discord利用規約に従うこと",
+      "loungeRulesTitle": "ラウンジルール",
+      "loungeRulesDesc": "試合ルール、ランキングシステムの詳細は「試合ルール」タブをご確認ください。",
+      "moderationTitle": "モデレーション",
+      "moderation1": "上記に記載されていない行為についてもモデレーターが対応する場合があります",
+      "moderation2": "異議申し立てはモデレーターへDMでお願いします",
+      "agreement": "このサーバーに参加することで、これらのガイドラインに同意したものとみなされます。",
+      "discordTitle": "Discordサーバー",
+      "discordDesc": "試合通知を受け取ったり、他のプレイヤーと交流できます。参加前に以下のコミュニティガイドラインをご確認ください。"
     },
     "general": {
       "warning": "ラウンジに参加する前にすべてのルールをお読みください。ルール違反は警告またはペナルティの対象となる場合があります。",
@@ -105,11 +159,9 @@
       "submitting1": "試合終了後、試合ページからスコアを提出してください。",
       "submitting2": "各レースの順位を入力してください。",
       "submitting3": "クラッシュアウト/ランクアウトした場合は該当レースにチェックを入れてください。",
-      "submitting4": "結果のスクリーンショットを提出してください。",
-      "screenshotAllPlayers": "全員",
-      "screenshotAllPlayersDesc": "各レース結果が写っている画面のスクリーンショットを提出してください。",
-      "screenshotFirstPlace": "1位のプレイヤーのみ",
-      "screenshotFirstPlaceDesc": "全体結果の画面のスクリーンショットも提出してください。",
+      "screenshotNotice": "スコアに不整合が見つかった場合、確認のためスクリーンショットの提出をお願いすることがあります。以下の画面を保存しておいてください。",
+      "screenshotExample1Title": "個人結果画面",
+      "screenshotExample2Title": "最終結果画面",
       "disconnectionTitle": "切断について",
       "disconnection1": "試合中に切断した場合、スコア提出時に該当レースの「Disconnected」にチェックを入れてください。",
       "disconnection2": "切断後のすべてのレースは0ポイントとして扱われます。"
@@ -170,6 +222,11 @@
     "positionRange": "{races}: 順位は1から20の間で入力してください。",
     "enterAllResults": "すべてのレース結果を入力してください。"
   },
+  "screenshotStatus": {
+    "ok": "OK",
+    "ng": "NG",
+    "pending": "承認待ち"
+  },
   "screenshotUpload": {
     "individualTitle": "個人結果のスクリーンショットを送信",
     "individualDescription": "確認用に個人結果のスクリーンショットを送信してください",
@@ -186,5 +243,24 @@
     "selectFile": "ファイルを選択してください",
     "invalidFileType": "JPG、PNG、WebP画像のみ許可されています",
     "fileTooLarge": "ファイルサイズは10MB以下にしてください"
+  },
+  "positionConflict": {
+    "title": "順位申告の不整合を検知",
+    "checkButton": "不整合チェック",
+    "noConflicts": "不整合は検出されませんでした",
+    "race": "レース {raceNumber}",
+    "conflictFound": "矛盾あり",
+    "requireScreenshot": "要スクショ確認:",
+    "positionLabel": "({position}位)"
+  },
+  "screenshotRequest": {
+    "title": "スクリーンショット提出依頼",
+    "description": "モデレーターからスクリーンショットの提出を依頼されました。以下の画面のスクリーンショットを2枚提出してください。",
+    "screenshot1Label": "スクリーンショット1",
+    "screenshot2Label": "スクリーンショット2"
+  },
+  "screenshotReminder": {
+    "title": "スクリーンショットについて",
+    "description": "報告された順位に不備があった場合、スクリーンショットの提出を求められる場合があります。以下の2枚のスクリーンショットを控えてください。"
   }
 }

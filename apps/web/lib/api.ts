@@ -53,7 +53,7 @@ export const usersApi = {
   getUserByProfileId: (profileId: number) => api.get(`/users/profile/${profileId}`),
   getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
     const params = new URLSearchParams({ mode, page: String(page), limit: String(limit) });
-    if (seasonNumber) params.append('seasonNumber', String(seasonNumber));
+    if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
   },
   getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC') => {
@@ -197,6 +197,11 @@ export const gamesApi = {
       passcode: string;
       passcodeVersion: number;
     }>(`/games/${category}/${season}/${match}/regenerate-passcode`),
+  // Score verification
+  verifyScore: (category: string, season: number, match: number, userId: number) =>
+    api.post(`/games/${category}/${season}/${match}/participants/${userId}/verify`),
+  rejectScore: (category: string, season: number, match: number, userId: number) =>
+    api.post(`/games/${category}/${season}/${match}/participants/${userId}/reject`),
 };
 
 // Tracks API
@@ -217,7 +222,7 @@ export const tracksApi = {
 };
 
 // Screenshots API
-export type ScreenshotType = 'INDIVIDUAL' | 'FINAL_SCORE';
+export type ScreenshotType = 'INDIVIDUAL' | 'INDIVIDUAL_1' | 'INDIVIDUAL_2' | 'FINAL_SCORE' | 'FINAL_SCORE_1' | 'FINAL_SCORE_2';
 
 export const screenshotsApi = {
   submit: (gameId: number, file: File, type: ScreenshotType = 'INDIVIDUAL') => {

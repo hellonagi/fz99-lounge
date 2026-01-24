@@ -1,4 +1,38 @@
 {
+  "adminTabs": {
+    "matches": "Matches",
+    "seasons": "Seasons",
+    "settings": "Settings"
+  },
+  "landing": {
+    "howToJoin": {
+      "title": "How to Join",
+      "subtitle": "Get started in 4 simple steps",
+      "steps": {
+        "login": {
+          "title": "Login with Discord",
+          "description": "Sign in with your Discord account to create your profile"
+        },
+        "displayName": {
+          "title": "Set Display Name",
+          "description": "Choose a display name that matches your in-game name"
+        },
+        "join": {
+          "title": "Join a Match",
+          "description": "Find and join an upcoming match from the top page"
+        },
+        "submit": {
+          "title": "Submit Results",
+          "description": "After the match, submit your scores"
+        }
+      },
+      "ctaButton": "Login with Discord",
+      "discord": {
+        "title": "Discord Community",
+        "description": "Get match notifications and connect with other players"
+      }
+    }
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
@@ -39,6 +73,7 @@
     "startsIn": "Starts in",
     "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining",
     "join": "JOIN",
+    "loginToJoin": "Login with Discord to Join",
     "leave": "LEAVE",
     "joining": "Loading...",
     "passcodeNotice": "The passcode will be available when the match starts."
@@ -63,7 +98,26 @@
       "general": "General",
       "ranking": "Ranking",
       "match": "Match Rules",
-      "penalty": "Penalties"
+      "penalty": "Penalties",
+      "community": "Community"
+    },
+    "community": {
+      "title": "Community Guidelines",
+      "generalRulesTitle": "General Rules",
+      "rule1": "Be Respectful - No harassment, bullying, or personal attacks",
+      "rule2": "No Discrimination - No hate speech or slurs of any kind",
+      "rule3": "No Inappropriate Content - No NSFW, spam, or illegal content",
+      "rule4": "No Impersonation - Do not impersonate other players or staff",
+      "rule5": "One Account Only - Alternate accounts are strictly prohibited",
+      "rule6": "Follow Discord ToS - Comply with Discord's Terms of Service",
+      "loungeRulesTitle": "Lounge Rules",
+      "loungeRulesDesc": "For detailed match rules and ranking system, please see the \"Match Rules\" tab.",
+      "moderationTitle": "Moderation",
+      "moderation1": "Moderators may take action on behavior not explicitly listed",
+      "moderation2": "Appeals can be made via DM to a moderator",
+      "agreement": "By participating in this server, you agree to follow these guidelines.",
+      "discordTitle": "Discord Server",
+      "discordDesc": "Get match notifications and connect with other players. Please review the community guidelines below before joining."
     },
     "general": {
       "warning": "Please read all rules before participating in Lounge. Rule violations may result in warnings or penalties.",
@@ -106,11 +160,9 @@
       "submitting1": "After the match ends, submit your score from the match page",
       "submitting2": "Enter your placement for each race",
       "submitting3": "If you crashed out or ranked out, check the box for that race number",
-      "submitting4": "Submit screenshots of your results",
-      "screenshotAllPlayers": "All Players",
-      "screenshotAllPlayersDesc": "Please submit a screenshot showing your results for each race",
-      "screenshotFirstPlace": "1st Place Only",
-      "screenshotFirstPlaceDesc": "Please also submit a screenshot of the overall results screen",
+      "screenshotNotice": "If there are discrepancies in posted scores, you may be asked to submit screenshots. Please keep the following screenshots ready.",
+      "screenshotExample1Title": "Individual Results Screen",
+      "screenshotExample2Title": "Final Results Screen",
       "disconnectionTitle": "Disconnections",
       "disconnection1": "If you disconnect during a match, check \"Disconnected\" for that race when submitting your score",
       "disconnection2": "All races after the disconnection will be treated as 0 points"
@@ -171,6 +223,11 @@
     "positionRange": "{races}: Position must be between 1 and 20.",
     "enterAllResults": "Please enter all race results."
   },
+  "screenshotStatus": {
+    "ok": "OK",
+    "ng": "NG",
+    "pending": "Pending"
+  },
   "screenshotUpload": {
     "individualTitle": "Submit Individual Score Screenshot",
     "individualDescription": "Submit your personal score screenshot for verification",
@@ -187,5 +244,24 @@
     "selectFile": "Please select a file",
     "invalidFileType": "Only JPG, PNG, and WebP images are allowed",
     "fileTooLarge": "File size must be less than 10MB"
+  },
+  "positionConflict": {
+    "title": "Position Conflict Detected",
+    "checkButton": "Check Conflicts",
+    "noConflicts": "No conflicts detected",
+    "race": "Race {raceNumber}",
+    "conflictFound": "Conflict found",
+    "requireScreenshot": "Requires screenshot verification:",
+    "positionLabel": "({position})"
+  },
+  "screenshotRequest": {
+    "title": "Screenshot Required",
+    "description": "A moderator has requested you to submit screenshots. Please submit 2 screenshots of the following screens.",
+    "screenshot1Label": "Screenshot 1",
+    "screenshot2Label": "Screenshot 2"
+  },
+  "screenshotReminder": {
+    "title": "About Screenshots",
+    "description": "If there are discrepancies in reported rankings, you may be asked to submit screenshots. Please keep the following 2 screenshots ready."
   }
 }

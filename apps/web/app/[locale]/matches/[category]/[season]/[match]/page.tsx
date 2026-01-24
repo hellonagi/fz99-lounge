@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
 import { MatchHeaderCard } from '@/components/features/match/match-header-card';
 import { MatchPasscodeCard, SplitVoteStatus } from '@/components/features/match/match-passcode-card';
@@ -68,6 +69,10 @@ interface Game {
     eliminatedAtRace: number | null;
     ratingAfter: number | null;
     ratingChange: number | null;
+    // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
+    status?: string;
+    // Screenshot request
+    screenshotRequested?: boolean;
     raceResults?: Array<{
       raceNumber: number;
       position: number | null;
@@ -85,6 +90,7 @@ export default function GamePage() {
   const match = parseInt(params.match as string, 10);
   const { user } = useAuthStore();
   const t = useTranslations('splitVote');
+  const tScreenshotReminder = useTranslations('screenshotReminder');
 
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +99,7 @@ export default function GamePage() {
     id: number;
     userId: number;
     imageUrl: string | null;
-    type: 'INDIVIDUAL' | 'FINAL_SCORE';
+    type: 'INDIVIDUAL' | 'INDIVIDUAL_1' | 'INDIVIDUAL_2' | 'FINAL_SCORE' | 'FINAL_SCORE_1' | 'FINAL_SCORE_2';
     isVerified: boolean;
     isRejected?: boolean;
     isDeleted?: boolean;
@@ -333,43 +339,11 @@ export default function GamePage() {
     );
   }
 
-  // Check if current user is 1st place (includes ties)
-  const isFirstPlace = () => {
-    if (!user || !game.participants || game.participants.length === 0) {
-      return false;
-    }
-
-    // Sort participants by score (totalScore or reportedPoints)
-    const sorted = [...game.participants]
-      .filter(p => p.totalScore !== null || p.reportedPoints !== null)
-      .sort((a, b) => {
-        const aScore = a.totalScore ?? a.reportedPoints ?? 0;
-        const bScore = b.totalScore ?? b.reportedPoints ?? 0;
-        return bScore - aScore;
-      });
-
-    if (sorted.length === 0) {
-      return false;
-    }
-
-    // Get top score
-    const topScore = sorted[0].totalScore ?? sorted[0].reportedPoints ?? 0;
-
-    // Check if current user has the top score (allows ties)
-    const userScore = game.participants.find(p => p.user.id === user.id);
-    if (!userScore) return false;
-
-    const userPoints = userScore.totalScore ?? userScore.reportedPoints ?? 0;
-    return userPoints === topScore;
-  };
-
   // Check if current user is a participant in this match
   const isParticipant = user && game.match.participants.some(p => p.user.id === user.id);
 
-  // Check if final score screenshot form should be shown (IN_PROGRESS, participant)
-  const showFinalScoreForm =
-    game.match.status === 'IN_PROGRESS' &&
-    isParticipant;
+  // Check if user has screenshot request
+  const userScreenshotRequested = game.participants?.find(p => p.user.id === user?.id)?.screenshotRequested || false;
 
   return (
     <div className="overflow-x-hidden">
@@ -402,6 +376,44 @@ export default function GamePage() {
             splitVoteStatus={splitVoteStatus}
             onSplitVote={fetchSplitVoteStatus}
           />
+
+          {/* Screenshot Reminder for Participants */}
+          {isParticipant && game.match.status === 'IN_PROGRESS' && (
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-bold text-white mb-2">
+                  {tScreenshotReminder('title')}
+                </h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  {tScreenshotReminder('description')}
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative w-1/2 max-w-[200px]">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                      <Image
+                        src="/rules/cmini_example_1.webp"
+                        alt="Example screenshot 1"
+                        fill
+                        sizes="200px"
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                  <div className="relative w-1/2 max-w-[200px]">
+                    <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+                      <Image
+                        src="/rules/cmini_example_2.webp"
+                        alt="Example screenshot 2"
+                        fill
+                        sizes="200px"
+                        className="object-contain"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Results / Moderator Tabs */}
           <Card>
@@ -442,7 +454,7 @@ export default function GamePage() {
             </Tabs>
           </Card>
 
-          {/* Score Submission Form with integrated Screenshot Upload - visible when IN_PROGRESS, participant only, not on mod tab */}
+          {/* Score Submission Form - visible when IN_PROGRESS, participant only, not on mod tab */}
           {game.match.status === 'IN_PROGRESS' && isParticipant && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
@@ -452,31 +464,27 @@ export default function GamePage() {
                   game={match}
                   deadline={game.match.deadline}
                   onScoreSubmitted={handleScoreSubmitted}
-                  gameId={game.id}
-                  enableScreenshotUpload={true}
                 />
               </CardContent>
             </Card>
           )}
 
-          {/* Final Score Screenshot Upload Form - all participants, not on mod tab */}
-          {showFinalScoreForm && activeTab !== 'moderator' && (
+          {/* Screenshot Upload Form - only when screenshot requested by moderator */}
+          {game.match.status === 'IN_PROGRESS' && isParticipant && userScreenshotRequested && activeTab !== 'moderator' && (
             <ScreenshotUploadForm
               gameId={game.id}
-              type="FINAL_SCORE"
-              disabled={!isFirstPlace()}
-              isFirstPlace={isFirstPlace()}
               onUploadSuccess={fetchGame}
+              screenshotRequested={true}
             />
           )}
 
           {/* Screenshots Section - show final score screenshot if exists, not on mod tab */}
-          {screenshots.filter(s => s.type === 'FINAL_SCORE').length > 0 && activeTab !== 'moderator' && (
+          {screenshots.filter(s => s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2').length > 0 && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
                 <h3 className="text-lg font-bold text-white mb-4">Screenshots</h3>
                 <ScreenshotGallery
-                  screenshots={screenshots.filter(s => s.type === 'FINAL_SCORE')}
+                  screenshots={screenshots.filter(s => s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2')}
                 />
               </CardContent>
             </Card>

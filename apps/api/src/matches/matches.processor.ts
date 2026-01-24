@@ -87,6 +87,7 @@ export class MatchesProcessor {
             seasonNumber: match.season.seasonNumber,
             category: match.season.event.category,
             seasonName: match.season.event.name,
+            reason: 'insufficient_players',
           });
         } catch (error) {
           this.logger.error('Failed to announce match cancellation to Discord:', error);

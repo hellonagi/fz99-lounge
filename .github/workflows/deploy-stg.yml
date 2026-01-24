@@ -1,9 +1,7 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches:
-      - stg
+  workflow_dispatch:  # Manual trigger only - stg disabled for prod deployment
 
 env:
   AWS_REGION: ap-northeast-1
@@ -45,6 +43,8 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    env:
+      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -59,13 +59,10 @@ jobs:
             --instance-ids ${{ secrets.STG_EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "cd /home/ec2-user/fz99-lounge",
-              "git fetch origin",
-              "git checkout stg",
-              "git reset --hard origin/stg",
-              "aws ecr get-login-password --region ap-northeast-1 | sudo docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
-              "sudo docker compose -f compose.ecr.yaml --env-file .env.stg pull",
-              "sudo docker compose -f compose.ecr.yaml --env-file .env.stg up -d",
-              "sudo docker compose -f compose.ecr.yaml --env-file .env.stg exec -T api npx prisma migrate deploy"
+              "cd /home/ec2-user/fz99-lounge && sudo -u ec2-user git fetch origin && sudo -u ec2-user git checkout stg && sudo -u ec2-user git reset --hard origin/stg",
+              "cd /home/ec2-user/fz99-lounge && aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg pull",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg up -d",
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg exec -T api npx prisma migrate deploy"
             ]' \
             --output text

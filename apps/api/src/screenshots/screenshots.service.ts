@@ -10,7 +10,7 @@ import { StorageService } from '../storage/storage.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ScreenshotType } from '@prisma/client';
+import { ScreenshotType, ResultStatus } from '@prisma/client';
 
 @Injectable()
 export class ScreenshotsService {
@@ -129,7 +129,12 @@ export class ScreenshotsService {
     // S3/MinIOにアップロード
     const category = game.match.season.event.category.toLowerCase();
     let imageUrl: string;
-    if (type === ScreenshotType.INDIVIDUAL) {
+    // INDIVIDUAL, INDIVIDUAL_1, INDIVIDUAL_2 は個人スクショとして処理
+    const isIndividualType = type === ScreenshotType.INDIVIDUAL ||
+      type === ScreenshotType.INDIVIDUAL_1 ||
+      type === ScreenshotType.INDIVIDUAL_2;
+
+    if (isIndividualType) {
       imageUrl = await this.storage.uploadIndividualScreenshot(
         category,
         String(gameId),
@@ -162,6 +167,27 @@ export class ScreenshotsService {
     this.logger.log(
       `${type} screenshot submitted for game ${gameId} by user ${userId}`,
     );
+
+    // For individual screenshots, update participant status if rejected
+    if (isIndividualType) {
+      const participant = await this.prisma.gameParticipant.findFirst({
+        where: { gameId, userId },
+      });
+
+      if (participant && participant.status === ResultStatus.REJECTED) {
+        await this.prisma.gameParticipant.update({
+          where: { id: participant.id },
+          data: {
+            status: ResultStatus.PENDING,
+            rejectedBy: null,
+            rejectedAt: null,
+          },
+        });
+        this.logger.log(
+          `Updated participant status to PENDING after screenshot resubmission for game ${gameId} user ${userId}`,
+        );
+      }
+    }
 
     // Emit event for real-time update
     this.eventEmitter.emit('game.screenshotUpdated', {
@@ -429,18 +455,15 @@ export class ScreenshotsService {
   }
 
   /**
-   * 全スクショがverifiedかチェックし、条件を満たせばマッチをFINALIZEDに変更
-   * 条件: 全参加者のINDIVIDUALがverify済み + FINAL_SCOREが1つ以上verify済み
+   * 全スコアがverifiedかチェックし、条件を満たせばマッチをFINALIZEDに変更
+   * 条件: 全参加者のスコアがverify済み + FINAL_SCOREスクショが1つ以上verify済み
    */
   private async checkAllVerifiedAndFinalize(gameId: number) {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: {
-        match: {
-          include: {
-            participants: true,
-          },
-        },
+        match: true,
+        participants: true,
       },
     });
 
@@ -449,17 +472,12 @@ export class ScreenshotsService {
       return;
     }
 
-    const totalParticipants = game.match.participants.length;
+    if (game.participants.length === 0) {
+      return;
+    }
 
-    // INDIVIDUAL: 全参加者分がverify済みか
-    const verifiedIndividualCount = await this.prisma.gameScreenshotSubmission.count({
-      where: {
-        gameId,
-        type: ScreenshotType.INDIVIDUAL,
-        isVerified: true,
-        deletedAt: null,
-      },
-    });
+    // NEW: 全参加者のスコアがverify済みかチェック（INDIVIDUALスクショではなくスコア提出に対して）
+    const allScoresVerified = game.participants.every(p => p.status === ResultStatus.VERIFIED);
 
     // FINAL_SCORE: 1つ以上verify済みか
     const verifiedFinalScoreCount = await this.prisma.gameScreenshotSubmission.count({
@@ -472,11 +490,11 @@ export class ScreenshotsService {
     });
 
     this.logger.log(
-      `Game ${gameId}: INDIVIDUAL ${verifiedIndividualCount}/${totalParticipants}, FINAL_SCORE ${verifiedFinalScoreCount}/1`,
+      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScoreCount}/1`,
     );
 
-    // 条件: 全参加者のINDIVIDUAL + FINAL_SCOREが1つ以上
-    const isReadyToFinalize = verifiedIndividualCount >= totalParticipants && verifiedFinalScoreCount >= 1;
+    // 条件: 全スコアverify + FINAL_SCOREが1つ以上
+    const isReadyToFinalize = allScoresVerified && verifiedFinalScoreCount >= 1;
 
     if (isReadyToFinalize) {
       // レート計算をトリガー
@@ -493,7 +511,7 @@ export class ScreenshotsService {
       });
 
       this.logger.log(
-        `Match ${game.matchId} automatically set to FINALIZED (all screenshots verified)`,
+        `Match ${game.matchId} automatically set to FINALIZED (all scores + FINAL_SCORE verified)`,
       );
 
       // Delete Discord passcode channel

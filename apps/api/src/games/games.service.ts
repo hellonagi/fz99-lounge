@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
+import { EventCategory, MatchStatus, ResultStatus, ScreenshotType } from '@prisma/client';
 import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -287,7 +287,7 @@ export class GamesService {
           userId,
           machine: submitScoreDto.machine,
           assistEnabled: submitScoreDto.assistEnabled,
-          status: ResultStatus.SUBMITTED,
+          status: ResultStatus.PENDING,
           submittedAt: now,
         },
       });
@@ -301,8 +301,11 @@ export class GamesService {
         data: {
           machine: submitScoreDto.machine,
           assistEnabled: submitScoreDto.assistEnabled,
-          status: ResultStatus.SUBMITTED,
+          status: ResultStatus.PENDING,
           submittedAt: now,
+          // Clear rejection metadata on resubmit
+          rejectedBy: null,
+          rejectedAt: null,
         },
       });
       participantId = game.participants[0].id;
@@ -351,8 +354,16 @@ export class GamesService {
 
       let totalScore = 0;
       let eliminatedAtRace: number | null = null;
+      const raceResultsData: {
+        gameParticipantId: number;
+        raceNumber: number;
+        position: number | null;
+        points: number;
+        isEliminated: boolean;
+        isDisconnected: boolean;
+      }[] = [];
 
-      // Create new race results and calculate totals
+      // Calculate race results data
       for (const raceResult of submitScoreDto.raceResults) {
         // 既にDNF/DCしている場合、以降のレースはnull（参加していない）
         const isAfterElimination = eliminatedAtRace !== null;
@@ -387,19 +398,20 @@ export class GamesService {
           }
         }
 
-        await this.prisma.raceResult.create({
-          data: {
-            gameParticipantId: participantId,
-            raceNumber: raceResult.raceNumber,
-            position,
-            points,
-            isEliminated,
-            isDisconnected,
-          },
+        raceResultsData.push({
+          gameParticipantId: participantId,
+          raceNumber: raceResult.raceNumber,
+          position,
+          points,
+          isEliminated,
+          isDisconnected,
         });
 
         totalScore += points;
       }
+
+      // Batch insert all race results
+      await this.prisma.raceResult.createMany({ data: raceResultsData });
 
       // Update participant with calculated totals
       await this.prisma.gameParticipant.update({
@@ -559,8 +571,16 @@ export class GamesService {
 
     let totalScore = 0;
     let eliminatedAtRace: number | null = null;
+    const raceResultsData: {
+      gameParticipantId: number;
+      raceNumber: number;
+      position: number | null;
+      points: number;
+      isEliminated: boolean;
+      isDisconnected: boolean;
+    }[] = [];
 
-    // Create new race results and calculate totals
+    // Calculate race results data
     for (const raceResult of updateScoreDto.raceResults) {
       // 既にDNF/DCしている場合、以降のレースはnull（参加していない）
       const isAfterElimination = eliminatedAtRace !== null;
@@ -595,19 +615,20 @@ export class GamesService {
         }
       }
 
-      await this.prisma.raceResult.create({
-        data: {
-          gameParticipantId: participant.id,
-          raceNumber: raceResult.raceNumber,
-          position,
-          points,
-          isEliminated,
-          isDisconnected,
-        },
+      raceResultsData.push({
+        gameParticipantId: participant.id,
+        raceNumber: raceResult.raceNumber,
+        position,
+        points,
+        isEliminated,
+        isDisconnected,
       });
 
       totalScore += points;
     }
+
+    // Batch insert all race results
+    await this.prisma.raceResult.createMany({ data: raceResultsData });
 
     // Update participant with calculated totals
     await this.prisma.gameParticipant.update({
@@ -615,8 +636,11 @@ export class GamesService {
       data: {
         totalScore,
         eliminatedAtRace,
-        status: ResultStatus.SUBMITTED,
+        status: ResultStatus.PENDING,
         submittedAt: new Date(),
+        // Clear rejection metadata on resubmit
+        rejectedBy: null,
+        rejectedAt: null,
       },
     });
 
@@ -725,6 +749,9 @@ export class GamesService {
       finalizedAt: new Date(),
     });
 
+    // Announce match results to Discord
+    await this.announceMatchResultsToDiscord(game.id);
+
     // Delete Discord passcode channel
     try {
       await this.discordBotService.deletePasscodeChannel(game.id);
@@ -813,6 +840,99 @@ export class GamesService {
       gameId: updatedGame.id,
       tracks: updatedGame.tracks,
     };
+  }
+
+  /**
+   * Announce match results to Discord
+   * Retrieves top 3 participants (handling ties) and sends notification
+   */
+  private async announceMatchResultsToDiscord(gameId: number): Promise<void> {
+    try {
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        include: {
+          match: {
+            include: {
+              season: {
+                include: {
+                  event: true,
+                },
+              },
+            },
+          },
+          participants: {
+            where: {
+              status: ResultStatus.VERIFIED,
+            },
+            include: {
+              user: {
+                select: {
+                  displayName: true,
+                },
+              },
+            },
+            orderBy: {
+              totalScore: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!game || game.participants.length === 0) {
+        this.logger.debug(`No verified participants for game ${gameId}, skipping results announcement`);
+        return;
+      }
+
+      // Calculate positions with ties
+      const participantsWithPositions: Array<{
+        position: number;
+        displayName: string;
+        totalScore: number;
+      }> = [];
+
+      let currentPosition = 1;
+      let previousScore: number | null = null;
+
+      for (const participant of game.participants) {
+        // If score is different from previous, update position
+        if (previousScore !== null && participant.totalScore !== previousScore) {
+          currentPosition = participantsWithPositions.length + 1;
+        }
+
+        participantsWithPositions.push({
+          position: currentPosition,
+          displayName: participant.user.displayName ?? 'Unknown',
+          totalScore: participant.totalScore ?? 0,
+        });
+
+        previousScore = participant.totalScore;
+      }
+
+      // Filter to top 3 positions (may include ties)
+      const topParticipants = participantsWithPositions.filter((p) => p.position <= 3);
+
+      if (topParticipants.length === 0) {
+        this.logger.debug(`No top participants for game ${gameId}`);
+        return;
+      }
+
+      const category = game.match.season?.event?.category || 'CLASSIC';
+      const seasonNumber = game.match.season?.seasonNumber ?? 1;
+      const seasonName = game.match.season?.event?.name || category;
+
+      await this.discordBotService.announceMatchResults({
+        matchNumber: game.match.matchNumber,
+        seasonNumber,
+        category: category.toLowerCase(),
+        seasonName,
+        topParticipants,
+      });
+
+      this.logger.log(`Announced match results for game ${gameId}`);
+    } catch (error) {
+      this.logger.error(`Failed to announce match results for game ${gameId}:`, error);
+      // Continue even if Discord fails
+    }
   }
 
   // ========================================
@@ -1036,5 +1156,306 @@ export class GamesService {
   private generatePasscode(): string {
     const passcode = Math.floor(Math.random() * 10000);
     return passcode.toString().padStart(4, '0');
+  }
+
+  /**
+   * Verify a participant's score (moderator action)
+   */
+  async verifyParticipantScore(
+    gameId: number,
+    targetUserId: number,
+    moderatorId: number,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: { match: true },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId, userId: targetUserId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    // Allow verification of PENDING or REJECTED scores (after screenshot resubmission)
+    if (participant.status !== ResultStatus.PENDING && participant.status !== ResultStatus.REJECTED) {
+      // Already verified or in other state
+      if (participant.status === ResultStatus.VERIFIED) {
+        return participant;
+      }
+      throw new BadRequestException('Can only verify pending or rejected scores');
+    }
+
+    const updated = await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        status: ResultStatus.VERIFIED,
+        verifiedBy: moderatorId,
+        verifiedAt: new Date(),
+        rejectedBy: null,
+        rejectedAt: null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            displayName: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    this.eventEmitter.emit('game.participantVerified', {
+      gameId,
+      participant: updated,
+    });
+
+    await this.checkAllScoresVerifiedAndFinalize(gameId);
+
+    return updated;
+  }
+
+  /**
+   * Reject a participant's score (moderator action)
+   * Also requests screenshot and sends Discord notification
+   */
+  async rejectParticipantScore(
+    gameId: number,
+    targetUserId: number,
+    moderatorId: number,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            season: {
+              include: {
+                event: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId, userId: targetUserId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    if (participant.status === ResultStatus.VERIFIED) {
+      throw new BadRequestException('Cannot reject a verified score');
+    }
+
+    const updated = await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        status: ResultStatus.REJECTED,
+        rejectedBy: moderatorId,
+        rejectedAt: new Date(),
+        // Also request screenshot
+        screenshotRequested: true,
+        screenshotRequestedBy: moderatorId,
+        screenshotRequestedAt: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            discordId: true,
+            displayName: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    // Soft delete existing SS1/SS2 screenshots
+    await this.prisma.gameScreenshotSubmission.updateMany({
+      where: {
+        gameId,
+        userId: targetUserId,
+        type: { in: [ScreenshotType.INDIVIDUAL_1, ScreenshotType.INDIVIDUAL_2] },
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    // Discord notification via channel
+    if (game.discordChannelId && updated.user.discordId) {
+      const category =
+        game.match.season?.event?.category?.toLowerCase() || 'classic';
+      const seasonNumber = game.match.season?.seasonNumber ?? 1;
+      const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonNumber}/${game.match.matchNumber}`;
+      this.discordBotService.postScreenshotRequest(
+        game.discordChannelId,
+        updated.user.discordId,
+        matchUrl,
+      );
+    }
+
+    this.eventEmitter.emit('game.participantRejected', {
+      gameId,
+      participant: updated,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Request a participant to submit a screenshot (moderator action)
+   */
+  async requestScreenshot(
+    gameId: number,
+    targetUserId: number,
+    moderatorId: number,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            season: {
+              include: {
+                event: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId, userId: targetUserId },
+      include: { user: true },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    const updated = await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        screenshotRequested: true,
+        screenshotRequestedBy: moderatorId,
+        screenshotRequestedAt: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            discordId: true,
+            displayName: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    // Discord notification via channel
+    if (game.discordChannelId && updated.user.discordId) {
+      const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
+      const seasonNumber = game.match.season?.seasonNumber ?? 1;
+      const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonNumber}/${game.match.matchNumber}`;
+      this.discordBotService.postScreenshotRequest(
+        game.discordChannelId,
+        updated.user.discordId,
+        matchUrl,
+      );
+    }
+
+    this.eventEmitter.emit('game.screenshotRequested', {
+      gameId,
+      participant: updated,
+    });
+
+    return updated;
+  }
+
+  /**
+   * Check if all scores are verified and finalize match
+   * Condition: All participants verified + FINAL_SCORE screenshot verified
+   */
+  private async checkAllScoresVerifiedAndFinalize(gameId: number) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: true,
+        participants: true,
+      },
+    });
+
+    if (!game || (game.match.status !== MatchStatus.IN_PROGRESS && game.match.status !== MatchStatus.COMPLETED)) {
+      return;
+    }
+
+    if (game.participants.length === 0) {
+      return;
+    }
+
+    const allScoresVerified = game.participants.every(p => p.status === ResultStatus.VERIFIED);
+
+    const verifiedFinalScore = await this.prisma.gameScreenshotSubmission.count({
+      where: {
+        gameId,
+        type: 'FINAL_SCORE',
+        isVerified: true,
+        deletedAt: null,
+      },
+    });
+
+    this.logger.log(
+      `Game ${gameId}: Scores ${allScoresVerified ? 'all verified' : 'pending'}, FINAL_SCORE ${verifiedFinalScore}/1`,
+    );
+
+    if (allScoresVerified && verifiedFinalScore >= 1) {
+      try {
+        await this.classicRatingService.calculateAndUpdateRatings(gameId);
+        this.logger.log(`Rating calculation completed for game ${gameId}`);
+      } catch (error) {
+        this.logger.error(`Failed to calculate ratings for game ${gameId}: ${error}`);
+      }
+
+      await this.prisma.match.update({
+        where: { id: game.matchId },
+        data: { status: MatchStatus.FINALIZED },
+      });
+
+      this.logger.log(`Match ${game.matchId} automatically FINALIZED`);
+
+      // Announce match results to Discord
+      await this.announceMatchResultsToDiscord(gameId);
+
+      try {
+        await this.discordBotService.deletePasscodeChannel(gameId);
+      } catch (error) {
+        this.logger.error(`Failed to delete Discord channel: ${error}`);
+      }
+    }
   }
 }

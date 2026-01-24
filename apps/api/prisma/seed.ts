@@ -110,16 +110,16 @@ async function main() {
     where: {
       eventId_seasonNumber: {
         eventId: classicEvent.id,
-        seasonNumber: 1,
+        seasonNumber: 0,
       },
     },
     update: {},
     create: {
       eventId: classicEvent.id,
-      seasonNumber: 1,
+      seasonNumber: 0,
       startDate: new Date(),
       isActive: true,
-      description: 'CLASSIC Season 1',
+      description: 'CLASSIC Season 0',
     },
   });
 
