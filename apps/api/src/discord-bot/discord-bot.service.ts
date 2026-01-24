@@ -64,6 +64,20 @@ export interface AnnounceMatchCancelledParams {
   reason?: 'insufficient_players' | 'admin_cancelled';
 }
 
+export interface MatchResultParticipant {
+  position: number;
+  displayName: string;
+  totalScore: number;
+}
+
+export interface AnnounceMatchResultsParams {
+  matchNumber: number;
+  seasonNumber: number;
+  category: string;
+  seasonName: string;
+  topParticipants: MatchResultParticipant[];
+}
+
 @Injectable()
 export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private client: Client;
@@ -846,6 +860,84 @@ ${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} 
     } catch (error) {
       this.logger.error(
         `Failed to announce match #${params.matchNumber} cancellation:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Announce match results to announce channel
+   */
+  async announceMatchResults(
+    params: AnnounceMatchResultsParams,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping match results announcement',
+      );
+      return false;
+    }
+
+    const channelId = this.getMatchAnnounceChannelId();
+    if (!channelId) {
+      this.logger.debug('Match announce channel not configured');
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Announce channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const baseUrl =
+        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+      const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
+
+      // Build position lines with medals
+      const positionEmojis: Record<number, string> = {
+        1: '\u{1F947}', // Gold medal
+        2: '\u{1F948}', // Silver medal
+        3: '\u{1F949}', // Bronze medal
+      };
+
+      const positionLabels: Record<number, string> = {
+        1: '1st',
+        2: '2nd',
+        3: '3rd',
+      };
+
+      const positionLines = params.topParticipants.map((p) => {
+        const emoji = positionEmojis[p.position] || '';
+        const label = positionLabels[p.position] || `${p.position}th`;
+        return `${emoji} ${label}: ${p.displayName} (${p.totalScore}pts)`;
+      });
+
+      const messageContent = `**Match Results**
+
+${params.seasonName} Season ${params.seasonNumber} #${params.matchNumber} has ended!
+${params.seasonName} シーズン ${params.seasonNumber} #${params.matchNumber} が終了しました!
+
+${positionLines.join('\n')}
+
+View results: ${matchUrl}`;
+
+      await (channel as TextChannel).send({
+        content: messageContent,
+      });
+
+      this.logger.log(
+        `Announced match #${params.matchNumber} results to channel ${channelId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce match #${params.matchNumber} results:`,
         error,
       );
       return false;

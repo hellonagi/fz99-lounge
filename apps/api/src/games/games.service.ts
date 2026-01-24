@@ -749,6 +749,9 @@ export class GamesService {
       finalizedAt: new Date(),
     });
 
+    // Announce match results to Discord
+    await this.announceMatchResultsToDiscord(game.id);
+
     // Delete Discord passcode channel
     try {
       await this.discordBotService.deletePasscodeChannel(game.id);
@@ -837,6 +840,99 @@ export class GamesService {
       gameId: updatedGame.id,
       tracks: updatedGame.tracks,
     };
+  }
+
+  /**
+   * Announce match results to Discord
+   * Retrieves top 3 participants (handling ties) and sends notification
+   */
+  private async announceMatchResultsToDiscord(gameId: number): Promise<void> {
+    try {
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        include: {
+          match: {
+            include: {
+              season: {
+                include: {
+                  event: true,
+                },
+              },
+            },
+          },
+          participants: {
+            where: {
+              status: ResultStatus.VERIFIED,
+            },
+            include: {
+              user: {
+                select: {
+                  displayName: true,
+                },
+              },
+            },
+            orderBy: {
+              totalScore: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!game || game.participants.length === 0) {
+        this.logger.debug(`No verified participants for game ${gameId}, skipping results announcement`);
+        return;
+      }
+
+      // Calculate positions with ties
+      const participantsWithPositions: Array<{
+        position: number;
+        displayName: string;
+        totalScore: number;
+      }> = [];
+
+      let currentPosition = 1;
+      let previousScore: number | null = null;
+
+      for (const participant of game.participants) {
+        // If score is different from previous, update position
+        if (previousScore !== null && participant.totalScore !== previousScore) {
+          currentPosition = participantsWithPositions.length + 1;
+        }
+
+        participantsWithPositions.push({
+          position: currentPosition,
+          displayName: participant.user.displayName ?? 'Unknown',
+          totalScore: participant.totalScore ?? 0,
+        });
+
+        previousScore = participant.totalScore;
+      }
+
+      // Filter to top 3 positions (may include ties)
+      const topParticipants = participantsWithPositions.filter((p) => p.position <= 3);
+
+      if (topParticipants.length === 0) {
+        this.logger.debug(`No top participants for game ${gameId}`);
+        return;
+      }
+
+      const category = game.match.season?.event?.category || 'CLASSIC';
+      const seasonNumber = game.match.season?.seasonNumber ?? 1;
+      const seasonName = game.match.season?.event?.name || category;
+
+      await this.discordBotService.announceMatchResults({
+        matchNumber: game.match.matchNumber,
+        seasonNumber,
+        category: category.toLowerCase(),
+        seasonName,
+        topParticipants,
+      });
+
+      this.logger.log(`Announced match results for game ${gameId}`);
+    } catch (error) {
+      this.logger.error(`Failed to announce match results for game ${gameId}:`, error);
+      // Continue even if Discord fails
+    }
   }
 
   // ========================================
@@ -1351,6 +1447,9 @@ export class GamesService {
       });
 
       this.logger.log(`Match ${game.matchId} automatically FINALIZED`);
+
+      // Announce match results to Discord
+      await this.announceMatchResultsToDiscord(gameId);
 
       try {
         await this.discordBotService.deletePasscodeChannel(gameId);
