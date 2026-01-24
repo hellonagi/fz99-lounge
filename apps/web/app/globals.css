@@ -25,7 +25,16 @@ a {
 }
 
 /* バナー無限スクロールアニメーション */
-@keyframes banner-scroll {
+@keyframes banner-scroll-mobile {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-165vw);
+  }
+}
+
+@keyframes banner-scroll-desktop {
   0% {
     transform: translateX(0);
   }
@@ -35,5 +44,12 @@ a {
 }
 
 .animate-banner-scroll {
-  animation: banner-scroll 30s linear infinite;
+  animation: banner-scroll-mobile 30s linear infinite;
 }
+
+@media (min-width: 768px) {
+  .animate-banner-scroll {
+    animation: banner-scroll-desktop 30s linear infinite;
+  }
+}
+
