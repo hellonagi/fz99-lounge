@@ -186,7 +186,7 @@ export class AdminController {
 
     // Validate season number
     const seasonNumber = parseInt(season, 10);
-    if (isNaN(seasonNumber) || seasonNumber < 1) {
+    if (isNaN(seasonNumber) || seasonNumber < 0) {
       throw new BadRequestException('Invalid season number');
     }
 

@@ -1190,7 +1190,7 @@ export class GamesService {
     if (game.discordChannelId && updated.user.discordId) {
       const category =
         game.match.season?.event?.category?.toLowerCase() || 'classic';
-      const seasonNumber = game.match.season?.seasonNumber || 1;
+      const seasonNumber = game.match.season?.seasonNumber ?? 1;
       const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonNumber}/${game.match.matchNumber}`;
       this.discordBotService.postScreenshotRequest(
         game.discordChannelId,
@@ -1266,7 +1266,7 @@ export class GamesService {
     // Discord notification via channel
     if (game.discordChannelId && updated.user.discordId) {
       const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
-      const seasonNumber = game.match.season?.seasonNumber || 1;
+      const seasonNumber = game.match.season?.seasonNumber ?? 1;
       const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonNumber}/${game.match.matchNumber}`;
       this.discordBotService.postScreenshotRequest(
         game.discordChannelId,
