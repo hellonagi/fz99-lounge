@@ -51,7 +51,7 @@ export function MatchList({ matches, loading }: MatchListProps) {
           href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
           className="block"
         >
-          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition-colors">
+          <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-600/50 hover:bg-gray-600 transition-colors">
             {/* Left: Category & Match Info */}
             <div className="flex items-center gap-3">
               <span

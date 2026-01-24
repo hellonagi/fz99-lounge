@@ -14,7 +14,7 @@ export function HowToJoinSection() {
   ] as const;
 
   return (
-    <section className="py-16 bg-gray-800">
+    <section className="py-16 bg-slate-800">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title */}
         <div className="text-center mb-12">
@@ -54,12 +54,12 @@ export function HowToJoinSection() {
           </div>
 
           {/* Right: Discord Widget */}
-          <div className="flex flex-col items-start md:items-center md:justify-center mt-4 md:mt-0">
+          <div className="flex flex-col items-center md:justify-center mt-12 md:mt-0">
             <h3 className="text-xl font-semibold text-white mb-2">{t('discord.title')}</h3>
             <p className="text-gray-400 text-sm mb-4 md:text-center">{t('discord.description')}</p>
             <iframe
               src="https://discord.com/widget?id=1455513103692202098&theme=dark"
-              width="350"
+              width="375"
               height="400"
               sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
               className="rounded-lg border-0"

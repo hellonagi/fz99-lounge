@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface RecentMatch {
@@ -31,43 +30,33 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
 
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('recentMatches')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-gray-400 text-sm">{tCommon('loading')}</div>
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+        <div className="text-gray-400 text-sm">{tCommon('loading')}</div>
+      </div>
     );
   }
 
   if (!matches || matches.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('recentMatches')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+        <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{t('recentMatches')}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
+    <div>
+      <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+      <div className="border border-gray-700 rounded-lg p-4 mx-0 md:mx-6 space-y-2">
         {matches.map((match) => (
           <Link
             key={match.id}
             href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
             className="block"
           >
-            <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-700/50 hover:bg-gray-700 transition-colors">
+            <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-600/50 hover:bg-gray-600 transition-colors">
               {/* Left: Category & Match Info */}
               <div className="flex items-center gap-3">
                 <span
@@ -108,7 +97,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
             </div>
           </Link>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
