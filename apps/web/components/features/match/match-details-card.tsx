@@ -8,7 +8,7 @@ import { StatBox, StatBoxValue } from '@/components/ui/stat-box';
 
 interface MatchDetailsCardProps {
   gameMode: string;
-  leagueType: string;
+  leagueType: string | null;
   status: string;
   totalPlayers: number;
   startedAt: string;
@@ -84,7 +84,7 @@ export function MatchDetailsCard({
 
         {/* League Type */}
         <StatBox label="League">
-          <StatBoxValue>{leagueType}</StatBoxValue>
+          <StatBoxValue>{leagueType ?? '-'}</StatBoxValue>
         </StatBox>
 
         {/* Status */}

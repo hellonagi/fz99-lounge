@@ -27,7 +27,7 @@ export interface CreatePasscodeChannelParams {
   seasonNumber: number;
   matchNumber: number;
   passcode: string;
-  leagueType: string;
+  leagueType: string | null;
   participantDiscordIds: string[];
 }
 
@@ -43,7 +43,7 @@ export interface AnnounceMatchCreatedParams {
   category: string;
   seasonName: string;
   inGameMode: string;
-  leagueType: string;
+  leagueType: string | null;
   scheduledStart: Date;
   minPlayers: number;
   maxPlayers: number;
@@ -442,9 +442,11 @@ Remove your reaction to stop receiving notifications.
       const baseUrl = this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
       const leagueDisplay = params.leagueType
-        .replace(/_/g, ' ')
-        .toLowerCase()
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+        ? params.leagueType
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+        : 'Classic';
 
       const embed = new EmbedBuilder()
         .setTitle(`${leagueDisplay}\npasscode: ${params.passcode}`)

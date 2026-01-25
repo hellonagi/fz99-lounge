@@ -43,7 +43,7 @@ export class EventsGateway
     matchId: number;
     gameId: number;
     passcode: string;
-    leagueType: string;
+    leagueType: string | null;
     totalPlayers: number;
     startedAt: string;
     category: string;

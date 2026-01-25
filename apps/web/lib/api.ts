@@ -76,7 +76,7 @@ export const matchesApi = {
   create: (data: {
     seasonId: number;
     inGameMode: string;
-    leagueType: string;
+    leagueType?: string;
     scheduledStart: string;
     minPlayers?: number;
     maxPlayers?: number;

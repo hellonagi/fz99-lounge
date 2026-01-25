@@ -6,7 +6,7 @@ interface Match {
   id: number;
   category: string;
   inGameMode: string;
-  leagueType: string;
+  leagueType: string | null;
   matchNumber: number;
   scheduledStart: string;
   currentPlayers: number;

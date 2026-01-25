@@ -60,9 +60,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const tabs = [
     { id: 'matches', label: t('matches'), href: `/${locale}/admin/matches` },
-    { id: 'seasons', label: t('seasons'), href: `/${locale}/admin/seasons` },
     ...(user.role === 'ADMIN'
-      ? [{ id: 'settings', label: t('settings'), href: `/${locale}/admin/settings` }]
+      ? [
+          { id: 'seasons', label: t('seasons'), href: `/${locale}/admin/seasons` },
+          { id: 'settings', label: t('settings'), href: `/${locale}/admin/settings` },
+        ]
       : []),
   ];
 
