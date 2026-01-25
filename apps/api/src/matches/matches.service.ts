@@ -12,7 +12,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { TracksService } from '../tracks/tracks.service';
 import { CreateMatchDto } from './dto/create-match.dto';
-import { EventCategory, League, MatchStatus, UserStatus } from '@prisma/client';
+import { EventCategory, InGameMode, MatchStatus, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class MatchesService {
@@ -129,9 +129,9 @@ export class MatchesService {
 
     const matchNumber = lastMatch ? lastMatch.matchNumber + 1 : 1;
 
-    // CLASSIC_MINIリーグの場合、トラックセットを自動計算
+    // CLASSIC_MINI_PRIXモードの場合、トラックセットを自動計算
     let tracks: number[] | null = null;
-    if (leagueType === League.CLASSIC_MINI) {
+    if (inGameMode === InGameMode.CLASSIC_MINI_PRIX) {
       tracks = this.tracksService.calculateClassicMiniTracks(new Date(scheduledStart));
     }
 

@@ -263,5 +263,38 @@
   "screenshotReminder": {
     "title": "About Screenshots",
     "description": "If there are discrepancies in reported rankings, you may be asked to submit screenshots. Please keep the following 2 screenshots ready."
+  },
+  "createMatch": {
+    "title": "Create Match",
+    "description": "Schedule a new match",
+    "category": "Category",
+    "selectCategory": "Select a category",
+    "classicMode": "Classic Mode",
+    "season": "Season",
+    "selectSeason": "Select a season",
+    "inGameMode": "In-Game Mode",
+    "selectMode": "Select a mode",
+    "leagueType": "League Type",
+    "selectLeague": "Select a league",
+    "scheduledStart": "Scheduled Start Time",
+    "minPlayers": "Min Players",
+    "maxPlayers": "Max Players",
+    "createButton": "Create Match",
+    "creating": "Creating...",
+    "success": "Match created successfully!",
+    "error": "Failed to create match",
+    "noActiveSeason": "No active season. Please create one first.",
+    "loadingSeason": "Loading...",
+    "validation": {
+      "seasonRequired": "Season is required",
+      "modeRequired": "In-game mode is required",
+      "startRequired": "Start time is required",
+      "startTooSoon": "Start time must be at least 1 minute from now",
+      "minPlayersRequired": "Min players is required",
+      "minPlayersMin": "Min players must be at least 12",
+      "maxPlayersRequired": "Max players is required",
+      "maxPlayersMin": "Max players must be at least 1",
+      "maxPlayersGreater": "Max players must be greater than or equal to min players"
+    }
   }
 }

@@ -22,7 +22,7 @@ interface Game {
   id: number;
   category: string;
   inGameMode: string;
-  leagueType: string;
+  leagueType: string | null;
   passcode: string | null;
   tracks?: number[] | null;
   totalPlayers: number;
