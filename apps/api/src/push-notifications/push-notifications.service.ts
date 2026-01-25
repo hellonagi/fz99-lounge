@@ -125,7 +125,7 @@ export class PushNotificationsService {
   async notifyMatchStart(game: {
     id: number;
     passcode: string;
-    leagueType: string;
+    leagueType: string | null;
     totalPlayers: number;
     url: string;
     match: {

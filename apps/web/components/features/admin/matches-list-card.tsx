@@ -21,7 +21,7 @@ interface Match {
     };
   };
   participants?: Array<{ userId: number }>;
-  games?: Array<{ leagueType: string }>;
+  games?: Array<{ leagueType: string | null }>;
 }
 
 const STATUS_COLORS: Record<string, string> = {

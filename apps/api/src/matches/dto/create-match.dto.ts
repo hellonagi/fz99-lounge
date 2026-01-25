@@ -8,15 +8,16 @@ export class CreateMatchDto {
   @IsEnum(InGameMode)
   inGameMode: InGameMode; // F-Zero 99 in-game mode for the first game
 
+  @IsOptional()
   @IsEnum(League)
-  leagueType: League; // League type for the first game
+  leagueType?: League; // League type for the first game (optional for modes without league selection)
 
   @IsString()
   scheduledStart: string; // ISO 8601 format
 
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(12)
   minPlayers?: number;
 
   @IsOptional()

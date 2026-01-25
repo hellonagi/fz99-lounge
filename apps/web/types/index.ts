@@ -39,7 +39,7 @@ export type League =
   | 'MIRROR_QUEEN'
   | 'MIRROR_KING'
   | 'MIRROR_ACE'
-  | 'CLASSIC_MINI';
+  | 'MYSTERY_KNIGHT';
 
 // Match Types (was Lobby - waiting room for a session)
 export interface Match {
@@ -86,7 +86,7 @@ export interface Game {
   matchId: number;
   gameNumber: number;
   inGameMode: InGameMode;
-  leagueType: League;
+  leagueType?: League | null;
   passcode: string;
   passcodePublishedAt?: string | null;
   startedAt?: string | null;

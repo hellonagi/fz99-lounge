@@ -61,9 +61,6 @@ enum League {
 
   // Mystery用
   MYSTERY_KNIGHT
-
-  // classicモード用
-  CLASSIC_MINI
 }
 
 enum MatchStatus {
@@ -469,7 +466,7 @@ model Game {
   gameNumber Int // 1, 2, 3... (マッチ内のゲーム番号)
 
   inGameMode InGameMode // F-Zero 99 のゲーム内モード
-  leagueType League
+  leagueType League? // nullable for modes without league selection (e.g., CLASSIC)
 
   // パスコード管理
   passcode            String    @db.VarChar(4)

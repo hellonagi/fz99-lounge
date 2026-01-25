@@ -262,5 +262,38 @@
   "screenshotReminder": {
     "title": "スクリーンショットについて",
     "description": "報告された順位に不備があった場合、スクリーンショットの提出を求められる場合があります。以下の2枚のスクリーンショットを控えてください。"
+  },
+  "createMatch": {
+    "title": "マッチ作成",
+    "description": "新しいマッチをスケジュール",
+    "category": "カテゴリ",
+    "selectCategory": "カテゴリを選択",
+    "classicMode": "クラシックモード",
+    "season": "シーズン",
+    "selectSeason": "シーズンを選択",
+    "inGameMode": "ゲームモード",
+    "selectMode": "モードを選択",
+    "leagueType": "リーグ",
+    "selectLeague": "リーグを選択",
+    "scheduledStart": "開始予定時刻",
+    "minPlayers": "最少人数",
+    "maxPlayers": "最大人数",
+    "createButton": "作成",
+    "creating": "作成中...",
+    "success": "マッチを作成しました！",
+    "error": "マッチの作成に失敗しました",
+    "noActiveSeason": "アクティブなシーズンがありません。先にシーズンを作成してください。",
+    "loadingSeason": "読み込み中...",
+    "validation": {
+      "seasonRequired": "シーズンを選択してください",
+      "modeRequired": "ゲームモードを選択してください",
+      "startRequired": "開始時刻を入力してください",
+      "startTooSoon": "開始時刻は現在より1分以上後にしてください",
+      "minPlayersRequired": "最少人数を入力してください",
+      "minPlayersMin": "最少人数は12人以上にしてください",
+      "maxPlayersRequired": "最大人数を入力してください",
+      "maxPlayersMin": "最大人数は1人以上にしてください",
+      "maxPlayersGreater": "最大人数は最少人数以上にしてください"
+    }
   }
 }

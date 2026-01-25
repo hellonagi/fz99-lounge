@@ -7,7 +7,7 @@ interface MatchHeaderCardProps {
   gameMode: string;
   seasonNumber: number | null;
   gameNumber: number | null;
-  leagueType: string;
+  leagueType: string | null;
   startedAt: string;
   completedAt: string | null;
   status: string;
@@ -39,7 +39,11 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
   const isLive = status === 'IN_PROGRESS';
 
   // Format league type for display
-  const formatLeagueDisplay = (league: string, mode: string) => {
+  const formatLeagueDisplay = (league: string | null, mode: string) => {
+    if (!league) {
+      // CLASSICモードはリーグ選択なし
+      return 'Classic';
+    }
     if (mode?.toLowerCase() === 'classic') {
       // CLASSIC_MINI -> Classic Mini Prix
       return league

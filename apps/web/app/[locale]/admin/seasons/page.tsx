@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { CreateSeasonForm, SeasonsList, SeasonCard } from '@/components/features/seasons';
 import { Trophy, Calendar } from 'lucide-react';
 import { seasonsApi } from '@/lib/api';
 
 export default function SeasonsManagementPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [activeSeasons, setActiveSeasons] = useState<Array<{
@@ -26,8 +28,15 @@ export default function SeasonsManagementPage() {
   }, []);
 
   useEffect(() => {
+    // Seasons page is ADMIN only
+    if (user && user.role !== 'ADMIN') {
+      router.push('/admin/matches');
+    }
+  }, [user, router]);
+
+  useEffect(() => {
     // Auth check is handled by the layout
-    if (mounted && user && (user.role === 'ADMIN' || user.role === 'MODERATOR')) {
+    if (mounted && user && user.role === 'ADMIN') {
       fetchActiveSeasons();
     }
   }, [mounted, user]);
@@ -65,8 +74,8 @@ export default function SeasonsManagementPage() {
     );
   }
 
-  // Auth check is handled by the layout, but we still need user for display
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'MODERATOR')) {
+  // Only ADMIN can access seasons
+  if (!user || user.role !== 'ADMIN') {
     return null;
   }
 
