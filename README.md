@@ -12,7 +12,7 @@
 
 ### **Try it now!**
 
-# **[beta.fz99lounge.com](https://beta.fz99lounge.com)**
+# **[fz99lounge.com](https://fz99lounge.com)**
 
 *Join the race. Climb the leaderboard. Become the champion.*
 
