@@ -264,6 +264,10 @@
     "title": "About Screenshots",
     "description": "If there are discrepancies in reported rankings, you may be asked to submit screenshots. Please keep the following 2 screenshots ready."
   },
+  "profile": {
+    "selectSeason": "Select Season",
+    "currentSeason": "(Current)"
+  },
   "createMatch": {
     "title": "Create Match",
     "description": "Schedule a new match",

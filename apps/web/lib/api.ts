@@ -50,20 +50,34 @@ export const usersApi = {
     api.put('/users/me', data),
   getSuggestedCountry: () => api.get<{ country: string | null }>('/users/me/suggested-country'),
   getUser: (id: string) => api.get(`/users/${id}`),
-  getUserByProfileId: (profileId: number) => api.get(`/users/profile/${profileId}`),
+  getUserByProfileId: (profileId: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC') => {
+    const params = new URLSearchParams();
+    if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
+    if (category) params.append('category', category);
+    const query = params.toString();
+    return api.get(`/users/profile/${profileId}${query ? `?${query}` : ''}`);
+  },
+  getUserSeasons: (userId: number, category?: 'GP' | 'CLASSIC') => {
+    const params = category ? `?category=${category}` : '';
+    return api.get(`/users/${userId}/seasons${params}`);
+  },
   getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
     const params = new URLSearchParams({ mode, page: String(page), limit: String(limit) });
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
   },
-  getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC') => {
+  getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC', seasonNumber?: number) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (category) params.append('category', category);
+    if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/${userId}/matches?${params.toString()}`);
   },
-  getRatingHistory: (userId: number, category?: 'GP' | 'CLASSIC') => {
-    const params = category ? `?category=${category}` : '';
-    return api.get(`/users/${userId}/rating-history${params}`);
+  getRatingHistory: (userId: number, category?: 'GP' | 'CLASSIC', seasonNumber?: number) => {
+    const params = new URLSearchParams();
+    if (category) params.append('category', category);
+    if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
+    const query = params.toString();
+    return api.get(`/users/${userId}/rating-history${query ? `?${query}` : ''}`);
   },
   getTrackStats: (userId: number, category?: 'GP' | 'CLASSIC') => {
     const params = category ? `?category=${category}` : '';
