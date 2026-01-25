@@ -60,8 +60,21 @@ export class UsersController {
   }
 
   @Get('profile/:profileId')
-  async getUserByProfileId(@Param('profileId') profileId: string) {
-    return this.usersService.findById(parseInt(profileId, 10));
+  async getUserByProfileId(
+    @Param('profileId') profileId: string,
+    @Query('seasonNumber') seasonNumber?: string,
+    @Query('category') category?: 'GP' | 'CLASSIC',
+  ) {
+    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
+    return this.usersService.findById(parseInt(profileId, 10), parsedSeason, category);
+  }
+
+  @Get(':id/seasons')
+  async getUserSeasons(
+    @Param('id') id: string,
+    @Query('category') category?: 'GP' | 'CLASSIC',
+  ) {
+    return this.usersService.getUserSeasons(parseInt(id, 10), category);
   }
 
   @Get(':id')
@@ -75,12 +88,15 @@ export class UsersController {
     @Query('limit') limit: string = '20',
     @Query('offset') offset: string = '0',
     @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('seasonNumber') seasonNumber?: string,
   ) {
+    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getUserMatchHistory(
       parseInt(id, 10),
       parseInt(limit, 10),
       parseInt(offset, 10),
       category,
+      parsedSeason,
     );
   }
 
@@ -88,10 +104,13 @@ export class UsersController {
   async getUserRatingHistory(
     @Param('id') id: string,
     @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('seasonNumber') seasonNumber?: string,
   ) {
+    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getUserRatingHistory(
       parseInt(id, 10),
       category,
+      parsedSeason,
     );
   }
 

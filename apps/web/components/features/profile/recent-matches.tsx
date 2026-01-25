@@ -12,9 +12,10 @@ interface RecentMatchesProps {
   userId: number;
   category: 'GP' | 'CLASSIC';
   initialLimit?: number;
+  seasonNumber?: number;
 }
 
-export function RecentMatches({ userId, category, initialLimit = 10 }: RecentMatchesProps) {
+export function RecentMatches({ userId, category, initialLimit = 10, seasonNumber }: RecentMatchesProps) {
   const [matches, setMatches] = useState<UserMatchHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -30,7 +31,7 @@ export function RecentMatches({ userId, category, initialLimit = 10 }: RecentMat
         setLoading(true);
       }
 
-      const response = await usersApi.getMatchHistory(userId, initialLimit, currentOffset, category);
+      const response = await usersApi.getMatchHistory(userId, initialLimit, currentOffset, category, seasonNumber);
       const newMatches: UserMatchHistoryEntry[] = response.data;
 
       if (append) {
@@ -47,7 +48,7 @@ export function RecentMatches({ userId, category, initialLimit = 10 }: RecentMat
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [userId, initialLimit, category]);
+  }, [userId, initialLimit, category, seasonNumber]);
 
   useEffect(() => {
     setOffset(0);
