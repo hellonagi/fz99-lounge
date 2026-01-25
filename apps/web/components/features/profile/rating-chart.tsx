@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 interface RatingChartProps {
   userId: number;
   category: 'GP' | 'CLASSIC';
+  seasonNumber?: number;
 }
 
 interface ChartDataPoint {
@@ -27,7 +28,7 @@ interface ChartDataPoint {
   date: string;
 }
 
-export function RatingChart({ userId, category }: RatingChartProps) {
+export function RatingChart({ userId, category, seasonNumber }: RatingChartProps) {
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export function RatingChart({ userId, category }: RatingChartProps) {
     async function fetchData() {
       try {
         setLoading(true);
-        const response = await usersApi.getRatingHistory(userId, category);
+        const response = await usersApi.getRatingHistory(userId, category, seasonNumber);
         const history: UserRatingHistoryEntry[] = response.data;
 
         const chartData = history.map((entry) => ({
@@ -58,7 +59,7 @@ export function RatingChart({ userId, category }: RatingChartProps) {
     }
 
     fetchData();
-  }, [userId, category]);
+  }, [userId, category, seasonNumber]);
 
   if (loading) {
     return (
