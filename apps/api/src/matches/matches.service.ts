@@ -647,11 +647,11 @@ export class MatchesService {
     for (const game of updatedMatch.games) {
       try {
         await this.discordBotService.postCancellationMessage(game.id);
-        // Schedule channel deletion after 1 hour
+        // Schedule channel deletion after 24 hours
         await this.matchQueue.add(
           'delete-discord-channel',
           { gameId: game.id },
-          { delay: 60 * 60 * 1000 }, // 1 hour
+          { delay: 24 * 60 * 60 * 1000 }, // 24 hours
         );
       } catch (error) {
         this.logger.error(`Failed to handle Discord channel for game ${game.id}:`, error);

@@ -605,12 +605,17 @@ Please check the match page: ${matchUrl}`;
         return false;
       }
 
-      const messageContent = `**Match Cancelled**
+      const embed = new EmbedBuilder()
+        .setTitle('Match Cancelled')
+        .setColor(0xe74c3c)
+        .setDescription(
+          'This match has been cancelled by an administrator.\nこのマッチは管理者によってキャンセルされました。',
+        )
+        .setFooter({
+          text: 'This channel will be deleted in 24 hours. / このチャンネルは24時間後に削除されます。',
+        });
 
-This match has been cancelled by an administrator.
-このマッチは管理者によってキャンセルされました。`;
-
-      await (channel as TextChannel).send({ content: messageContent });
+      await (channel as TextChannel).send({ embeds: [embed] });
 
       this.logger.log(
         `Posted cancellation message to channel ${game.discordChannelId} for game ${gameId}`,
@@ -681,7 +686,7 @@ This match has been cancelled by an administrator.
         .setColor(0xf39c12)
         .setDescription(positionLines.join('\n'))
         .setFooter({
-          text: 'This channel will be deleted in 1 hour. / このチャンネルは1時間後に削除されます。',
+          text: 'This channel will be deleted in 24 hours. / このチャンネルは24時間後に削除されます。',
         });
 
       await (channel as TextChannel).send({ embeds: [embed] });
