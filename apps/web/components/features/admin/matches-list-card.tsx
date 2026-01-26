@@ -9,6 +9,7 @@ import { Trash2, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Match {
   id: number;
+  matchNumber: number | null;
   inGameMode: string;
   status: string;
   scheduledStart: string;
@@ -157,6 +158,7 @@ export function MatchesListCard() {
                   <tr className="border-b border-gray-700">
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">ID</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Season</th>
+                    <th className="text-left py-3 px-2 text-gray-400 font-medium">Match #</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Category</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">League</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Status</th>
@@ -177,7 +179,10 @@ export function MatchesListCard() {
                         {match.id}
                       </td>
                       <td className="py-3 px-2 text-white">
-                        S{match.season?.seasonNumber ?? '-'}
+                        {match.season?.seasonNumber ?? '-'}
+                      </td>
+                      <td className="py-3 px-2 font-mono text-xs text-gray-300">
+                        {match.matchNumber ?? '-'}
                       </td>
                       <td className="py-3 px-2 text-white">
                         {category === 'GP' ? '99' : category || '-'}

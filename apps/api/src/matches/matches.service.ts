@@ -121,13 +121,21 @@ export class MatchesService {
       );
     }
 
-    // Get next match number
-    const lastMatch = await this.prisma.match.findFirst({
-      where: { seasonId },
-      orderBy: { matchNumber: 'desc' },
+    // Get next available match number (find smallest unused number)
+    const usedNumbers = await this.prisma.match.findMany({
+      where: {
+        seasonId,
+        matchNumber: { not: null },
+      },
+      select: { matchNumber: true },
+      orderBy: { matchNumber: 'asc' },
     });
 
-    const matchNumber = lastMatch ? lastMatch.matchNumber + 1 : 1;
+    const usedSet = new Set(usedNumbers.map((m) => m.matchNumber));
+    let matchNumber = 1;
+    while (usedSet.has(matchNumber)) {
+      matchNumber++;
+    }
 
     // CLASSIC_MINI_PRIXモードの場合、トラックセットを自動計算
     let tracks: number[] | null = null;
@@ -221,7 +229,7 @@ export class MatchesService {
         });
 
         await this.discordBotService.announceMatchCreated({
-          matchNumber: match.matchNumber,
+          matchNumber, // use local variable (always non-null when creating)
           seasonNumber: season.seasonNumber,
           category: season.event.category,
           seasonName: season.event.name,
@@ -611,10 +619,16 @@ export class MatchesService {
       throw new BadRequestException('Can only cancel matches in WAITING or IN_PROGRESS status');
     }
 
-    // Update match status to CANCELLED
+    // Save original matchNumber before clearing it (for Discord announcement)
+    const originalMatchNumber = match.matchNumber;
+
+    // Update match status to CANCELLED and clear matchNumber to free it for reuse
     const updatedMatch = await this.prisma.match.update({
       where: { id: matchId },
-      data: { status: MatchStatus.CANCELLED },
+      data: {
+        status: MatchStatus.CANCELLED,
+        matchNumber: null,
+      },
       include: this.matchDetailInclude,
     });
 
@@ -646,16 +660,18 @@ export class MatchesService {
     }
 
     // Announce cancellation to Discord announce channel
-    try {
-      await this.discordBotService.announceMatchCancelled({
-        matchNumber: match.matchNumber,
-        seasonNumber: match.season.seasonNumber,
-        category: match.season.event.category,
-        seasonName: match.season.event.name,
-        reason: 'admin_cancelled',
-      });
-    } catch (error) {
-      this.logger.error('Failed to announce match cancellation to Discord:', error);
+    if (originalMatchNumber !== null) {
+      try {
+        await this.discordBotService.announceMatchCancelled({
+          matchNumber: originalMatchNumber,
+          seasonNumber: match.season.seasonNumber,
+          category: match.season.event.category,
+          seasonName: match.season.event.name,
+          reason: 'admin_cancelled',
+        });
+      } catch (error) {
+        this.logger.error('Failed to announce match cancellation to Discord:', error);
+      }
     }
 
     // Emit WebSocket event to notify all clients

@@ -45,7 +45,7 @@ export type League =
 export interface Match {
   id: number;
   seasonId: number;
-  matchNumber: number;
+  matchNumber: number | null;
   status: MatchStatus;
   minPlayers: number;
   maxPlayers: number;

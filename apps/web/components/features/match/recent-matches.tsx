@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface RecentMatch {
   id: number;
-  matchNumber: number;
+  matchNumber: number | null;
   category: string;
   seasonNumber: number;
   playerCount: number;
@@ -46,11 +46,23 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
     );
   }
 
+  // Filter out cancelled matches (matchNumber is null)
+  const validMatches = matches.filter((m) => m.matchNumber !== null);
+
+  if (validMatches.length === 0) {
+    return (
+      <div>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+        <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
       <div className="border border-gray-700 rounded-lg p-4 mx-0 md:mx-6 space-y-2">
-        {matches.map((match) => (
+        {validMatches.map((match) => (
           <Link
             key={match.id}
             href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}

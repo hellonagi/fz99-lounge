@@ -932,6 +932,12 @@ export class GamesService {
       const seasonNumber = game.match.season?.seasonNumber ?? 1;
       const seasonName = game.match.season?.event?.name || category;
 
+      // Skip if matchNumber is null (cancelled matches)
+      if (game.match.matchNumber === null) {
+        this.logger.warn(`Game ${gameId} has no matchNumber, skipping announcement`);
+        return;
+      }
+
       await this.discordBotService.announceMatchResults({
         matchNumber: game.match.matchNumber,
         seasonNumber,

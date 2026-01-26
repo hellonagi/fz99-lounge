@@ -393,7 +393,7 @@ model Match {
 
   // gameMode は削除 - Season → Event.category で取得可能
   // leagueType は削除 - Game毎に異なる可能性があるためGame側で管理
-  matchNumber Int
+  matchNumber Int?
 
   status MatchStatus @default(WAITING)
 

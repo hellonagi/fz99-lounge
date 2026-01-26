@@ -67,11 +67,15 @@ export class MatchesProcessor {
           `Match ${matchId} does not have enough players (${currentPlayers}/${match.minPlayers})`,
         );
 
-        // Update match status to CANCELLED
+        // Save original matchNumber before clearing it (for Discord announcement)
+        const originalMatchNumber = match.matchNumber;
+
+        // Update match status to CANCELLED and clear matchNumber to free it for reuse
         await this.prisma.match.update({
           where: { id: matchId },
           data: {
             status: MatchStatus.CANCELLED,
+            matchNumber: null,
           },
         });
 
@@ -81,16 +85,18 @@ export class MatchesProcessor {
         this.eventsGateway.emitMatchCancelled(matchId);
 
         // Announce cancellation to Discord
-        try {
-          await this.discordBotService.announceMatchCancelled({
-            matchNumber: match.matchNumber,
-            seasonNumber: match.season.seasonNumber,
-            category: match.season.event.category,
-            seasonName: match.season.event.name,
-            reason: 'insufficient_players',
-          });
-        } catch (error) {
-          this.logger.error('Failed to announce match cancellation to Discord:', error);
+        if (originalMatchNumber !== null) {
+          try {
+            await this.discordBotService.announceMatchCancelled({
+              matchNumber: originalMatchNumber,
+              seasonNumber: match.season.seasonNumber,
+              category: match.season.event.category,
+              seasonName: match.season.event.name,
+              reason: 'insufficient_players',
+            });
+          } catch (error) {
+            this.logger.error('Failed to announce match cancellation to Discord:', error);
+          }
         }
 
         return;
@@ -132,6 +138,12 @@ export class MatchesProcessor {
       const categoryStr = match.season.event.category.toLowerCase();
       const seasonNumber = match.season.seasonNumber;
       const matchNumber = match.matchNumber;
+
+      // Guard: matchNumber should never be null for a valid WAITING match
+      if (matchNumber === null) {
+        this.logger.error(`Match ${matchId} has no matchNumber, cannot start`);
+        return;
+      }
 
       // Emit WebSocket event to all clients
       this.eventsGateway.emitMatchStarted({
@@ -241,6 +253,12 @@ export class MatchesProcessor {
         this.logger.log(
           `Skipping reminder for match ${matchId} (status: ${match.status})`,
         );
+        return;
+      }
+
+      // Skip if matchNumber is null (shouldn't happen for WAITING matches)
+      if (match.matchNumber === null) {
+        this.logger.warn(`Match ${matchId} has no matchNumber, skipping reminder`);
         return;
       }
 
