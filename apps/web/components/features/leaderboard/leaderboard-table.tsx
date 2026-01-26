@@ -133,7 +133,7 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
                 </td>
 
                 {/* Rank Badge */}
-                <td className="py-2 px-1">
+                <td className="py-2 px-1 whitespace-nowrap">
                   <div className="flex items-center gap-1.5">
                     <div className={cn('w-2.5 h-2.5 rounded-full', rankInfo.color)} />
                     <span className="text-gray-100">{rankInfo.name}</span>
