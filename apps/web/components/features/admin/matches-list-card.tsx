@@ -153,7 +153,7 @@ export function MatchesListCard() {
             <div className="text-center py-8 text-gray-400">No matches found</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead>
                   <tr className="border-b border-gray-700">
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">ID</th>
