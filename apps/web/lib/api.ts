@@ -130,7 +130,7 @@ export const matchesApi = {
 
 // Seasons API
 export const seasonsApi = {
-  getActive: (category: 'GP' | 'CLASSIC' = 'GP') =>
+  getActive: (category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' = 'GP') =>
     api.get(`/seasons/active?category=${category}`),
   getAll: (category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') => {
     const params = category ? `?category=${category}` : '';
@@ -138,7 +138,7 @@ export const seasonsApi = {
   },
   getById: (id: number) => api.get(`/seasons/${id}`),
   create: (data: {
-    category: 'GP' | 'CLASSIC';
+    category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
     seasonNumber: number;
     description?: string;
     startDate: string;

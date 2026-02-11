@@ -18,7 +18,7 @@ interface Season {
   isActive: boolean;
   event: {
     id: number;
-    category: 'GP' | 'CLASSIC' | 'TOURNAMENT';
+    category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
     name: string;
     description: string | null;
     createdAt: string;
@@ -34,7 +34,7 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'ALL' | 'GP' | 'CLASSIC'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'GP' | 'CLASSIC' | 'TEAM_CLASSIC'>('ALL');
   const [editingSeasonId, setEditingSeasonId] = useState<number | null>(null);
 
   const fetchSeasons = async () => {
@@ -185,6 +185,14 @@ export function SeasonsList({ refreshTrigger }: SeasonsListProps) {
                 className={filter === 'CLASSIC' ? 'bg-blue-600' : ''}
               >
                 CLASSIC
+              </Button>
+              <Button
+                variant={filter === 'TEAM_CLASSIC' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('TEAM_CLASSIC')}
+                className={filter === 'TEAM_CLASSIC' ? 'bg-blue-600' : ''}
+              >
+                TEAM CLASSIC
               </Button>
             </div>
           </div>

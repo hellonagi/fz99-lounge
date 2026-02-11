@@ -14,7 +14,7 @@ interface SeasonCardProps {
     endDate: string | null;
     isActive: boolean;
     event: {
-      category: 'GP' | 'CLASSIC' | 'TOURNAMENT';
+      category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
       name: string;
     };
   };

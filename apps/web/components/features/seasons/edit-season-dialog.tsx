@@ -49,7 +49,7 @@ interface EditSeasonDialogProps {
 }
 
 export function EditSeasonDialog({ seasonId, isOpen, onClose, onSuccess }: EditSeasonDialogProps) {
-  const [originalCategory, setOriginalCategory] = useState<'GP' | 'CLASSIC' | 'TOURNAMENT'>('GP');
+  const [originalCategory, setOriginalCategory] = useState<'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT'>('GP');
   const [loading, setLoading] = useState(true);
   const [success, setSuccess] = useState(false);
 

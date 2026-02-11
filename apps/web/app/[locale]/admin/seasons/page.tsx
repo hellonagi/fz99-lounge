@@ -18,7 +18,7 @@ export default function SeasonsManagementPage() {
     startDate: string;
     endDate: string | null;
     isActive: boolean;
-    event: { category: 'GP' | 'CLASSIC' | 'TOURNAMENT'; name: string };
+    event: { category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT'; name: string };
   }>>([]);
   const [loadingActive, setLoadingActive] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -44,14 +44,16 @@ export default function SeasonsManagementPage() {
   const fetchActiveSeasons = async () => {
     try {
       setLoadingActive(true);
-      const [gpResponse, classicResponse] = await Promise.all([
+      const [gpResponse, classicResponse, teamClassicResponse] = await Promise.all([
         seasonsApi.getActive('GP').catch(() => null),
         seasonsApi.getActive('CLASSIC').catch(() => null),
+        seasonsApi.getActive('TEAM_CLASSIC').catch(() => null),
       ]);
 
       const seasons = [];
       if (gpResponse?.data) seasons.push(gpResponse.data);
       if (classicResponse?.data) seasons.push(classicResponse.data);
+      if (teamClassicResponse?.data) seasons.push(teamClassicResponse.data);
       setActiveSeasons(seasons);
     } catch (err) {
       console.error('Error fetching active seasons:', err);
@@ -129,7 +131,7 @@ export default function SeasonsManagementPage() {
         <ul className="space-y-2 text-gray-400 text-sm">
           <li className="flex items-start gap-2">
             <span className="text-blue-400 mt-0.5">•</span>
-            <span>Only one season per game mode (GP/CLASSIC) can be active at a time</span>
+            <span>Only one season per game mode (GP/CLASSIC/TEAM CLASSIC) can be active at a time</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-blue-400 mt-0.5">•</span>
