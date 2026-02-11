@@ -64,6 +64,7 @@ jobs:
             --parameters 'commands=[
               "cd /home/ec2-user/fz99-lounge && sudo -u ec2-user git fetch origin && sudo -u ec2-user git checkout main && sudo -u ec2-user git reset --hard origin/main",
               "cd /home/ec2-user/fz99-lounge && aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}",
+              "docker image prune -af",
               "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod pull",
               "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod up -d",
               "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.prod exec -T api npx prisma migrate deploy"
