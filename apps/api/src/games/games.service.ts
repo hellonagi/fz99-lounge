@@ -13,7 +13,9 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { ClassicRatingService } from '../rating/classic-rating.service';
+import { TeamClassicRatingService } from '../rating/team-classic-rating.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
+import { TeamAssignmentService } from '../matches/team-assignment.service';
 
 export interface SplitVoteStatus {
   currentVotes: number;
@@ -39,6 +41,8 @@ export class GamesService {
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
     private classicRatingService: ClassicRatingService,
+    private teamClassicRatingService: TeamClassicRatingService,
+    private teamAssignmentService: TeamAssignmentService,
     private discordBotService: DiscordBotService,
     @InjectQueue('matches') private matchQueue: Queue,
   ) {}
@@ -97,8 +101,13 @@ export class GamesService {
       ? game.match?.participants?.some((p) => p.userId === userId) || false
       : false;
 
-    // Only show passcode to participants
-    if (!isParticipant) {
+    // Check if user is excluded (TEAM_CLASSIC)
+    const isExcluded = userId
+      ? game.participants.some((p) => p.userId === userId && p.isExcluded)
+      : false;
+
+    // Only show passcode to non-excluded participants
+    if (!isParticipant || isExcluded) {
       const { passcode, ...gameWithoutPasscode } = game;
       return gameWithoutPasscode;
     }
@@ -241,8 +250,13 @@ export class GamesService {
       ? game.match?.participants?.some((p) => p.userId === userId) || false
       : false;
 
-    // Only show passcode to participants
-    if (!isParticipant) {
+    // Check if user is excluded (TEAM_CLASSIC)
+    const isExcluded = userId
+      ? game.participants.some((p) => p.userId === userId && p.isExcluded)
+      : false;
+
+    // Only show passcode to non-excluded participants
+    if (!isParticipant || isExcluded) {
       const { passcode, ...gameWithoutPasscode } = gameWithRatings;
       return gameWithoutPasscode;
     }
@@ -279,6 +293,11 @@ export class GamesService {
     // Check match status - allow score submission during IN_PROGRESS
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
       throw new BadRequestException('Cannot submit score - match is not in progress');
+    }
+
+    // Block excluded players from submitting scores (TEAM_CLASSIC)
+    if (game.participants.length && game.participants[0].isExcluded) {
+      throw new BadRequestException('Excluded players cannot submit scores');
     }
 
     const now = new Date();
@@ -737,8 +756,15 @@ export class GamesService {
       );
     }
 
-    // Calculate ratings
-    await this.classicRatingService.calculateAndUpdateRatings(game.id);
+    // Calculate ratings based on event category
+    if (eventCategory === EventCategory.TEAM_CLASSIC) {
+      // For TEAM_CLASSIC: Calculate team scores first, then ratings
+      await this.calculateAndSaveTeamScores(game.id);
+      await this.teamClassicRatingService.calculateAndUpdateRatings(game.id);
+    } else {
+      // For CLASSIC: Use standard rating calculation
+      await this.classicRatingService.calculateAndUpdateRatings(game.id);
+    }
 
     // Update match status to FINALIZED
     await this.prisma.match.update({
@@ -938,12 +964,16 @@ export class GamesService {
         return;
       }
 
+      // Extract winning team data for TEAM_CLASSIC
+      const winningTeam = this.extractWinningTeamData(category, game);
+
       await this.discordBotService.announceMatchResults({
         matchNumber: game.match.matchNumber,
         seasonNumber,
         category: category.toLowerCase(),
         seasonName,
         topParticipants,
+        winningTeam,
       });
 
       this.logger.log(`Announced match results for game ${gameId}`);
@@ -962,6 +992,15 @@ export class GamesService {
       const game = await this.prisma.game.findUnique({
         where: { id: gameId },
         include: {
+          match: {
+            include: {
+              season: {
+                include: {
+                  event: true,
+                },
+              },
+            },
+          },
           participants: {
             where: {
               status: ResultStatus.VERIFIED,
@@ -1009,15 +1048,99 @@ export class GamesService {
         previousScore = participant.totalScore;
       }
 
+      // Extract all teams data for TEAM_CLASSIC
+      const category = game.match?.season?.event?.category || 'CLASSIC';
+      const allTeams = this.extractAllTeamsData(category, game);
+
       await this.discordBotService.postMatchResultsToChannel({
         gameId,
         participants: participantsWithPositions,
+        allTeams,
       });
 
       this.logger.log(`Posted match results to channel for game ${gameId}`);
     } catch (error) {
       this.logger.error(`Failed to post match results to channel for game ${gameId}:`, error);
     }
+  }
+
+  /**
+   * Extract winning team data from a game for Discord notifications
+   */
+  private extractWinningTeamData(
+    category: string,
+    game: {
+      teamScores: unknown;
+      participants: Array<{
+        teamIndex: number | null;
+        user: { displayName: string | null };
+      }>;
+    },
+  ): { teamLabel: string; score: number; members: string[] } | undefined {
+    if (category !== 'TEAM_CLASSIC' || !game.teamScores) {
+      return undefined;
+    }
+
+    const teamScores = game.teamScores as {
+      teamIndex: number;
+      score: number;
+      rank: number;
+    }[];
+
+    const winnerTeam = teamScores.find((t) => t.rank === 1);
+    if (!winnerTeam) {
+      return undefined;
+    }
+
+    const members = game.participants
+      .filter((p) => p.teamIndex === winnerTeam.teamIndex)
+      .map((p) => p.user.displayName ?? 'Unknown');
+
+    return {
+      teamLabel: String.fromCharCode(65 + winnerTeam.teamIndex),
+      score: winnerTeam.score,
+      members,
+    };
+  }
+
+  /**
+   * Extract all teams data from a game for Discord channel results
+   */
+  private extractAllTeamsData(
+    category: string,
+    game: {
+      teamScores: unknown;
+      participants: Array<{
+        teamIndex: number | null;
+        user: { displayName: string | null };
+      }>;
+    },
+  ): Array<{ label: string; score: number; rank: number; members: string[] }> | undefined {
+    if (category !== 'TEAM_CLASSIC' || !game.teamScores) {
+      return undefined;
+    }
+
+    const teamScores = game.teamScores as {
+      teamIndex: number;
+      score: number;
+      rank: number;
+    }[];
+
+    return teamScores
+      .sort((a, b) => a.rank - b.rank)
+      .map((t) => {
+        const label = String.fromCharCode(65 + t.teamIndex);
+        const members = game.participants
+          .filter((p) => p.teamIndex === t.teamIndex)
+          .map((p) => p.user.displayName ?? 'Unknown');
+
+        return {
+          label,
+          score: t.score,
+          rank: t.rank,
+          members,
+        };
+      });
   }
 
   // ========================================
@@ -1478,6 +1601,77 @@ export class GamesService {
     });
 
     return updated;
+  }
+
+  /**
+   * Calculate and save team scores for a TEAM_CLASSIC game
+   * Called before rating calculation
+   */
+  private async calculateAndSaveTeamScores(gameId: number): Promise<void> {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        participants: {
+          where: {
+            status: ResultStatus.VERIFIED,
+            isExcluded: false,
+          },
+          select: {
+            userId: true,
+            totalScore: true,
+            teamIndex: true,
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException(`Game ${gameId} not found`);
+    }
+
+    if (!game.teamConfig) {
+      throw new BadRequestException(`Game ${gameId} has no team config`);
+    }
+
+    // Group participants by team
+    const teamUserIdsMap = new Map<number, number[]>();
+    for (const p of game.participants) {
+      if (p.teamIndex !== null) {
+        const list = teamUserIdsMap.get(p.teamIndex) || [];
+        list.push(p.userId);
+        teamUserIdsMap.set(p.teamIndex, list);
+      }
+    }
+
+    // Build teams array for score calculation
+    const teams: number[][] = [];
+    for (const [teamIndex, userIds] of teamUserIdsMap.entries()) {
+      teams[teamIndex] = userIds;
+    }
+
+    // Build participant scores map
+    const participantScores = new Map<number, number>();
+    for (const p of game.participants) {
+      participantScores.set(p.userId, p.totalScore ?? 0);
+    }
+
+    // Calculate team scores
+    const teamScores = this.teamAssignmentService.calculateTeamScores(
+      participantScores,
+      teams,
+    );
+
+    // Save team scores to game
+    await this.prisma.game.update({
+      where: { id: gameId },
+      data: {
+        teamScores: teamScores,
+      },
+    });
+
+    this.logger.log(
+      `Calculated team scores for game ${gameId}: ${JSON.stringify(teamScores)}`,
+    );
   }
 
 }

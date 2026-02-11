@@ -12,10 +12,11 @@ import { ScoreSubmissionForm } from '@/components/features/match/score-submissio
 import { ScreenshotUploadForm } from '@/components/features/match/screenshot-upload-form';
 import { ScreenshotGallery } from '@/components/features/match/screenshot-gallery';
 import { TrackBanners } from '@/components/features/match/track-banners';
-import { Card, CardContent } from '@/components/ui/card';
+import { TeamAnnouncementPhase } from '@/components/features/match/team-announcement-phase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { gamesApi, screenshotsApi } from '@/lib/api';
-import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate, ParticipantUpdate, ScreenshotUpdate } from '@/hooks/useGameSocket';
+import { useGameSocket, SplitVoteUpdate, PasscodeRegeneratedUpdate, ParticipantUpdate, ScreenshotUpdate, TeamAssignedUpdate, PasscodeRevealedUpdate } from '@/hooks/useGameSocket';
 import { useTranslations } from 'next-intl';
 
 interface Game {
@@ -28,6 +29,10 @@ interface Game {
   totalPlayers: number;
   startedAt: string | null;
   completedAt: string | null;
+  // TEAM_CLASSIC fields
+  teamConfig?: string | null;
+  teamScores?: Array<{ teamIndex: number; score: number; rank: number }> | null;
+  passcodeRevealTime?: string | null;
   match: {
     id: number;
     status: string;
@@ -73,6 +78,9 @@ interface Game {
     status?: string;
     // Screenshot request
     screenshotRequested?: boolean;
+    // TEAM_CLASSIC fields
+    teamIndex?: number | null;
+    isExcluded?: boolean;
     raceResults?: Array<{
       raceNumber: number;
       position: number | null;
@@ -110,15 +118,95 @@ export default function GamePage() {
   const [splitVoteStatus, setSplitVoteStatus] = useState<SplitVoteStatus | null>(null);
   const initialTabSet = useRef(false);
 
+  // TEAM_CLASSIC state
+  const [teamData, setTeamData] = useState<{
+    teams: Array<{
+      teamIndex: number;
+      teamNumber: number;
+      color: string;
+      colorHex: string;
+      userIds: number[];
+    }>;
+    excludedUserIds: number[];
+    passcodeRevealTime: string;
+  } | null>(null);
+  const [passcodeRevealed, setPasscodeRevealed] = useState(false);
+
   const fetchGame = useCallback(async () => {
     try {
       const response = await gamesApi.getByCategorySeasonMatch(category, season, match);
-      setGame(response.data);
+      const gameData = response.data;
+      setGame(gameData);
+
+      // Initialize team data from API response for TEAM_CLASSIC
+      if (category.toUpperCase() === 'TEAM_CLASSIC' && gameData.teamConfig && gameData.participants) {
+        // Grid position -> color name/hex (F-ZERO 99 color selection screen)
+        const GRID_COLORS: Record<number, string> = {
+          1: 'Blue', 2: 'Green', 3: 'Yellow', 4: 'Pink',
+          5: 'Red', 6: 'Purple', 8: 'Cyan', 10: 'Orange',
+          14: 'White', 15: 'Black',
+        };
+        const GRID_COLOR_HEX: Record<number, string> = {
+          1: '#3B82F6', 2: '#22C55E', 3: '#EAB308', 4: '#EC4899',
+          5: '#EF4444', 6: '#A855F7', 8: '#06B6D4', 10: '#F97316',
+          14: '#F5F5F5', 15: '#6B7280',
+        };
+
+        // Available grid positions (same as API TEAM_GRID_NUMBERS)
+        const DEFAULT_GRID_NUMBERS = [1, 2, 3, 4, 5, 6, 8, 10, 14, 15];
+
+        // Parse grid numbers from teamConfig (e.g. "4x3|5,1,8")
+        const configParts = (gameData.teamConfig as string).split('|');
+        const gridNumbers = configParts.length > 1
+          ? configParts[1].split(',').map(Number)
+          : [];
+
+        // Build teams from participants
+        const teamMap = new Map<number, number[]>();
+        const excludedIds: number[] = [];
+
+        gameData.participants.forEach((p: { user: { id: number }; teamIndex?: number | null; isExcluded?: boolean }) => {
+          if (p.isExcluded) {
+            excludedIds.push(p.user.id);
+          } else if (p.teamIndex !== null && p.teamIndex !== undefined) {
+            const list = teamMap.get(p.teamIndex) || [];
+            list.push(p.user.id);
+            teamMap.set(p.teamIndex, list);
+          }
+        });
+
+        const teams = Array.from(teamMap.entries()).map(([teamIndex, userIds]) => {
+          const gridNum = gridNumbers[teamIndex] ?? DEFAULT_GRID_NUMBERS[teamIndex] ?? (teamIndex + 1);
+          return {
+            teamIndex,
+            teamNumber: gridNum,
+            color: GRID_COLORS[gridNum] || 'Unknown',
+            colorHex: GRID_COLOR_HEX[gridNum] || '#808080',
+            userIds,
+          };
+        });
+
+        if (teams.length > 0) {
+          setTeamData({
+            teams,
+            excludedUserIds: excludedIds,
+            passcodeRevealTime: gameData.passcodeRevealTime || '',
+          });
+        }
+
+        // Check if passcode is already revealed
+        if (gameData.passcodeRevealTime) {
+          const revealTime = new Date(gameData.passcodeRevealTime).getTime();
+          if (Date.now() >= revealTime) {
+            setPasscodeRevealed(true);
+          }
+        }
+      }
 
       // Fetch screenshots
-      if (response.data.id) {
+      if (gameData.id) {
         try {
-          const screenshotsResponse = await screenshotsApi.getSubmissions(response.data.id);
+          const screenshotsResponse = await screenshotsApi.getSubmissions(gameData.id);
           setScreenshots(screenshotsResponse.data);
         } catch {
           setScreenshots([]);
@@ -173,6 +261,8 @@ export default function GamePage() {
           totalScore: participant.totalScore,
           eliminatedAtRace: participant.eliminatedAtRace,
           raceResults: participant.raceResults,
+          status: participant.status,
+          screenshotRequested: participant.screenshotRequested,
         };
       } else {
         updatedParticipants.push(participant);
@@ -286,6 +376,28 @@ export default function GamePage() {
     });
   }, []);
 
+  // Handle team assignment (TEAM_CLASSIC)
+  const handleTeamAssigned = useCallback((data: TeamAssignedUpdate) => {
+    setTeamData({
+      teams: data.teams,
+      excludedUserIds: data.excludedUserIds,
+      passcodeRevealTime: data.passcodeRevealTime,
+    });
+    setPasscodeRevealed(false);
+  }, []);
+
+  // Handle passcode revealed (TEAM_CLASSIC)
+  const handlePasscodeRevealedEvent = useCallback((data: PasscodeRevealedUpdate) => {
+    setPasscodeRevealed(true);
+    setGame((prevGame) => {
+      if (!prevGame) return prevGame;
+      return {
+        ...prevGame,
+        passcode: data.passcode,
+      };
+    });
+  }, []);
+
   // Fetch split vote status
   const fetchSplitVoteStatus = useCallback(async () => {
     if (!game || game.match.status !== 'IN_PROGRESS') return;
@@ -321,7 +433,12 @@ export default function GamePage() {
     onSplitVoteUpdated: handleSplitVoteUpdated,
     onPasscodeRegenerated: handlePasscodeRegenerated,
     onScreenshotUpdated: handleScreenshotUpdated,
+    onTeamAssigned: handleTeamAssigned,
+    onPasscodeRevealed: handlePasscodeRevealedEvent,
   });
+
+  // Check if this is a TEAM_CLASSIC match
+  const isTeamClassic = category.toUpperCase() === 'TEAM_CLASSIC';
 
   if (loading) {
     return (
@@ -341,6 +458,7 @@ export default function GamePage() {
 
   // Check if current user is a participant in this match
   const isParticipant = user && game.match.participants.some(p => p.user.id === user.id);
+  const isExcluded = user && game.participants?.some(p => p.user.id === user.id && p.isExcluded);
 
   // Check if user has screenshot request
   const userScreenshotRequested = game.participants?.find(p => p.user.id === user?.id)?.screenshotRequested || false;
@@ -360,30 +478,90 @@ export default function GamePage() {
             status={game.match.status}
           />
 
-          {/* Track Banners (CLASSIC only) */}
-          {category.toUpperCase() === 'CLASSIC' && (
+          {/* Track Banners (CLASSIC and TEAM_CLASSIC) */}
+          {(category.toUpperCase() === 'CLASSIC' || isTeamClassic) && (
             <TrackBanners tracks={game.tracks} />
           )}
 
-          {/* Passcode Card */}
-          <MatchPasscodeCard
-            passcode={game.passcode}
-            isParticipant={!!isParticipant}
-            matchStatus={game.match.status}
-            category={category}
-            season={season}
-            match={match}
-            splitVoteStatus={splitVoteStatus}
-            onSplitVote={fetchSplitVoteStatus}
-          />
+          {/* Passcode Card - hide from excluded players */}
+          {!isExcluded && (
+            <MatchPasscodeCard
+              passcode={game.passcode}
+              isParticipant={!!isParticipant}
+              matchStatus={game.match.status}
+              category={category}
+              season={season}
+              match={match}
+              splitVoteStatus={splitVoteStatus}
+              onSplitVote={fetchSplitVoteStatus}
+              passcodeRevealTime={isTeamClassic ? game.passcodeRevealTime : undefined}
+              onPasscodeRevealed={() => {
+                setPasscodeRevealed(true);
+                fetchGame();
+              }}
+            />
+          )}
+
+          {/* TEAM_CLASSIC: Team Info (always show when team data available) */}
+          {isTeamClassic && teamData && teamData.teams.length > 0 && (() => {
+            // Calculate MVP user IDs (per-team highest scorer) for FINALIZED matches
+            const mvpUserIds = new Set<number>();
+            if (game.match.status === 'FINALIZED' && game.participants) {
+              const teamGroups = new Map<number, { userId: number; score: number }[]>();
+              for (const p of game.participants) {
+                if (p.teamIndex == null || p.isExcluded) continue;
+                const group = teamGroups.get(p.teamIndex) || [];
+                group.push({ userId: p.user.id, score: p.totalScore ?? 0 });
+                teamGroups.set(p.teamIndex, group);
+              }
+              for (const [, members] of teamGroups) {
+                const maxScore = Math.max(...members.map(m => m.score));
+                if (maxScore > 0) {
+                  members.filter(m => m.score === maxScore).forEach(m => mvpUserIds.add(m.userId));
+                }
+              }
+            }
+            return (
+            <TeamAnnouncementPhase
+              teams={teamData.teams.map((team) => ({
+                ...team,
+                members: team.userIds.map((userId) => {
+                  const participant = game.match.participants.find(
+                    (p) => p.user.id === userId
+                  );
+                  return {
+                    userId,
+                    displayName: participant?.user.displayName || null,
+                    avatarHash: participant?.user.avatarHash || null,
+                  };
+                }),
+              }))}
+              excludedUserIds={teamData.excludedUserIds}
+              excludedUsers={teamData.excludedUserIds.map((userId) => {
+                const participant = game.match.participants.find(
+                  (p) => p.user.id === userId
+                );
+                return {
+                  userId,
+                  displayName: participant?.user.displayName || null,
+                  avatarHash: participant?.user.avatarHash || null,
+                };
+              })}
+              currentUserId={user?.id || null}
+              isPasscodeRevealed={passcodeRevealed}
+              totalParticipants={game.match.participants.length}
+              mvpUserIds={mvpUserIds}
+            />
+            );
+          })()}
 
           {/* Screenshot Reminder for Participants */}
           {isParticipant && game.match.status === 'IN_PROGRESS' && (
             <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-bold text-white mb-2">
-                  {tScreenshotReminder('title')}
-                </h3>
+              <CardHeader className="pb-2">
+                <CardTitle>{tScreenshotReminder('title')}</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <p className="text-sm text-gray-400 mb-4">
                   {tScreenshotReminder('description')}
                 </p>
@@ -430,7 +608,13 @@ export default function GamePage() {
                   gameParticipants={game.participants}
                   matchParticipants={game.match.participants}
                   screenshots={screenshots}
-                  isClassicMode={category.toLowerCase() === 'classic'}
+                  isClassicMode={category.toLowerCase() === 'classic' || isTeamClassic}
+                  isTeamClassic={isTeamClassic}
+                  teamScores={game.teamScores ?? undefined}
+                  teamColors={teamData?.teams.reduce((acc, team) => {
+                    acc[team.teamIndex] = team.colorHex;
+                    return acc;
+                  }, {} as Record<number, string>)}
                 />
               </TabsContent>
 
@@ -440,7 +624,7 @@ export default function GamePage() {
                     gameId={game.id}
                     matchId={game.match.id}
                     matchStatus={game.match.status}
-                    participants={game.participants || []}
+                    participants={(game.participants || []).filter(p => !p.isExcluded)}
                     screenshots={screenshots}
                     category={category}
                     season={season}
@@ -455,7 +639,7 @@ export default function GamePage() {
           </Card>
 
           {/* Score Submission Form - visible when IN_PROGRESS, participant only, not on mod tab */}
-          {game.match.status === 'IN_PROGRESS' && isParticipant && activeTab !== 'moderator' && (
+          {game.match.status === 'IN_PROGRESS' && isParticipant && !isExcluded && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
                 <ScoreSubmissionForm

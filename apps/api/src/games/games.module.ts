@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BullModule } from '@nestjs/bull';
 import { GamesController } from './games.controller';
 import { GamesService } from './games.service';
@@ -8,6 +8,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EventsModule } from '../events/events.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 import { RatingModule } from '../rating/rating.module';
+import { MatchesModule } from '../matches/matches.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { RatingModule } from '../rating/rating.module';
     EventsModule,
     PushNotificationsModule,
     RatingModule,
+    forwardRef(() => MatchesModule),
     BullModule.registerQueue({
       name: 'games',
     }),

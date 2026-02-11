@@ -50,14 +50,14 @@ export const usersApi = {
     api.put('/users/me', data),
   getSuggestedCountry: () => api.get<{ country: string | null }>('/users/me/suggested-country'),
   getUser: (id: string) => api.get(`/users/${id}`),
-  getUserByProfileId: (profileId: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC') => {
+  getUserByProfileId: (profileId: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') => {
     const params = new URLSearchParams();
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     if (category) params.append('category', category);
     const query = params.toString();
     return api.get(`/users/profile/${profileId}${query ? `?${query}` : ''}`);
   },
-  getUserSeasons: (userId: number, category?: 'GP' | 'CLASSIC') => {
+  getUserSeasons: (userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') => {
     const params = category ? `?category=${category}` : '';
     return api.get(`/users/${userId}/seasons${params}`);
   },
@@ -66,20 +66,20 @@ export const usersApi = {
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
   },
-  getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC', seasonNumber?: number) => {
+  getMatchHistory: (userId: number, limit = 20, offset = 0, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC', seasonNumber?: number) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (category) params.append('category', category);
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/${userId}/matches?${params.toString()}`);
   },
-  getRatingHistory: (userId: number, category?: 'GP' | 'CLASSIC', seasonNumber?: number) => {
+  getRatingHistory: (userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC', seasonNumber?: number) => {
     const params = new URLSearchParams();
     if (category) params.append('category', category);
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     const query = params.toString();
     return api.get(`/users/${userId}/rating-history${query ? `?${query}` : ''}`);
   },
-  getTrackStats: (userId: number, category?: 'GP' | 'CLASSIC') => {
+  getTrackStats: (userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') => {
     const params = category ? `?category=${category}` : '';
     return api.get(`/users/${userId}/track-stats${params}`);
   },
@@ -109,9 +109,7 @@ export const matchesApi = {
   },
   getRecent: (limit: number = 5) => api.get(`/matches/recent?limit=${limit}`),
   getResults: (params: {
-    // TODO: 他のモードを実装したら追加する
-    // category: 'GP' | 'CLASSIC' | 'TOURNAMENT';
-    category: 'CLASSIC';
+    category: 'CLASSIC' | 'TEAM_CLASSIC';
     seasonNumber: number;
     page?: number;
     limit?: number;
@@ -134,7 +132,7 @@ export const matchesApi = {
 export const seasonsApi = {
   getActive: (category: 'GP' | 'CLASSIC' = 'GP') =>
     api.get(`/seasons/active?category=${category}`),
-  getAll: (category?: 'GP' | 'CLASSIC') => {
+  getAll: (category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') => {
     const params = category ? `?category=${category}` : '';
     return api.get(`/seasons${params}`);
   },

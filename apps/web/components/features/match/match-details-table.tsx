@@ -28,6 +28,9 @@ interface GameParticipant {
   ratingChange?: number | null;
   // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
+  // TEAM_CLASSIC fields
+  teamIndex?: number | null;
+  isExcluded?: boolean;
 }
 
 interface MatchParticipant {
@@ -47,7 +50,7 @@ interface Screenshot {
   id: number;
   userId: number;
   imageUrl: string | null;
-  type: 'INDIVIDUAL' | 'FINAL_SCORE';
+  type: 'INDIVIDUAL' | 'INDIVIDUAL_1' | 'INDIVIDUAL_2' | 'FINAL_SCORE' | 'FINAL_SCORE_1' | 'FINAL_SCORE_2';
   isVerified: boolean;
   isRejected?: boolean;
   isDeleted?: boolean;
@@ -75,6 +78,15 @@ interface MergedParticipant {
   screenshot?: Screenshot;
   // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
+  // TEAM_CLASSIC fields
+  teamIndex?: number | null;
+  isExcluded?: boolean;
+}
+
+interface TeamScore {
+  teamIndex: number;
+  score: number;
+  rank: number;
 }
 
 interface MatchDetailsTableProps {
@@ -82,6 +94,9 @@ interface MatchDetailsTableProps {
   matchParticipants?: MatchParticipant[];
   screenshots?: Screenshot[];
   isClassicMode?: boolean;
+  isTeamClassic?: boolean;
+  teamScores?: TeamScore[];
+  teamColors?: Record<number, string>; // teamIndex -> colorHex
 }
 
 export function MatchDetailsTable({
@@ -89,6 +104,9 @@ export function MatchDetailsTable({
   matchParticipants = [],
   screenshots = [],
   isClassicMode = false,
+  isTeamClassic = false,
+  teamScores = [],
+  teamColors = {},
 }: MatchDetailsTableProps) {
   const t = useTranslations('screenshotStatus');
 
@@ -121,6 +139,9 @@ export function MatchDetailsTable({
       screenshot: userScreenshot,
       // Score verification status
       status: gameData?.status,
+      // TEAM_CLASSIC fields
+      teamIndex: gameData?.teamIndex ?? null,
+      isExcluded: gameData?.isExcluded ?? false,
     });
   }
 
@@ -137,12 +158,17 @@ export function MatchDetailsTable({
         preGameRating: null,
         hasSubmitted: true,
         screenshot: userScreenshot,
-        // Score verification fields (already in gp via spread)
+        // TEAM_CLASSIC fields
+        teamIndex: gp.teamIndex ?? null,
+        isExcluded: gp.isExcluded ?? false,
       });
     }
   }
 
-  if (mergedParticipants.length === 0) {
+  // Filter out excluded players (TEAM_CLASSIC)
+  const activeMergedParticipants = mergedParticipants.filter(p => !p.isExcluded);
+
+  if (activeMergedParticipants.length === 0) {
     return (
       <div className="text-center text-gray-500 py-8">
         No participants yet
@@ -151,7 +177,7 @@ export function MatchDetailsTable({
   }
 
   // Sort: submitted players by score first, then unsubmitted by preGameRating
-  const sortedParticipants = [...mergedParticipants].sort((a, b) => {
+  const sortedParticipants = [...activeMergedParticipants].sort((a, b) => {
     // Submitted players come first
     if (a.hasSubmitted && !b.hasSubmitted) return -1;
     if (!a.hasSubmitted && b.hasSubmitted) return 1;
@@ -210,131 +236,262 @@ export function MatchDetailsTable({
     return result.position;
   };
 
+  // Helper to render a participant row
+  const renderParticipantRow = (participant: MergedParticipant & { rank: number | null }, options?: { showTeamColumn?: boolean }) => {
+    const { showTeamColumn } = options || {};
+
+    return (
+    <tr
+      key={participant.user.id}
+      className="border-b border-gray-700/50 hover:bg-gray-700/30"
+      style={showTeamColumn && participant.teamIndex != null && teamColors[participant.teamIndex]
+        ? { backgroundImage: `repeating-linear-gradient(135deg, ${teamColors[participant.teamIndex]}1A, ${teamColors[participant.teamIndex]}1A 4px, transparent 4px, transparent 8px)` }
+        : undefined}
+    >
+      {/* Rank */}
+      <td className={cn(
+        'py-2 px-2 font-bold',
+        participant.rank === null ? 'text-gray-400' :
+        participant.rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
+      )}>
+        {participant.rank ?? '-'}
+      </td>
+
+      {/* Team */}
+      {showTeamColumn && (
+        <td className="py-2 px-1">
+          {participant.teamIndex !== null && participant.teamIndex !== undefined ? (
+            <span className="text-white">
+              {String.fromCharCode(65 + participant.teamIndex)}
+            </span>
+          ) : (
+            <span className="text-gray-500">-</span>
+          )}
+        </td>
+      )}
+
+      {/* Player Name with Country Flag */}
+      <td className="py-2 px-2 text-white whitespace-nowrap">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={`fi fi-${participant.user.profile?.country?.toLowerCase() || 'un'}`}
+            title={participant.user.profile?.country || 'Unknown'}
+          />
+          <Link
+            href={`/profile/${participant.user.id}`}
+            className="hover:text-blue-400 hover:underline"
+          >
+            {participant.user.displayName || `User#${participant.user.id}`}
+          </Link>
+          {participant.assistEnabled && !isClassicMode && (
+            <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
+          )}
+        </span>
+      </td>
+
+      {/* Machine */}
+      <td className="py-2 px-2 text-gray-100 w-8 sm:w-auto">
+        <span className="sm:hidden">{getMachineAbbr(participant.machine)}</span>
+        <span className="hidden sm:inline">{participant.machine || '-'}</span>
+      </td>
+
+      {/* R1 */}
+      <td className="py-2 px-1 text-center text-gray-100">
+        {getRaceDisplay(participant, 1)}
+      </td>
+
+      {/* R2 */}
+      <td className="py-2 px-1 text-center text-gray-100">
+        {getRaceDisplay(participant, 2)}
+      </td>
+
+      {/* R3 */}
+      <td className="py-2 px-1 text-center text-gray-100">
+        {getRaceDisplay(participant, 3)}
+      </td>
+
+      {/* Points */}
+      <td className="py-2 px-2 text-right font-medium text-white">
+        {participant.totalScore ?? '-'}
+      </td>
+
+      {/* Status - Based on score verification */}
+      <td className="py-2 px-2 text-center whitespace-nowrap">
+        {participant.status && participant.status !== 'UNSUBMITTED' ? (
+          <span className={cn(
+            "text-xs font-medium",
+            participant.status === 'VERIFIED'
+              ? 'text-green-400'
+              : participant.status === 'REJECTED'
+              ? 'text-red-400'
+              : 'text-blue-400'
+          )}>
+            {participant.status === 'VERIFIED'
+              ? t('ok')
+              : participant.status === 'REJECTED'
+              ? t('ng')
+              : t('pending')}
+          </span>
+        ) : (
+          <span className="text-gray-500">-</span>
+        )}
+      </td>
+
+      {/* Rating After */}
+      <td className="py-2 px-2 text-right text-gray-100">
+        {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
+      </td>
+
+      {/* Rating Change */}
+      <td className={cn(
+        'py-2 px-2 text-right font-medium',
+        participant.ratingChange == null ? 'text-gray-400' :
+        participant.ratingChange > 0 ? 'text-green-400' :
+        participant.ratingChange < 0 ? 'text-red-400' : 'text-gray-300'
+      )}>
+        {participant.ratingChange != null ? (
+          participant.ratingChange > 0 ? `+${participant.ratingChange}` : participant.ratingChange
+        ) : '-'}
+      </td>
+    </tr>
+  );};
+
+  // Table header
+  const tableHeader = (
+    <thead>
+      <tr className="border-b border-gray-700 text-gray-400">
+        <th className="text-left py-2 px-2 font-medium w-0">#</th>
+        {isTeamClassic && <th className="py-2 px-1 font-medium w-0">Team</th>}
+        <th className="text-left py-2 px-2 font-medium">Player</th>
+        <th className="text-left py-2 px-2 font-medium w-8 sm:w-auto">
+          <span className="sm:hidden">MC</span>
+          <span className="hidden sm:inline">Machine</span>
+        </th>
+        <th className="text-center py-2 px-1 font-medium w-10">R1</th>
+        <th className="text-center py-2 px-1 font-medium w-10">R2</th>
+        <th className="text-center py-2 px-1 font-medium w-10">R3</th>
+        <th className="text-right py-2 px-2 font-medium">Pts</th>
+        <th className="text-center py-2 px-2 font-medium">Status</th>
+        <th className="text-right py-2 px-2 font-medium">Rating</th>
+        <th className="text-right py-2 px-2 font-medium">+/-</th>
+      </tr>
+    </thead>
+  );
+
+  // Sort teamScores by rank for display
+  const sortedTeamScores = teamScores && teamScores.length > 0
+    ? [...teamScores].sort((a, b) => a.rank - b.rank)
+    : [];
+
+  // Calculate team scores from participants if not provided (for IN_PROGRESS matches)
+  const calculatedTeamScores: TeamScore[] = [];
+  if (isTeamClassic && sortedTeamScores.length === 0) {
+    const teamScoreMap = new Map<number, number>();
+    participantsWithRank.forEach((p) => {
+      if (p.teamIndex !== null && p.teamIndex !== undefined) {
+        const currentScore = teamScoreMap.get(p.teamIndex) || 0;
+        teamScoreMap.set(p.teamIndex, currentScore + (p.totalScore ?? 0));
+      }
+    });
+    // Convert to array and sort by score descending
+    const teamScoreArray = Array.from(teamScoreMap.entries())
+      .map(([teamIndex, score]) => ({ teamIndex, score, rank: 0 }))
+      .sort((a, b) => b.score - a.score);
+    // Assign ranks
+    teamScoreArray.forEach((team, index) => {
+      team.rank = index + 1;
+      calculatedTeamScores.push(team);
+    });
+  }
+
+  // Use API-provided scores if available, otherwise use calculated scores
+  const displayTeamScores = sortedTeamScores.length > 0 ? sortedTeamScores : calculatedTeamScores;
+
+  // Calculate per-race scores for each team
+  const teamRaceScores = new Map<number, { r1: number; r2: number; r3: number }>();
+  if (isTeamClassic) {
+    participantsWithRank.forEach((p) => {
+      if (p.teamIndex === null || p.teamIndex === undefined) return;
+      const current = teamRaceScores.get(p.teamIndex) || { r1: 0, r2: 0, r3: 0 };
+      p.raceResults?.forEach((r) => {
+        if (r.raceNumber === 1) current.r1 += r.points ?? 0;
+        else if (r.raceNumber === 2) current.r2 += r.points ?? 0;
+        else if (r.raceNumber === 3) current.r3 += r.points ?? 0;
+      });
+      teamRaceScores.set(p.teamIndex, current);
+    });
+  }
+
+  // TEAM_CLASSIC: Render with team ranking summary and score-sorted table
+  if (isTeamClassic && displayTeamScores.length > 0) {
+    return (
+      <div className="overflow-x-auto">
+        {/* Team Ranking Table */}
+        <table className="w-full text-sm mb-4">
+          <thead>
+            <tr className="border-b border-gray-700 text-gray-400">
+              <th className="text-left py-2 px-2 font-medium w-0">#</th>
+              <th className="text-left py-2 px-2 font-medium">Team</th>
+              <th className="text-center py-2 px-1 font-medium w-10">R1</th>
+              <th className="text-center py-2 px-1 font-medium w-10">R2</th>
+              <th className="text-center py-2 px-1 font-medium w-10">R3</th>
+              <th className="text-right py-2 px-2 font-medium">Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayTeamScores.map((team) => {
+              const races = teamRaceScores.get(team.teamIndex);
+              return (
+                <tr
+                  key={team.teamIndex}
+                  className="border-b border-gray-700/50"
+                  style={teamColors[team.teamIndex]
+                    ? { backgroundImage: `repeating-linear-gradient(135deg, ${teamColors[team.teamIndex]}1A, ${teamColors[team.teamIndex]}1A 4px, transparent 4px, transparent 8px)` }
+                    : undefined}
+                >
+                  <td className={cn(
+                    'py-2 px-2 font-bold',
+                    team.rank <= 1 ? 'text-yellow-400' : 'text-gray-100'
+                  )}>
+                    {team.rank}
+                  </td>
+                  <td className="py-2 px-2 text-white">
+                    Team {String.fromCharCode(65 + team.teamIndex)}
+                  </td>
+                  <td className="py-2 px-1 text-center text-gray-100">{races?.r1 ?? '-'}</td>
+                  <td className="py-2 px-1 text-center text-gray-100">{races?.r2 ?? '-'}</td>
+                  <td className="py-2 px-1 text-center text-gray-100">{races?.r3 ?? '-'}</td>
+                  <td className="py-2 px-2 text-right font-medium text-white">
+                    {team.score.toLocaleString()}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {/* Score-sorted table with team color backgrounds */}
+        <table className="w-full text-sm min-w-[500px] sm:min-w-[700px]">
+          {tableHeader}
+          <tbody>
+            {participantsWithRank.map((participant) =>
+              renderParticipantRow(participant, { showTeamColumn: true })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // Standard view (non-TEAM_CLASSIC)
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm min-w-[500px] sm:min-w-[700px]">
-        <thead>
-          <tr className="border-b border-gray-700 text-gray-400">
-            <th className="text-left py-2 px-2 font-medium">#</th>
-            <th className="py-2 px-1 w-6"></th>
-            <th className="text-left py-2 px-2 font-medium">Player</th>
-            <th className="text-left py-2 px-2 font-medium w-8 sm:w-auto">
-              <span className="sm:hidden">MC</span>
-              <span className="hidden sm:inline">Machine</span>
-            </th>
-            <th className="text-center py-2 px-1 font-medium w-10">R1</th>
-            <th className="text-center py-2 px-1 font-medium w-10">R2</th>
-            <th className="text-center py-2 px-1 font-medium w-10">R3</th>
-            <th className="text-right py-2 px-2 font-medium">Pts</th>
-            <th className="text-center py-2 px-2 font-medium">Status</th>
-            <th className="text-right py-2 px-2 font-medium">Rating</th>
-            <th className="text-right py-2 px-2 font-medium">+/-</th>
-          </tr>
-        </thead>
+        {tableHeader}
         <tbody>
-          {participantsWithRank.map((participant) => (
-            <tr
-              key={participant.user.id}
-              className="border-b border-gray-700/50 hover:bg-gray-700/30"
-            >
-              {/* Rank */}
-              <td className={cn(
-                'py-2 px-2 font-bold',
-                participant.rank === null ? 'text-gray-400' :
-                participant.rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
-              )}>
-                {participant.rank ?? '-'}
-              </td>
-
-              {/* Country */}
-              <td className="py-2 px-1 w-6">
-                <span
-                  className={`fi fi-${participant.user.profile?.country?.toLowerCase() || 'un'}`}
-                  title={participant.user.profile?.country || 'Unknown'}
-                />
-              </td>
-
-              {/* Player Name */}
-              <td className="py-2 px-2 text-white whitespace-nowrap">
-                <span className="flex items-center gap-1">
-                  <Link
-                    href={`/profile/${participant.user.id}`}
-                    className="hover:text-blue-400 hover:underline"
-                  >
-                    {participant.user.displayName || `User#${participant.user.id}`}
-                  </Link>
-                  {participant.assistEnabled && !isClassicMode && (
-                    <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
-                  )}
-                </span>
-              </td>
-
-              {/* Machine */}
-              <td className="py-2 px-2 text-gray-100 w-8 sm:w-auto">
-                <span className="sm:hidden">{getMachineAbbr(participant.machine)}</span>
-                <span className="hidden sm:inline">{participant.machine || '-'}</span>
-              </td>
-
-              {/* R1 */}
-              <td className="py-2 px-1 text-center text-gray-100">
-                {getRaceDisplay(participant, 1)}
-              </td>
-
-              {/* R2 */}
-              <td className="py-2 px-1 text-center text-gray-100">
-                {getRaceDisplay(participant, 2)}
-              </td>
-
-              {/* R3 */}
-              <td className="py-2 px-1 text-center text-gray-100">
-                {getRaceDisplay(participant, 3)}
-              </td>
-
-              {/* Points */}
-              <td className="py-2 px-2 text-right font-medium text-white">
-                {participant.totalScore ?? '-'}
-              </td>
-
-              {/* Status - Based on score verification */}
-              <td className="py-2 px-2 text-center">
-                {participant.status && participant.status !== 'UNSUBMITTED' ? (
-                  <span className={cn(
-                    "text-xs font-medium",
-                    participant.status === 'VERIFIED'
-                      ? 'text-green-400'
-                      : participant.status === 'REJECTED'
-                      ? 'text-red-400'
-                      : 'text-blue-400'
-                  )}>
-                    {participant.status === 'VERIFIED'
-                      ? t('ok')
-                      : participant.status === 'REJECTED'
-                      ? t('ng')
-                      : t('pending')}
-                  </span>
-                ) : (
-                  <span className="text-gray-500">-</span>
-                )}
-              </td>
-
-              {/* Rating After */}
-              <td className="py-2 px-2 text-right text-gray-100">
-                {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
-              </td>
-
-              {/* Rating Change */}
-              <td className={cn(
-                'py-2 px-2 text-right font-medium',
-                participant.ratingChange == null ? 'text-gray-400' :
-                participant.ratingChange > 0 ? 'text-green-400' :
-                participant.ratingChange < 0 ? 'text-red-400' : 'text-gray-300'
-              )}>
-                {participant.ratingChange != null ? (
-                  participant.ratingChange > 0 ? `+${participant.ratingChange}` : participant.ratingChange
-                ) : '-'}
-              </td>
-            </tr>
-          ))}
+          {participantsWithRank.map((participant) =>
+            renderParticipantRow(participant, { showTeamColumn: isTeamClassic })
+          )}
         </tbody>
       </table>
     </div>

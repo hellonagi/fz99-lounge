@@ -35,9 +35,12 @@ interface LeaderboardEntry {
   };
 }
 
+type Category = 'CLASSIC' | 'TEAM_CLASSIC';
+
 export default function LeaderboardPage() {
   const t = useTranslations('leaderboard');
   const [mounted, setMounted] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<Category>('CLASSIC');
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -50,14 +53,15 @@ export default function LeaderboardPage() {
     setMounted(true);
   }, []);
 
-  // Fetch seasons on mount
+  // Fetch seasons when category changes
   useEffect(() => {
     const fetchSeasons = async () => {
       try {
-        const response = await seasonsApi.getAll('CLASSIC');
+        const response = await seasonsApi.getAll(activeCategory);
         const seasonList = response.data as Season[];
         setSeasons(seasonList);
-        // シーズン選択はleaderboard取得時にバックエンドから返されるseasonNumberで設定する
+        setSelectedSeasonNumber(undefined); // Reset season selection
+        setPage(1); // Reset page
       } catch {
         setError(t('failedToLoadSeasons'));
         setLoading(false);
@@ -65,9 +69,9 @@ export default function LeaderboardPage() {
     };
 
     fetchSeasons();
-  }, [t]);
+  }, [activeCategory, t]);
 
-  // Fetch leaderboard when season or page changes
+  // Fetch leaderboard when category, season or page changes
   useEffect(() => {
     // 初回はseasons取得を待つ
     if (seasons.length === 0) return;
@@ -76,7 +80,7 @@ export default function LeaderboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await usersApi.getLeaderboard('CLASSIC', selectedSeasonNumber, page);
+        const response = await usersApi.getLeaderboard(activeCategory, selectedSeasonNumber, page);
         const result = response.data as { data: LeaderboardEntry[]; meta: { totalPages: number; seasonNumber?: number } };
         setLeaderboardData(result.data);
         setTotalPages(result.meta.totalPages);
@@ -93,7 +97,7 @@ export default function LeaderboardPage() {
     };
 
     fetchLeaderboard();
-  }, [seasons, selectedSeasonNumber, page, t]);
+  }, [activeCategory, seasons, selectedSeasonNumber, page, t]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeasonNumber(seasonNumber);
@@ -121,9 +125,13 @@ export default function LeaderboardPage() {
       {/* Tabs */}
       <div className="bg-gray-800 rounded-lg">
         {mounted ? (
-          <Tabs defaultValue="classic">
+          <Tabs
+            value={activeCategory.toLowerCase()}
+            onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
+          >
             <TabsList>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
+              <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="classic">
@@ -131,7 +139,22 @@ export default function LeaderboardPage() {
                 <div className="text-center text-red-400 py-8">{error}</div>
               ) : (
                 <>
-                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} />
+                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="CLASSIC" />
+                  <LeaderboardPagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="team_classic">
+              {error ? (
+                <div className="text-center text-red-400 py-8">{error}</div>
+              ) : (
+                <>
+                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="TEAM_CLASSIC" />
                   <LeaderboardPagination
                     currentPage={page}
                     totalPages={totalPages}

@@ -38,8 +38,12 @@ interface PaginationMeta {
   hasPrev: boolean;
 }
 
+type Category = 'CLASSIC' | 'TEAM_CLASSIC';
+
 export default function ResultsPage() {
   const t = useTranslations('results');
+  const [mounted, setMounted] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<Category>('CLASSIC');
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [page, setPage] = useState(1);
@@ -48,20 +52,25 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch seasons on mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Fetch seasons when category changes
   useEffect(() => {
     const fetchSeasons = async () => {
       try {
-        const response = await seasonsApi.getAll('CLASSIC');
+        const response = await seasonsApi.getAll(activeCategory);
         const seasonList = response.data as Season[];
         setSeasons(seasonList);
+        setSelectedSeasonNumber(undefined);
+        setPage(1);
 
         // Find active season and set as default
         const activeSeason = seasonList.find((s: Season) => s.isActive);
         if (activeSeason) {
           setSelectedSeasonNumber(activeSeason.seasonNumber);
         } else if (seasonList.length > 0) {
-          // Fallback to latest season
           const latestSeason = seasonList.reduce((prev: Season, curr: Season) =>
             curr.seasonNumber > prev.seasonNumber ? curr : prev
           );
@@ -74,7 +83,7 @@ export default function ResultsPage() {
     };
 
     fetchSeasons();
-  }, [t]);
+  }, [activeCategory, t]);
 
   // Fetch matches when season or page changes
   useEffect(() => {
@@ -85,7 +94,7 @@ export default function ResultsPage() {
       setError(null);
       try {
         const response = await matchesApi.getResults({
-          category: 'CLASSIC',
+          category: activeCategory,
           seasonNumber: selectedSeasonNumber,
           page,
           limit: 20,
@@ -102,23 +111,48 @@ export default function ResultsPage() {
     };
 
     fetchResults();
-  }, [selectedSeasonNumber, page, t]);
+  }, [activeCategory, selectedSeasonNumber, page, t]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeasonNumber(seasonNumber);
-    setPage(1); // Reset page when season changes
+    setPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
 
+  const renderContent = () => (
+    <>
+      {error ? (
+        <div className="text-center text-red-400 py-8">{error}</div>
+      ) : (
+        <>
+          {meta && (
+            <div className="text-sm text-gray-400 mb-4">
+              {t('matchesFound', { count: meta.total })}
+            </div>
+          )}
+          <MatchList matches={matches} loading={loading} />
+
+          {meta && meta.totalPages > 1 && (
+            <ResultsPagination
+              currentPage={page}
+              totalPages={meta.totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+
   return (
     <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
-        {seasons.length > 0 && (
+        {seasons.length > 0 && selectedSeasonNumber !== undefined && (
           <SeasonSelect
             seasons={seasons}
             selectedSeasonNumber={selectedSeasonNumber}
@@ -129,34 +163,30 @@ export default function ResultsPage() {
 
       {/* Tabs */}
       <div className="bg-gray-800 rounded-lg">
-        <Tabs defaultValue="classic">
-          <TabsList>
-            <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
-          </TabsList>
+        {mounted ? (
+          <Tabs
+            value={activeCategory.toLowerCase()}
+            onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
+          >
+            <TabsList>
+              <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
+              <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="classic" className="p-4">
-            {error ? (
-              <div className="text-center text-red-400 py-8">{error}</div>
-            ) : (
-              <>
-                {meta && (
-                  <div className="text-sm text-gray-400 mb-4">
-                    {t('matchesFound', { count: meta.total })}
-                  </div>
-                )}
-                <MatchList matches={matches} loading={loading} />
+            <TabsContent value="classic" className="p-4">
+              {renderContent()}
+            </TabsContent>
 
-                {meta && meta.totalPages > 1 && (
-                  <ResultsPagination
-                    currentPage={page}
-                    totalPages={meta.totalPages}
-                    onPageChange={handlePageChange}
-                  />
-                )}
-              </>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="team_classic" className="p-4">
+              {renderContent()}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <div className="p-6">
+            <div className="h-10 bg-gray-700/50 rounded animate-pulse w-32 mb-4" />
+            <div className="h-64 bg-gray-700/30 rounded animate-pulse" />
+          </div>
+        )}
       </div>
     </main>
   );

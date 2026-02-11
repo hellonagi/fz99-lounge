@@ -80,6 +80,7 @@
   "leaderboard": {
     "title": "リーダーボード",
     "classic": "Classic",
+    "teamClassic": "Team Classic",
     "failedToLoadSeasons": "シーズンの読み込みに失敗しました",
     "failedToLoadLeaderboard": "リーダーボードの読み込みに失敗しました"
   },
@@ -87,6 +88,7 @@
     "title": "試合結果",
     "matchesFound": "{count}件の試合",
     "classic": "クラシック",
+    "teamClassic": "チームクラシック",
     "failedToLoadSeasons": "シーズンの読み込みに失敗しました",
     "failedToLoadResults": "結果の読み込みに失敗しました"
   },
@@ -265,7 +267,30 @@
   },
   "profile": {
     "selectSeason": "シーズンを選択",
-    "currentSeason": "(現在)"
+    "currentSeason": "(現在)",
+    "mvp": "MVP"
+  },
+  "teamClassic": {
+    "yourTeam": "あなたのチーム",
+    "changeNameInstruction": "ゲーム内の名前にチーム {teamNumber}{name} を含めてください",
+    "changeMachineColorInstruction": "マシンカラーをチームカラーに合わせてください",
+    "excluded": "ゲームに参加できませんでした",
+    "excludedDescription": "あなたは{count}番目（最後）の登録だったため、チーム割り当ての対象外となりました。",
+    "passcodeRevealIn": "パスコード公開まで",
+    "passcodeHidden": "待ち時間の間に下のチームセットアップを確認してください",
+    "allTeams": "チーム",
+    "excludedPlayers": "除外されたプレイヤー",
+    "teamResults": "チーム結果",
+    "teamRanking": "チームランキング",
+    "teamSetup": "準備",
+    "teamSetupNameTitle": "名前を変更",
+    "teamSetupNameDescription": "ゲーム内の名前の先頭にチーム名を追加してください。名前が入り切らない場合は省略してください。",
+    "teamSetupNameExample": "例: \"Player\" → \"{teamLetter} Player\"、\"Player1234\" → \"{teamLetter} Player12\"",
+    "teamSetupColorTitle": "マシンカラーを選択",
+    "teamSetupColorDescription": "自分のチームに対応するマシンカラーを選択してください"
+  },
+  "notifications": {
+    "enable": "試合通知を有効にする"
   },
   "createMatch": {
     "title": "マッチ作成",

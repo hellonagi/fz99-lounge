@@ -9,7 +9,6 @@ import { HowToJoinSection } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAuthStore } from '@/store/authStore';
 import { matchesApi } from '@/lib/api';
 
@@ -61,8 +60,6 @@ export default function Home() {
     nextMatch,
     setNextMatch
   );
-
-  usePushNotifications();
 
   const { isAuthenticated } = useAuthStore();
 

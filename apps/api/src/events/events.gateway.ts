@@ -73,6 +73,35 @@ export class EventsGateway
     this.server.emit('match-completed', { matchId });
   }
 
+  // Emit team assigned event (TEAM_CLASSIC mode)
+  emitTeamAssigned(data: {
+    matchId: number;
+    gameId: number;
+    teamConfig: string;
+    teams: Array<{
+      teamIndex: number;
+      teamNumber: number;
+      color: string;
+      colorHex: string;
+      userIds: number[];
+    }>;
+    excludedUserIds: number[];
+    passcodeRevealTime: string;
+  }) {
+    this.logger.log(`Emitting team-assigned event for match ${data.matchId}`);
+    this.server.emit('team-assigned', data);
+  }
+
+  // Emit passcode revealed event (TEAM_CLASSIC mode - after 3 min delay)
+  emitPasscodeRevealed(data: {
+    matchId: number;
+    gameId: number;
+    passcode: string;
+  }) {
+    this.logger.log(`Emitting passcode-revealed event for match ${data.matchId}`);
+    this.server.emit('passcode-revealed', data);
+  }
+
   // Handle match:update from clients (e.g., simulators) and broadcast to all
   @SubscribeMessage('match:update')
   handleMatchUpdate(@MessageBody() matchData: any) {

@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { LoginTrackingService } from '../auth/login-tracking.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
+import { TeamClassicRatingService } from '../rating/team-classic-rating.service';
 import { UserRole, EventCategory } from '@prisma/client';
 
 @Controller('admin')
@@ -15,6 +16,7 @@ export class AdminController {
     private loginTrackingService: LoginTrackingService,
     private configService: ConfigService,
     private classicRatingService: ClassicRatingService,
+    private teamClassicRatingService: TeamClassicRatingService,
   ) {
     this.defaultAlertDays = this.configService.get<number>('SUSPICIOUS_LOGIN_ALERT_DAYS', 7);
   }
@@ -179,8 +181,8 @@ export class AdminController {
 
     // Validate category
     const categoryUpper = category.toUpperCase();
-    if (categoryUpper !== 'CLASSIC') {
-      throw new BadRequestException('Only CLASSIC category is supported for now');
+    if (categoryUpper !== 'CLASSIC' && categoryUpper !== 'TEAM_CLASSIC') {
+      throw new BadRequestException('Only CLASSIC and TEAM_CLASSIC categories are supported');
     }
     const eventCategory = categoryUpper as EventCategory;
 
@@ -196,11 +198,9 @@ export class AdminController {
       throw new BadRequestException('Invalid match number');
     }
 
-    const result = await this.classicRatingService.recalculateFromMatch(
-      eventCategory,
-      seasonNumber,
-      fromMatchNumber,
-    );
+    const result = eventCategory === EventCategory.TEAM_CLASSIC
+      ? await this.teamClassicRatingService.recalculateFromMatch(seasonNumber, fromMatchNumber)
+      : await this.classicRatingService.recalculateFromMatch(eventCategory, seasonNumber, fromMatchNumber);
 
     return {
       success: true,

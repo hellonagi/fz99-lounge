@@ -45,7 +45,7 @@ export class UsersController {
 
   @Get('leaderboard')
   async getLeaderboard(
-    @Query('mode') mode: 'GP' | 'CLASSIC' = 'GP',
+    @Query('mode') mode: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' = 'GP',
     @Query('seasonNumber') seasonNumber?: string,
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
@@ -63,7 +63,7 @@ export class UsersController {
   async getUserByProfileId(
     @Param('profileId') profileId: string,
     @Query('seasonNumber') seasonNumber?: string,
-    @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
   ) {
     const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.findById(parseInt(profileId, 10), parsedSeason, category);
@@ -72,7 +72,7 @@ export class UsersController {
   @Get(':id/seasons')
   async getUserSeasons(
     @Param('id') id: string,
-    @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
   ) {
     return this.usersService.getUserSeasons(parseInt(id, 10), category);
   }
@@ -87,7 +87,7 @@ export class UsersController {
     @Param('id') id: string,
     @Query('limit') limit: string = '20',
     @Query('offset') offset: string = '0',
-    @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
     @Query('seasonNumber') seasonNumber?: string,
   ) {
     const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
@@ -103,7 +103,7 @@ export class UsersController {
   @Get(':id/rating-history')
   async getUserRatingHistory(
     @Param('id') id: string,
-    @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
     @Query('seasonNumber') seasonNumber?: string,
   ) {
     const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
@@ -117,7 +117,7 @@ export class UsersController {
   @Get(':id/track-stats')
   async getUserTrackStats(
     @Param('id') id: string,
-    @Query('category') category?: 'GP' | 'CLASSIC',
+    @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
   ) {
     return this.usersService.getUserTrackStats(
       parseInt(id, 10),

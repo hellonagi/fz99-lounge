@@ -53,3 +53,24 @@ a {
   }
 }
 
+/* チームカーソル選択アニメーション */
+@keyframes cursor-select-pulse {
+  0%, 100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes cursor-select-highlight {
+  0%, 100% {
+    opacity: 0.85;
+    box-shadow: inset 0 0 6px 1px var(--cursor-glow-color), 0 0 8px 2px var(--cursor-glow-color);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: inset 0 0 10px 2px var(--cursor-glow-color), 0 0 14px 5px var(--cursor-glow-color);
+  }
+}
+

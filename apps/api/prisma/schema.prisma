@@ -35,6 +35,7 @@ enum UserStatus {
 enum EventCategory {
   GP // 常設シーズン、GPレート計算
   CLASSIC // 常設シーズン、CLASSICレート計算
+  TEAM_CLASSIC // チーム戦、TEAM_CLASSICレート計算
   TOURNAMENT // 大会、レート計算なし
 }
 
@@ -239,6 +240,7 @@ model UserSeasonStats {
   thirdPlaces     Int @default(0) // 3位回数
   survivedCount   Int @default(0) // 生き残り回数（脱落せず完走）
   assistUsedCount Int @default(0) // アシスト使用回数
+  mvpCount        Int @default(0) // チーム内最高スコア回数（TEAM_CLASSIC用）
 
   // リーダーボード用（事前計算）
   medianPosition  Float?  // 順位の中央値
@@ -491,6 +493,11 @@ model Game {
 
   startedAt DateTime?
 
+  // TEAM_CLASSIC用
+  teamConfig         String?   // "4x3" など、選ばれた構成
+  teamScores         Json?     // [{"teamIndex": 0, "score": 450, "rank": 1}, ...]
+  passcodeRevealTime DateTime? // パスコード公開予定時刻（チーム発表から5分後）
+
   // リレーション
   participants         GameParticipant[]
   splitVotes           SplitVote[]
@@ -527,6 +534,10 @@ model GameParticipant {
   totalScore       Int? // 全レースのポイント合計
   eliminatedAtRace Int? // ランクアウトしたレース番号（null=全レース完走）
 
+  // TEAM_CLASSIC用: チーム情報
+  teamIndex  Int?              // 0, 1, 2, ... (チーム番号)
+  isExcluded Boolean @default(false) // 端数で除外されたか
+
   // 検証/却下の監査用（statusで管理、メタデータとして保持）
   verifiedBy Int?
   verifiedAt DateTime?
@@ -545,6 +556,7 @@ model GameParticipant {
   @@index([gameId])
   @@index([userId])
   @@index([status])
+  @@index([gameId, teamIndex])
   @@map("game_participants")
 }
 

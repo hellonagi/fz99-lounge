@@ -81,6 +81,7 @@
   "leaderboard": {
     "title": "Leaderboard",
     "classic": "Classic",
+    "teamClassic": "Team Classic",
     "failedToLoadSeasons": "Failed to load seasons",
     "failedToLoadLeaderboard": "Failed to load leaderboard"
   },
@@ -88,6 +89,7 @@
     "title": "Match Results",
     "matchesFound": "{count} matches found",
     "classic": "Classic",
+    "teamClassic": "Team Classic",
     "failedToLoadSeasons": "Failed to load seasons",
     "failedToLoadResults": "Failed to load results"
   },
@@ -266,7 +268,30 @@
   },
   "profile": {
     "selectSeason": "Select Season",
-    "currentSeason": "(Current)"
+    "currentSeason": "(Current)",
+    "mvp": "MVP"
+  },
+  "teamClassic": {
+    "yourTeam": "Your Team",
+    "changeNameInstruction": "Change your in-game name to include Team {teamNumber}{name}",
+    "changeMachineColorInstruction": "Change your machine color to match your team color",
+    "excluded": "Unable to participate in this game",
+    "excludedDescription": "You were the {count}th (last) to register and were not assigned to a team.",
+    "passcodeRevealIn": "Passcode reveals in",
+    "passcodeHidden": "While you wait, check the team setup below",
+    "allTeams": "Teams",
+    "excludedPlayers": "Excluded Players",
+    "teamResults": "Team Results",
+    "teamRanking": "Team Ranking",
+    "teamSetup": "Setup",
+    "teamSetupNameTitle": "Change Your Name",
+    "teamSetupNameDescription": "Add your team letter to the beginning of your in-game name. If your name is 9+ characters, you can shorten it to fit.",
+    "teamSetupNameExample": "e.g. \"Player\" → \"{teamLetter} Player\", \"Player1234\" → \"{teamLetter} Player12\"",
+    "teamSetupColorTitle": "Select Machine Color",
+    "teamSetupColorDescription": "Select the machine color that matches your team"
+  },
+  "notifications": {
+    "enable": "Enable match notifications"
   },
   "createMatch": {
     "title": "Create Match",

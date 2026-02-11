@@ -39,10 +39,11 @@ const LEAGUE_OPTIONS_99 = [
 
 // CLASSICモードはリーグ選択なし（ランダム）
 
-// カテゴリ選択肢（現在はCLASSICのみ）
+// カテゴリ選択肢
 const CATEGORY_OPTIONS = [
   // { value: 'GP', label: '99 Mode' }, // 未実装
   { value: 'CLASSIC', label: 'Classic Mode' },
+  { value: 'TEAM_CLASSIC', label: 'Team Classic Mode' },
 ];
 
 // GPモード用のIn-Game Mode選択肢
@@ -55,7 +56,7 @@ const IN_GAME_MODE_OPTIONS_GP = [
 ];
 
 const matchSchema = z.object({
-  category: z.enum(['GP', 'CLASSIC']),
+  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC']),
   seasonId: z.string().min(1, 'Season is required'),
   inGameMode: z.string().min(1, 'In-game mode is required'),
   leagueType: z.string().optional(), // GPモードのみ必須
@@ -139,6 +140,11 @@ export function CreateMatchCard() {
       form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('minPlayers', '40');
       form.setValue('maxPlayers', '99');
+    } else if (category === 'TEAM_CLASSIC') {
+      form.setValue('leagueType', undefined);
+      form.setValue('inGameMode', 'CLASSIC_MINI_PRIX');
+      form.setValue('minPlayers', '12');
+      form.setValue('maxPlayers', '20');
     } else {
       form.setValue('leagueType', undefined); // CLASSICモードはリーグなし
       form.setValue('inGameMode', 'CLASSIC_MINI_PRIX');
@@ -199,7 +205,7 @@ export function CreateMatchCard() {
                     <SelectContent>
                       {CATEGORY_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
-                          {t('classicMode')}
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -18,7 +18,7 @@ export type UserRole = 'PLAYER' | 'MODERATOR' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'WARNED' | 'SUSPENDED' | 'BANNED' | 'DELETED';
 
 // Event Category - システムレベルの分類（レート計算ロジック）
-export type EventCategory = 'GP' | 'CLASSIC' | 'TOURNAMENT';
+export type EventCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
 
 // In-Game Mode - F-Zero 99 のゲーム内モード
 export type InGameMode =
@@ -177,6 +177,7 @@ export interface UserSeasonStats {
   thirdPlaces: number;
   survivedCount: number;
   assistUsedCount: number;
+  mvpCount: number;
   // リーダーボード順位
   leaderboardRank?: number;
   // Relations

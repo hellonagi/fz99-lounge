@@ -21,6 +21,19 @@ import {
 } from 'discord.js';
 import { PrismaService } from '../prisma/prisma.service';
 
+export interface CreateTeamSetupChannelParams {
+  gameId: number;
+  category: string;
+  seasonNumber: number;
+  matchNumber: number;
+  participantDiscordIds: string[];
+  matchUrl: string;
+  teams: Array<{
+    label: string;
+    memberNames: string[];
+  }>;
+}
+
 export interface CreatePasscodeChannelParams {
   gameId: number;
   category: string;
@@ -62,7 +75,7 @@ export interface AnnounceMatchCancelledParams {
   seasonNumber: number;
   category: string;
   seasonName: string;
-  reason?: 'insufficient_players' | 'admin_cancelled';
+  reason?: 'insufficient_players' | 'admin_cancelled' | 'invalid_player_count';
 }
 
 export interface MatchResultParticipant {
@@ -77,6 +90,7 @@ export interface AnnounceMatchResultsParams {
   category: string;
   seasonName: string;
   topParticipants: MatchResultParticipant[];
+  winningTeam?: { teamLabel: string; score: number; members: string[] };
 }
 
 @Injectable()
@@ -479,6 +493,163 @@ Remove your reaction to stop receiving notifications.
   }
 
   /**
+   * Create a private channel for TEAM_CLASSIC match setup (before passcode reveal)
+   */
+  async createTeamSetupChannel(
+    params: CreateTeamSetupChannelParams,
+  ): Promise<string | null> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug('Discord bot not ready or disabled, skipping channel creation');
+      return null;
+    }
+
+    const guildId = this.getGuildId();
+    if (!guildId) {
+      this.logger.warn('Discord guild ID not configured');
+      return null;
+    }
+
+    try {
+      const guild = await this.client.guilds.fetch(guildId);
+      const channelName = `${params.category}-s${params.seasonNumber}-game${params.matchNumber}`;
+
+      // Build permission overwrites
+      const permissionOverwrites: Array<{
+        id: string;
+        type: OverwriteType;
+        deny?: bigint[];
+        allow?: bigint[];
+      }> = [
+        {
+          id: guild.id,
+          type: OverwriteType.Role,
+          deny: [PermissionFlagsBits.ViewChannel],
+        },
+        {
+          id: this.client.user!.id,
+          type: OverwriteType.Member,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.SendMessages,
+            PermissionFlagsBits.EmbedLinks,
+            PermissionFlagsBits.ManageChannels,
+          ],
+        },
+      ];
+
+      for (const discordId of params.participantDiscordIds) {
+        if (!/^\d{17,19}$/.test(discordId)) {
+          this.logger.debug(`Skipping invalid Discord ID: ${discordId}`);
+          continue;
+        }
+        permissionOverwrites.push({
+          id: discordId,
+          type: OverwriteType.Member,
+          allow: [
+            PermissionFlagsBits.ViewChannel,
+            PermissionFlagsBits.ReadMessageHistory,
+          ],
+        });
+      }
+
+      const channel = await guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildText,
+        parent: this.getCategoryId() || undefined,
+        permissionOverwrites,
+      });
+
+      // Build team fields
+      const teamFields = params.teams.map((team) => {
+        const members = team.memberNames.join('\n');
+        return { name: `Team ${team.label}`, value: members, inline: true };
+      });
+
+      const embed = new EmbedBuilder()
+        .setTitle('Match Setup')
+        .setColor(0x3498db)
+        .setDescription(
+          'Please check the match page, and change your machine color and name.\n試合ページを確認して、マシンカラーと名前を変更してください。',
+        )
+        .addFields(
+          ...teamFields,
+          { name: 'Match Page', value: params.matchUrl },
+        );
+
+      await channel.send({ content: '@here', embeds: [embed] });
+
+      // Save channel ID to database
+      await this.prisma.game.update({
+        where: { id: params.gameId },
+        data: { discordChannelId: channel.id },
+      });
+
+      this.logger.log(
+        `Created team setup channel ${channelName} (${channel.id}) for game ${params.gameId}`,
+      );
+
+      return channel.id;
+    } catch (error) {
+      this.logger.error(
+        `Failed to create team setup channel for game ${params.gameId}:`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Post passcode to an existing Discord channel (for TEAM_CLASSIC passcode reveal)
+   */
+  async postPasscodeToChannel(gameId: number, passcode: string): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug('Discord bot not ready or disabled, skipping passcode post');
+      return false;
+    }
+
+    try {
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        select: { discordChannelId: true },
+      });
+
+      if (!game?.discordChannelId) {
+        this.logger.debug(`No Discord channel found for game ${gameId}`);
+        return false;
+      }
+
+      const channel = await this.client.channels.fetch(game.discordChannelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Channel ${game.discordChannelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`passcode: ${passcode}`)
+        .setColor(0x3498db)
+        .setDescription(
+          'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
+        );
+
+      await (channel as TextChannel).send({ content: '@here', embeds: [embed] });
+
+      this.logger.log(
+        `Posted passcode to channel ${game.discordChannelId} for game ${gameId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post passcode to channel for game ${gameId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Post new passcode to existing channel (for Split Vote)
    */
   async postNewPasscode(params: PostNewPasscodeParams): Promise<boolean> {
@@ -641,6 +812,7 @@ Please check the match page: ${matchUrl}`;
       displayName: string;
       totalScore: number;
     }>;
+    allTeams?: Array<{ label: string; score: number; rank: number; members: string[] }>;
   }): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug('Discord bot not ready or disabled, skipping match results to channel');
@@ -666,25 +838,45 @@ Please check the match page: ${matchUrl}`;
         return false;
       }
 
-      // Build position lines
-      const positionEmojis: Record<number, string> = {
-        1: '\u{1F947}', // 🥇
-        2: '\u{1F948}', // 🥈
-        3: '\u{1F949}', // 🥉
-      };
+      // Build result lines
+      let description: string;
 
-      const positionLines = params.participants.map((p) => {
-        if (p.position <= 3) {
-          const emoji = positionEmojis[p.position];
-          return `${emoji} **${p.displayName}** - ${p.totalScore}`;
-        }
-        return `${p.position}. **${p.displayName}** - ${p.totalScore}`;
-      });
+      if (params.allTeams && params.allTeams.length > 0) {
+        const rankEmojis: Record<number, string> = {
+          1: '\u{1F947}',
+          2: '\u{1F948}',
+          3: '\u{1F949}',
+        };
+
+        description = params.allTeams
+          .map((team) => {
+            const emoji = rankEmojis[team.rank] || `${team.rank}.`;
+            const members = team.members.join(', ');
+            return `${emoji} **Team ${team.label}** - ${team.score}\n${members}`;
+          })
+          .join('\n\n');
+      } else {
+        const positionEmojis: Record<number, string> = {
+          1: '\u{1F947}',
+          2: '\u{1F948}',
+          3: '\u{1F949}',
+        };
+
+        description = params.participants
+          .map((p) => {
+            if (p.position <= 3) {
+              const emoji = positionEmojis[p.position];
+              return `${emoji} **${p.displayName}** - ${p.totalScore}`;
+            }
+            return `${p.position}. **${p.displayName}** - ${p.totalScore}`;
+          })
+          .join('\n');
+      }
 
       const embed = new EmbedBuilder()
         .setTitle('Match Results')
         .setColor(0xf39c12)
-        .setDescription(positionLines.join('\n'))
+        .setDescription(description)
         .setFooter({
           text: 'This channel will be deleted in 24 hours. / このチャンネルは24時間後に削除されます。',
         });
@@ -991,24 +1183,32 @@ Please check the match page: ${matchUrl}`;
         this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
 
-      // Build position lines with medals
-      const positionEmojis: Record<number, string> = {
-        1: '\u{1F947}', // Gold medal
-        2: '\u{1F948}', // Silver medal
-        3: '\u{1F949}', // Bronze medal
-      };
+      // Build result lines
+      let resultLines: string;
 
-      const positionLines = params.topParticipants.map((p) => {
-        const emoji = positionEmojis[p.position] || '';
-        return `${emoji} **${p.displayName}** - ${p.totalScore}`;
-      });
+      if (params.winningTeam) {
+        resultLines = `\u{1F3C6} **Team ${params.winningTeam.teamLabel}** - ${params.winningTeam.score}\n${params.winningTeam.members.join(', ')}`;
+      } else {
+        const positionEmojis: Record<number, string> = {
+          1: '\u{1F947}', // Gold medal
+          2: '\u{1F948}', // Silver medal
+          3: '\u{1F949}', // Bronze medal
+        };
+
+        resultLines = params.topParticipants
+          .map((p) => {
+            const emoji = positionEmojis[p.position] || '';
+            return `${emoji} **${p.displayName}** - ${p.totalScore}`;
+          })
+          .join('\n');
+      }
 
       // Build embed
       const embed = new EmbedBuilder()
         .setTitle('Match Results')
         .setColor(0xf39c12)
         .setDescription(
-          `${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!\n\n${positionLines.join('\n')}`,
+          `${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!\n\n${resultLines}`,
         )
         .addFields({ name: 'View results', value: matchUrl });
 

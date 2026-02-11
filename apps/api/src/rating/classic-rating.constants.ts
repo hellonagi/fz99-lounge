@@ -43,6 +43,20 @@ export interface ParticipantWithRating {
   gamesPlayed: number;
   currentDisplayRating: number;
   currentConvergencePoints: number;
+  teamIndex?: number;
+}
+
+/**
+ * Options to customize rating calculation behavior.
+ * Used by TEAM_CLASSIC to override default Classic behavior.
+ */
+export interface RatingCalculationOptions {
+  /** Always use all-player comparison (skip proximity mode) */
+  alwaysAllComparison?: boolean;
+  /** Exclude same-team members from Elo comparison */
+  excludeSameTeam?: boolean;
+  /** Skip position bonuses (1st/2nd/3rd) */
+  skipPositionBonuses?: boolean;
 }
 
 /**
