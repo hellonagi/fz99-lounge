@@ -53,7 +53,7 @@ export class GamesController {
     const userId = user?.id;
 
     // Convert category string to EventCategory enum
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -76,7 +76,7 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -114,7 +114,7 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
@@ -166,7 +166,7 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -191,7 +191,7 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -223,7 +223,7 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -241,7 +241,7 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -267,7 +267,7 @@ export class GamesController {
       );
     }
 
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -296,7 +296,7 @@ export class GamesController {
       throw new ForbiddenException('Only moderators and admins can verify scores');
     }
 
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
@@ -322,7 +322,7 @@ export class GamesController {
       throw new ForbiddenException('Only moderators and admins can reject scores');
     }
 
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
@@ -350,7 +350,7 @@ export class GamesController {
       );
     }
 
-    const eventCategory = category.toUpperCase() as EventCategory;
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface TrackStatsProps {
   userId: number;
-  category: 'GP' | 'CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
 }
 
 interface TrackStat {
@@ -45,7 +45,7 @@ export function TrackStats({ userId, category }: TrackStatsProps) {
   if (loading) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Track Stats</CardTitle>
         </CardHeader>
         <CardContent>
@@ -60,7 +60,7 @@ export function TrackStats({ userId, category }: TrackStatsProps) {
   if (error) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Track Stats</CardTitle>
         </CardHeader>
         <CardContent>
@@ -75,7 +75,7 @@ export function TrackStats({ userId, category }: TrackStatsProps) {
   if (stats.length === 0) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Track Stats</CardTitle>
         </CardHeader>
         <CardContent>
@@ -89,7 +89,7 @@ export function TrackStats({ userId, category }: TrackStatsProps) {
 
   return (
     <Card className="bg-gray-800/50 border-gray-700">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-lg">Track Stats</CardTitle>
       </CardHeader>
       <CardContent className="p-0">

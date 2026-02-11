@@ -4,6 +4,8 @@ import { MatchesController } from './matches.controller';
 import { MatchesService } from './matches.service';
 import { MatchesProcessor } from './matches.processor';
 import { MatchesDeadlineService } from './matches-deadline.service';
+import { TeamConfigService } from './team-config.service';
+import { TeamAssignmentService } from './team-assignment.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EventsModule } from '../events/events.module';
 import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
@@ -22,7 +24,13 @@ import { TracksModule } from '../tracks/tracks.module';
     }),
   ],
   controllers: [MatchesController],
-  providers: [MatchesService, MatchesProcessor, MatchesDeadlineService],
-  exports: [MatchesService],
+  providers: [
+    MatchesService,
+    MatchesProcessor,
+    MatchesDeadlineService,
+    TeamConfigService,
+    TeamAssignmentService,
+  ],
+  exports: [MatchesService, TeamConfigService, TeamAssignmentService],
 })
 export class MatchesModule {}

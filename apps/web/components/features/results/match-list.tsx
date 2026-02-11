@@ -16,6 +16,10 @@ interface MatchResult {
     displayName: string | null;
     totalScore: number | null;
   } | null;
+  winningTeam: {
+    score: number;
+    members: { id: number; displayName: string | null }[];
+  } | null;
 }
 
 interface MatchListProps {
@@ -30,9 +34,9 @@ export function MatchList({ matches, loading }: MatchListProps) {
     );
   }
 
-  // Filter out matches with no winner or only 1 player
+  // Filter out matches with no winner/winningTeam or only 1 player
   const filteredMatches = matches?.filter(
-    (match) => match.winner && match.playerCount > 1
+    (match) => (match.winner || match.winningTeam) && match.playerCount > 1
   ) ?? [];
 
   if (filteredMatches.length === 0) {
@@ -53,30 +57,43 @@ export function MatchList({ matches, loading }: MatchListProps) {
         >
           <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-600/50 hover:bg-gray-600 transition-colors">
             {/* Left: Category & Match Info */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <span
                 className={cn(
                   'text-xs font-bold px-2 py-0.5 rounded',
                   match.category === 'CLASSIC'
                     ? 'bg-purple-600 text-white'
-                    : match.category === 'TOURNAMENT'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-blue-600 text-white'
+                    : match.category === 'TEAM_CLASSIC'
+                      ? 'bg-green-600 text-white'
+                      : match.category === 'TOURNAMENT'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-blue-600 text-white'
                 )}
               >
-                {match.category}
+                {match.category === 'TEAM_CLASSIC' ? 'TEAM' : match.category}
               </span>
-              <span className="text-gray-300 text-sm">
+              <span className="text-gray-300 text-sm whitespace-nowrap">
                 S{match.seasonNumber} #{match.matchNumber}
               </span>
-              <span className="hidden sm:inline text-gray-500 text-sm">
+              <span className="hidden sm:inline text-gray-500 text-sm whitespace-nowrap">
                 {match.playerCount} players
               </span>
             </div>
 
             {/* Right: Winner */}
             <div className="flex items-center gap-2">
-              {match.winner ? (
+              {match.winningTeam ? (
+                <>
+                  <span className="text-white text-sm font-medium text-right truncate max-w-[200px] sm:max-w-none">
+                    🏆{match.winningTeam.members
+                      .map((m) => m.displayName || `User#${m.id}`)
+                      .join(', ')}
+                  </span>
+                  <span className="text-gray-400 text-xs">
+                    {match.winningTeam.score}pts
+                  </span>
+                </>
+              ) : match.winner ? (
                 <>
                   <span className="text-white text-sm font-medium text-left truncate">
                     🏆{match.winner.displayName || `User#${match.winner.id}`}

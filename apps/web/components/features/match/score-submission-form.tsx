@@ -134,8 +134,8 @@ export function ScoreSubmissionForm({
   // Is this moderator mode?
   const isModeratorMode = !!participants && participants.length > 0;
 
-  // Determine if this is CLASSIC mode
-  const isClassicMode = mode.toLowerCase() === 'classic';
+  // Determine if this is CLASSIC mode (includes Team Classic)
+  const isClassicMode = mode.toLowerCase() === 'classic' || mode.toLowerCase() === 'team_classic';
 
   // Format deadline for display
   const deadlineDate = new Date(deadline);

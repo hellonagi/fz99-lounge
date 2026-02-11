@@ -34,6 +34,7 @@ help:
 	@echo "  make sim-score MODE=gradual  - スコア送信 (gradual|fast|burst)"
 	@echo "  make sim-score-latest        - 最新試合にスコア送信"
 	@echo "  make sim-score-classic       - CLASSIC専用 (スコア+スクショ提出)"
+	@echo "  make sim-score-team-classic  - TEAM_CLASSIC専用 (チーム戦)"
 	@echo "  make sim-split-classic       - CLASSIC専用 Split投票 (10人)"
 	@echo "  make sim-clean-scores        - スコア・スクショをクリア"
 	@echo ""
@@ -138,6 +139,10 @@ sim-score-latest:
 # CLASSICモード専用スコア送信 (16人、各レース4人脱落、順位重複なし、スクショ提出含む)
 sim-score-classic:
 	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-classic-scores.ts
+
+# TEAM_CLASSICモード専用スコア送信 (チーム戦、スクショ提出含む)
+sim-score-team-classic:
+	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-team-classic-scores.ts
 
 # CLASSICモード Split投票シミュレーター (10人投票)
 sim-split-classic:

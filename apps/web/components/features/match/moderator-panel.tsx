@@ -114,7 +114,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const [allTracks, setAllTracks] = useState<Track[]>([]);
 
   // Fetch tracks from API (CLASSIC only)
-  const isClassic = category.toUpperCase() === 'CLASSIC';
+  const isClassic = category.toUpperCase() === 'CLASSIC' || category.toUpperCase() === 'TEAM_CLASSIC';
   useEffect(() => {
     if (isClassic) {
       tracksApi.getAll().then((res) => setAllTracks(res.data));

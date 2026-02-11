@@ -40,6 +40,9 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
 
   // Format league type for display
   const formatLeagueDisplay = (league: string | null, mode: string) => {
+    if (mode?.toLowerCase() === 'team_classic') {
+      return 'Team Classic';
+    }
     if (!league) {
       // CLASSICモードはリーグ選択なし
       return 'Classic';

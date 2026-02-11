@@ -1,11 +1,16 @@
-import { Processor, Process } from '@nestjs/bull';
+import { Processor, Process, InjectQueue } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
-import type { Job } from 'bull';
+import type { Job, Queue } from 'bull';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
-import { MatchStatus } from '@prisma/client';
+import { EventCategory, MatchStatus } from '@prisma/client';
+import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS } from './team-config.service';
+import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
+
+// Team announcement phase duration (3 minutes)
+const TEAM_ANNOUNCEMENT_DELAY_MS = 3 * 60 * 1000;
 
 @Processor('matches')
 export class MatchesProcessor {
@@ -16,6 +21,9 @@ export class MatchesProcessor {
     private eventsGateway: EventsGateway,
     private pushNotificationsService: PushNotificationsService,
     private discordBotService: DiscordBotService,
+    private teamConfigService: TeamConfigService,
+    private teamAssignmentService: TeamAssignmentService,
+    @InjectQueue('matches') private matchQueue: Queue,
   ) {}
 
   @Process('start-match')
@@ -31,7 +39,7 @@ export class MatchesProcessor {
           participants: {
             include: {
               user: {
-                select: { discordId: true },
+                select: { discordId: true, displayName: true },
               },
             },
           },
@@ -109,17 +117,37 @@ export class MatchesProcessor {
         return;
       }
 
-      // Generate 4-digit passcode and update game
+      // Generate 4-digit passcode
       const passcode = this.generatePasscode();
 
-      const updatedGame = await this.prisma.game.update({
-        where: { id: game.id },
-        data: {
+      // Check if this is a TEAM_CLASSIC match
+      const isTeamClassic =
+        match.season.event.category === EventCategory.TEAM_CLASSIC;
+
+      let updatedGame;
+
+      if (isTeamClassic) {
+        // TEAM_CLASSIC: Assign teams and delay passcode reveal
+        updatedGame = await this.handleTeamClassicStart(
+          match,
+          game,
           passcode,
-          passcodePublishedAt: new Date(),
-          startedAt: new Date(),
-        },
-      });
+          currentPlayers,
+        );
+        if (!updatedGame) {
+          return; // Team assignment failed
+        }
+      } else {
+        // Normal mode: Reveal passcode immediately
+        updatedGame = await this.prisma.game.update({
+          where: { id: game.id },
+          data: {
+            passcode,
+            passcodePublishedAt: new Date(),
+            startedAt: new Date(),
+          },
+        });
+      }
 
       // Update match status
       await this.prisma.match.update({
@@ -145,11 +173,14 @@ export class MatchesProcessor {
         return;
       }
 
+      // For TEAM_CLASSIC, hide passcode in the initial event (will be revealed later)
+      const emitPasscode = isTeamClassic ? '' : updatedGame.passcode;
+
       // Emit WebSocket event to all clients
       this.eventsGateway.emitMatchStarted({
         matchId: match.id,
         gameId: updatedGame.id,
-        passcode: updatedGame.passcode,
+        passcode: emitPasscode,
         leagueType: updatedGame.leagueType,
         totalPlayers: currentPlayers,
         startedAt: updatedGame.startedAt
@@ -165,7 +196,7 @@ export class MatchesProcessor {
       try {
         await this.pushNotificationsService.notifyMatchStart({
           id: updatedGame.id,
-          passcode: updatedGame.passcode,
+          passcode: emitPasscode, // Hide passcode for TEAM_CLASSIC
           leagueType: updatedGame.leagueType,
           totalPlayers: currentPlayers,
           url: `/matches/${categoryStr}/${seasonNumber}/${matchNumber}`,
@@ -180,24 +211,26 @@ export class MatchesProcessor {
         // Continue even if push notifications fail
       }
 
-      // Create Discord passcode channel for participants
-      try {
-        const participantDiscordIds = match.participants
-          .map((p) => p.user?.discordId)
-          .filter((id): id is string => !!id);
+      // Create Discord passcode channel for participants (skip for TEAM_CLASSIC - done at reveal)
+      if (!isTeamClassic) {
+        try {
+          const participantDiscordIds = match.participants
+            .map((p) => p.user?.discordId)
+            .filter((id): id is string => !!id);
 
-        await this.discordBotService.createPasscodeChannel({
-          gameId: updatedGame.id,
-          category: categoryStr,
-          seasonNumber,
-          matchNumber,
-          passcode,
-          leagueType: updatedGame.leagueType,
-          participantDiscordIds,
-        });
-      } catch (error) {
-        this.logger.error('Failed to create Discord channel:', error);
-        // Continue even if Discord channel creation fails
+          await this.discordBotService.createPasscodeChannel({
+            gameId: updatedGame.id,
+            category: categoryStr,
+            seasonNumber,
+            matchNumber,
+            passcode,
+            leagueType: updatedGame.leagueType,
+            participantDiscordIds,
+          });
+        } catch (error) {
+          this.logger.error('Failed to create Discord channel:', error);
+          // Continue even if Discord channel creation fails
+        }
       }
 
       return updatedGame;
@@ -211,6 +244,284 @@ export class MatchesProcessor {
     // Generate random 4-digit number (0000-9999)
     const passcode = Math.floor(Math.random() * 10000);
     return passcode.toString().padStart(4, '0');
+  }
+
+  /**
+   * Handle TEAM_CLASSIC match start:
+   * 1. Assign teams using snake draft
+   * 2. Create GameParticipants with team assignments
+   * 3. Schedule passcode reveal after 3 minutes
+   */
+  private async handleTeamClassicStart(
+    match: any,
+    game: any,
+    passcode: string,
+    currentPlayers: number,
+  ) {
+    // Validate player count for TEAM_CLASSIC
+    if (!this.teamConfigService.isValidPlayerCount(currentPlayers)) {
+      this.logger.error(
+        `Invalid player count for TEAM_CLASSIC: ${currentPlayers} (need 12-20)`,
+      );
+
+      // Cancel the match
+      const originalMatchNumber = match.matchNumber;
+      await this.prisma.match.update({
+        where: { id: match.id },
+        data: {
+          status: MatchStatus.CANCELLED,
+          matchNumber: null,
+        },
+      });
+
+      this.eventsGateway.emitMatchCancelled(match.id);
+
+      if (originalMatchNumber !== null) {
+        try {
+          await this.discordBotService.announceMatchCancelled({
+            matchNumber: originalMatchNumber,
+            seasonNumber: match.season.seasonNumber,
+            category: match.season.event.category,
+            seasonName: match.season.event.name,
+            reason: 'invalid_player_count',
+          });
+        } catch (error) {
+          this.logger.error(
+            'Failed to announce match cancellation to Discord:',
+            error,
+          );
+        }
+      }
+
+      return null;
+    }
+
+    // Get ratings for all participants
+    const participantRatings = await this.prisma.userSeasonStats.findMany({
+      where: {
+        seasonId: match.seasonId,
+        userId: { in: match.participants.map((p: any) => p.userId) },
+      },
+      select: {
+        userId: true,
+        internalRating: true,
+      },
+    });
+
+    const ratingMap = new Map<number, number>();
+    for (const stat of participantRatings) {
+      ratingMap.set(stat.userId, stat.internalRating);
+    }
+
+    // Build player data for team assignment
+    const players: PlayerForAssignment[] = match.participants.map((p: any) => ({
+      userId: p.userId,
+      rating: ratingMap.get(p.userId) ?? 2750, // Default rating if not found
+      joinedAt: p.joinedAt,
+    }));
+
+    // Assign teams
+    const assignment = this.teamAssignmentService.assignTeams(players);
+    if (!assignment) {
+      this.logger.error(`Team assignment failed for match ${match.id}`);
+      return null;
+    }
+
+    const passcodeRevealTime = new Date(Date.now() + TEAM_ANNOUNCEMENT_DELAY_MS);
+
+    // Randomly pick N colors from available grid positions, then sort ascending
+    // so that Team A < B < C < D in grid position order
+    const teamCount = assignment.teams.length;
+    const shuffled = [...TEAM_GRID_NUMBERS].sort(() => Math.random() - 0.5);
+    const selectedGridNumbers = shuffled.slice(0, teamCount).sort((a, b) => a - b);
+
+    // Store config with color mapping: "4x3|5,1,8" (configString|gridNumbers)
+    const teamConfigWithColors = `${assignment.config.configString}|${selectedGridNumbers.join(',')}`;
+
+    // Update game and create GameParticipants in transaction
+    const updatedGame = await this.prisma.$transaction(async (tx) => {
+      // Update game with team config and passcode (not published yet)
+      const updated = await tx.game.update({
+        where: { id: game.id },
+        data: {
+          passcode,
+          passcodePublishedAt: null, // Will be set when revealed
+          startedAt: new Date(),
+          teamConfig: teamConfigWithColors,
+          passcodeRevealTime,
+        },
+      });
+
+      // Create GameParticipants with team assignments
+      for (let teamIndex = 0; teamIndex < assignment.teams.length; teamIndex++) {
+        const teamUserIds = assignment.teams[teamIndex];
+        for (const oderId of teamUserIds) {
+          await tx.gameParticipant.create({
+            data: {
+              gameId: game.id,
+              userId: oderId,
+              machine: '', // Will be set when player submits
+              teamIndex,
+              isExcluded: false,
+            },
+          });
+        }
+      }
+
+      // Create GameParticipants for excluded players
+      for (const oderId of assignment.excludedUserIds) {
+        await tx.gameParticipant.create({
+          data: {
+            gameId: game.id,
+            userId: oderId,
+            machine: '',
+            teamIndex: null,
+            isExcluded: true,
+          },
+        });
+      }
+
+      return updated;
+    });
+
+    // Schedule passcode reveal job
+    await this.matchQueue.add(
+      'reveal-passcode',
+      { gameId: game.id, matchId: match.id },
+      {
+        delay: TEAM_ANNOUNCEMENT_DELAY_MS,
+        removeOnComplete: true,
+        jobId: `reveal-passcode-${game.id}`,
+      },
+    );
+
+    // Build team data for WebSocket event
+    const teamsData = assignment.teams.map((userIds, index) => {
+      const teamNumber = selectedGridNumbers[index];
+      return {
+        teamIndex: index,
+        teamNumber,
+        color: TEAM_COLORS[teamNumber] || 'Unknown',
+        colorHex: TEAM_COLOR_HEX[teamNumber] || '#808080',
+        userIds,
+      };
+    });
+
+    // Emit team-assigned event (passcode hidden)
+    this.eventsGateway.emitTeamAssigned({
+      matchId: match.id,
+      gameId: game.id,
+      teamConfig: assignment.config.configString,
+      teams: teamsData,
+      excludedUserIds: assignment.excludedUserIds,
+      passcodeRevealTime: passcodeRevealTime.toISOString(),
+    });
+
+    this.logger.log(
+      `TEAM_CLASSIC match ${match.id}: Assigned ${assignment.teams.length} teams (${assignment.config.configString}), ${assignment.excludedUserIds.length} excluded`,
+    );
+
+    // Create Discord channel immediately at team assignment
+    try {
+      const participantDiscordIds = match.participants
+        .map((p: any) => p.user?.discordId)
+        .filter((id: string | undefined): id is string => !!id);
+
+      const categoryStr = match.season.event.category.toLowerCase();
+      const baseUrl = process.env.CORS_ORIGIN || 'https://fz99lounge.com';
+      const matchUrl = `${baseUrl}/matches/${categoryStr}/${match.season.seasonNumber}/${match.matchNumber}`;
+
+      // Build userId -> displayName map
+      const userNameMap = new Map<number, string>();
+      for (const p of match.participants) {
+        userNameMap.set(p.userId, p.user?.displayName ?? 'Unknown');
+      }
+
+      const teams = teamsData.map((team: any) => ({
+        label: String.fromCharCode(65 + (team.teamIndex as number)),
+        memberNames: (team.userIds as number[]).map(
+          (uid) => userNameMap.get(uid) ?? 'Unknown',
+        ),
+      }));
+
+      await this.discordBotService.createTeamSetupChannel({
+        gameId: game.id,
+        category: categoryStr,
+        seasonNumber: match.season.seasonNumber,
+        matchNumber: match.matchNumber,
+        participantDiscordIds,
+        matchUrl,
+        teams,
+      });
+    } catch (error) {
+      this.logger.error('Failed to create Discord team setup channel:', error);
+    }
+
+    return updatedGame;
+  }
+
+  @Process('reveal-passcode')
+  async handleRevealPasscode(job: Job<{ gameId: number; matchId: number }>) {
+    const { gameId, matchId } = job.data;
+    this.logger.log(`Processing reveal-passcode job for game ${gameId}`);
+
+    try {
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        include: {
+          match: {
+            include: {
+              participants: {
+                include: {
+                  user: {
+                    select: { discordId: true },
+                  },
+                },
+              },
+              season: {
+                include: {
+                  event: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!game) {
+        this.logger.warn(`Game ${gameId} not found for passcode reveal`);
+        return;
+      }
+
+      // Update passcodePublishedAt
+      await this.prisma.game.update({
+        where: { id: gameId },
+        data: {
+          passcodePublishedAt: new Date(),
+        },
+      });
+
+      // Emit passcode-revealed event
+      this.eventsGateway.emitPasscodeRevealed({
+        matchId,
+        gameId,
+        passcode: game.passcode,
+      });
+
+      // Post passcode to existing Discord channel
+      try {
+        await this.discordBotService.postPasscodeToChannel(gameId, game.passcode);
+      } catch (error) {
+        this.logger.error('Failed to post passcode to Discord channel:', error);
+      }
+
+      this.logger.log(`Passcode revealed for game ${gameId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to reveal passcode for game ${gameId}:`,
+        error,
+      );
+    }
   }
 
   @Process('delete-discord-channel')

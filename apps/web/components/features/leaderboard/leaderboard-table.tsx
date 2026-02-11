@@ -20,6 +20,7 @@ interface LeaderboardEntry {
   medianPosition: number | null;
   medianPoints: number | null;
   favoriteMachine: string | null;
+  mvpCount?: number;
   user: {
     id: number;
     displayName: string | null;
@@ -40,9 +41,11 @@ interface LeaderboardTableProps {
   data: LeaderboardEntry[];
   loading?: boolean;
   startRank?: number;
+  category?: 'CLASSIC' | 'TEAM_CLASSIC';
 }
 
-export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTableProps) {
+export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLASSIC' }: LeaderboardTableProps) {
+  const isTeamClassic = category === 'TEAM_CLASSIC';
   if (loading) {
     return (
       <div className="text-center text-gray-400 py-8">
@@ -71,9 +74,18 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
             <th className="text-right py-2 px-2 font-medium">Rating</th>
             <th className="text-right py-2 px-2 font-medium">Peak</th>
             <th className="text-right py-2 px-2 font-medium">Matches</th>
-            <th className="text-right py-2 px-2 font-medium w-12">1st</th>
-            <th className="text-right py-2 px-2 font-medium w-12">2nd</th>
-            <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
+            {isTeamClassic ? (
+              <>
+                <th className="text-right py-2 px-2 font-medium w-12">Wins</th>
+                <th className="text-right py-2 px-2 font-medium w-12">MVP</th>
+              </>
+            ) : (
+              <>
+                <th className="text-right py-2 px-2 font-medium w-12">1st</th>
+                <th className="text-right py-2 px-2 font-medium w-12">2nd</th>
+                <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
+              </>
+            )}
             <th className="text-right py-2 px-2 font-medium">Med Pos</th>
             <th className="text-right py-2 px-2 font-medium">Med Pts</th>
             <th className="text-right py-2 px-2 font-medium">Finish%</th>
@@ -155,20 +167,36 @@ export function LeaderboardTable({ data, loading, startRank = 1 }: LeaderboardTa
                   {entry.totalMatches}
                 </td>
 
-                {/* 1st Place */}
-                <td className="py-2 px-2 text-right text-yellow-400">
-                  {entry.firstPlaces}
-                </td>
+                {isTeamClassic ? (
+                  <>
+                    {/* Wins (Team 1st Place) */}
+                    <td className="py-2 px-2 text-right text-yellow-400">
+                      {entry.firstPlaces}
+                    </td>
 
-                {/* 2nd Place */}
-                <td className="py-2 px-2 text-right text-gray-300">
-                  {entry.secondPlaces}
-                </td>
+                    {/* MVP */}
+                    <td className="py-2 px-2 text-right text-amber-300">
+                      {entry.mvpCount ?? 0}
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    {/* 1st Place */}
+                    <td className="py-2 px-2 text-right text-yellow-400">
+                      {entry.firstPlaces}
+                    </td>
 
-                {/* 3rd Place */}
-                <td className="py-2 px-2 text-right text-orange-400">
-                  {entry.thirdPlaces}
-                </td>
+                    {/* 2nd Place */}
+                    <td className="py-2 px-2 text-right text-gray-300">
+                      {entry.secondPlaces}
+                    </td>
+
+                    {/* 3rd Place */}
+                    <td className="py-2 px-2 text-right text-orange-400">
+                      {entry.thirdPlaces}
+                    </td>
+                  </>
+                )}
 
                 {/* Median Position */}
                 <td className="py-2 px-2 text-right text-gray-100">

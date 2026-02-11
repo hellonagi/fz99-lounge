@@ -30,6 +30,27 @@ export interface ScreenshotUpdate {
   };
 }
 
+export interface TeamAssignedUpdate {
+  matchId: number;
+  gameId: number;
+  teamConfig: string;
+  teams: Array<{
+    teamIndex: number;
+    teamNumber: number;
+    color: string;
+    colorHex: string;
+    userIds: number[];
+  }>;
+  excludedUserIds: number[];
+  passcodeRevealTime: string;
+}
+
+export interface PasscodeRevealedUpdate {
+  matchId: number;
+  gameId: number;
+  passcode: string;
+}
+
 export interface ParticipantUpdate {
   id: number;
   userId: number;
@@ -42,6 +63,8 @@ export interface ParticipantUpdate {
   eliminatedAtRace: number | null;
   ratingAfter: number | null;
   ratingChange: number | null;
+  status?: string;
+  screenshotRequested?: boolean;
   raceResults?: Array<{
     raceNumber: number;
     position: number | null;
@@ -64,6 +87,8 @@ interface UseGameSocketProps {
   onSplitVoteUpdated?: (data: SplitVoteUpdate) => void;
   onPasscodeRegenerated?: (data: PasscodeRegeneratedUpdate) => void;
   onScreenshotUpdated?: (data: ScreenshotUpdate) => void;
+  onTeamAssigned?: (data: TeamAssignedUpdate) => void;
+  onPasscodeRevealed?: (data: PasscodeRevealedUpdate) => void;
 }
 
 export function useGameSocket({
@@ -73,6 +98,8 @@ export function useGameSocket({
   onSplitVoteUpdated,
   onPasscodeRegenerated,
   onScreenshotUpdated,
+  onTeamAssigned,
+  onPasscodeRevealed,
 }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
@@ -132,6 +159,20 @@ export function useGameSocket({
       }
     });
 
+    socket.on('teamAssigned', (data: TeamAssignedUpdate) => {
+      console.log('Team assigned:', data);
+      if (onTeamAssigned) {
+        onTeamAssigned(data);
+      }
+    });
+
+    socket.on('passcodeRevealed', (data: PasscodeRevealedUpdate) => {
+      console.log('Passcode revealed:', data);
+      if (onPasscodeRevealed) {
+        onPasscodeRevealed(data);
+      }
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('leaveGame', gameId);
@@ -139,7 +180,7 @@ export function useGameSocket({
         socketRef.current = null;
       }
     };
-  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated]);
+  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated, onTeamAssigned, onPasscodeRevealed]);
 
   return socketRef.current;
 }

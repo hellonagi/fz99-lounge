@@ -5,13 +5,14 @@ import { cn } from '@/lib/utils';
 
 interface SeasonStatsProps {
   stats?: UserSeasonStats;
+  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
 }
 
-export function SeasonStats({ stats }: SeasonStatsProps) {
+export function SeasonStats({ stats, category }: SeasonStatsProps) {
   if (!stats) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Season Stats</CardTitle>
         </CardHeader>
         <CardContent>
@@ -39,7 +40,7 @@ export function SeasonStats({ stats }: SeasonStatsProps) {
 
   return (
     <Card className="bg-gray-800/50 border-gray-700">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-lg">Season Stats</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -78,6 +79,14 @@ export function SeasonStats({ stats }: SeasonStatsProps) {
           <span className="text-sm text-gray-400">Season High</span>
           <span className="font-bold text-white">{stats.seasonHighRating}</span>
         </div>
+
+        {/* MVP Count (TEAM_CLASSIC only) */}
+        {category === 'TEAM_CLASSIC' && (
+          <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
+            <span className="text-sm text-gray-400">MVP</span>
+            <span className="font-bold text-amber-400">{stats.mvpCount ?? 0}</span>
+          </div>
+        )}
 
         {/* Placements */}
         <div className="space-y-2">

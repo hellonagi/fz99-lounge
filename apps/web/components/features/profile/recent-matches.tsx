@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface RecentMatchesProps {
   userId: number;
-  category: 'GP' | 'CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
   initialLimit?: number;
   seasonNumber?: number;
 }
@@ -94,7 +94,7 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
   if (loading) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Recent Matches</CardTitle>
         </CardHeader>
         <CardContent>
@@ -111,7 +111,7 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
   if (error) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Recent Matches</CardTitle>
         </CardHeader>
         <CardContent>
@@ -124,7 +124,7 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
   if (matches.length === 0) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Recent Matches</CardTitle>
         </CardHeader>
         <CardContent>
@@ -136,7 +136,7 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
 
   return (
     <Card className="bg-gray-800/50 border-gray-700">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           Recent Matches
         </CardTitle>
@@ -163,12 +163,14 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
                   <span
                     className={cn(
                       'text-xs px-1.5 py-0.5 rounded',
-                      match.category === 'CLASSIC'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-blue-500/20 text-blue-400'
+                      match.category === 'TEAM_CLASSIC'
+                        ? 'bg-amber-500/20 text-amber-400'
+                        : match.category === 'CLASSIC'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-blue-500/20 text-blue-400'
                     )}
                   >
-                    {match.category}
+                    {match.category === 'TEAM_CLASSIC' ? 'TEAM' : match.category}
                   </span>
                   <span className="text-gray-300 text-sm">
                     S{match.seasonNumber} #{match.matchNumber}

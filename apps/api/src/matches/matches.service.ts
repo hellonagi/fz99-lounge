@@ -335,8 +335,8 @@ export class MatchesService {
         games: {
           include: {
             participants: {
+              where: { isExcluded: false },
               orderBy: { totalScore: 'desc' },
-              take: 1,
               include: {
                 user: {
                   select: {
@@ -355,16 +355,47 @@ export class MatchesService {
     return matches
       .map((match) => {
         const game = match.games[0];
-        const winner = game?.participants[0];
+        const matchCategory = match.season.event.category;
 
-        return {
+        const commonFields = {
           id: match.id,
           matchNumber: match.matchNumber,
-          category: match.season.event.category,
+          category: matchCategory,
           seasonNumber: match.season.seasonNumber,
           playerCount: match.participants.length,
           status: match.status,
           startedAt: match.actualStart,
+        };
+
+        // TEAM_CLASSIC: return winning team members
+        if (matchCategory === 'TEAM_CLASSIC' && game?.teamScores) {
+          const teamScores = game.teamScores as {
+            teamIndex: number;
+            score: number;
+            rank: number;
+          }[];
+          const winnerTeam = teamScores.find((t) => t.rank === 1);
+          const members = winnerTeam
+            ? game.participants
+                .filter((p) => p.teamIndex === winnerTeam.teamIndex)
+                .map((p) => ({
+                  id: p.user.id,
+                  displayName: p.user.displayName,
+                }))
+            : [];
+          return {
+            ...commonFields,
+            winner: null,
+            winningTeam: winnerTeam
+              ? { score: winnerTeam.score, members }
+              : null,
+          };
+        }
+
+        // CLASSIC / others: individual winner
+        const winner = game?.participants[0];
+        return {
+          ...commonFields,
           winner: winner
             ? {
                 id: winner.user.id,
@@ -372,9 +403,14 @@ export class MatchesService {
                 totalScore: winner.totalScore,
               }
             : null,
+          winningTeam: null,
         };
       })
-      .filter((match) => match.winner !== null && match.playerCount > 1);
+      .filter(
+        (match) =>
+          (match.winner !== null || match.winningTeam !== null) &&
+          match.playerCount > 1,
+      );
   }
 
   async getResultsPaginated(
@@ -437,35 +473,74 @@ export class MatchesService {
         games: {
           include: {
             participants: {
-              orderBy: { totalScore: 'desc' },
-              take: 1,
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    displayName: true,
-                  },
-                },
-              },
+              ...(category === 'TEAM_CLASSIC'
+                ? {
+                    where: { isExcluded: false },
+                    include: {
+                      user: {
+                        select: { id: true, displayName: true },
+                      },
+                    },
+                  }
+                : {
+                    orderBy: { totalScore: 'desc' as const },
+                    take: 1,
+                    include: {
+                      user: {
+                        select: { id: true, displayName: true },
+                      },
+                    },
+                  }),
             },
           },
         },
       },
     });
 
-    // Format the response (same as getRecent)
+    // Format the response
     const data = matches.map((match) => {
       const game = match.games[0];
-      const winner = game?.participants[0];
+      const matchCategory = match.season.event.category;
 
-      return {
+      const commonFields = {
         id: match.id,
         matchNumber: match.matchNumber,
-        category: match.season.event.category,
+        category: matchCategory,
         seasonNumber: match.season.seasonNumber,
         playerCount: match.participants.length,
         status: match.status,
         startedAt: match.actualStart,
+      };
+
+      // TEAM_CLASSIC: return winning team members
+      if (matchCategory === 'TEAM_CLASSIC' && game?.teamScores) {
+        const teamScores = game.teamScores as {
+          teamIndex: number;
+          score: number;
+          rank: number;
+        }[];
+        const winnerTeam = teamScores.find((t) => t.rank === 1);
+        const members = winnerTeam
+          ? game.participants
+              .filter((p) => p.teamIndex === winnerTeam.teamIndex)
+              .map((p) => ({
+                id: p.user.id,
+                displayName: p.user.displayName,
+              }))
+          : [];
+        return {
+          ...commonFields,
+          winner: null,
+          winningTeam: winnerTeam
+            ? { score: winnerTeam.score, members }
+            : null,
+        };
+      }
+
+      // CLASSIC / others: individual winner
+      const winner = game?.participants[0];
+      return {
+        ...commonFields,
         winner: winner
           ? {
               id: winner.user.id,
@@ -473,6 +548,7 @@ export class MatchesService {
               totalScore: winner.totalScore,
             }
           : null,
+        winningTeam: null,
       };
     });
 

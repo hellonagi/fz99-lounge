@@ -34,6 +34,7 @@
 import {
   CLASSIC_CONFIG,
   ParticipantWithRating,
+  RatingCalculationOptions,
   RatingChange,
 } from './classic-rating.constants';
 
@@ -49,6 +50,7 @@ import {
  */
 export function calculateRatingChanges(
   participants: ParticipantWithRating[],
+  options?: RatingCalculationOptions,
 ): RatingChange[] {
   // Step 1: Normalize positions (handle DNF groupings)
   const normalizedPositions = normalizePositions(participants);
@@ -62,12 +64,16 @@ export function calculateRatingChanges(
   const rawChanges: Record<number, number> = {};
 
   for (const player of participants) {
-    if (player.gamesPlayed < CLASSIC_CONFIG.INITIAL_COMPARISON_GAMES) {
-      // First 5 games: Compare with everyone to avoid unfairness at season start
+    if (
+      options?.alwaysAllComparison ||
+      player.gamesPlayed < CLASSIC_CONFIG.INITIAL_COMPARISON_GAMES
+    ) {
+      // All-player comparison (always for Team Classic, first 5 games for Classic)
       rawChanges[player.userId] = calculateWithAllComparison(
         player,
         participants,
         normalizedPositions,
+        options,
       );
     } else {
       // After 5 games: Compare with nearby-rated players for meaningful comparisons
@@ -80,7 +86,9 @@ export function calculateRatingChanges(
   }
 
   // Step 4: Apply position bonuses (1st: +20, 2nd: +10, 3rd: +5)
-  applyPositionBonuses(rawChanges, participants);
+  if (!options?.skipPositionBonuses) {
+    applyPositionBonuses(rawChanges, participants);
+  }
 
   // Step 5: Enforce zero-sum (total change must equal 0)
   enforceZeroSum(rawChanges);
@@ -116,8 +124,14 @@ function calculateWithAllComparison(
   player: ParticipantWithRating,
   allParticipants: ParticipantWithRating[],
   normalizedPositions: Record<number, number>,
+  options?: RatingCalculationOptions,
 ): number {
-  const opponents = allParticipants.filter((p) => p.userId !== player.userId);
+  let opponents = allParticipants.filter((p) => p.userId !== player.userId);
+
+  // Exclude same-team members from comparison (Team Classic)
+  if (options?.excludeSameTeam && player.teamIndex !== undefined) {
+    opponents = opponents.filter((p) => p.teamIndex !== player.teamIndex);
+  }
 
   if (opponents.length === 0) return 0;
 

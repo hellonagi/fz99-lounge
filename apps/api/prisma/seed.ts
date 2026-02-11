@@ -88,6 +88,17 @@ async function main() {
     });
   }
 
+  let teamClassicEvent = await prisma.event.findFirst({ where: { category: 'TEAM_CLASSIC' } });
+  if (!teamClassicEvent) {
+    teamClassicEvent = await prisma.event.create({
+      data: {
+        category: 'TEAM_CLASSIC',
+        name: 'TEAM CLASSIC',
+        description: 'Team Classic mode event',
+      },
+    });
+  }
+
   // シーズン作成 - eventId_seasonNumber複合キーでupsert
   await prisma.season.upsert({
     where: {
@@ -120,6 +131,23 @@ async function main() {
       startDate: new Date(),
       isActive: true,
       description: 'CLASSIC Season 0',
+    },
+  });
+
+  await prisma.season.upsert({
+    where: {
+      eventId_seasonNumber: {
+        eventId: teamClassicEvent.id,
+        seasonNumber: 1,
+      },
+    },
+    update: {},
+    create: {
+      eventId: teamClassicEvent.id,
+      seasonNumber: 1,
+      startDate: new Date(),
+      isActive: true,
+      description: 'TEAM CLASSIC Season 1',
     },
   });
 

@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RatingChartProps {
   userId: number;
-  category: 'GP' | 'CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
   seasonNumber?: number;
 }
 
@@ -64,7 +64,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
   if (loading) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Rating History</CardTitle>
         </CardHeader>
         <CardContent>
@@ -79,7 +79,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
   if (error) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Rating History</CardTitle>
         </CardHeader>
         <CardContent>
@@ -94,7 +94,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
   if (data.length === 0) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
-        <CardHeader className="pb-2">
+        <CardHeader>
           <CardTitle className="text-lg">Rating History</CardTitle>
         </CardHeader>
         <CardContent>
@@ -126,7 +126,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
 
   return (
     <Card className="bg-gray-800/50 border-gray-700">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           Rating History
           <span className="text-sm font-normal text-gray-400 ml-auto">

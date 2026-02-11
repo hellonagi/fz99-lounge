@@ -5,9 +5,10 @@ import type { User, UserSeasonStats } from '@/types';
 interface ProfileHeaderProps {
   user: User;
   seasonStats?: UserSeasonStats;
+  teamClassicStats?: UserSeasonStats;
 }
 
-export function ProfileHeader({ user, seasonStats }: ProfileHeaderProps) {
+export function ProfileHeader({ user, seasonStats, teamClassicStats }: ProfileHeaderProps) {
   const avatarUrl = useAvatarUrl(user.discordId, user.avatarHash, 96);
 
   const formatDate = (dateString: string) => {
@@ -66,6 +67,26 @@ export function ProfileHeader({ user, seasonStats }: ProfileHeaderProps) {
                 <div>
                   <span className="text-gray-400">Wins </span>
                   <span className="font-bold text-yellow-400">{seasonStats.firstPlaces}</span>
+                </div>
+              </div>
+            )}
+
+            {/* TEAM CLASSIC Stats Row */}
+            {teamClassicStats && (
+              <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2 text-sm">
+                {teamClassicStats.leaderboardRank && (
+                  <div>
+                    <span className="text-gray-400">TEAM </span>
+                    <span className="font-bold text-amber-400">#{teamClassicStats.leaderboardRank}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-400">Matches </span>
+                  <span className="font-bold text-white">{teamClassicStats.totalMatches}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Wins </span>
+                  <span className="font-bold text-amber-400">{teamClassicStats.firstPlaces}</span>
                 </div>
               </div>
             )}
