@@ -283,9 +283,6 @@
     "teamResults": "チーム結果",
     "teamRanking": "チームランキング",
     "teamSetup": "準備",
-    "teamSetupNameTitle": "名前を変更",
-    "teamSetupNameDescription": "ゲーム内の名前の先頭にチーム名を追加してください。名前が入り切らない場合は省略してください。",
-    "teamSetupNameExample": "例: \"Player\" → \"{teamLetter} Player\"、\"Player1234\" → \"{teamLetter} Player12\"",
     "teamSetupColorTitle": "マシンカラーを選択",
     "teamSetupColorDescription": "自分のチームに対応するマシンカラーを選択してください"
   },

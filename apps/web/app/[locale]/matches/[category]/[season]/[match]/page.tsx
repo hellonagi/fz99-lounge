@@ -494,6 +494,7 @@ export default function GamePage() {
               match={match}
               splitVoteStatus={splitVoteStatus}
               onSplitVote={fetchSplitVoteStatus}
+              inGameMode={game.inGameMode}
               passcodeRevealTime={isTeamClassic ? game.passcodeRevealTime : undefined}
               onPasscodeRevealed={() => {
                 setPasscodeRevealed(true);

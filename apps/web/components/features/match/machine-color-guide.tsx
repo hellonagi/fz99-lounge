@@ -15,7 +15,6 @@ interface Team {
 interface MachineColorGuideProps {
   teams: Team[];
   userTeamIndex: number | null;
-  userTeamLetter?: string;
 }
 
 const MACHINES = [
@@ -85,7 +84,6 @@ function getTextColor(colorName: string): string {
 export function MachineColorGuide({
   teams,
   userTeamIndex,
-  userTeamLetter,
 }: MachineColorGuideProps) {
   const t = useTranslations('teamClassic');
 
@@ -95,19 +93,6 @@ export function MachineColorGuide({
         <CardTitle>{t('teamSetup')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Name Tag Instructions */}
-        {userTeamLetter && (
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium text-gray-300">{t('teamSetupNameTitle')}</h3>
-            <p className="text-sm text-gray-400">
-              {t('teamSetupNameDescription')}
-            </p>
-            <p className="text-xs text-gray-400">
-              {t('teamSetupNameExample', { teamLetter: userTeamLetter })}
-            </p>
-          </div>
-        )}
-
         {/* Machine Color Selection */}
         <div className="space-y-1">
           <h3 className="text-sm font-medium text-gray-300">{t('teamSetupColorTitle')}</h3>

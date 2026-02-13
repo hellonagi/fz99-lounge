@@ -72,7 +72,6 @@ export function TeamAnnouncementPhase({
           <MachineColorGuide
             teams={teams}
             userTeamIndex={userTeam.teamIndex}
-            userTeamLetter={String.fromCharCode(65 + userTeam.teamIndex)}
           />
         </>
       )}
