@@ -24,6 +24,7 @@ interface MatchPasscodeCardProps {
   onSplitVote?: () => void;
   passcodeRevealTime?: string | null;
   onPasscodeRevealed?: () => void;
+  inGameMode?: string | null;
 }
 
 export function MatchPasscodeCard({
@@ -37,6 +38,7 @@ export function MatchPasscodeCard({
   onSplitVote,
   passcodeRevealTime,
   onPasscodeRevealed,
+  inGameMode,
 }: MatchPasscodeCardProps) {
   const [voting, setVoting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
@@ -123,6 +125,11 @@ export function MatchPasscodeCard({
   return (
     <Card showGradient className="bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
       <CardContent className="text-center">
+        {inGameMode && (
+          <p className="text-sm text-gray-400 mb-1">
+            {inGameMode.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
+          </p>
+        )}
         <p className="text-sm text-gray-400 mb-2">Passcode</p>
 
         {isCountdown && timeRemaining > 0 ? (
