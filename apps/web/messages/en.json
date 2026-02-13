@@ -284,9 +284,6 @@
     "teamResults": "Team Results",
     "teamRanking": "Team Ranking",
     "teamSetup": "Setup",
-    "teamSetupNameTitle": "Change Your Name",
-    "teamSetupNameDescription": "Add your team letter to the beginning of your in-game name. If your name is 9+ characters, you can shorten it to fit.",
-    "teamSetupNameExample": "e.g. \"Player\" → \"{teamLetter} Player\", \"Player1234\" → \"{teamLetter} Player12\"",
     "teamSetupColorTitle": "Select Machine Color",
     "teamSetupColorDescription": "Select the machine color that matches your team"
   },

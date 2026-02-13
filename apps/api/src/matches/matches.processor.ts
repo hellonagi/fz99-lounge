@@ -8,9 +8,10 @@ import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { EventCategory, MatchStatus } from '@prisma/client';
 import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS } from './team-config.service';
 import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
+import { TracksService } from '../tracks/tracks.service';
 
-// Team announcement phase duration (3 minutes)
-const TEAM_ANNOUNCEMENT_DELAY_MS = 3 * 60 * 1000;
+// Team announcement phase duration (2 minutes)
+const TEAM_ANNOUNCEMENT_DELAY_MS = 2 * 60 * 1000;
 
 @Processor('matches')
 export class MatchesProcessor {
@@ -23,6 +24,7 @@ export class MatchesProcessor {
     private discordBotService: DiscordBotService,
     private teamConfigService: TeamConfigService,
     private teamAssignmentService: TeamAssignmentService,
+    private tracksService: TracksService,
     @InjectQueue('matches') private matchQueue: Queue,
   ) {}
 
@@ -250,7 +252,8 @@ export class MatchesProcessor {
    * Handle TEAM_CLASSIC match start:
    * 1. Assign teams using snake draft
    * 2. Create GameParticipants with team assignments
-   * 3. Schedule passcode reveal after 3 minutes
+   * 3. Recalculate tracks based on passcode reveal time
+   * 4. Schedule passcode reveal after announcement phase
    */
   private async handleTeamClassicStart(
     match: any,
@@ -329,6 +332,9 @@ export class MatchesProcessor {
 
     const passcodeRevealTime = new Date(Date.now() + TEAM_ANNOUNCEMENT_DELAY_MS);
 
+    // Recalculate tracks based on passcode reveal time (not match creation time)
+    const tracks = this.tracksService.calculateClassicMiniTracks(passcodeRevealTime);
+
     // Randomly pick N colors from available grid positions, then sort ascending
     // so that Team A < B < C < D in grid position order
     const teamCount = assignment.teams.length;
@@ -349,6 +355,7 @@ export class MatchesProcessor {
           startedAt: new Date(),
           teamConfig: teamConfigWithColors,
           passcodeRevealTime,
+          tracks,
         },
       });
 
