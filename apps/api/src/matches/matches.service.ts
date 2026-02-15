@@ -107,29 +107,13 @@ export class MatchesService {
       throw new BadRequestException(`Season ${seasonId} is not active`);
     }
 
-    // Get next available match number (find smallest unused number)
-    const usedNumbers = await this.prisma.match.findMany({
-      where: {
-        seasonId,
-        matchNumber: { not: null },
-      },
-      select: { matchNumber: true },
-      orderBy: { matchNumber: 'asc' },
-    });
-
-    const usedSet = new Set(usedNumbers.map((m) => m.matchNumber));
-    let matchNumber = 1;
-    while (usedSet.has(matchNumber)) {
-      matchNumber++;
-    }
-
     // CLASSIC_MINI_PRIXモードの場合、トラックセットを自動計算
     let tracks: number[] | null = null;
     if (inGameMode === InGameMode.CLASSIC_MINI_PRIX) {
       tracks = this.tracksService.calculateClassicMiniTracks(new Date(scheduledStart));
     }
 
-    // Create match and game in a transaction
+    // Create match and game in a transaction, then reassign matchNumbers by scheduledStart order
     const match = await this.prisma.$transaction(async (tx) => {
       const scheduledDate = new Date(scheduledStart);
       // Default deadline is 1 hour after scheduled start
@@ -138,7 +122,7 @@ export class MatchesService {
       const newMatch = await tx.match.create({
         data: {
           seasonId,
-          matchNumber,
+          // matchNumber is assigned by reassignWaitingMatchNumbers below
           scheduledStart: scheduledDate,
           deadline: deadlineDate,
           minPlayers: minPlayers || 4,
@@ -160,6 +144,9 @@ export class MatchesService {
           ...(tracks && { tracks }), // CLASSIC_MINI_PRIXの場合は自動計算されたトラックが設定される
         },
       });
+
+      // Reassign all WAITING matchNumbers based on scheduledStart order
+      await this.reassignWaitingMatchNumbers(tx, seasonId);
 
       return newMatch;
     });
@@ -207,7 +194,7 @@ export class MatchesService {
     }
 
     // Announce match creation to Discord (fire and forget - don't block on errors)
-    if (matchWithIncludes && matchWithIncludes.games[0]) {
+    if (matchWithIncludes && matchWithIncludes.matchNumber && matchWithIncludes.games[0]) {
       try {
         const creator = await this.prisma.user.findUnique({
           where: { id: createdBy },
@@ -215,7 +202,7 @@ export class MatchesService {
         });
 
         await this.discordBotService.announceMatchCreated({
-          matchNumber, // use local variable (always non-null when creating)
+          matchNumber: matchWithIncludes.matchNumber,
           seasonNumber: season.seasonNumber,
           category: season.event.category,
           seasonName: season.event.name,
@@ -692,6 +679,9 @@ export class MatchesService {
       }
     }
 
+    // Reassign WAITING matchNumbers after cancellation to fill gaps
+    await this.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
+
     // Emit WebSocket event to notify all clients
     this.eventsGateway.emitMatchUpdated(updatedMatch);
 
@@ -706,7 +696,9 @@ export class MatchesService {
       throw new BadRequestException('Cannot delete match that is not in WAITING status');
     }
 
-    // Delete all related participants and match in a transaction
+    const seasonId = match.seasonId;
+
+    // Delete all related participants and match in a transaction, then reassign numbers
     await this.prisma.$transaction(async (tx) => {
       // First delete all related MatchParticipant records
       await tx.matchParticipant.deleteMany({
@@ -722,8 +714,86 @@ export class MatchesService {
       await tx.match.delete({
         where: { id: matchId },
       });
+
+      // Reassign WAITING matchNumbers after deletion to fill gaps
+      await this.reassignWaitingMatchNumbers(tx, seasonId);
     });
 
     return { message: 'Match deleted successfully' };
+  }
+
+  /**
+   * Reassign matchNumbers for all WAITING matches in a season
+   * based on scheduledStart order. Locked (non-WAITING) matches keep their numbers.
+   */
+  private async reassignWaitingMatchNumbers(
+    tx: {
+      match: {
+        findMany: typeof this.prisma.match.findMany;
+        updateMany: typeof this.prisma.match.updateMany;
+        update: typeof this.prisma.match.update;
+      };
+    },
+    seasonId: number,
+  ): Promise<void> {
+    // Get all non-cancelled matches in this season
+    const allMatches = await tx.match.findMany({
+      where: {
+        seasonId,
+        status: { not: MatchStatus.CANCELLED },
+      },
+      select: {
+        id: true,
+        matchNumber: true,
+        status: true,
+        scheduledStart: true,
+      },
+    });
+
+    // Separate locked (non-WAITING) vs flexible (WAITING)
+    const locked = allMatches.filter(
+      (m: { status: MatchStatus }) => m.status !== MatchStatus.WAITING,
+    );
+    const flexible = allMatches.filter(
+      (m: { status: MatchStatus }) => m.status === MatchStatus.WAITING,
+    );
+
+    if (flexible.length === 0) return;
+
+    // Get locked number set
+    const lockedNumbers = new Set(
+      locked
+        .map((m: { matchNumber: number | null }) => m.matchNumber)
+        .filter((n): n is number => n !== null),
+    );
+
+    // Sort flexible by scheduledStart, then by id for tiebreaker
+    flexible.sort(
+      (a: { scheduledStart: Date; id: number }, b: { scheduledStart: Date; id: number }) => {
+        const timeDiff = a.scheduledStart.getTime() - b.scheduledStart.getTime();
+        return timeDiff !== 0 ? timeDiff : a.id - b.id;
+      },
+    );
+
+    // Null out all flexible matchNumbers to avoid unique constraint violations
+    await tx.match.updateMany({
+      where: {
+        id: { in: flexible.map((m: { id: number }) => m.id) },
+      },
+      data: { matchNumber: null },
+    });
+
+    // Assign numbers, skipping locked ones
+    let nextNumber = 1;
+    for (const match of flexible) {
+      while (lockedNumbers.has(nextNumber)) {
+        nextNumber++;
+      }
+      await tx.match.update({
+        where: { id: match.id },
+        data: { matchNumber: nextNumber },
+      });
+      nextNumber++;
+    }
   }
 }
