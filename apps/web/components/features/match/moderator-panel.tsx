@@ -132,11 +132,9 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2'
   );
 
-  // Calculate verification progress (scores + final score screenshot)
-  const scoresVerifiedCount = participants.filter(p => p.status === 'VERIFIED').length;
-  const finalScoreVerified = finalScoreScreenshots.some(s => s.isVerified);
-  const totalRequired = participants.length + 1; // all scores + 1 final score
-  const verifiedCount = scoresVerifiedCount + (finalScoreVerified ? 1 : 0);
+  // Calculate verification progress (scores only, based on total participants)
+  const verifiedCount = participants.filter(p => p.status === 'VERIFIED').length;
+  const totalRequired = participants.length;
 
   // Position conflict detection (CLASSIC mode only)
   const [showConflictCheck, setShowConflictCheck] = useState(false);
