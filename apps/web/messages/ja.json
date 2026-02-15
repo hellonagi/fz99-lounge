@@ -1,8 +1,62 @@
 {
   "adminTabs": {
     "matches": "マッチ",
+    "moderators": "モデレーター",
+    "users": "ユーザー",
     "seasons": "シーズン",
     "settings": "設定"
+  },
+  "userManagement": {
+    "title": "ユーザー管理",
+    "description": "登録済みユーザーの一覧表示とロール管理。",
+    "searchPlaceholder": "ユーザー名または表示名で検索...",
+    "user": "ユーザー",
+    "role": "ロール",
+    "lastLogin": "最終ログイン",
+    "registered": "登録日",
+    "actions": "操作",
+    "promoteToModerator": "モデレーターに昇格",
+    "demoteToPlayer": "プレイヤーに降格",
+    "confirmDemote": "モデレーター権限がすべて削除されます。続行しますか？",
+    "noUsers": "ユーザーが見つかりません。",
+    "roleAdmin": "ADMIN",
+    "roleModerator": "MODERATOR",
+    "rolePlayer": "PLAYER",
+    "never": "未ログイン",
+    "updateSuccess": "ロールを更新しました。",
+    "updateFailed": "ロールの更新に失敗しました。"
+  },
+  "moderatorPermissions": {
+    "title": "モデレーター権限管理",
+    "description": "各モデレーターの権限を個別に管理します。",
+    "noModerators": "モデレーターが見つかりません。",
+    "saved": "権限を保存しました。",
+    "saveFailed": "権限の保存に失敗しました。",
+    "selectAll": "全て選択",
+    "deselectAll": "全て解除",
+    "groups": {
+      "matchManagement": "マッチ管理",
+      "scoreManagement": "スコア管理",
+      "screenshotManagement": "スクリーンショット管理",
+      "matchOperations": "マッチ操作",
+      "adminTools": "管理ツール"
+    },
+    "permissions": {
+      "CREATE_MATCH": "マッチ作成",
+      "DELETE_MATCH": "マッチ削除",
+      "CANCEL_MATCH": "マッチキャンセル",
+      "VERIFY_SCORE": "スコア承認",
+      "REJECT_SCORE": "スコア却下",
+      "EDIT_SCORE": "スコア編集",
+      "VERIFY_SCREENSHOT": "スクショ承認",
+      "REJECT_SCREENSHOT": "スクショ却下",
+      "END_MATCH": "マッチ終了",
+      "REGENERATE_PASSCODE": "パスコード再生成",
+      "UPDATE_TRACKS": "トラック更新",
+      "VIEW_MULTI_ACCOUNTS": "複数アカウント確認",
+      "VIEW_LOGIN_HISTORY": "ログイン履歴確認",
+      "RECALCULATE_RATING": "レート再計算"
+    }
   },
   "landing": {
     "howToJoin": {
@@ -61,6 +115,8 @@
   "home": {
     "recentMatches": "最近の試合",
     "noRecentMatches": "最近の試合はありません",
+    "upcomingMatches": "開催予定",
+    "startsInTime": "あと {time} で開始",
     "inProgress": "進行中",
     "settingUp": "設定中..."
   },

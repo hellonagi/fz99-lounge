@@ -664,7 +664,7 @@ export default function GamePage() {
           )}
 
           {/* Screenshots Section - show final score screenshot if exists, not on mod tab */}
-          {screenshots.filter(s => s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2').length > 0 && activeTab !== 'moderator' && (
+          {screenshots.filter(s => (s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2') && s.imageUrl).length > 0 && activeTab !== 'moderator' && (
             <Card>
               <CardContent className="pt-6">
                 <h3 className="text-lg font-bold text-white mb-4">Screenshots</h3>

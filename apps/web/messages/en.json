@@ -1,8 +1,62 @@
 {
   "adminTabs": {
     "matches": "Matches",
+    "moderators": "Moderators",
+    "users": "Users",
     "seasons": "Seasons",
     "settings": "Settings"
+  },
+  "userManagement": {
+    "title": "User Management",
+    "description": "View all registered users and manage roles.",
+    "searchPlaceholder": "Search by username or display name...",
+    "user": "User",
+    "role": "Role",
+    "lastLogin": "Last Login",
+    "registered": "Registered",
+    "actions": "Actions",
+    "promoteToModerator": "Promote to Moderator",
+    "demoteToPlayer": "Demote to Player",
+    "confirmDemote": "This will remove all moderator permissions. Continue?",
+    "noUsers": "No users found.",
+    "roleAdmin": "ADMIN",
+    "roleModerator": "MODERATOR",
+    "rolePlayer": "PLAYER",
+    "never": "Never",
+    "updateSuccess": "Role updated successfully.",
+    "updateFailed": "Failed to update role."
+  },
+  "moderatorPermissions": {
+    "title": "Moderator Permissions",
+    "description": "Manage individual permissions for each moderator.",
+    "noModerators": "No moderators found.",
+    "saved": "Permissions saved.",
+    "saveFailed": "Failed to save permissions.",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "groups": {
+      "matchManagement": "Match Management",
+      "scoreManagement": "Score Management",
+      "screenshotManagement": "Screenshot Management",
+      "matchOperations": "Match Operations",
+      "adminTools": "Admin Tools"
+    },
+    "permissions": {
+      "CREATE_MATCH": "Create Match",
+      "DELETE_MATCH": "Delete Match",
+      "CANCEL_MATCH": "Cancel Match",
+      "VERIFY_SCORE": "Verify Score",
+      "REJECT_SCORE": "Reject Score",
+      "EDIT_SCORE": "Edit Score",
+      "VERIFY_SCREENSHOT": "Verify Screenshot",
+      "REJECT_SCREENSHOT": "Reject Screenshot",
+      "END_MATCH": "End Match",
+      "REGENERATE_PASSCODE": "Regenerate Passcode",
+      "UPDATE_TRACKS": "Update Tracks",
+      "VIEW_MULTI_ACCOUNTS": "View Multi-Accounts",
+      "VIEW_LOGIN_HISTORY": "View Login History",
+      "RECALCULATE_RATING": "Recalculate Rating"
+    }
   },
   "landing": {
     "howToJoin": {
@@ -61,6 +115,8 @@
   "home": {
     "recentMatches": "Recent Matches",
     "noRecentMatches": "No recent matches",
+    "upcomingMatches": "Upcoming Matches",
+    "startsInTime": "Starts in {time}",
     "players": "{count} players",
     "inProgress": "In Progress",
     "settingUp": "Setting up..."

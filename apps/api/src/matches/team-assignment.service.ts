@@ -79,6 +79,9 @@ export class TeamAssignmentService {
     // Step 6: Apply snake draft
     const teams = this.snakeDraft(sortedByRating, config.teamCount);
 
+    // Step 7: Shuffle team labels so top-rated player isn't always Team A
+    this.shuffleTeams(teams);
+
     this.logger.log(
       `Assigned ${eligiblePlayers.length} players to ${config.teamCount} teams (${config.configString}), excluded ${excludeCount}`,
     );
@@ -122,6 +125,17 @@ export class TeamAssignmentService {
     }
 
     return teams;
+  }
+
+  /**
+   * Shuffle team label assignments (Fisher-Yates)
+   * Swaps elements in-place so teamIndex 0/1/2/3 map to random groups
+   */
+  private shuffleTeams(teams: number[][]): void {
+    for (let i = teams.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [teams[i], teams[j]] = [teams[j], teams[i]];
+    }
   }
 
   /**

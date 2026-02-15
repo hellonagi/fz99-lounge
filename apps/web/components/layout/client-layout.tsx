@@ -22,32 +22,32 @@ export function ClientLayout({ children, locale }: ClientLayoutProps) {
     setMounted(true);
   }, []);
 
-  // ハイドレーション後、必要に応じてAPIからユーザー情報を取得
+  // ハイドレーション後、APIからユーザー情報を取得
+  // キャッシュがある場合は即座にreadyにし、バックグラウンドで最新情報を取得
   useEffect(() => {
     if (!mounted) return;
 
     const { isAuthenticated: isAuth, user: currentUser } = useAuthStore.getState();
 
-    // localStorageにユーザー情報がない場合のみAPIから取得
-    // （ブラウザ変更時やlocalStorage削除時に対応）
-    if (!isAuth || !currentUser) {
-      authApi
-        .getProfile()
-        .then((response) => {
-          // 未認証の場合はnullが返るため、nullでない場合のみsetUser
-          if (response.data) {
-            setUser(response.data);
-          }
-        })
-        .catch(() => {
-          // ネットワークエラー等 → 何もしない
-        })
-        .finally(() => {
-          setReady(true);
-        });
-    } else {
+    // キャッシュがある場合は即座にreadyにする
+    if (isAuth && currentUser) {
       setReady(true);
     }
+
+    // 常にAPIから最新のプロフィールを取得（role変更等を反映）
+    authApi
+      .getProfile()
+      .then((response) => {
+        if (response.data) {
+          setUser(response.data);
+        }
+      })
+      .catch(() => {
+        // ネットワークエラー等 → 何もしない
+      })
+      .finally(() => {
+        setReady(true);
+      });
   }, [mounted, setUser]);
 
   // ログイン済みでdisplayName未設定の場合、モーダルを表示

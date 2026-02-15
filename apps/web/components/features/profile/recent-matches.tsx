@@ -164,13 +164,13 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
                     className={cn(
                       'text-xs px-1.5 py-0.5 rounded',
                       match.category === 'TEAM_CLASSIC'
-                        ? 'bg-amber-500/20 text-amber-400'
+                        ? 'bg-rose-300/20 text-rose-300'
                         : match.category === 'CLASSIC'
                           ? 'bg-emerald-500/20 text-emerald-400'
                           : 'bg-blue-500/20 text-blue-400'
                     )}
                   >
-                    {match.category === 'TEAM_CLASSIC' ? 'TEAM' : match.category}
+                    {match.category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : match.category}
                   </span>
                   <span className="text-gray-300 text-sm">
                     S{match.seasonNumber} #{match.matchNumber}

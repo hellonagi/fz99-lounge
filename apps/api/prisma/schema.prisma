@@ -122,6 +122,23 @@ enum PenaltyType {
   LATE_SUBMISSION // 遅延報告
 }
 
+enum ModeratorPermission {
+  CREATE_MATCH
+  DELETE_MATCH
+  CANCEL_MATCH
+  VERIFY_SCORE
+  REJECT_SCORE
+  EDIT_SCORE
+  VERIFY_SCREENSHOT
+  REJECT_SCREENSHOT
+  END_MATCH
+  REGENERATE_PASSCODE
+  UPDATE_TRACKS
+  VIEW_MULTI_ACCOUNTS
+  VIEW_LOGIN_HISTORY
+  RECALCULATE_RATING
+}
+
 // ==================== TRACKS ====================
 
 model Track {
@@ -186,6 +203,7 @@ model User {
   screenshotSelections ResultScreenshot[]         @relation("ScreenshotSelections")
   ratingHistories      RatingHistory[]            @relation("RatingHistory")
   profile              Profile?
+  permissions          UserPermission[]
 
   @@index([discordId])
   @@index([displayName])
@@ -742,6 +760,21 @@ model PenaltyRecord {
   @@map("penalty_records")
 }
 
+
+// ==================== USER PERMISSIONS ====================
+
+model UserPermission {
+  id         Int                 @id @default(autoincrement())
+  userId     Int
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission ModeratorPermission
+  grantedAt  DateTime            @default(now())
+  grantedBy  Int?
+
+  @@unique([userId, permission])
+  @@index([userId])
+  @@map("user_permissions")
+}
 
 // ==================== PUSH NOTIFICATIONS ====================
 

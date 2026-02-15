@@ -42,6 +42,10 @@ export class UsersService {
             country: true,
           },
         },
+        // 権限情報（MODERATOR用）
+        permissions: {
+          select: { permission: true },
+        },
         // シーズン別統計を取得（seasonNumberが指定されればそのシーズン、なければアクティブシーズン）
         seasonStats: {
           where: seasonNumber !== undefined
@@ -101,11 +105,12 @@ export class UsersService {
       })
     );
 
-    // Flatten profile.country to country
-    const { profile, seasonStats, ...rest } = user;
+    // Flatten profile.country to country, flatten permissions
+    const { profile, seasonStats, permissions, ...rest } = user;
     return {
       ...rest,
       country: profile?.country || null,
+      permissions: permissions?.map((p) => p.permission) || [],
       seasonStats: seasonStatsWithRank,
     };
   }

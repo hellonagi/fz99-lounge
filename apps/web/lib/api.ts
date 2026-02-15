@@ -258,6 +258,13 @@ export const screenshotsApi = {
   getProgress: (gameId: number) => api.get(`/screenshots/game/${gameId}/progress`),
 };
 
+// Permissions API (ADMIN only)
+export const permissionsApi = {
+  getModerators: () => api.get('/permissions/moderators'),
+  setUserPermissions: (userId: number, permissions: string[]) =>
+    api.put(`/permissions/users/${userId}`, { permissions }),
+};
+
 // Admin API
 export const adminApi = {
   recalculateRatings: (category: string, season: number, fromMatchNumber: number) =>
@@ -267,4 +274,11 @@ export const adminApi = {
       recalculatedMatches: number;
       affectedUsers: number;
     }>(`/admin/rating/recalculate/${category}/${season}/from/${fromMatchNumber}`),
+  getUsers: (page: number = 1, limit: number = 20, search?: string) => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) params.append('search', search);
+    return api.get(`/admin/users?${params.toString()}`);
+  },
+  updateUserRole: (userId: number, role: 'PLAYER' | 'MODERATOR') =>
+    api.patch(`/admin/users/${userId}/role`, { role }),
 };

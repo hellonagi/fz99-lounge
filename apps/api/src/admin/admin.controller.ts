@@ -1,14 +1,20 @@
-import { Controller, Get, Post, Param, Query, UseGuards, ForbiddenException, Req, BadRequestException } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Get, Post, Patch, Param, Query, Body, Req, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { LoginTrackingService } from '../auth/login-tracking.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
 import { TeamClassicRatingService } from '../rating/team-classic-rating.service';
-import { UserRole, EventCategory } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { UserRole, EventCategory, ModeratorPermission } from '@prisma/client';
 
 @Controller('admin')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+@Roles(UserRole.ADMIN, UserRole.MODERATOR)
 export class AdminController {
   private readonly defaultAlertDays: number;
 
@@ -17,31 +23,19 @@ export class AdminController {
     private configService: ConfigService,
     private classicRatingService: ClassicRatingService,
     private teamClassicRatingService: TeamClassicRatingService,
+    private prisma: PrismaService,
   ) {
     this.defaultAlertDays = this.configService.get<number>('SUSPICIOUS_LOGIN_ALERT_DAYS', 7);
-  }
-
-  /**
-   * Check if user has admin or moderator role
-   */
-  private checkAdminAccess(req: Request) {
-    const user = req.user as any;
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.MODERATOR)) {
-      throw new ForbiddenException('Admin access required');
-    }
-    return user;
   }
 
   /**
    * Get users with multiple accounts (same IP)
    */
   @Get('multi-accounts')
+  @Permissions(ModeratorPermission.VIEW_MULTI_ACCOUNTS)
   async getMultiAccountUsers(
-    @Req() req: Request,
     @Query('days') days: string = '30',
   ) {
-    this.checkAdminAccess(req);
-
     const daysBack = parseInt(days, 10) || 30;
     const multiAccountUsers = await this.loginTrackingService.findMultiAccountUsers(daysBack);
 
@@ -56,13 +50,11 @@ export class AdminController {
    * Get login history for a specific user
    */
   @Get('users/:userId/login-history')
+  @Permissions(ModeratorPermission.VIEW_LOGIN_HISTORY)
   async getUserLoginHistory(
-    @Req() req: Request,
     @Param('userId') userId: string,
     @Query('limit') limit: string = '50',
   ) {
-    this.checkAdminAccess(req);
-
     const limitNum = parseInt(limit, 10) || 50;
     const history = await this.loginTrackingService.getUserLoginHistory(parseInt(userId, 10), limitNum);
 
@@ -77,13 +69,11 @@ export class AdminController {
    * Get all accounts that have logged in from a specific IP
    */
   @Get('ip/:ipAddress/accounts')
+  @Permissions(ModeratorPermission.VIEW_MULTI_ACCOUNTS)
   async getAccountsFromIp(
-    @Req() req: Request,
     @Param('ipAddress') ipAddress: string,
     @Query('days') days: string = '30',
   ) {
-    this.checkAdminAccess(req);
-
     const daysBack = parseInt(days, 10) || 30;
     const accounts = await this.loginTrackingService.getAccountsFromIp(ipAddress, daysBack);
 
@@ -98,9 +88,8 @@ export class AdminController {
    * Get IP tracking statistics
    */
   @Get('statistics/ip-tracking')
-  async getIpStatistics(@Req() req: Request) {
-    this.checkAdminAccess(req);
-
+  @Permissions(ModeratorPermission.VIEW_MULTI_ACCOUNTS)
+  async getIpStatistics() {
     const stats = await this.loginTrackingService.getIpStatistics();
 
     return {
@@ -115,12 +104,10 @@ export class AdminController {
    * Get recent suspicious login activity
    */
   @Get('suspicious-activity')
+  @Permissions(ModeratorPermission.VIEW_MULTI_ACCOUNTS)
   async getSuspiciousActivity(
-    @Req() req: Request,
     @Query('days') days?: string,
   ) {
-    this.checkAdminAccess(req);
-
     const daysBack = days ? parseInt(days, 10) : this.defaultAlertDays;
 
     // Get multi-account users
@@ -146,15 +133,13 @@ export class AdminController {
    * Trigger rating calculation for a specific game
    */
   @Post('games/:gameId/calculate-rating')
+  @Permissions(ModeratorPermission.RECALCULATE_RATING)
   async calculateRating(
-    @Req() req: Request,
     @Param('gameId') gameId: string,
   ) {
-    this.checkAdminAccess(req);
-
     const gameIdNum = parseInt(gameId, 10);
     if (isNaN(gameIdNum)) {
-      throw new ForbiddenException('Invalid game ID');
+      throw new BadRequestException('Invalid game ID');
     }
 
     await this.classicRatingService.calculateAndUpdateRatings(gameIdNum);
@@ -171,13 +156,12 @@ export class AdminController {
    * Example: POST /admin/rating/recalculate/classic/1/from/5
    */
   @Post('rating/recalculate/:category/:season/from/:matchNumber')
+  @Permissions(ModeratorPermission.RECALCULATE_RATING)
   async recalculateRatingsFromMatch(
-    @Req() req: Request,
     @Param('category') category: string,
     @Param('season') season: string,
     @Param('matchNumber') matchNumber: string,
   ) {
-    this.checkAdminAccess(req);
 
     // Validate category
     const categoryUpper = category.toUpperCase();
@@ -207,5 +191,118 @@ export class AdminController {
       message: `Rating recalculation completed from match ${fromMatchNumber}`,
       ...result,
     };
+  }
+
+  /**
+   * List all users with pagination and search
+   */
+  @Get('users')
+  @Roles(UserRole.ADMIN)
+  async getUsers(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '20',
+    @Query('search') search?: string,
+  ) {
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const where = search
+      ? {
+          OR: [
+            { username: { contains: search, mode: 'insensitive' as const } },
+            { displayName: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : {};
+
+    const [total, users] = await Promise.all([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limitNum,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          username: true,
+          displayName: true,
+          avatarHash: true,
+          discordId: true,
+          role: true,
+          lastLoginAt: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+    return {
+      data: users,
+      meta: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1,
+      },
+    };
+  }
+
+  /**
+   * Update user role (PLAYER <-> MODERATOR only)
+   */
+  @Patch('users/:userId/role')
+  @Roles(UserRole.ADMIN)
+  async updateUserRole(
+    @Param('userId') userId: string,
+    @Body('role') role: string,
+    @Req() req: Request,
+  ) {
+    const userIdNum = parseInt(userId, 10);
+    if (isNaN(userIdNum)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    if (role !== 'PLAYER' && role !== 'MODERATOR') {
+      throw new BadRequestException('Role must be PLAYER or MODERATOR');
+    }
+
+    const currentUser = req.user as any;
+    if (currentUser.id === userIdNum) {
+      throw new ForbiddenException('Cannot change your own role');
+    }
+
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: userIdNum },
+      select: { id: true, role: true },
+    });
+
+    if (!targetUser) {
+      throw new BadRequestException('User not found');
+    }
+
+    if (targetUser.role === UserRole.ADMIN) {
+      throw new ForbiddenException('Cannot change ADMIN role');
+    }
+
+    // Update role and clean up permissions if demoting
+    if (role === 'PLAYER' && targetUser.role === UserRole.MODERATOR) {
+      await this.prisma.$transaction([
+        this.prisma.userPermission.deleteMany({ where: { userId: userIdNum } }),
+        this.prisma.user.update({
+          where: { id: userIdNum },
+          data: { role: UserRole.PLAYER },
+        }),
+      ]);
+    } else {
+      await this.prisma.user.update({
+        where: { id: userIdNum },
+        data: { role: role as UserRole },
+      });
+    }
+
+    return { success: true };
   }
 }

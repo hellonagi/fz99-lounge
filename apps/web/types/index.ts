@@ -12,10 +12,27 @@ export interface User {
   twitchUrl?: string | null;
   createdAt?: string;
   lastLoginAt?: string | null;
+  permissions?: ModeratorPermission[];
 }
 
 export type UserRole = 'PLAYER' | 'MODERATOR' | 'ADMIN';
 export type UserStatus = 'ACTIVE' | 'WARNED' | 'SUSPENDED' | 'BANNED' | 'DELETED';
+
+export type ModeratorPermission =
+  | 'CREATE_MATCH'
+  | 'DELETE_MATCH'
+  | 'CANCEL_MATCH'
+  | 'VERIFY_SCORE'
+  | 'REJECT_SCORE'
+  | 'EDIT_SCORE'
+  | 'VERIFY_SCREENSHOT'
+  | 'REJECT_SCREENSHOT'
+  | 'END_MATCH'
+  | 'REGENERATE_PASSCODE'
+  | 'UPDATE_TRACKS'
+  | 'VIEW_MULTI_ACCOUNTS'
+  | 'VIEW_LOGIN_HISTORY'
+  | 'RECALCULATE_RATING';
 
 // Event Category - システムレベルの分類（レート計算ロジック）
 export type EventCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
