@@ -1373,7 +1373,15 @@ export class GamesService {
   ) {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
-      include: { match: true },
+      include: {
+        match: {
+          include: {
+            season: {
+              include: { event: true },
+            },
+          },
+        },
+      },
     });
 
     if (!game) {
@@ -1382,6 +1390,7 @@ export class GamesService {
 
     const participant = await this.prisma.gameParticipant.findFirst({
       where: { gameId, userId: targetUserId },
+      include: { raceResults: true },
     });
 
     if (!participant) {
@@ -1395,6 +1404,74 @@ export class GamesService {
         return participant;
       }
       throw new BadRequestException('Can only verify pending or rejected scores');
+    }
+
+    // Check for position conflicts in CLASSIC modes
+    const eventCategory = game.match.season?.event?.category;
+    if (
+      eventCategory === EventCategory.CLASSIC ||
+      eventCategory === EventCategory.TEAM_CLASSIC
+    ) {
+      // Get all submitted participants to check conflicts
+      const allSubmitted = await this.prisma.gameParticipant.findMany({
+        where: {
+          gameId,
+          status: { not: ResultStatus.UNSUBMITTED },
+        },
+        include: { raceResults: true },
+      });
+
+      for (let raceNumber = 1; raceNumber <= 3; raceNumber++) {
+        const positionCounts = new Map<number, number[]>();
+        for (const p of allSubmitted) {
+          const rr = p.raceResults.find((r) => r.raceNumber === raceNumber);
+          if (!rr || rr.isDisconnected || rr.position === null) continue;
+          const userIds = positionCounts.get(rr.position) || [];
+          userIds.push(p.userId);
+          positionCounts.set(rr.position, userIds);
+        }
+
+        // Find invalid positions due to ties
+        const invalidPositions = new Set<number>();
+        for (const [position, userIds] of positionCounts.entries()) {
+          if (userIds.length > 1) {
+            for (let i = 1; i < userIds.length; i++) {
+              const invalidPos = position + i;
+              if (invalidPos <= 20) invalidPositions.add(invalidPos);
+            }
+          }
+        }
+
+        // Check if target user is involved in a conflict
+        for (const invalidPos of invalidPositions) {
+          const usersAtInvalid = positionCounts.get(invalidPos);
+          if (!usersAtInvalid) continue;
+          // Target user claimed an invalid position
+          if (usersAtInvalid.includes(targetUserId)) {
+            throw new BadRequestException(
+              `Cannot verify: position conflict in Race ${raceNumber}`,
+            );
+          }
+          // Target user is part of the tie that causes the conflict
+          const targetRr = participant.raceResults.find(
+            (r) => r.raceNumber === raceNumber,
+          );
+          if (targetRr?.position !== null && !targetRr?.isDisconnected) {
+            const tiedUsers = positionCounts.get(targetRr!.position!);
+            if (tiedUsers && tiedUsers.length > 1 && tiedUsers.includes(targetUserId)) {
+              // Check if this tie causes the invalid position
+              const pos = targetRr!.position!;
+              for (let i = 1; i < tiedUsers.length; i++) {
+                if (pos + i === invalidPos) {
+                  throw new BadRequestException(
+                    `Cannot verify: position conflict in Race ${raceNumber}`,
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
     const updated = await this.prisma.gameParticipant.update({

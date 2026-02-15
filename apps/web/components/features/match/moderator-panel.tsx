@@ -147,6 +147,16 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     return detectAllPositionConflicts(participants);
   }, [isClassic, showConflictCheck, allSubmitted, participants]);
 
+  const conflictUserIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const conflict of positionConflicts) {
+      for (const u of conflict.allInvolvedUsers) {
+        ids.add(u.userId);
+      }
+    }
+    return ids;
+  }, [positionConflicts]);
+
   // Get screenshot for a specific user by type (only non-deleted ones with imageUrl)
   const getScreenshotForUser = (userId: number, type?: string) => {
     if (type) {
@@ -654,7 +664,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleVerifyScore(participant.user.id)}
-                                disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
+                                disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || conflictUserIds.has(participant.user.id)}
                                 className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
                               >
                                 {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
