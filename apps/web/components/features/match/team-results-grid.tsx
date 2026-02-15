@@ -64,12 +64,8 @@ export function TeamResultsGrid({
 }: TeamResultsGridProps) {
   const t = useTranslations('teamClassic');
 
-  // Sort teams by rank
-  const sortedTeams = [...teams].sort((a, b) => {
-    const aScore = teamScores.find((ts) => ts.teamIndex === a.teamIndex);
-    const bScore = teamScores.find((ts) => ts.teamIndex === b.teamIndex);
-    return (aScore?.rank || 999) - (bScore?.rank || 999);
-  });
+  // Sort teams by teamIndex (A, B, C, D)
+  const sortedTeams = [...teams].sort((a, b) => a.teamIndex - b.teamIndex);
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Trophy className="w-6 h-6 text-yellow-400" />;
