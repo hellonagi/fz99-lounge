@@ -64,13 +64,13 @@ export function MatchList({ matches, loading }: MatchListProps) {
                   match.category === 'CLASSIC'
                     ? 'bg-purple-600 text-white'
                     : match.category === 'TEAM_CLASSIC'
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-rose-400 text-white'
                       : match.category === 'TOURNAMENT'
                         ? 'bg-amber-600 text-white'
                         : 'bg-blue-600 text-white'
                 )}
               >
-                {match.category === 'TEAM_CLASSIC' ? 'TEAM' : match.category}
+                {match.category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : match.category}
               </span>
               <span className="text-gray-300 text-sm whitespace-nowrap">
                 S{match.seasonNumber} #{match.matchNumber}
