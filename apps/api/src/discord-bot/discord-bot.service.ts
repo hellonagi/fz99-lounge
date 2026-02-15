@@ -90,7 +90,7 @@ export interface AnnounceMatchResultsParams {
   category: string;
   seasonName: string;
   topParticipants: MatchResultParticipant[];
-  winningTeam?: { teamLabel: string; score: number; members: string[] };
+  topTeams?: { teamLabel: string; score: number; rank: number; members: string[] }[];
 }
 
 @Injectable()
@@ -1184,20 +1184,26 @@ Please check the match page: ${matchUrl}`;
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
 
       // Build result lines
+      const rankEmojis: Record<number, string> = {
+        1: '\u{1F947}', // 🥇
+        2: '\u{1F948}', // 🥈
+        3: '\u{1F949}', // 🥉
+      };
+
       let resultLines: string;
 
-      if (params.winningTeam) {
-        resultLines = `\u{1F3C6} **Team ${params.winningTeam.teamLabel}** - ${params.winningTeam.score}\n${params.winningTeam.members.join(', ')}`;
+      if (params.topTeams && params.topTeams.length > 0) {
+        resultLines = params.topTeams
+          .sort((a, b) => a.rank - b.rank)
+          .map((team) => {
+            const emoji = rankEmojis[team.rank] || '';
+            return `${emoji} **Team ${team.teamLabel}** - ${team.score}\n${team.members.join(', ')}`;
+          })
+          .join('\n\n');
       } else {
-        const positionEmojis: Record<number, string> = {
-          1: '\u{1F947}', // Gold medal
-          2: '\u{1F948}', // Silver medal
-          3: '\u{1F949}', // Bronze medal
-        };
-
         resultLines = params.topParticipants
           .map((p) => {
-            const emoji = positionEmojis[p.position] || '';
+            const emoji = rankEmojis[p.position] || '';
             return `${emoji} **${p.displayName}** - ${p.totalScore}`;
           })
           .join('\n');
