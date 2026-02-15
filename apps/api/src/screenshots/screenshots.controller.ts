@@ -19,10 +19,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { ScreenshotsService } from './screenshots.service';
 import { SubmitScreenshotDto } from './dto/submit-screenshot.dto';
-import { ScreenshotType } from '@prisma/client';
+import { ScreenshotType, ModeratorPermission } from '@prisma/client';
 
 @Controller('screenshots')
 @UseGuards(JwtAuthGuard)
@@ -79,8 +81,9 @@ export class ScreenshotsController {
    * POST /api/screenshots/:submissionId/verify
    */
   @Post(':submissionId/verify')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('ADMIN', 'MODERATOR')
+  @Permissions(ModeratorPermission.VERIFY_SCREENSHOT)
   @HttpCode(HttpStatus.OK)
   async verifyScreenshot(
     @Param('submissionId') submissionId: string,
@@ -97,8 +100,9 @@ export class ScreenshotsController {
    * POST /api/screenshots/:submissionId/reject
    */
   @Post(':submissionId/reject')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('ADMIN', 'MODERATOR')
+  @Permissions(ModeratorPermission.REJECT_SCREENSHOT)
   @HttpCode(HttpStatus.OK)
   async rejectScreenshot(
     @Param('submissionId') submissionId: string,

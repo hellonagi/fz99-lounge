@@ -19,6 +19,7 @@ import { StorageModule } from './storage/storage.module';
 import { RatingModule } from './rating/rating.module';
 import { TracksModule } from './tracks/tracks.module';
 import { DiscordBotModule } from './discord-bot/discord-bot.module';
+import { PermissionsModule } from './permissions/permissions.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { DiscordBotModule } from './discord-bot/discord-bot.module';
     RatingModule,
     TracksModule,
     DiscordBotModule,
+    PermissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

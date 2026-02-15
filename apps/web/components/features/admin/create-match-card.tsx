@@ -25,6 +25,8 @@ import {
 } from '@/components/ui/form';
 import { matchesApi, seasonsApi } from '@/lib/api';
 import { useTranslations } from 'next-intl';
+import { useAuthStore } from '@/store/authStore';
+import { hasPermission } from '@/lib/permissions';
 
 const LEAGUE_OPTIONS_99 = [
   { value: 'KNIGHT', label: 'Knight League' },
@@ -92,6 +94,7 @@ interface Season {
 }
 
 export function CreateMatchCard() {
+  const { user } = useAuthStore();
   const t = useTranslations('createMatch');
   const [success, setSuccess] = useState(false);
   const [activeSeason, setActiveSeason] = useState<Season | null>(null);
@@ -179,6 +182,10 @@ export function CreateMatchCard() {
       });
     }
   };
+
+  if (!hasPermission(user, 'CREATE_MATCH')) {
+    return null;
+  }
 
   return (
     <Card>

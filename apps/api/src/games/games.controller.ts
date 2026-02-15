@@ -17,7 +17,11 @@ import { GamesService } from './games.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { EventCategory, UserRole } from '@prisma/client';
+import { EventCategory, UserRole, ModeratorPermission } from '@prisma/client';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -85,8 +89,14 @@ export class GamesController {
 
     // If targetUserId is specified in DTO, check permissions
     if (submitScoreDto.targetUserId) {
-      // Only MODERATOR or ADMIN can submit scores for other users
-      if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
+      if (user.role === UserRole.ADMIN) {
+        // ADMIN always allowed
+      } else if (
+        user.role === UserRole.MODERATOR &&
+        user.permissions?.includes(ModeratorPermission.EDIT_SCORE)
+      ) {
+        // MODERATOR with EDIT_SCORE permission allowed
+      } else {
         throw new ForbiddenException(
           'Only moderators and admins can submit scores for other users',
         );
@@ -104,7 +114,9 @@ export class GamesController {
   }
 
   @Patch(':category/:season/:match/score/:userId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.EDIT_SCORE)
   async updateScoreByEventSeasonMatch(
     @Param('category') category: string,
     @Param('season') season: string,
@@ -118,13 +130,6 @@ export class GamesController {
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
-
-    // Only MODERATOR or ADMIN can edit scores
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only moderators and admins can edit scores',
-      );
-    }
 
     return this.gamesService.updateScoreByEventSeasonMatch(
       eventCategory,
@@ -157,50 +162,36 @@ export class GamesController {
   }
 
   @Post(':category/:season/:match/end')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.END_MATCH)
   @HttpCode(HttpStatus.OK)
   async endMatch(
     @Param('category') category: string,
     @Param('season') season: string,
     @Param('match') match: string,
-    @Req() req: Request,
   ) {
-    const user = req.user as any;
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
-
-    // Only MODERATOR or ADMIN can end a match manually
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only moderators and admins can manually end a match',
-      );
-    }
 
     return this.gamesService.endMatch(eventCategory, seasonNumber, matchNumber);
   }
 
   @Patch(':category/:season/:match/tracks')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.UPDATE_TRACKS)
   @HttpCode(HttpStatus.OK)
   async updateTracks(
     @Param('category') category: string,
     @Param('season') season: string,
     @Param('match') match: string,
     @Body() body: { tracks: number[] },
-    @Req() req: Request,
   ) {
-    const user = req.user as any;
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
-
-    // Only MODERATOR or ADMIN can update tracks
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only moderators and admins can update tracks',
-      );
-    }
 
     return this.gamesService.updateTracks(
       eventCategory,
@@ -250,23 +241,15 @@ export class GamesController {
   }
 
   @Post(':category/:season/:match/regenerate-passcode')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.REGENERATE_PASSCODE)
   @HttpCode(HttpStatus.OK)
   async forceRegeneratePasscode(
     @Param('category') category: string,
     @Param('season') season: string,
     @Param('match') match: string,
-    @Req() req: Request,
   ) {
-    const user = req.user as any;
-
-    // Only MODERATOR or ADMIN can force regenerate
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only moderators and admins can force regenerate passcode',
-      );
-    }
-
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
@@ -280,7 +263,9 @@ export class GamesController {
   // ========================================
 
   @Post(':category/:season/:match/participants/:userId/verify')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.VERIFY_SCORE)
   @HttpCode(HttpStatus.OK)
   async verifyParticipantScore(
     @Param('category') category: string,
@@ -290,11 +275,6 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-
-    // Only MODERATOR or ADMIN can verify scores
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only moderators and admins can verify scores');
-    }
 
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
@@ -306,7 +286,9 @@ export class GamesController {
   }
 
   @Post(':category/:season/:match/participants/:userId/reject')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.REJECT_SCORE)
   @HttpCode(HttpStatus.OK)
   async rejectParticipantScore(
     @Param('category') category: string,
@@ -316,11 +298,6 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-
-    // Only MODERATOR or ADMIN can reject scores
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException('Only moderators and admins can reject scores');
-    }
 
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);
@@ -332,7 +309,9 @@ export class GamesController {
   }
 
   @Post(':category/:season/:match/participants/:userId/request-screenshot')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.REJECT_SCORE)
   @HttpCode(HttpStatus.OK)
   async requestScreenshot(
     @Param('category') category: string,
@@ -342,13 +321,6 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-
-    // Only MODERATOR or ADMIN can request screenshots
-    if (user.role !== UserRole.MODERATOR && user.role !== UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Only moderators and admins can request screenshots',
-      );
-    }
 
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
     const seasonNumber = parseInt(season, 10);

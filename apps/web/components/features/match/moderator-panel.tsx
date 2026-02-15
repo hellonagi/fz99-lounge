@@ -25,6 +25,8 @@ import {
   detectAllPositionConflicts,
   type ConflictResult,
 } from '@/lib/position-conflict-detector';
+import { useAuthStore } from '@/store/authStore';
+import { hasPermission } from '@/lib/permissions';
 
 interface RaceResult {
   raceNumber: number;
@@ -80,6 +82,7 @@ interface ModeratorPanelProps {
 }
 
 export function ModeratorPanel(props: ModeratorPanelProps) {
+  const { user } = useAuthStore();
   const t = useTranslations('screenshotStatus');
   const tConflict = useTranslations('positionConflict');
   const {
@@ -340,7 +343,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   return (
     <div className="space-y-4">
       {/* Regenerate Passcode Button */}
-      {matchStatus === 'IN_PROGRESS' && (
+      {matchStatus === 'IN_PROGRESS' && hasPermission(user, 'REGENERATE_PASSCODE') && (
         <div className="flex items-center justify-between p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
           <div>
             <p className="text-blue-400 font-medium text-sm">Regenerate Passcode</p>
@@ -359,7 +362,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       )}
 
       {/* Manual Match End / Finalize Button */}
-      {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && (
+      {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && hasPermission(user, 'END_MATCH') && (
         <div className="flex items-center justify-between p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
           <div>
             <p className="text-yellow-400 font-medium text-sm">
@@ -379,7 +382,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       )}
 
       {/* Track Selection (CLASSIC only) */}
-      {isClassic && (
+      {isClassic && hasPermission(user, 'UPDATE_TRACKS') && (
         <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
           <h3 className="text-sm font-medium text-white mb-3">Track Selection</h3>
           <div className="grid grid-cols-3 gap-3">
@@ -641,26 +644,35 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
 
                       // Show buttons if: pending OR (rejected + SS submitted)
                       if (participant.status === 'PENDING' || (participant.status === 'REJECTED' && hasSS)) {
+                        const canVerify = hasPermission(user, 'VERIFY_SCORE');
+                        const canReject = hasPermission(user, 'REJECT_SCORE');
+                        if (!canVerify && !canReject) {
+                          return <span className="text-blue-400 text-xs">{t('pending')}</span>;
+                        }
                         return (
                           <div className="flex items-center justify-center gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleVerifyScore(participant.user.id)}
-                              disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
-                              className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
-                            >
-                              {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRejectScore(participant.user.id)}
-                              disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
-                              className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
-                            >
-                              {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
-                            </Button>
+                            {canVerify && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleVerifyScore(participant.user.id)}
+                                disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
+                                className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
+                              >
+                                {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
+                              </Button>
+                            )}
+                            {canReject && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRejectScore(participant.user.id)}
+                                disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
+                                className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
+                              >
+                                {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
+                              </Button>
+                            )}
                           </div>
                         );
                       }
@@ -755,22 +767,26 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                     <span className="text-red-400 text-sm font-medium">{t('ng')}</span>
                   ) : screenshot.imageUrl ? (
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleVerify(screenshot.id)}
-                        disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        {verifyingId === screenshot.id ? '...' : 'Verify'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleReject(screenshot.id)}
-                        disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        {rejectingId === screenshot.id ? '...' : 'Reject'}
-                      </Button>
+                      {hasPermission(user, 'VERIFY_SCREENSHOT') && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleVerify(screenshot.id)}
+                          disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {verifyingId === screenshot.id ? '...' : 'Verify'}
+                        </Button>
+                      )}
+                      {hasPermission(user, 'REJECT_SCREENSHOT') && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleReject(screenshot.id)}
+                          disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          {rejectingId === screenshot.id ? '...' : 'Reject'}
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <span className="text-gray-500 text-sm">-</span>
@@ -783,7 +799,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       )}
 
       {/* Score Edit Form - available until match is finalized */}
-      {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && (
+      {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && hasPermission(user, 'EDIT_SCORE') && (
         <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
           <ScoreSubmissionForm
             mode={category}

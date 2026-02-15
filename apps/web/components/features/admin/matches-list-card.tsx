@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { matchesApi } from '@/lib/api';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { Trash2, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
+import { hasPermission } from '@/lib/permissions';
 
 interface Match {
   id: number;
@@ -36,6 +38,7 @@ const STATUS_COLORS: Record<string, string> = {
 const ITEMS_PER_PAGE = 20;
 
 export function MatchesListCard() {
+  const { user } = useAuthStore();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -208,7 +211,7 @@ export function MatchesListCard() {
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex gap-1">
-                          {(match.status === 'WAITING' || match.status === 'IN_PROGRESS') && (
+                          {(match.status === 'WAITING' || match.status === 'IN_PROGRESS') && hasPermission(user, 'CANCEL_MATCH') && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -219,7 +222,7 @@ export function MatchesListCard() {
                               <Ban className="h-4 w-4" />
                             </Button>
                           )}
-                          {match.status === 'WAITING' && (
+                          {match.status === 'WAITING' && hasPermission(user, 'DELETE_MATCH') && (
                             <Button
                               variant="ghost"
                               size="sm"

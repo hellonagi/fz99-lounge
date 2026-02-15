@@ -16,15 +16,18 @@ import { CreateMatchDto } from './dto/create-match.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, EventCategory, MatchStatus } from '@prisma/client';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
+import { UserRole, EventCategory, MatchStatus, ModeratorPermission } from '@prisma/client';
 
 @Controller('matches')
 export class MatchesController {
   constructor(private matchesService: MatchesService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.CREATE_MATCH)
   async create(@Body() createMatchDto: CreateMatchDto, @Req() req: Request) {
     const user = req.user as any;
     return this.matchesService.create(createMatchDto, user.id);
@@ -91,15 +94,17 @@ export class MatchesController {
   }
 
   @Patch(':id/cancel')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.CANCEL_MATCH)
   async cancel(@Param('id') id: string) {
     return this.matchesService.cancel(parseInt(id, 10));
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.DELETE_MATCH)
   async delete(@Param('id') id: string) {
     return this.matchesService.delete(parseInt(id, 10));
   }
