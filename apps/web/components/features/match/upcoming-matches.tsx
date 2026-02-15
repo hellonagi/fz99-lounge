@@ -145,10 +145,10 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
                       onClick={() => onJoinLeave(match.id)}
                       disabled={isJoiningThis}
                       className={cn(
-                        'inline-flex items-center justify-center px-3 py-1.5 rounded text-xs font-medium border min-w-[80px] transition-colors disabled:opacity-50',
+                        'inline-flex items-center justify-center px-4 py-1.5 rounded-md text-xs font-medium border min-w-[80px] transition-all disabled:opacity-50',
                         isInMatch
-                          ? 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30'
-                          : 'bg-green-500/20 text-green-300 border-green-500/50 hover:bg-green-500/30'
+                          ? 'bg-gray-500/10 text-gray-400 border-gray-500/40 hover:bg-gray-500/25 hover:text-gray-200'
+                          : 'bg-green-500/10 text-green-400 border-green-500/40 hover:bg-green-500/25 hover:text-green-200'
                       )}
                     >
                       {isJoiningThis ? (
@@ -162,7 +162,7 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
                   ) : (
                     <Link
                       href={`${baseUrl}/api/auth/discord`}
-                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border bg-[#5865F2]/20 text-[#8b9aff] border-[#5865F2]/50 hover:bg-[#5865F2]/30 transition-colors"
+                      className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium border bg-[#5865F2]/10 text-[#8b9aff] border-[#5865F2]/40 hover:bg-[#5865F2]/25 hover:text-white transition-all"
                     >
                       <SiDiscord className="h-3.5 w-3.5" />
                       {tHero('loginToJoin')}
