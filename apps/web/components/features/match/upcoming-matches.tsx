@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { Loader2 } from 'lucide-react';
+import { SiDiscord } from 'react-icons/si';
+import Link from 'next/link';
 
 interface Match {
   id: number;
@@ -87,13 +89,14 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
   const t = useTranslations('home');
   const tHero = useTranslations('matchHero');
   const { isAuthenticated, user } = useAuthStore();
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
   if (loading || !matches || matches.length === 0) {
     return null;
   }
 
   return (
-    <section className="py-12 bg-gray-800/50">
+    <section className="py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">
           {t('upcomingMatches')}
@@ -157,7 +160,13 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
                       )}
                     </button>
                   ) : (
-                    <div />
+                    <Link
+                      href={`${baseUrl}/api/auth/discord`}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border bg-[#5865F2]/20 text-[#8b9aff] border-[#5865F2]/50 hover:bg-[#5865F2]/30 transition-colors"
+                    >
+                      <SiDiscord className="h-3.5 w-3.5" />
+                      {tHero('loginToJoin')}
+                    </Link>
                   )}
                   <span className="text-sm text-gray-400">
                     {match.participants.length}/{match.maxPlayers}

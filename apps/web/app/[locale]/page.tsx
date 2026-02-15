@@ -147,11 +147,11 @@ export default function Home() {
       {!isAuthenticated && <HowToJoinSection />}
 
       {/* Recent Matches Section */}
-      <main className="py-16 bg-gray-800">
+      <section className="py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
         </div>
-      </main>
+      </section>
     </>
   );
 }
