@@ -372,7 +372,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
             variant="destructive"
             size="sm"
             onClick={handleEndMatch}
-            disabled={endingMatch}
+            disabled={endingMatch || verifiedCount < totalRequired}
           >
             {endingMatch ? 'Processing...' : matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Finalize'}
           </Button>
