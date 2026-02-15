@@ -60,14 +60,14 @@ export function MatchList({ matches, loading }: MatchListProps) {
             <div className="flex items-center gap-3 shrink-0">
               <span
                 className={cn(
-                  'text-xs font-bold px-2 py-0.5 rounded',
+                  'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
                   match.category === 'CLASSIC'
-                    ? 'bg-purple-600 text-white'
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
                     : match.category === 'TEAM_CLASSIC'
-                      ? 'bg-rose-400 text-white'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
                       : match.category === 'TOURNAMENT'
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                        : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
                 )}
               >
                 {match.category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : match.category}

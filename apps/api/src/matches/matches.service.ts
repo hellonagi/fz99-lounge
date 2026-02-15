@@ -107,20 +107,6 @@ export class MatchesService {
       throw new BadRequestException(`Season ${seasonId} is not active`);
     }
 
-    // Check if there's already a WAITING match for this season
-    const existingWaitingMatch = await this.prisma.match.findFirst({
-      where: {
-        seasonId,
-        status: MatchStatus.WAITING,
-      },
-    });
-
-    if (existingWaitingMatch) {
-      throw new BadRequestException(
-        `A WAITING match already exists for this season (Match #${existingWaitingMatch.matchNumber})`,
-      );
-    }
-
     // Get next available match number (find smallest unused number)
     const usedNumbers = await this.prisma.match.findMany({
       where: {

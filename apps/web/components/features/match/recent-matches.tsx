@@ -35,7 +35,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   if (loading) {
     return (
       <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
         <div className="text-gray-400 text-sm">{tCommon('loading')}</div>
       </div>
     );
@@ -44,7 +44,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   if (!matches || matches.length === 0) {
     return (
       <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
         <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
       </div>
     );
@@ -56,7 +56,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   if (validMatches.length === 0) {
     return (
       <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
         <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
       </div>
     );
@@ -64,7 +64,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
 
   return (
     <div>
-      <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">{t('recentMatches')}</h2>
+      <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
       <div className="border border-gray-700 rounded-lg p-4 mx-0 md:mx-6 space-y-2">
         {validMatches.map((match) => (
           <Link
@@ -77,12 +77,12 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
               <div className="flex items-center gap-3 shrink-0">
                 <span
                   className={cn(
-                    'text-xs font-bold px-2 py-0.5 rounded',
+                    'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
                     match.category === 'CLASSIC'
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
                       : match.category === 'TEAM_CLASSIC'
-                        ? 'bg-rose-400 text-white'
-                        : 'bg-blue-600 text-white'
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+                        : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
                   )}
                 >
                   {match.category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : match.category}
@@ -102,7 +102,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                     <span className="text-white text-sm font-medium text-right truncate max-w-[200px] sm:max-w-none">
                       🏆{match.winningTeam.members
                         .map((m) => m.displayName || `User#${m.id}`)
-                        .join(', ')}
+                        .join(' ')}
                     </span>
                     <span className="text-gray-400 text-xs">
                       {match.winningTeam.score}pts

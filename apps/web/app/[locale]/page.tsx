@@ -5,10 +5,12 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
+import { UpcomingMatches } from '@/components/features/match/upcoming-matches';
 import { HowToJoinSection } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
+import { useUpcomingMatches } from '@/hooks/useUpcomingMatches';
 import { useAuthStore } from '@/store/authStore';
 import { matchesApi } from '@/lib/api';
 
@@ -62,6 +64,13 @@ export default function Home() {
   );
 
   const { isAuthenticated } = useAuthStore();
+
+  const {
+    matches: upcomingMatches,
+    loading: upcomingLoading,
+    joiningMatchId,
+    handleJoinLeave,
+  } = useUpcomingMatches(nextMatch?.id ?? null);
 
   // Fetch recent matches
   useEffect(() => {
@@ -125,6 +134,14 @@ export default function Home() {
           />
         )}
       </div>
+
+      {/* Upcoming Matches Section */}
+      <UpcomingMatches
+        matches={upcomingMatches}
+        loading={upcomingLoading}
+        joiningMatchId={joiningMatchId}
+        onJoinLeave={handleJoinLeave}
+      />
 
       {/* How to Join Section - only show when not logged in */}
       {!isAuthenticated && <HowToJoinSection />}

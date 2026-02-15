@@ -115,6 +115,8 @@
   "home": {
     "recentMatches": "Recent Matches",
     "noRecentMatches": "No recent matches",
+    "upcomingMatches": "Upcoming Matches",
+    "startsInTime": "Starts in {time}",
     "players": "{count} players",
     "inProgress": "In Progress",
     "settingUp": "Setting up..."

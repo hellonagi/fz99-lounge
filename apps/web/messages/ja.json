@@ -115,6 +115,8 @@
   "home": {
     "recentMatches": "最近の試合",
     "noRecentMatches": "最近の試合はありません",
+    "upcomingMatches": "開催予定",
+    "startsInTime": "あと {time} で開始",
     "inProgress": "進行中",
     "settingUp": "設定中..."
   },
