@@ -362,7 +362,7 @@ export class MatchesService {
           matchNumber: match.matchNumber,
           category: matchCategory,
           seasonNumber: match.season.seasonNumber,
-          playerCount: match.participants.length,
+          playerCount: game ? game.participants.length : match.participants.length,
           status: match.status,
           startedAt: match.actualStart,
         };
@@ -472,6 +472,9 @@ export class MatchesService {
         participants: true,
         games: {
           include: {
+            _count: {
+              select: { participants: { where: { isExcluded: false } } },
+            },
             participants: {
               ...(category === 'TEAM_CLASSIC'
                 ? {
@@ -507,7 +510,7 @@ export class MatchesService {
         matchNumber: match.matchNumber,
         category: matchCategory,
         seasonNumber: match.season.seasonNumber,
-        playerCount: match.participants.length,
+        playerCount: game ? game._count.participants : match.participants.length,
         status: match.status,
         startedAt: match.actualStart,
       };
