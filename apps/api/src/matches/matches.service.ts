@@ -306,7 +306,7 @@ export class MatchesService {
     const matches = await this.prisma.match.findMany({
       where: {
         status: {
-          in: [MatchStatus.COMPLETED, MatchStatus.FINALIZED, MatchStatus.IN_PROGRESS],
+          in: [MatchStatus.COMPLETED, MatchStatus.FINALIZED],
         },
       },
       orderBy: { actualStart: 'desc' },
@@ -353,42 +353,19 @@ export class MatchesService {
           startedAt: match.actualStart,
         };
 
-        // TEAM_CLASSIC: return winning team members
-        if (matchCategory === 'TEAM_CLASSIC' && game?.teamScores) {
-          const teamScores = game.teamScores as {
-            teamIndex: number;
-            score: number;
-            rank: number;
-          }[];
-          const winnerTeam = teamScores.find((t) => t.rank === 1);
-          const members = winnerTeam
-            ? game.participants
-                .filter((p) => p.teamIndex === winnerTeam.teamIndex)
-                .map((p) => ({
-                  id: p.user.id,
-                  displayName: p.user.displayName,
-                }))
-            : [];
-          return {
-            ...commonFields,
-            winner: null,
-            winningTeam: winnerTeam
-              ? { score: winnerTeam.score, members }
-              : null,
-          };
-        }
+        // Individual top scorer (participants are ordered by totalScore desc)
+        const topScorer = game?.participants[0];
+        const winner = topScorer
+          ? {
+              id: topScorer.user.id,
+              displayName: topScorer.user.displayName,
+              totalScore: topScorer.totalScore,
+            }
+          : null;
 
-        // CLASSIC / others: individual winner
-        const winner = game?.participants[0];
         return {
           ...commonFields,
-          winner: winner
-            ? {
-                id: winner.user.id,
-                displayName: winner.user.displayName,
-                totalScore: winner.totalScore,
-              }
-            : null,
+          winner,
           winningTeam: null,
         };
       })
@@ -465,6 +442,8 @@ export class MatchesService {
               ...(category === 'TEAM_CLASSIC'
                 ? {
                     where: { isExcluded: false },
+                    orderBy: { totalScore: 'desc' as const },
+                    take: 1,
                     include: {
                       user: {
                         select: { id: true, displayName: true },
@@ -501,43 +480,17 @@ export class MatchesService {
         startedAt: match.actualStart,
       };
 
-      // TEAM_CLASSIC: return winning team members
-      if (matchCategory === 'TEAM_CLASSIC' && game?.teamScores) {
-        const teamScores = game.teamScores as {
-          teamIndex: number;
-          score: number;
-          rank: number;
-        }[];
-        const winnerTeam = teamScores.find((t) => t.rank === 1);
-        const members = winnerTeam
-          ? game.participants
-              .filter((p) => p.teamIndex === winnerTeam.teamIndex)
-              .map((p) => ({
-                id: p.user.id,
-                displayName: p.user.displayName,
-              }))
-          : [];
-        return {
-          ...commonFields,
-          winner: null,
-          winningTeam: winnerTeam
-            ? { score: winnerTeam.score, members }
-            : null,
-        };
-      }
-
-      // CLASSIC / others: individual winner
-      const winner = game?.participants[0];
+      // Individual top scorer (participants are ordered by totalScore desc)
+      const topScorer = game?.participants[0];
       return {
         ...commonFields,
-        winner: winner
+        winner: topScorer
           ? {
-              id: winner.user.id,
-              displayName: winner.user.displayName,
-              totalScore: winner.totalScore,
+              id: topScorer.user.id,
+              displayName: topScorer.user.displayName,
+              totalScore: topScorer.totalScore,
             }
           : null,
-        winningTeam: null,
       };
     });
 

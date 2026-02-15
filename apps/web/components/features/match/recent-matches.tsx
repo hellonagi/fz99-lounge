@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface RecentMatch {
@@ -17,10 +17,6 @@ interface RecentMatch {
     displayName: string | null;
     totalScore: number | null;
   } | null;
-  winningTeam: {
-    score: number;
-    members: { id: number; displayName: string | null }[];
-  } | null;
 }
 
 interface RecentMatchesProps {
@@ -31,12 +27,13 @@ interface RecentMatchesProps {
 export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
+  const locale = useLocale();
 
   if (loading) {
     return (
       <div>
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-        <div className="text-gray-400 text-sm">{tCommon('loading')}</div>
+        <div className="text-gray-400 text-sm text-center">{tCommon('loading')}</div>
       </div>
     );
   }
@@ -45,7 +42,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
     return (
       <div>
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-        <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
+        <div className="text-gray-400 text-sm text-center">{t('noRecentMatches')}</div>
       </div>
     );
   }
@@ -57,7 +54,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
     return (
       <div>
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-        <div className="text-gray-400 text-sm">{t('noRecentMatches')}</div>
+        <div className="text-gray-400 text-sm text-center">{t('noRecentMatches')}</div>
       </div>
     );
   }
@@ -65,14 +62,14 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   return (
     <div>
       <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-      <div className="border border-gray-700 rounded-lg p-4 mx-0 md:mx-6 space-y-2">
+      <div className="space-y-2 mx-0 md:mx-6">
         {validMatches.map((match) => (
           <Link
             key={match.id}
             href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
             className="block"
           >
-            <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-600/50 hover:bg-gray-600 transition-colors">
+            <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 transition-colors">
               {/* Left: Category & Match Info */}
               <div className="flex items-center gap-3 shrink-0">
                 <span
@@ -90,37 +87,26 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                 <span className="text-gray-300 text-sm whitespace-nowrap">
                   S{match.seasonNumber} #{match.matchNumber}
                 </span>
-                <span className="hidden sm:inline text-gray-500 text-sm whitespace-nowrap">
-                  {t('players', { count: match.playerCount })}
-                </span>
+                {match.startedAt && (
+                  <span className="hidden sm:inline text-gray-500 text-xs whitespace-nowrap">
+                    {new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(match.startedAt))}
+                  </span>
+                )}
               </div>
 
               {/* Right: Winner */}
               <div className="flex items-center gap-2">
-                {match.winningTeam ? (
+                {match.winner && (
                   <>
-                    <span className="text-white text-sm font-medium text-right truncate max-w-[200px] sm:max-w-none">
-                      🏆{match.winningTeam.members
-                        .map((m) => m.displayName || `User#${m.id}`)
-                        .join(' ')}
-                    </span>
-                    <span className="text-gray-400 text-xs">
-                      {match.winningTeam.score}pts
-                    </span>
-                  </>
-                ) : match.winner ? (
-                  <>
-                    <span className="text-white text-sm font-medium text-left truncate">
-                      🏆{match.winner.displayName || `User#${match.winner.id}`}
+                    <span className="text-gray-200 text-sm font-bold truncate max-w-[160px] sm:max-w-none">
+                      🏆️{match.winner.displayName || `User#${match.winner.id}`}
                     </span>
                     {match.winner.totalScore !== null && (
-                      <span className="text-gray-400 text-xs">
+                      <span className="text-gray-500 text-xs whitespace-nowrap">
                         {match.winner.totalScore}pts
                       </span>
                     )}
                   </>
-                ) : (
-                  <span className="w-32 sm:w-40 text-gray-500 text-sm text-left">{t('inProgress')}</span>
                 )}
               </div>
             </div>
