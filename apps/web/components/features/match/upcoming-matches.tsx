@@ -111,7 +111,7 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
             return (
               <Card key={match.id} className="p-4 flex flex-col gap-3 bg-gray-700/50 border-gray-600">
                 {/* Header: Badge + Match number */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <span
                     className={cn(
                       'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
