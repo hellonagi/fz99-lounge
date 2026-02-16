@@ -14,6 +14,7 @@ export function usePushNotifications() {
       const vapidResponse = await fetch(
         `${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/push-notifications/vapid-public-key`
       );
+      if (!vapidResponse.ok) return;
       const { publicKey } = await vapidResponse.json();
 
       const subscription = await registration.pushManager.subscribe({
