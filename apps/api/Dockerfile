@@ -6,7 +6,7 @@ ARG NODE_VERSION=20-alpine
 # =====================================
 # Base stage - shared dependencies
 # =====================================
-FROM node:${NODE_VERSION} AS base
+FROM public.ecr.aws/docker/library/node:${NODE_VERSION} AS base
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init

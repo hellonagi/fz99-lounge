@@ -52,20 +52,15 @@ export function usePushNotifications() {
     } else if (permission === 'denied') {
       setStatus('denied');
     } else {
-      setStatus('prompt');
+      Notification.requestPermission().then((result) => {
+        if (result === 'granted') {
+          registerSubscription();
+        } else {
+          setStatus(result as PushStatus);
+        }
+      });
     }
   }, [isAuthenticated, user, registerSubscription]);
 
-  const requestPermission = useCallback(async () => {
-    if (status !== 'prompt') return;
-
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      await registerSubscription();
-    } else {
-      setStatus('denied');
-    }
-  }, [status, registerSubscription]);
-
-  return { status, requestPermission };
+  return { status };
 }

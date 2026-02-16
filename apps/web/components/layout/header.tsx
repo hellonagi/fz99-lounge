@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 import { SiDiscord } from 'react-icons/si';
-import { User, LogOut, Shield, Bell } from 'lucide-react';
+import { User, LogOut, Shield } from 'lucide-react';
 import { LanguageSwitcher } from './language-switcher';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
@@ -29,8 +29,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
   const avatarUrl = useAvatarUrl(user?.discordId, user?.avatarHash, 32);
   const router = useRouter();
   const t = useTranslations('nav');
-  const tNotifications = useTranslations('notifications');
-  const { status: pushStatus, requestPermission } = usePushNotifications();
+  usePushNotifications();
 
   const handleLogin = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/discord`;
@@ -73,16 +72,6 @@ export default function Header({ mounted, locale }: HeaderProps) {
             </nav>
           </div>
           <div className="flex items-center space-x-3">
-            {mounted && isAuthenticated && pushStatus === 'prompt' && (
-              <button
-                onClick={requestPermission}
-                title={tNotifications('enable')}
-                className="relative p-2 text-gray-300 hover:text-white rounded-md hover:bg-gray-700"
-              >
-                <Bell className="h-4 w-4" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-green-500" />
-              </button>
-            )}
             <LanguageSwitcher currentLocale={locale} />
             {!mounted ? (
               <div className="w-32 h-10" />

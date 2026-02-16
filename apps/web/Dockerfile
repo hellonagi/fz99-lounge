@@ -2,7 +2,7 @@
 
 ARG NODE_VERSION=20-alpine
 
-FROM node:${NODE_VERSION} AS base
+FROM public.ecr.aws/docker/library/node:${NODE_VERSION} AS base
 RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 WORKDIR /app
