@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { SiDiscord } from 'react-icons/si';
 
@@ -44,13 +43,13 @@ export function HowToJoinSection() {
 
               {/* CTA Button */}
               <div className="flex justify-center mt-12">
-                <Link
+                <a
                   href={`${baseUrl}/api/auth/discord`}
                   className="inline-flex items-center justify-center bg-[#5865F2] hover:bg-[#4752C4] text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
                 >
                   <SiDiscord className="w-5 h-5 mr-2" />
                   {t('ctaButton')}
-                </Link>
+                </a>
               </div>
             </div>
           </div>

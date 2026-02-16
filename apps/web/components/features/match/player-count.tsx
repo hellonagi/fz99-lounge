@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -35,13 +34,13 @@ export function PlayerCount(props: PlayerCountProps) {
           <span className="text-sm text-gray-300">Players</span>
         </div>
         {!isAuthenticated ? (
-          <Link
+          <a
             href={`${baseUrl}/api/auth/discord`}
             className={cn(buttonVariants({ size: 'lg', variant: 'discord' }), 'rounded-full')}
           >
             <SiDiscord className="w-5 h-5 mr-2" />
             {t('loginToJoin')}
-          </Link>
+          </a>
         ) : onJoin && (
           <Button
             onClick={onJoin}
