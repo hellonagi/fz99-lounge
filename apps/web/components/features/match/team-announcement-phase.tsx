@@ -97,7 +97,7 @@ export function TeamAnnouncementPhase({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {teams.map((team) => (
+            {[...teams].sort((a, b) => a.teamIndex - b.teamIndex).map((team) => (
               <div
                 key={team.teamIndex}
                 className="p-3 rounded-lg border"
