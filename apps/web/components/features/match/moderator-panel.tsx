@@ -637,7 +637,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                         return <Check className="w-4 h-4 text-green-400 mx-auto" />;
                       }
 
-                      // Show buttons if: pending OR rejected
+                      // Show buttons if pending or rejected
                       if (participant.status === 'PENDING' || participant.status === 'REJECTED') {
                         const canVerify = hasPermission(user, 'VERIFY_SCORE');
                         const canReject = hasPermission(user, 'REJECT_SCORE');
@@ -651,7 +651,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleVerifyScore(participant.user.id)}
-                                disabled={!allSubmitted || verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || conflictUserIds.has(participant.user.id)}
+                                disabled={!allSubmitted || participant.status === 'REJECTED' || verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || conflictUserIds.has(participant.user.id)}
                                 className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
                               >
                                 {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
@@ -662,7 +662,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleRejectScore(participant.user.id)}
-                                disabled={!allSubmitted || verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || participant.status === 'REJECTED'}
+                                disabled={participant.status === 'REJECTED' || verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
                                 className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
                               >
                                 {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
