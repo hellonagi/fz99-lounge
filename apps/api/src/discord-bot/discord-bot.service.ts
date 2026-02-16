@@ -724,15 +724,20 @@ Remove your reaction to stop receiving notifications.
         return false;
       }
 
-      const messageContent = `<@${discordId}>
-**Screenshot Request / スクリーンショット提出依頼**
+      const embed = new EmbedBuilder()
+        .setTitle('Score Rejected / スコアが却下されました')
+        .setColor(0xe74c3c)
+        .setDescription(
+          'Your score has been rejected by a moderator. Please:\n' +
+          '1. Resubmit your score on the match page\n' +
+          '2. Post your result screenshot in this channel\n\n' +
+          'モデレーターによりスコアが却下されました:\n' +
+          '1. 試合ページからスコアを再提出してください\n' +
+          '2. 結果のスクリーンショットをこのチャンネルに投稿してください',
+        )
+        .addFields({ name: 'Match Page', value: matchUrl });
 
-A moderator has requested you to submit a screenshot for verification.
-モデレーターからスクリーンショットの提出を依頼されました。
-
-Please check the match page: ${matchUrl}`;
-
-      await (channel as TextChannel).send({ content: messageContent });
+      await (channel as TextChannel).send({ content: `<@${discordId}>`, embeds: [embed] });
 
       this.logger.log(
         `Posted screenshot request to channel ${channelId} for user ${discordId}`,
@@ -878,7 +883,9 @@ Please check the match page: ${matchUrl}`;
         .setColor(0xf39c12)
         .setDescription(description)
         .setFooter({
-          text: 'This channel will be deleted in 24 hours. / このチャンネルは24時間後に削除されます。',
+          text:
+            'This channel will be deleted in 24 hours. If you wish to dispute the result, please report it in this channel within 24 hours.\n' +
+            'このチャンネルは24時間後に削除されます。結果に異議がある場合は24時間以内にこのチャンネル内で報告してください。',
         });
 
       await (channel as TextChannel).send({ embeds: [embed] });

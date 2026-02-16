@@ -295,6 +295,14 @@ export class GamesService {
       throw new BadRequestException('Cannot submit score - match is not in progress');
     }
 
+    // Check user is a match participant
+    const isMatchParticipant = game.match.participants.some(
+      (p) => p.userId === userId,
+    );
+    if (!isMatchParticipant) {
+      throw new BadRequestException('User is not a participant in this match');
+    }
+
     // Block excluded players from submitting scores (TEAM_CLASSIC)
     if (game.participants.length && game.participants[0].isExcluded) {
       throw new BadRequestException('Excluded players cannot submit scores');
@@ -1397,6 +1405,20 @@ export class GamesService {
       throw new NotFoundException('Participant not found');
     }
 
+    // Check all non-excluded participants have submitted
+    const allParticipants = await this.prisma.gameParticipant.findMany({
+      where: { gameId },
+      include: { raceResults: true },
+    });
+    const hasUnsubmitted = allParticipants.some(
+      (p) => !p.isExcluded && p.status === ResultStatus.UNSUBMITTED,
+    );
+    if (hasUnsubmitted) {
+      throw new BadRequestException(
+        'Cannot verify: not all participants have submitted their scores',
+      );
+    }
+
     // Allow verification of PENDING or REJECTED scores (after screenshot resubmission)
     if (participant.status !== ResultStatus.PENDING && participant.status !== ResultStatus.REJECTED) {
       // Already verified or in other state
@@ -1412,14 +1434,8 @@ export class GamesService {
       eventCategory === EventCategory.CLASSIC ||
       eventCategory === EventCategory.TEAM_CLASSIC
     ) {
-      // Get all submitted participants to check conflicts
-      const allSubmitted = await this.prisma.gameParticipant.findMany({
-        where: {
-          gameId,
-          status: { not: ResultStatus.UNSUBMITTED },
-        },
-        include: { raceResults: true },
-      });
+      // Reuse allParticipants, excluding excluded players
+      const allSubmitted = allParticipants.filter((p) => !p.isExcluded);
 
       for (let raceNumber = 1; raceNumber <= 3; raceNumber++) {
         const positionCounts = new Map<number, number[]>();
@@ -1537,6 +1553,20 @@ export class GamesService {
 
     if (!participant) {
       throw new NotFoundException('Participant not found');
+    }
+
+    // Check all non-excluded participants have submitted
+    const allParticipants = await this.prisma.gameParticipant.findMany({
+      where: { gameId },
+      select: { status: true, isExcluded: true },
+    });
+    const hasUnsubmitted = allParticipants.some(
+      (p) => !p.isExcluded && p.status === ResultStatus.UNSUBMITTED,
+    );
+    if (hasUnsubmitted) {
+      throw new BadRequestException(
+        'Cannot reject: not all participants have submitted their scores',
+      );
     }
 
     if (participant.status === ResultStatus.VERIFIED) {

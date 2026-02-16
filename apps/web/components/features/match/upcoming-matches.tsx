@@ -7,7 +7,6 @@ import { Card } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { Loader2 } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
-import Link from 'next/link';
 
 interface Match {
   id: number;
@@ -112,7 +111,7 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
             return (
               <Card key={match.id} className="p-4 flex flex-col gap-3 bg-gray-700/50 border-gray-600">
                 {/* Header: Badge + Match number */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <span
                     className={cn(
                       'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
@@ -160,13 +159,13 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
                       )}
                     </button>
                   ) : (
-                    <Link
+                    <a
                       href={`${baseUrl}/api/auth/discord`}
                       className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium border bg-[#5865F2]/10 text-[#8b9aff] border-[#5865F2]/40 hover:bg-[#5865F2]/25 hover:text-white transition-all"
                     >
                       <SiDiscord className="h-3.5 w-3.5" />
                       {tHero('loginToJoin')}
-                    </Link>
+                    </a>
                   )}
                   <span className="text-sm text-gray-400">
                     {match.participants.length}/{match.maxPlayers}

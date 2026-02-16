@@ -304,12 +304,15 @@
   },
   "positionConflict": {
     "title": "順位申告の不整合を検知",
-    "checkButton": "不整合チェック",
     "noConflicts": "不整合は検出されませんでした",
+    "waitingForSubmissions": "全員提出後に自動チェックされます。",
     "race": "レース {raceNumber}",
     "conflictFound": "矛盾あり",
     "requireScreenshot": "要スクショ確認:",
     "positionLabel": "({position}位)"
+  },
+  "moderatorPanel": {
+    "waitingForAllSubmissions": "あと{count}名の提出を待っています。全員提出後にVerify/Rejectが有効になります。"
   },
   "screenshotRequest": {
     "title": "スクリーンショット提出依頼",
