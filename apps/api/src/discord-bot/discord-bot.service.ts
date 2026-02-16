@@ -735,12 +735,7 @@ Remove your reaction to stop receiving notifications.
           '1. 試合ページからスコアを再提出してください\n' +
           '2. 結果のスクリーンショットをこのチャンネルに投稿してください',
         )
-        .addFields({ name: 'Match Page', value: matchUrl })
-        .setFooter({
-          text:
-            'This channel will be deleted in 24 hours. If you wish to dispute the result, please report it in this channel within 24 hours.\n' +
-            'このチャンネルは24時間後に削除されます。結果に異議がある場合は24時間以内にこのチャンネル内で報告してください。',
-        });
+        .addFields({ name: 'Match Page', value: matchUrl });
 
       await (channel as TextChannel).send({ content: `<@${discordId}>`, embeds: [embed] });
 
@@ -888,7 +883,9 @@ Remove your reaction to stop receiving notifications.
         .setColor(0xf39c12)
         .setDescription(description)
         .setFooter({
-          text: 'This channel will be deleted in 24 hours. / このチャンネルは24時間後に削除されます。',
+          text:
+            'This channel will be deleted in 24 hours. If you wish to dispute the result, please report it in this channel within 24 hours.\n' +
+            'このチャンネルは24時間後に削除されます。結果に異議がある場合は24時間以内にこのチャンネル内で報告してください。',
         });
 
       await (channel as TextChannel).send({ embeds: [embed] });
