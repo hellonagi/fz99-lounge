@@ -634,7 +634,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                   <td className="py-2 px-2 text-center">
                     {(() => {
                       if (participant.status === 'VERIFIED') {
-                        return <span className="text-green-400 text-xs font-medium">{t('ok')}</span>;
+                        return <Check className="w-4 h-4 text-green-400 mx-auto" />;
                       }
 
                       // Show buttons if: pending OR rejected
