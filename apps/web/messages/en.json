@@ -305,12 +305,15 @@
   },
   "positionConflict": {
     "title": "Position Conflict Detected",
-    "checkButton": "Check Conflicts",
     "noConflicts": "No conflicts detected",
+    "waitingForSubmissions": "Conflict check will run automatically after all players submit.",
     "race": "Race {raceNumber}",
     "conflictFound": "Conflict found",
     "requireScreenshot": "Requires screenshot verification:",
     "positionLabel": "({position})"
+  },
+  "moderatorPanel": {
+    "waitingForAllSubmissions": "Waiting for {count} more player(s) to submit. Verify/Reject will be enabled after all submissions."
   },
   "screenshotRequest": {
     "title": "Screenshot Required",

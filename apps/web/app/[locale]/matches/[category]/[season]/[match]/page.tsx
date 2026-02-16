@@ -9,7 +9,6 @@ import { MatchPasscodeCard, SplitVoteStatus } from '@/components/features/match/
 import { MatchDetailsTable } from '@/components/features/match/match-details-table';
 import { ModeratorPanel } from '@/components/features/match/moderator-panel';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
-import { ScreenshotUploadForm } from '@/components/features/match/screenshot-upload-form';
 import { ScreenshotGallery } from '@/components/features/match/screenshot-gallery';
 import { TrackBanners } from '@/components/features/match/track-banners';
 import { TeamAnnouncementPhase } from '@/components/features/match/team-announcement-phase';
@@ -460,9 +459,6 @@ export default function GamePage() {
   const isParticipant = user && game.match.participants.some(p => p.user.id === user.id);
   const isExcluded = user && game.participants?.some(p => p.user.id === user.id && p.isExcluded);
 
-  // Check if user has screenshot request
-  const userScreenshotRequested = game.participants?.find(p => p.user.id === user?.id)?.screenshotRequested || false;
-
   return (
     <div className="overflow-x-hidden">
       <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
@@ -626,6 +622,7 @@ export default function GamePage() {
                     matchId={game.match.id}
                     matchStatus={game.match.status}
                     participants={(game.participants || []).filter(p => !p.isExcluded)}
+                    matchParticipants={game.match.participants}
                     screenshots={screenshots}
                     category={category}
                     season={season}
@@ -652,15 +649,6 @@ export default function GamePage() {
                 />
               </CardContent>
             </Card>
-          )}
-
-          {/* Screenshot Upload Form - only when screenshot requested by moderator */}
-          {game.match.status === 'IN_PROGRESS' && isParticipant && userScreenshotRequested && activeTab !== 'moderator' && (
-            <ScreenshotUploadForm
-              gameId={game.id}
-              onUploadSuccess={fetchGame}
-              screenshotRequested={true}
-            />
           )}
 
           {/* Screenshots Section - show final score screenshot if exists, not on mod tab */}

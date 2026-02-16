@@ -67,11 +67,20 @@ interface Participant {
   screenshotRequested?: boolean;
 }
 
+interface MatchParticipant {
+  user: {
+    id: number;
+    displayName: string | null;
+    profile?: { country: string | null } | null;
+  };
+}
+
 interface ModeratorPanelProps {
   gameId: number;
   matchId: number;
   matchStatus: string;
   participants: Participant[];
+  matchParticipants: MatchParticipant[];
   screenshots?: Screenshot[];
   category: string;
   season: number;
@@ -85,6 +94,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const { user } = useAuthStore();
   const t = useTranslations('screenshotStatus');
   const tConflict = useTranslations('positionConflict');
+  const tMod = useTranslations('moderatorPanel');
   const {
     matchStatus,
     participants,
@@ -132,20 +142,20 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2'
   );
 
-  // Calculate verification progress (scores only, based on total participants)
+  // Calculate verification progress (scores only, based on total match participants)
   const verifiedCount = participants.filter(p => p.status === 'VERIFIED').length;
-  const totalRequired = participants.length;
+  const totalRequired = props.matchParticipants.length;
 
   // Position conflict detection (CLASSIC mode only)
-  const [showConflictCheck, setShowConflictCheck] = useState(false);
   const submittedCount = participants.filter(p => p.status !== 'UNSUBMITTED').length;
-  const allSubmitted = submittedCount === participants.length && participants.length > 0;
+  const unsubmittedCount = totalRequired - submittedCount;
+  const allSubmitted = submittedCount >= totalRequired && totalRequired > 0;
 
   const positionConflicts = useMemo<ConflictResult[]>(() => {
     if (!isClassic) return [];
-    if (!showConflictCheck && !allSubmitted) return [];
+    if (!allSubmitted) return [];
     return detectAllPositionConflicts(participants);
-  }, [isClassic, showConflictCheck, allSubmitted, participants]);
+  }, [isClassic, allSubmitted, participants]);
 
   const conflictUserIds = useMemo(() => {
     const ids = new Set<number>();
@@ -156,21 +166,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     }
     return ids;
   }, [positionConflicts]);
-
-  // Get screenshot for a specific user by type (only non-deleted ones with imageUrl)
-  const getScreenshotForUser = (userId: number, type?: string) => {
-    if (type) {
-      return individualScreenshots.find(s => s.userId === userId && s.type === type && s.imageUrl);
-    }
-    // Fallback: return first individual screenshot for backwards compatibility
-    return individualScreenshots.find(s => s.userId === userId && s.imageUrl);
-  };
-
-  // Get SS1 screenshot (INDIVIDUAL_1)
-  const getSS1 = (userId: number) => getScreenshotForUser(userId, 'INDIVIDUAL_1');
-
-  // Get SS2 screenshot (INDIVIDUAL_2)
-  const getSS2 = (userId: number) => getScreenshotForUser(userId, 'INDIVIDUAL_2');
 
   // Verify a screenshot
   const handleVerify = async (submissionId: number) => {
@@ -309,10 +304,41 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     return result.position;
   };
 
-  // Sort participants by totalScore descending
+  // Merge matchParticipants with game participants to show all players
+  const allParticipants = useMemo<Participant[]>(() => {
+    const gameParticipantMap = new Map<number, Participant>();
+    for (const p of participants) {
+      gameParticipantMap.set(p.user.id, p);
+    }
+    return props.matchParticipants.map((mp) => {
+      const gp = gameParticipantMap.get(mp.user.id);
+      if (gp) return gp;
+      // Not yet submitted - create placeholder
+      return {
+        user: {
+          id: mp.user.id,
+          displayName: mp.user.displayName,
+          profile: mp.user.profile,
+        },
+        totalScore: null,
+        eliminatedAtRace: null,
+        machine: '',
+        assistEnabled: false,
+        raceResults: [],
+        status: 'UNSUBMITTED',
+      };
+    });
+  }, [participants, props.matchParticipants]);
+
+  // Sort: submitted players by totalScore descending, then unsubmitted at the bottom
   const sortedParticipants = useMemo(() => {
-    return [...participants].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
-  }, [participants]);
+    return [...allParticipants].sort((a, b) => {
+      const aSubmitted = a.status !== 'UNSUBMITTED';
+      const bSubmitted = b.status !== 'UNSUBMITTED';
+      if (aSubmitted !== bSubmitted) return aSubmitted ? -1 : 1;
+      return (b.totalScore ?? 0) - (a.totalScore ?? 0);
+    });
+  }, [allParticipants]);
 
   const handleTrackChange = (raceIndex: number, value: string) => {
     const trackId = value === 'none' ? null : parseInt(value, 10);
@@ -374,7 +400,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
         <div className="flex items-center justify-between p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
           <div>
             <p className="text-yellow-400 font-medium text-sm">
-              {matchStatus === 'IN_PROGRESS' ? 'End Match Early' : 'Finalize Match'}
+              {matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Finalize Match'}
             </p>
             <p className="text-gray-400 text-xs">Calculate ratings and finalize results</p>
           </div>
@@ -382,7 +408,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
             variant="destructive"
             size="sm"
             onClick={handleEndMatch}
-            disabled={endingMatch || verifiedCount < totalRequired}
+            disabled={endingMatch || totalRequired === 0 || verifiedCount < totalRequired}
           >
             {endingMatch ? 'Processing...' : matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Finalize'}
           </Button>
@@ -451,6 +477,11 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
             style={{ width: `${Math.min((verifiedCount / totalRequired) * 100, 100)}%` }}
           />
         </div>
+        {!allSubmitted && unsubmittedCount > 0 && (
+          <p className="mt-2 text-yellow-400 text-xs">
+            {tMod('waitingForAllSubmissions', { count: unsubmittedCount })}
+          </p>
+        )}
       </div>
 
       {/* Position Conflict Detection (CLASSIC only) */}
@@ -458,20 +489,12 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
         <div className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm">Position Conflict Check</span>
-            {!allSubmitted && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowConflictCheck(true)}
-                className="h-7 px-3 text-xs"
-              >
-                {tConflict('checkButton')}
-              </Button>
-            )}
           </div>
 
-          {/* Show conflicts if any */}
-          {(showConflictCheck || allSubmitted) && (
+          {/* Show conflicts if all submitted, otherwise show waiting message */}
+          {!allSubmitted ? (
+            <p className="text-gray-400 text-xs">{tConflict('waitingForSubmissions')}</p>
+          ) : (
             <div className="mt-2">
               {positionConflicts.length === 0 ? (
                 <p className="text-green-400 text-sm">{tConflict('noConflicts')}</p>
@@ -520,8 +543,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
               <th className="text-center py-2 px-1 font-medium w-10">R3</th>
               <th className="text-right py-2 px-2 font-medium">Pts</th>
               <th className="text-center py-2 px-2 font-medium">Status</th>
-              <th className="text-center py-2 px-1 font-medium">SS1</th>
-              <th className="text-center py-2 px-1 font-medium">SS2</th>
               <th className="text-center py-2 px-2 font-medium">Verify</th>
             </tr>
           </thead>
@@ -530,8 +551,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
               const r1 = participant.raceResults?.find(r => r.raceNumber === 1);
               const r2 = participant.raceResults?.find(r => r.raceNumber === 2);
               const r3 = participant.raceResults?.find(r => r.raceNumber === 3);
-              const ss1 = getSS1(participant.user.id);
-              const ss2 = getSS2(participant.user.id);
 
               return (
                 <tr
@@ -611,47 +630,15 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                     )}
                   </td>
 
-                  {/* SS1 Column */}
-                  <td className="py-2 px-1 text-center">
-                    {ss1?.imageUrl ? (
-                      <button
-                        onClick={() => setSelectedImage(ss1.imageUrl!)}
-                        className="text-xs font-medium text-blue-400 hover:underline"
-                        title="View SS1"
-                      >
-                        SS1
-                      </button>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </td>
-
-                  {/* SS2 Column */}
-                  <td className="py-2 px-1 text-center">
-                    {ss2?.imageUrl ? (
-                      <button
-                        onClick={() => setSelectedImage(ss2.imageUrl!)}
-                        className="text-xs font-medium text-blue-400 hover:underline"
-                        title="View SS2"
-                      >
-                        SS2
-                      </button>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
-                  </td>
-
                   {/* Score Verify/Reject - Based on participant.status */}
                   <td className="py-2 px-2 text-center">
                     {(() => {
-                      const hasSS = !!(ss1?.imageUrl || ss2?.imageUrl);
-
                       if (participant.status === 'VERIFIED') {
                         return <span className="text-green-400 text-xs font-medium">{t('ok')}</span>;
                       }
 
-                      // Show buttons if: pending OR (rejected + SS submitted)
-                      if (participant.status === 'PENDING' || (participant.status === 'REJECTED' && hasSS)) {
+                      // Show buttons if: pending OR rejected
+                      if (participant.status === 'PENDING' || participant.status === 'REJECTED') {
                         const canVerify = hasPermission(user, 'VERIFY_SCORE');
                         const canReject = hasPermission(user, 'REJECT_SCORE');
                         if (!canVerify && !canReject) {
@@ -664,7 +651,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleVerifyScore(participant.user.id)}
-                                disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || conflictUserIds.has(participant.user.id)}
+                                disabled={!allSubmitted || verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || conflictUserIds.has(participant.user.id)}
                                 className="h-6 px-2 text-xs bg-green-600/20 border-green-600 text-green-400 hover:bg-green-600/40"
                               >
                                 {verifyingScoreUserId === participant.user.id ? '...' : 'Verify'}
@@ -675,7 +662,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleRejectScore(participant.user.id)}
-                                disabled={verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id}
+                                disabled={!allSubmitted || verifyingScoreUserId === participant.user.id || rejectingScoreUserId === participant.user.id || participant.status === 'REJECTED'}
                                 className="h-6 px-2 text-xs bg-red-600/20 border-red-600 text-red-400 hover:bg-red-600/40"
                               >
                                 {rejectingScoreUserId === participant.user.id ? '...' : 'Reject'}
@@ -814,7 +801,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
             season={season}
             game={match}
             deadline={deadline}
-            participants={participants}
+            participants={props.matchParticipants}
             onScoreSubmitted={onUpdate}
           />
         </div>
