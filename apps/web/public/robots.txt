@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /auth/
+Disallow: /api/
+
+Sitemap: https://fz99lounge.com/sitemap.xml
