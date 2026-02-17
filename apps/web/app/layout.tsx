@@ -12,11 +12,11 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   metadataBase: new URL("https://fz99lounge.com"),
   title: {
-    default: "FZ99 Lounge | F-Zero 99 Competitive Matchmaking",
+    default: "FZ99 Lounge | F-Zero 99 Private Matchmaking",
     template: "%s | FZ99 Lounge",
   },
   description:
-    "FZ99 Lounge is the competitive matchmaking platform for F-Zero 99. Join ranked matches, track your rating on the leaderboard, and compete with players worldwide.",
+    "FZ99 Lounge is an unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!",
   keywords: [
     "F-Zero 99",
     "FZ99",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "competitive",
     "lounge",
     "ranked",
-    "leaderboard",
+    "ranking",
     "Nintendo Switch",
   ],
   icons: {
@@ -37,9 +37,9 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "FZ99 Lounge | F-Zero 99 Competitive Matchmaking",
+    title: "FZ99 Lounge | F-Zero 99 Private Matchmaking",
     description:
-      "The competitive matchmaking platform for F-Zero 99. Join ranked matches, track your rating, and compete worldwide.",
+      "An unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!",
     url: "https://fz99lounge.com",
     siteName: "FZ99 Lounge",
     images: [
@@ -54,9 +54,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FZ99 Lounge | F-Zero 99 Competitive Matchmaking",
+    title: "FZ99 Lounge | F-Zero 99 Private Matchmaking",
     description:
-      "The competitive matchmaking platform for F-Zero 99. Join ranked matches, track your rating, and compete worldwide.",
+      "An unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!",
     images: ["/fz99lounge.jpg"],
   },
 };
