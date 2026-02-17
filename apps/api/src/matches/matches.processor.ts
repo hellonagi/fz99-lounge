@@ -9,6 +9,7 @@ import { EventCategory, MatchStatus } from '@prisma/client';
 import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS } from './team-config.service';
 import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
 import { TracksService } from '../tracks/tracks.service';
+import { MatchesService } from './matches.service';
 
 // Team announcement phase duration (2 minutes)
 const TEAM_ANNOUNCEMENT_DELAY_MS = 2 * 60 * 1000;
@@ -25,6 +26,7 @@ export class MatchesProcessor {
     private teamConfigService: TeamConfigService,
     private teamAssignmentService: TeamAssignmentService,
     private tracksService: TracksService,
+    private matchesService: MatchesService,
     @InjectQueue('matches') private matchQueue: Queue,
   ) {}
 
@@ -93,6 +95,9 @@ export class MatchesProcessor {
 
         // Emit WebSocket event to notify clients
         this.eventsGateway.emitMatchCancelled(matchId);
+
+        // Reassign WAITING matchNumbers after cancellation to fill gaps
+        await this.matchesService.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
 
         // Announce cancellation to Discord
         if (originalMatchNumber !== null) {
@@ -278,6 +283,9 @@ export class MatchesProcessor {
       });
 
       this.eventsGateway.emitMatchCancelled(match.id);
+
+      // Reassign WAITING matchNumbers after cancellation to fill gaps
+      await this.matchesService.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
 
       if (originalMatchNumber !== null) {
         try {

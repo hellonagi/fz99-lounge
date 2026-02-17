@@ -726,7 +726,7 @@ export class MatchesService {
    * Reassign matchNumbers for all WAITING matches in a season
    * based on scheduledStart order. Locked (non-WAITING) matches keep their numbers.
    */
-  private async reassignWaitingMatchNumbers(
+  async reassignWaitingMatchNumbers(
     tx: {
       match: {
         findMany: typeof this.prisma.match.findMany;
