@@ -107,9 +107,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
       ],
-      partials: [Partials.Message, Partials.Reaction, Partials.User],
+      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
     });
 
     this.client.on('ready', async () => {
@@ -123,11 +124,15 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.client.on('messageReactionAdd', (reaction, user) => {
-      this.handleReactionAdd(reaction, user);
+      this.handleReactionAdd(reaction, user).catch((error) => {
+        this.logger.error('Unhandled error in handleReactionAdd:', error);
+      });
     });
 
     this.client.on('messageReactionRemove', (reaction, user) => {
-      this.handleReactionRemove(reaction, user);
+      this.handleReactionRemove(reaction, user).catch((error) => {
+        this.logger.error('Unhandled error in handleReactionRemove:', error);
+      });
     });
   }
 
@@ -255,10 +260,19 @@ Remove your reaction to stop receiving notifications.
     reaction: MessageReaction | PartialMessageReaction,
     user: User | PartialUser,
   ): Promise<void> {
+    this.logger.log(
+      `ReactionAdd event: messageId=${reaction.message.id}, emoji=${reaction.emoji.name || reaction.emoji.id}, userId=${user.id}, isBot=${user.bot}`,
+    );
+
     if (user.bot) return;
 
     const targetMessageId = await this.getReactionRoleMessageId();
-    if (!targetMessageId || reaction.message.id !== targetMessageId) return;
+    if (!targetMessageId || reaction.message.id !== targetMessageId) {
+      this.logger.log(
+        `ReactionAdd skipped: targetMessageId=${targetMessageId}, reactionMessageId=${reaction.message.id}`,
+      );
+      return;
+    }
 
     // Fetch partial reaction if needed
     if (reaction.partial) {
@@ -273,7 +287,12 @@ Remove your reaction to stop receiving notifications.
     // Check emoji
     const targetEmoji = this.getReactionRoleEmoji();
     const reactionEmoji = reaction.emoji.name || reaction.emoji.id;
-    if (reactionEmoji !== targetEmoji) return;
+    if (reactionEmoji !== targetEmoji) {
+      this.logger.log(
+        `ReactionAdd emoji mismatch: expected="${targetEmoji}", got="${reactionEmoji}"`,
+      );
+      return;
+    }
 
     // Add role
     const roleId = this.getMatchNotifyRoleId();
@@ -305,10 +324,19 @@ Remove your reaction to stop receiving notifications.
     reaction: MessageReaction | PartialMessageReaction,
     user: User | PartialUser,
   ): Promise<void> {
+    this.logger.log(
+      `ReactionRemove event: messageId=${reaction.message.id}, emoji=${reaction.emoji.name || reaction.emoji.id}, userId=${user.id}, isBot=${user.bot}`,
+    );
+
     if (user.bot) return;
 
     const targetMessageId = await this.getReactionRoleMessageId();
-    if (!targetMessageId || reaction.message.id !== targetMessageId) return;
+    if (!targetMessageId || reaction.message.id !== targetMessageId) {
+      this.logger.log(
+        `ReactionRemove skipped: targetMessageId=${targetMessageId}, reactionMessageId=${reaction.message.id}`,
+      );
+      return;
+    }
 
     // Fetch partial reaction if needed
     if (reaction.partial) {
@@ -323,7 +351,12 @@ Remove your reaction to stop receiving notifications.
     // Check emoji
     const targetEmoji = this.getReactionRoleEmoji();
     const reactionEmoji = reaction.emoji.name || reaction.emoji.id;
-    if (reactionEmoji !== targetEmoji) return;
+    if (reactionEmoji !== targetEmoji) {
+      this.logger.log(
+        `ReactionRemove emoji mismatch: expected="${targetEmoji}", got="${reactionEmoji}"`,
+      );
+      return;
+    }
 
     // Remove role
     const roleId = this.getMatchNotifyRoleId();
