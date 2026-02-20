@@ -795,12 +795,3 @@ model PushSubscription {
   @@map("push_subscriptions")
 }
 
-// ==================== DISCORD BOT CONFIG ====================
-
-model DiscordBotConfig {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt
-
-  @@map("discord_bot_config")
-}

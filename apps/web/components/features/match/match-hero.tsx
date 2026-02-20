@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { MatchTimer } from './match-timer';
 import { PlayerCount } from './player-count';
-import { BannerMosaic } from '@/components/features/home/banner-mosaic';
+import { TrackScene } from '@/components/features/home/track-scene';
 
 interface MatchHeroProps {
   category?: string;
@@ -48,7 +48,7 @@ export function MatchHero({
   return (
     <section className="relative min-h-[500px] overflow-hidden">
       {/* Hero background */}
-      <BannerMosaic />
+      <TrackScene />
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">

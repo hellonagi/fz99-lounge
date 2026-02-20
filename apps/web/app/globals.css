@@ -24,34 +24,6 @@ a {
   cursor: pointer;
 }
 
-/* バナー無限スクロールアニメーション */
-@keyframes banner-scroll-mobile {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-165vw);
-  }
-}
-
-@keyframes banner-scroll-desktop {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-100vw);
-  }
-}
-
-.animate-banner-scroll {
-  animation: banner-scroll-mobile 30s linear infinite;
-}
-
-@media (min-width: 768px) {
-  .animate-banner-scroll {
-    animation: banner-scroll-desktop 30s linear infinite;
-  }
-}
 
 /* チームカーソル選択アニメーション */
 @keyframes cursor-select-pulse {

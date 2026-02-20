@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   Client,
   GatewayIntentBits,
@@ -19,8 +20,6 @@ import {
   PartialUser,
   EmbedBuilder,
 } from 'discord.js';
-import { PrismaService } from '../prisma/prisma.service';
-
 export interface CreateTeamSetupChannelParams {
   gameId: number;
   category: string;
@@ -187,25 +186,20 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     return this.configService.get<string>('DISCORD_REACTION_ROLE_EMOJI') || '🔔';
   }
 
-  private async getReactionRoleMessageId(): Promise<string | undefined> {
-    const config = await this.prisma.discordBotConfig.findUnique({
-      where: { key: 'reaction_role_message_id' },
-    });
-    return config?.value;
-  }
-
-  private async setReactionRoleMessageId(messageId: string): Promise<void> {
-    await this.prisma.discordBotConfig.upsert({
-      where: { key: 'reaction_role_message_id' },
-      update: { value: messageId },
-      create: { key: 'reaction_role_message_id', value: messageId },
-    });
+  private getReactionRoleMessageId(): string | undefined {
+    return this.configService.get<string>('DISCORD_REACTION_ROLE_MESSAGE_ID');
   }
 
   /**
-   * Setup reaction role message on bot ready
+   * Verify reaction role message exists on bot ready
    */
   private async setupReactionRoleMessage(): Promise<void> {
+    const messageId = this.getReactionRoleMessageId();
+    if (!messageId) {
+      this.logger.debug('DISCORD_REACTION_ROLE_MESSAGE_ID not configured');
+      return;
+    }
+
     const channelId = this.getReactionRoleChannelId();
     if (!channelId) {
       this.logger.debug('Reaction role channel not configured');
@@ -220,36 +214,17 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       const textChannel = channel as TextChannel;
-      const existingMessageId = await this.getReactionRoleMessageId();
-
-      // Check if existing message still exists
-      if (existingMessageId) {
-        try {
-          await textChannel.messages.fetch(existingMessageId);
-          this.logger.log(`Reaction role message already exists: ${existingMessageId}`);
-          return;
-        } catch {
-          this.logger.log('Existing reaction role message not found, creating new one');
-        }
+      try {
+        await textChannel.messages.fetch(messageId);
+        this.logger.log(`Reaction role message verified: ${messageId}`);
+      } catch {
+        this.logger.warn(
+          `Reaction role message ${messageId} not found in channel ${channelId}. ` +
+          'Please check DISCORD_REACTION_ROLE_MESSAGE_ID is correct.',
+        );
       }
-
-      // Create new message
-      const emoji = this.getReactionRoleEmoji();
-      const messageContent = `**Match Notifications / 試合通知設定**
-
-React with the ${emoji} emoji to receive notifications when a new match is created.
-Remove your reaction to stop receiving notifications.
-
-このメッセージに ${emoji} の絵文字でリアクションすると、新しい試合が作成されたときに通知が届きます。
-外すと通知は止まります。`;
-
-      const message = await textChannel.send({ content: messageContent });
-      await message.react(emoji);
-      await this.setReactionRoleMessageId(message.id);
-
-      this.logger.log(`Created reaction role message: ${message.id}`);
     } catch (error) {
-      this.logger.error('Failed to setup reaction role message:', error);
+      this.logger.error('Failed to verify reaction role message:', error);
     }
   }
 
@@ -266,7 +241,7 @@ Remove your reaction to stop receiving notifications.
 
     if (user.bot) return;
 
-    const targetMessageId = await this.getReactionRoleMessageId();
+    const targetMessageId = this.getReactionRoleMessageId();
     if (!targetMessageId || reaction.message.id !== targetMessageId) {
       this.logger.log(
         `ReactionAdd skipped: targetMessageId=${targetMessageId}, reactionMessageId=${reaction.message.id}`,
@@ -330,7 +305,7 @@ Remove your reaction to stop receiving notifications.
 
     if (user.bot) return;
 
-    const targetMessageId = await this.getReactionRoleMessageId();
+    const targetMessageId = this.getReactionRoleMessageId();
     if (!targetMessageId || reaction.message.id !== targetMessageId) {
       this.logger.log(
         `ReactionRemove skipped: targetMessageId=${targetMessageId}, reactionMessageId=${reaction.message.id}`,
