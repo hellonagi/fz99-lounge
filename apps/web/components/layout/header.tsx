@@ -41,7 +41,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
   };
 
   return (
-    <header className="bg-gray-800 border-b border-gray-700">
+    <header className="sticky top-0 z-50 bg-gray-900/70 backdrop-blur-lg border-b border-white/10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
@@ -119,7 +119,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
         </div>
       </div>
       {/* モバイル用ナビ */}
-      <nav className="md:hidden border-t border-gray-700">
+      <nav className="md:hidden border-t border-white/10">
         <div className="flex justify-around py-2 px-4">
           <Link
             href={`/${locale}/rules`}

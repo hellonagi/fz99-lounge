@@ -20,7 +20,7 @@ export function PlayerCount(props: PlayerCountProps) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 mb-8">
-      <div className="flex flex-col sm:flex-row items-center gap-4">
+      <div className="flex flex-row items-center gap-4">
         <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-5 py-3 border border-white/20">
           <div className="relative">
             <div className="w-3 h-3 bg-green-400 rounded-full"></div>

@@ -46,11 +46,11 @@ export function MatchHero({
   const t = useTranslations('matchHero');
 
   return (
-    <section className="relative min-h-[500px] overflow-hidden">
+    <section className="relative min-h-[350px] md:min-h-[500px] overflow-hidden">
       {/* Hero background */}
       <TrackScene />
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">
         <div className="text-center">
           {errorMessage ? (
             // Error state
