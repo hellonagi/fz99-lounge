@@ -13,7 +13,7 @@ export function HowToJoinSection() {
   ] as const;
 
   return (
-    <section className="py-16">
+    <section className="pt-4 pb-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Title */}
         <div className="text-center mb-12">
@@ -60,10 +60,9 @@ export function HowToJoinSection() {
             <p className="text-gray-400 text-center mb-4">{t('discord.description')}</p>
             <iframe
               src="https://discord.com/widget?id=1455513103692202098&theme=dark"
-              width="375"
               height="400"
               sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts"
-              className="rounded-lg border-0"
+              className="rounded-lg border-0 w-full max-w-[375px]"
             />
           </div>
         </div>

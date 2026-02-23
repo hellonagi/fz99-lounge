@@ -35,7 +35,7 @@ export function LanguageSwitcher({ currentLocale }: LanguageSwitcherProps) {
     return (
       <button className="flex items-center gap-2 px-3 py-1 text-sm text-gray-300 hover:text-white">
         <span className={`fi fi-${localeFlags[currentLocale as Locale]}`} />
-        <span className="hidden sm:inline">{localeNames[currentLocale as Locale]}</span>
+        <span className="inline">{localeNames[currentLocale as Locale]}</span>
       </button>
     );
   }
@@ -45,7 +45,7 @@ export function LanguageSwitcher({ currentLocale }: LanguageSwitcherProps) {
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 px-3 py-1 text-sm text-gray-300 hover:text-white">
           <span className={`fi fi-${localeFlags[currentLocale as Locale]}`} />
-          <span className="hidden sm:inline">{localeNames[currentLocale as Locale]}</span>
+          <span className="inline">{localeNames[currentLocale as Locale]}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

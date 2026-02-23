@@ -85,7 +85,7 @@
           "description": "After the match, submit your scores"
         }
       },
-      "ctaButton": "Login with Discord",
+      "ctaButton": "Discord Login",
       "discord": {
         "title": "Discord Community",
         "description": "Join our Discord server to receive match notifications"
@@ -115,7 +115,7 @@
     "profile": "Profile",
     "admin": "Admin Dashboard",
     "logout": "Logout",
-    "login": "Discord Login"
+    "login": "Login"
   },
   "home": {
     "recentMatches": "Recent Matches",
@@ -147,7 +147,7 @@
     "startsIn": "Starts in",
     "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining",
     "join": "JOIN",
-    "loginToJoin": "Login with Discord to Join",
+    "loginToJoin": "Login to Join",
     "leave": "LEAVE",
     "joining": "Loading...",
     "passcodeNotice": "The passcode will be available when the match starts."
