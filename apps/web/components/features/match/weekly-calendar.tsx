@@ -342,7 +342,7 @@ export function WeeklyCalendar() {
 
             {/* Desktop: full table */}
             <div ref={scrollRef} className="hidden md:block overflow-x-auto">
-              <table className="w-full border-separate border-spacing-0" style={{ minWidth: 900 }}>
+              <table className="w-full border-separate border-spacing-0 table-fixed" style={{ minWidth: 900 }}>
                 <thead>
                   <tr>
                     <th className="w-14 border-b border-white/10" />
