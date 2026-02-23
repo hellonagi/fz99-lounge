@@ -83,6 +83,7 @@ export const usersApi = {
     const params = category ? `?category=${category}` : '';
     return api.get(`/users/${userId}/track-stats${params}`);
   },
+  getFeaturedWeekly: () => api.get('/users/featured-weekly'),
 };
 
 // Matches API (for waiting room management - was lobbies)

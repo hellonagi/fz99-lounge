@@ -134,6 +134,7 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_GA_ID: ${NEXT_PUBLIC_GA_ID:-}
       NEXT_TELEMETRY_DISABLED: 1
     volumes:
       # WSL2最適化: appフォルダと設定ファイルのみマウント

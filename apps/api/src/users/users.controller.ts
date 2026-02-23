@@ -59,6 +59,11 @@ export class UsersController {
     );
   }
 
+  @Get('featured-weekly')
+  async getFeaturedWeeklyPlayers() {
+    return this.usersService.getFeaturedWeeklyPlayers();
+  }
+
   @Get('profile/:profileId')
   async getUserByProfileId(
     @Param('profileId') profileId: string,

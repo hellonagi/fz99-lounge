@@ -71,7 +71,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
               </Link>
             </nav>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1 md:space-x-3 whitespace-nowrap">
             <LanguageSwitcher currentLocale={locale} />
             {!mounted ? (
               <div className="w-32 h-10" />
@@ -112,7 +112,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
             ) : (
               <Button onClick={handleLogin} variant="discord" size="sm">
                 <SiDiscord className="w-4 h-4 mr-1.5" />
-                <span>{t('login')}</span>
+                {t('login')}
               </Button>
             )}
           </div>

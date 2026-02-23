@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { locales, type Locale } from '@/i18n/config';
+import { getAlternates } from '@/lib/metadata';
 import { ClientLayout } from '@/components/layout/client-layout';
 import Footer from '@/components/layout/footer';
 
@@ -27,13 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: t('description'),
       locale: locale === 'ja' ? 'ja_JP' : 'en_US',
     },
-    alternates: {
-      canonical: `https://fz99lounge.com/${locale}`,
-      languages: {
-        en: 'https://fz99lounge.com/en',
-        ja: 'https://fz99lounge.com/ja',
-      },
-    },
+    alternates: getAlternates(locale),
   };
 }
 

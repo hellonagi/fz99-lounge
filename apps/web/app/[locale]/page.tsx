@@ -6,12 +6,12 @@ import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
 import { WeeklyCalendar } from '@/components/features/match/weekly-calendar';
-import { HowToJoinSection } from '@/components/features/home';
+import { HowToJoinSection, FeaturedPlayers } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
 import { useAuthStore } from '@/store/authStore';
-import { matchesApi } from '@/lib/api';
+import { matchesApi, usersApi } from '@/lib/api';
 
 interface RecentMatch {
   id: number;
@@ -35,6 +35,8 @@ export default function Home() {
   const [wsConnected, setWsConnected] = useState(false);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
   const [recentMatchesLoading, setRecentMatchesLoading] = useState(true);
+  const [featuredAwards, setFeaturedAwards] = useState<any[]>([]);
+  const [featuredAwardsLoading, setFeaturedAwardsLoading] = useState(true);
 
   // Custom hooks
   const {
@@ -64,7 +66,7 @@ export default function Home() {
 
   const { isAuthenticated } = useAuthStore();
 
-  // Fetch recent matches
+  // Fetch recent matches and featured players
   useEffect(() => {
     const fetchRecentMatches = async () => {
       try {
@@ -76,7 +78,18 @@ export default function Home() {
         setRecentMatchesLoading(false);
       }
     };
+    const fetchFeaturedAwards = async () => {
+      try {
+        const response = await usersApi.getFeaturedWeekly();
+        setFeaturedAwards(response.data.awards || []);
+      } catch (err) {
+        console.error('Failed to fetch featured players:', err);
+      } finally {
+        setFeaturedAwardsLoading(false);
+      }
+    };
     fetchRecentMatches();
+    fetchFeaturedAwards();
   }, []);
 
   if (loading) {
@@ -132,6 +145,9 @@ export default function Home() {
 
       {/* How to Join Section - only show when not logged in */}
       {!isAuthenticated && <HowToJoinSection />}
+
+      {/* Featured Players of the Week */}
+      <FeaturedPlayers awards={featuredAwards} loading={featuredAwardsLoading} />
 
       {/* Recent Matches Section */}
       <section className="pt-4 pb-16">

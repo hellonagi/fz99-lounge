@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "flag-icons/css/flag-icons.min.css";
 import "./globals.css";
 
@@ -71,6 +72,9 @@ export default function RootLayout({
       <body className={`${notoSansJP.variable} antialiased bg-gray-900 min-h-screen`} suppressHydrationWarning>
         {children}
       </body>
+      {process.env.NEXT_PUBLIC_GA_ID && (
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+      )}
     </html>
   );
 }
