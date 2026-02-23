@@ -341,8 +341,8 @@ export function WeeklyCalendar() {
             </div>
 
             {/* Desktop: full table */}
-            <div ref={scrollRef} className="hidden md:block overflow-x-auto">
-              <table className="w-full border-separate border-spacing-0 table-fixed" style={{ minWidth: 900 }}>
+            <div ref={scrollRef} className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb:hover]:bg-white/20">
+              <table className="w-full border-separate border-spacing-0 table-fixed" style={{ minWidth: 1022 }}>
                 <thead>
                   <tr>
                     <th className="w-14 border-b border-white/10" />
@@ -385,7 +385,7 @@ export function WeeklyCalendar() {
                                 'border-t border-white/10 p-1 align-top',
                                 isToday && 'bg-blue-500/5',
                               )}
-                              style={{ minWidth: 120 }}
+                              style={{ minWidth: 138 }}
                             >
                               <div className="flex flex-col gap-1">
                                 {cellMatches?.map((match) => (
