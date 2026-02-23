@@ -34,11 +34,13 @@ jobs:
           env-vars-for-codebuild: |
             ECR_REGISTRY,
             IMAGE_TAG,
-            NEXT_PUBLIC_BASE_URL
+            NEXT_PUBLIC_BASE_URL,
+            NEXT_PUBLIC_GA_ID
         env:
           ECR_REGISTRY: ${{ env.ECR_REGISTRY }}
           IMAGE_TAG: ${{ steps.set-tag.outputs.tag }}
           NEXT_PUBLIC_BASE_URL: https://beta.fz99lounge.com
+          NEXT_PUBLIC_GA_ID: G-05B5DP3H1B
 
   deploy:
     needs: build-and-push

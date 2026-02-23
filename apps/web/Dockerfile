@@ -23,7 +23,9 @@ CMD ["dumb-init", "npm", "run", "dev"]
 
 FROM base AS build
 ARG NEXT_PUBLIC_BASE_URL
+ARG NEXT_PUBLIC_GA_ID
 ENV NEXT_PUBLIC_BASE_URL=${NEXT_PUBLIC_BASE_URL}
+ENV NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
