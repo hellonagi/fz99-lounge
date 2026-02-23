@@ -124,7 +124,20 @@
     "startsInTime": "Starts in {time}",
     "players": "{count} players",
     "inProgress": "In Progress",
-    "settingUp": "Setting up..."
+    "settingUp": "Setting up...",
+    "featuredPlayers": {
+      "title": "Last Week's Top Players",
+      "noData": "No matches played this week yet",
+      "categories": {
+        "mostWins": "Most Wins",
+        "mostMvps": "Most Team MVPs",
+        "topScorer": "Highest Score"
+      },
+      "units": {
+        "mostWins": "wins",
+        "mostMvps": "MVP"
+      }
+    }
   },
   "matchHero": {
     "checkNextMatch": "Check back soon for the next match",

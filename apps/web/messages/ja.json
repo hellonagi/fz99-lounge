@@ -123,7 +123,20 @@
     "upcomingMatches": "開催予定",
     "startsInTime": "あと {time} で開始",
     "inProgress": "進行中",
-    "settingUp": "設定中..."
+    "settingUp": "設定中...",
+    "featuredPlayers": {
+      "title": "先週の注目プレイヤー",
+      "noData": "今週はまだ試合が行われていません",
+      "categories": {
+        "mostWins": "最多勝利",
+        "mostMvps": "最多チームMVP",
+        "topScorer": "最多得点"
+      },
+      "units": {
+        "mostWins": "勝",
+        "mostMvps": "MVP"
+      }
+    }
   },
   "matchHero": {
     "checkNextMatch": "次回の試合開催までお待ちください",
