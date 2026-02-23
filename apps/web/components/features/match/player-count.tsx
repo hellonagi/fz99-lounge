@@ -53,9 +53,7 @@ export function PlayerCount(props: PlayerCountProps) {
           </Button>
         )}
       </div>
-      {isJoined && (
-        <p className="text-sm text-gray-300">{t('passcodeNotice')}</p>
-      )}
+      <p className={cn('text-sm', isJoined ? 'text-gray-300' : 'text-transparent select-none')}>{t('passcodeNotice')}</p>
     </div>
   );
 }

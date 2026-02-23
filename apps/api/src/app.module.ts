@@ -20,6 +20,7 @@ import { RatingModule } from './rating/rating.module';
 import { TracksModule } from './tracks/tracks.module';
 import { DiscordBotModule } from './discord-bot/discord-bot.module';
 import { PermissionsModule } from './permissions/permissions.module';
+import { RecurringMatchModule } from './recurring-matches/recurring-match.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { PermissionsModule } from './permissions/permissions.module';
     TracksModule,
     DiscordBotModule,
     PermissionsModule,
+    RecurringMatchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

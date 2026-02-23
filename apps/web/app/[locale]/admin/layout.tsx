@@ -60,6 +60,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   const tabs = [
     { id: 'matches', label: t('matches'), href: `/${locale}/admin/matches` },
+    { id: 'schedules', label: t('schedules'), href: `/${locale}/admin/schedules` },
     ...(user.role === 'ADMIN'
       ? [
           { id: 'moderators', label: t('moderators'), href: `/${locale}/admin/moderators` },

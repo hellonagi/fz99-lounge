@@ -62,7 +62,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   return (
     <div>
       <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-      <div className="space-y-2 mx-0 md:mx-6">
+      <div className="space-y-2 mx-0">
         {validMatches.map((match) => (
           <Link
             key={match.id}
