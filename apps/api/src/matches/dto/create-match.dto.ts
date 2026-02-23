@@ -29,4 +29,8 @@ export class CreateMatchDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsInt()
+  recurringMatchId?: number;
 }

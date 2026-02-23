@@ -201,6 +201,37 @@ export interface UserSeasonStats {
   season?: Season;
 }
 
+// Recurring Match Rule
+export interface RecurringMatchRule {
+  id: number;
+  recurringMatchId: number;
+  daysOfWeek: number[];
+  timeOfDay: string; // "HH:mm" JST
+  lastScheduledAt: string | null;
+}
+
+// Recurring Match Schedule
+export interface RecurringMatch {
+  id: number;
+  eventCategory: EventCategory;
+  inGameMode: InGameMode;
+  leagueType: League | null;
+  minPlayers: number;
+  maxPlayers: number;
+  isEnabled: boolean;
+  name: string | null;
+  notes: string | null;
+  createdBy: number | null;
+  createdByUser?: {
+    id: number;
+    displayName: string | null;
+    username: string;
+  };
+  rules: RecurringMatchRule[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // API Response Types
 export interface AuthResponse {
   accessToken: string;

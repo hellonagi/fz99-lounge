@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { MatchesService } from './matches.service';
@@ -48,6 +49,19 @@ export class MatchesController {
       match,
       serverTime: new Date().toISOString(),
     };
+  }
+
+  @Get('week')
+  async getWeek(
+    @Query('from') from: string,
+    @Query('to') to: string,
+  ) {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      throw new BadRequestException('Invalid date format. Use ISO 8601.');
+    }
+    return this.matchesService.getByDateRange(fromDate, toDate);
   }
 
   @Get('recent')

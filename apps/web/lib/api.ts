@@ -126,6 +126,30 @@ export const matchesApi = {
   leave: (id: number) => api.delete(`/matches/${id}/leave`),
   cancel: (id: number) => api.patch(`/matches/${id}/cancel`),
   delete: (id: number) => api.delete(`/matches/${id}`),
+  getWeek: (from: string, to: string) => {
+    const params = new URLSearchParams({ from, to });
+    return api.get(`/matches/week?${params.toString()}`);
+  },
+};
+
+// Recurring Matches API
+export const recurringMatchesApi = {
+  create: (data: {
+    eventCategory: string;
+    inGameMode: string;
+    leagueType?: string;
+    minPlayers?: number;
+    maxPlayers?: number;
+    rules: Array<{ daysOfWeek: number[]; timeOfDay: string }>;
+    name?: string;
+    notes?: string;
+  }) => api.post('/recurring-matches', data),
+  getAll: () => api.get('/recurring-matches'),
+  update: (id: number, data: Record<string, unknown>) =>
+    api.patch(`/recurring-matches/${id}`, data),
+  toggle: (id: number, enabled: boolean) =>
+    api.patch(`/recurring-matches/${id}/toggle`, { enabled }),
+  delete: (id: number) => api.delete(`/recurring-matches/${id}`),
 };
 
 // Seasons API

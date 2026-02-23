@@ -204,6 +204,7 @@ model User {
   ratingHistories      RatingHistory[]            @relation("RatingHistory")
   profile              Profile?
   permissions          UserPermission[]
+  recurringMatches     RecurringMatch[]    @relation("RecurringMatchCreator")
 
   @@index([discordId])
   @@index([displayName])
@@ -436,12 +437,17 @@ model Match {
 
   createdAt DateTime @default(now())
 
+  // 定期スケジュールとの紐付け（手動作成の場合はnull）
+  recurringMatchId Int?
+  recurringMatch   RecurringMatch? @relation("GeneratedMatches", fields: [recurringMatchId], references: [id], onDelete: SetNull)
+
   // リレーション
   participants    MatchParticipant[]
   games           Game[]
   ratingHistories RatingHistory[]
 
   @@unique([seasonId, matchNumber])
+  @@index([recurringMatchId])
   @@index([status])
   @@index([seasonId])
   @@index([scheduledStart])
@@ -774,6 +780,42 @@ model UserPermission {
   @@unique([userId, permission])
   @@index([userId])
   @@map("user_permissions")
+}
+
+// ==================== RECURRING MATCH SCHEDULES ====================
+
+model RecurringMatch {
+  id            Int                  @id @default(autoincrement())
+  eventCategory EventCategory
+  inGameMode    InGameMode
+  leagueType    League?
+  minPlayers    Int                  @default(12)
+  maxPlayers    Int                  @default(20)
+  isEnabled     Boolean              @default(true)
+  name          String?
+  notes         String?
+  createdBy     Int?
+  createdByUser User?                @relation("RecurringMatchCreator", fields: [createdBy], references: [id])
+  rules            RecurringMatchRule[]
+  generatedMatches Match[]              @relation("GeneratedMatches")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  @@unique([eventCategory])
+  @@index([isEnabled])
+  @@map("recurring_matches")
+}
+
+model RecurringMatchRule {
+  id               Int            @id @default(autoincrement())
+  recurringMatchId Int
+  recurringMatch   RecurringMatch @relation(fields: [recurringMatchId], references: [id], onDelete: Cascade)
+  daysOfWeek       Int[] // 0=Sun, 1=Mon, ..., 6=Sat
+  timeOfDay        String // "HH:mm" JST
+  lastScheduledAt  DateTime?
+
+  @@index([recurringMatchId])
+  @@map("recurring_match_rules")
 }
 
 // ==================== PUSH NOTIFICATIONS ====================

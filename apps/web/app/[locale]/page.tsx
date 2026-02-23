@@ -5,12 +5,11 @@ import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
-import { UpcomingMatches } from '@/components/features/match/upcoming-matches';
+import { WeeklyCalendar } from '@/components/features/match/weekly-calendar';
 import { HowToJoinSection } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
-import { useUpcomingMatches } from '@/hooks/useUpcomingMatches';
 import { useAuthStore } from '@/store/authStore';
 import { matchesApi } from '@/lib/api';
 
@@ -64,13 +63,6 @@ export default function Home() {
   );
 
   const { isAuthenticated } = useAuthStore();
-
-  const {
-    matches: upcomingMatches,
-    loading: upcomingLoading,
-    joiningMatchId,
-    handleJoinLeave,
-  } = useUpcomingMatches(nextMatch?.id ?? null);
 
   // Fetch recent matches
   useEffect(() => {
@@ -135,19 +127,14 @@ export default function Home() {
         )}
       </div>
 
-      {/* Upcoming Matches Section */}
-      <UpcomingMatches
-        matches={upcomingMatches}
-        loading={upcomingLoading}
-        joiningMatchId={joiningMatchId}
-        onJoinLeave={handleJoinLeave}
-      />
+      {/* Weekly Calendar Section */}
+      <WeeklyCalendar />
 
       {/* How to Join Section - only show when not logged in */}
       {!isAuthenticated && <HowToJoinSection />}
 
       {/* Recent Matches Section */}
-      <section className="py-16">
+      <section className="pt-4 pb-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
         </div>
