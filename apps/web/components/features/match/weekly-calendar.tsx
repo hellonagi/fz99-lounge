@@ -14,7 +14,7 @@ import 'swiper/css';
 const JST_OFFSET = 9 * 60 * 60 * 1000;
 
 const CATEGORY_CARD_COLORS: Record<string, { border: string; bg: string }> = {
-  GP: { border: 'border-blue-500/50', bg: 'bg-blue-500/10' },
+  GP: { border: 'border-amber-500/50', bg: 'bg-amber-500/10' },
   CLASSIC: { border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
   TEAM_CLASSIC: { border: 'border-rose-500/50', bg: 'bg-rose-500/10' },
   TOURNAMENT: { border: 'border-amber-500/50', bg: 'bg-amber-500/10' },

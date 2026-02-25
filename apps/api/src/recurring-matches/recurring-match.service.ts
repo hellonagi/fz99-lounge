@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { EventCategory } from '@prisma/client';
+import { EventCategory, InGameMode, League } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchesService, CATEGORY_SPAN_MINUTES } from '../matches/matches.service';
 import { SeasonsService } from '../seasons/seasons.service';
@@ -192,6 +192,12 @@ export class RecurringMatchService {
 
       // Delete related data and matches
       const matchIds = waitingMatches.map((m) => m.id);
+
+      // BullMQジョブを先に削除
+      for (const matchId of matchIds) {
+        await this.matchesService.removeMatchJobs(matchId);
+      }
+
       await this.prisma.$transaction(async (tx) => {
         await tx.game.deleteMany({ where: { matchId: { in: matchIds } } });
         await tx.matchParticipant.deleteMany({ where: { matchId: { in: matchIds } } });
@@ -372,11 +378,25 @@ export class RecurringMatchService {
 
       for (const occurrence of occurrences) {
         try {
+          // GP with no league: randomly pick a league and set inGameMode accordingly
+          let inGameMode = schedule.inGameMode;
+          let leagueType = schedule.leagueType ?? undefined;
+
+          if (schedule.eventCategory === EventCategory.GP && !schedule.leagueType) {
+            const allGpLeagues: League[] = [
+              League.KNIGHT, League.QUEEN, League.KING, League.ACE,
+              League.MIRROR_KNIGHT, League.MIRROR_QUEEN, League.MIRROR_KING, League.MIRROR_ACE,
+            ];
+            leagueType = allGpLeagues[Math.floor(Math.random() * allGpLeagues.length)];
+            const isMirror = leagueType.startsWith('MIRROR_');
+            inGameMode = isMirror ? InGameMode.MIRROR_GRAND_PRIX : InGameMode.GRAND_PRIX;
+          }
+
           await this.matchesService.create(
             {
               seasonId: season.id,
-              inGameMode: schedule.inGameMode,
-              leagueType: schedule.leagueType ?? undefined,
+              inGameMode,
+              leagueType,
               scheduledStart: occurrence.toISOString(),
               minPlayers: schedule.minPlayers,
               maxPlayers: schedule.maxPlayers,

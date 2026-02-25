@@ -43,12 +43,22 @@ export interface ConflictResult {
   allInvolvedUsers: ConflictingUserWithPosition[]; // 矛盾に関わる全員（順位付き）
 }
 
+// Per-race max positions
+const GP_MAX_POSITIONS = [99, 80, 60, 40, 20];
+const CLASSIC_MAX_POSITIONS = [20, 16, 12];
+
+function getMaxPositionForRace(raceNumber: number, isGpMode: boolean): number {
+  const maxPositions = isGpMode ? GP_MAX_POSITIONS : CLASSIC_MAX_POSITIONS;
+  return maxPositions[raceNumber - 1] ?? 20;
+}
+
 /**
  * 指定レースの順位申告の不整合を検知
  */
 export function detectPositionConflictsForRace(
   participants: ParticipantForConflict[],
-  raceNumber: number
+  raceNumber: number,
+  isGpMode: boolean = false
 ): ConflictResult[] {
   // 提出済み参加者のみ対象 (PENDING, VERIFIED, REJECTED)
   const submittedParticipants = participants.filter(
@@ -92,7 +102,7 @@ export function detectPositionConflictsForRace(
       // 同率の場合、position+1 ~ position+count-1 は存在しない
       for (let i = 1; i < count; i++) {
         const invalidPos = position + i;
-        if (invalidPos <= 20) {
+        if (invalidPos <= getMaxPositionForRace(raceNumber, isGpMode)) {
           invalidPositions.add(invalidPos);
           causingInfo.set(invalidPos, {
             causingPosition: position,
@@ -140,15 +150,17 @@ export function detectPositionConflictsForRace(
 }
 
 /**
- * 全レース（1-3）の不整合を検知
+ * 全レースの不整合を検知
  */
 export function detectAllPositionConflicts(
-  participants: ParticipantForConflict[]
+  participants: ParticipantForConflict[],
+  isGpMode: boolean = false
 ): ConflictResult[] {
   const allConflicts: ConflictResult[] = [];
+  const raceCount = isGpMode ? 5 : 3;
 
-  for (let raceNumber = 1; raceNumber <= 3; raceNumber++) {
-    const conflicts = detectPositionConflictsForRace(participants, raceNumber);
+  for (let raceNumber = 1; raceNumber <= raceCount; raceNumber++) {
+    const conflicts = detectPositionConflictsForRace(participants, raceNumber, isGpMode);
     allConflicts.push(...conflicts);
   }
 

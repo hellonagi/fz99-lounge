@@ -616,13 +616,24 @@ export class UsersService {
       totalMatches: { gte: 1 },
     };
 
+    // GP: sort by bestPosition asc (lower=better, null=last), then 1st/2nd/3rd desc
+    // CLASSIC/TEAM_CLASSIC: sort by displayRating desc
+    const orderBy = eventCategory === 'GP'
+      ? [
+          { bestPosition: { sort: 'asc' as const, nulls: 'last' as const } },
+          { firstPlaces: 'desc' as const },
+          { secondPlaces: 'desc' as const },
+          { thirdPlaces: 'desc' as const },
+        ]
+      : [{ displayRating: 'desc' as const }];
+
     const [total, data] = await Promise.all([
       this.prisma.userSeasonStats.count({ where }),
       this.prisma.userSeasonStats.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { displayRating: 'desc' },
+        orderBy,
         include: {
           user: {
             select: {

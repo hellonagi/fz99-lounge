@@ -41,6 +41,7 @@ enum EventCategory {
 
 enum InGameMode {
   GRAND_PRIX
+  MIRROR_GRAND_PRIX
   MINI_PRIX
   TEAM_BATTLE
   CLASSIC_MINI_PRIX
@@ -264,6 +265,7 @@ model UserSeasonStats {
   // リーダーボード用（事前計算）
   medianPosition  Float?  // 順位の中央値
   medianPoints    Float?  // ポイントの中央値
+  bestPosition    Int?    // 最高順位（GP用）
   favoriteMachine String? // 最も使用しているマシン
 
   createdAt DateTime @default(now())

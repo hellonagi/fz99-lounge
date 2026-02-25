@@ -38,7 +38,7 @@ interface PaginationMeta {
   hasPrev: boolean;
 }
 
-type Category = 'CLASSIC' | 'TEAM_CLASSIC';
+type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
 
 export default function ResultsPage() {
   const t = useTranslations('results');
@@ -169,9 +169,14 @@ export default function ResultsPage() {
             onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
           >
             <TabsList>
+              <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="gp" className="p-4">
+              {renderContent()}
+            </TabsContent>
 
             <TabsContent value="classic" className="p-4">
               {renderContent()}

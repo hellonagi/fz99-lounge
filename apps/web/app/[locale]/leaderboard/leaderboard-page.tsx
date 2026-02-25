@@ -27,6 +27,7 @@ interface LeaderboardEntry {
   thirdPlaces: number;
   survivedCount: number;
   assistUsedCount: number;
+  bestPosition?: number | null;
   user: {
     id: number;
     displayName: string | null;
@@ -35,7 +36,7 @@ interface LeaderboardEntry {
   };
 }
 
-type Category = 'CLASSIC' | 'TEAM_CLASSIC';
+type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
 
 export default function LeaderboardPage() {
   const t = useTranslations('leaderboard');
@@ -130,9 +131,25 @@ export default function LeaderboardPage() {
             onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
           >
             <TabsList>
+              <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="gp">
+              {error ? (
+                <div className="text-center text-red-400 py-8">{error}</div>
+              ) : (
+                <>
+                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="GP" />
+                  <LeaderboardPagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </>
+              )}
+            </TabsContent>
 
             <TabsContent value="classic">
               {error ? (

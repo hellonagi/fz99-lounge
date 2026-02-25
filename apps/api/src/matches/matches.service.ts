@@ -4,6 +4,8 @@ import {
   BadRequestException,
   ForbiddenException,
   Logger,
+  OnModuleInit,
+  OnModuleDestroy,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
@@ -16,12 +18,13 @@ import { EventCategory, InGameMode, MatchStatus, UserStatus } from '@prisma/clie
 
 /** カテゴリごとのマッチ占有時間（分）。ここに定義されたカテゴリ同士でスパン重複チェックを行う */
 export const CATEGORY_SPAN_MINUTES: Partial<Record<EventCategory, number>> = {
+  GP: 30,
   CLASSIC: 15,
   TEAM_CLASSIC: 15,
 };
 
 @Injectable()
-export class MatchesService {
+export class MatchesService implements OnModuleInit, OnModuleDestroy {
   // 詳細なマッチ情報を取得するための共通includeオプション（基本形）
   private readonly matchDetailInclude = {
     season: {
@@ -79,6 +82,7 @@ export class MatchesService {
   }
 
   private readonly logger = new Logger(MatchesService.name);
+  private overdueCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private prisma: PrismaService,
@@ -87,6 +91,115 @@ export class MatchesService {
     private discordBotService: DiscordBotService,
     private tracksService: TracksService,
   ) {}
+
+  async onModuleInit() {
+    await this.cleanupGhostJobs();
+    await this.recoverOverdueMatches();
+    // 30秒ごとに期限切れWAITINGマッチをチェック
+    this.overdueCheckInterval = setInterval(() => {
+      this.recoverOverdueMatches().catch((err) => {
+        this.logger.error('Periodic overdue match check failed:', err);
+      });
+    }, 30_000);
+  }
+
+  onModuleDestroy() {
+    if (this.overdueCheckInterval) {
+      clearInterval(this.overdueCheckInterval);
+    }
+  }
+
+  /**
+   * マッチに関連するBullMQジョブ（start-match, reminder）を削除する。
+   * マッチ削除時に呼び出して、ゴーストジョブの蓄積を防ぐ。
+   */
+  async removeMatchJobs(matchId: number): Promise<void> {
+    const jobIds = [`start-match-${matchId}`, `reminder-${matchId}`];
+    for (const jobId of jobIds) {
+      try {
+        const job = await this.matchQueue.getJob(jobId);
+        if (job) {
+          await job.remove();
+          this.logger.log(`Removed job ${jobId}`);
+        }
+      } catch (error) {
+        this.logger.error(`Failed to remove job ${jobId}:`, error);
+      }
+    }
+  }
+
+  /**
+   * 起動時にdelayedキュー内のゴーストジョブ（DBに存在しないマッチのジョブ）を削除する。
+   */
+  private async cleanupGhostJobs() {
+    try {
+      const delayedJobs = await this.matchQueue.getDelayed();
+      let removed = 0;
+
+      for (const job of delayedJobs) {
+        const matchId = job.data?.matchId;
+        if (!matchId) continue;
+
+        const match = await this.prisma.match.findUnique({
+          where: { id: matchId },
+          select: { id: true, status: true },
+        });
+
+        // マッチが存在しない、またはWAITING以外（CANCELLED等）のジョブを削除
+        if (!match || match.status !== MatchStatus.WAITING) {
+          await job.remove();
+          removed++;
+        }
+      }
+
+      if (removed > 0) {
+        this.logger.warn(`Cleaned up ${removed} ghost jobs from delayed queue`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to cleanup ghost jobs:', error);
+    }
+  }
+
+  /**
+   * API起動時に期限切れのWAITINGマッチを検出し、BullMQジョブを再登録する。
+   * コンテナ再起動でジョブが失われた場合のリカバリ処理。
+   */
+  private async recoverOverdueMatches() {
+    const overdueMatches = await this.prisma.match.findMany({
+      where: {
+        status: MatchStatus.WAITING,
+        scheduledStart: {
+          lte: new Date(),
+        },
+      },
+      select: { id: true, scheduledStart: true },
+    });
+
+    if (overdueMatches.length === 0) return;
+
+    this.logger.warn(`Found ${overdueMatches.length} overdue WAITING match(es), re-queuing start-match jobs`);
+
+    for (const match of overdueMatches) {
+      // 既にジョブが存在するか確認
+      const existingJob = await this.matchQueue.getJob(`start-match-${match.id}`);
+      if (existingJob) {
+        this.logger.log(`Job already exists for match ${match.id}, skipping`);
+        continue;
+      }
+
+      await this.matchQueue.add(
+        'start-match',
+        { matchId: match.id },
+        {
+          delay: 0, // 即時実行
+          removeOnComplete: true,
+          attempts: 3,
+          jobId: `start-match-${match.id}`,
+        },
+      );
+      this.logger.log(`Re-queued start-match job for overdue match ${match.id}`);
+    }
+  }
 
   async create(createMatchDto: CreateMatchDto, createdBy: number, options?: { silent?: boolean }) {
     const { seasonId, inGameMode, leagueType, scheduledStart, minPlayers, maxPlayers, notes, recurringMatchId } =
@@ -154,6 +267,11 @@ export class MatchesService {
       tracks = this.tracksService.calculateClassicMiniTracks(new Date(scheduledStart));
     }
 
+    // GP/MIRROR_GP: auto-assign 5 tracks based on league
+    if ((inGameMode === InGameMode.GRAND_PRIX || inGameMode === InGameMode.MIRROR_GRAND_PRIX) && leagueType) {
+      tracks = this.tracksService.getGpTracksByLeague(leagueType);
+    }
+
     // Create match and game in a transaction, then reassign matchNumbers by scheduledStart order
     const match = await this.prisma.$transaction(async (tx) => {
       const scheduledDate = new Date(scheduledStart);
@@ -215,6 +333,7 @@ export class MatchesService {
             type: 'exponential',
             delay: 2000,
           },
+          jobId: `start-match-${match.id}`,
         },
       );
 
@@ -299,7 +418,7 @@ export class MatchesService {
   }
 
   async getNext(eventCategory?: EventCategory) {
-    // WAITINGマッチを検索
+    // WAITINGマッチを検索（開始時刻を1分以上過ぎたものは除外）
     const match = await this.prisma.match.findFirst({
       where: {
         ...(eventCategory && {
@@ -310,6 +429,9 @@ export class MatchesService {
           },
         }),
         status: MatchStatus.WAITING,
+        scheduledStart: {
+          gt: new Date(Date.now() - 60 * 1000),
+        },
       },
       orderBy: { scheduledStart: 'asc' },
       include: {
@@ -367,7 +489,7 @@ export class MatchesService {
         games: {
           include: {
             participants: {
-              where: { isExcluded: false },
+              where: { isExcluded: false, totalScore: { not: null } },
               orderBy: { totalScore: 'desc' },
               include: {
                 user: {
@@ -487,7 +609,7 @@ export class MatchesService {
             participants: {
               ...(category === 'TEAM_CLASSIC'
                 ? {
-                    where: { isExcluded: false },
+                    where: { isExcluded: false, totalScore: { not: null } },
                     orderBy: { totalScore: 'desc' as const },
                     take: 1,
                     include: {
@@ -497,6 +619,7 @@ export class MatchesService {
                     },
                   }
                 : {
+                    where: { totalScore: { not: null } },
                     orderBy: { totalScore: 'desc' as const },
                     take: 1,
                     include: {
@@ -756,6 +879,9 @@ export class MatchesService {
     }
 
     const seasonId = match.seasonId;
+
+    // BullMQのstart-matchジョブとreminderジョブを削除
+    await this.removeMatchJobs(matchId);
 
     // Delete all related participants and match in a transaction, then reassign numbers
     await this.prisma.$transaction(async (tx) => {

@@ -474,7 +474,7 @@ export default function GamePage() {
             status={game.match.status}
           />
 
-          {/* Track Banners (CLASSIC and TEAM_CLASSIC) */}
+          {/* Track Banners (CLASSIC, TEAM_CLASSIC only) */}
           {(category.toUpperCase() === 'CLASSIC' || isTeamClassic) && (
             <TrackBanners tracks={game.tracks} />
           )}
@@ -606,6 +606,7 @@ export default function GamePage() {
                   matchParticipants={game.match.participants}
                   screenshots={screenshots}
                   isClassicMode={category.toLowerCase() === 'classic' || isTeamClassic}
+                  isGpMode={category.toLowerCase() === 'gp'}
                   isTeamClassic={isTeamClassic}
                   teamScores={game.teamScores ?? undefined}
                   teamColors={teamData?.teams.reduce((acc, team) => {

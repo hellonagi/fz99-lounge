@@ -154,6 +154,7 @@
   },
   "leaderboard": {
     "title": "Leaderboard",
+    "gp": "GP",
     "classic": "Classic",
     "teamClassic": "Team Classic",
     "failedToLoadSeasons": "Failed to load seasons",
@@ -162,6 +163,7 @@
   "results": {
     "title": "Match Results",
     "matchesFound": "{count} matches found",
+    "gp": "GP",
     "classic": "Classic",
     "teamClassic": "Team Classic",
     "failedToLoadSeasons": "Failed to load seasons",
@@ -209,7 +211,7 @@
     },
     "ranking": {
       "title": "Ranking System",
-      "note": "Rankings are reset each season. GP Mode and Classic Mode have independent rankings."
+      "note": "Rankings are reset each season. GP and Classic have independent rankings."
     },
     "match": {
       "joiningTitle": "Joining a Match",
@@ -229,7 +231,7 @@
       "gameRulesTitle": "Game Rules",
       "classicMode": "Classic Mode",
       "classicRule1": "No reverse driving",
-      "gpMode": "GP Mode",
+      "gpMode": "GP",
       "gpRule1": "No reverse driving",
       "gpRule2": "No blue bumper - if you become a blue bumper, do not control and self-destruct immediately",
       "submittingTitle": "Submitting Scores",
@@ -281,7 +283,7 @@
     "raceResults": "Race Results",
     "raceResultsDescription": "Enter your finishing position for each race. If you were ranked out or crashed out, check Elim and enter your position at that time.",
     "race": "Race {number}",
-    "positionPlaceholder": "1-20",
+    "positionPlaceholder": "1-{max}",
     "rankedOut": "Ranked out / Crashed out",
     "rankedOutShort": "Elim",
     "disconnected": "Disconnected",
@@ -296,7 +298,7 @@
     "scoreSuccess": "Score submitted successfully!",
     "scoreAndScreenshotSuccess": "Score and screenshot submitted successfully!",
     "screenshotFailed": "Score submitted, but screenshot upload failed: {error}",
-    "positionRange": "{races}: Position must be between 1 and 20.",
+    "positionRange": "{races}: Position must be between 1 and {max}.",
     "enterAllResults": "Please enter all race results."
   },
   "screenshotStatus": {

@@ -1,8 +1,10 @@
 #!/usr/bin/env ts-node
 
 /**
- * Simulate CLASSIC mode score submissions for F-ZERO 99
+ * Simulate score submissions for F-ZERO 99
  * Uses API endpoints with JWT authentication for realistic testing
+ *
+ * Generates unique positions per race across all users to avoid conflicts.
  */
 
 import { PrismaClient, EventCategory } from '@prisma/client';
@@ -28,6 +30,13 @@ interface RaceResult {
   isEliminated: boolean;
 }
 
+interface UserScore {
+  user: any;
+  machine: string;
+  assistEnabled: boolean;
+  raceResults: RaceResult[];
+}
+
 interface SimulationOptions {
   mode?: 'gradual' | 'fast' | 'burst';
   count?: number;
@@ -43,7 +52,7 @@ class ScoreSimulator {
   private users: any[] = [];
 
   async findLatestInProgressGame() {
-    console.log(`🔍 Finding latest IN_PROGRESS game...`);
+    console.log(`Finding latest IN_PROGRESS game...`);
 
     const game = await prisma.game.findFirst({
       where: {
@@ -104,7 +113,7 @@ class ScoreSimulator {
     const seasonNumber = game.match.season?.seasonNumber || 'Unknown';
     const matchNumber = game.match.matchNumber || 'Unknown';
 
-    console.log(`✅ Found IN_PROGRESS game: ${category} Season ${seasonNumber}, Match ${matchNumber}`);
+    console.log(`Found IN_PROGRESS game: ${category} Season ${seasonNumber}, Match ${matchNumber}`);
     console.log(`   Game ID: ${game.id}`);
     console.log(`   ${game.participants.length} scores submitted, ${this.users.length} fake users waiting`);
 
@@ -112,7 +121,7 @@ class ScoreSimulator {
   }
 
   async findGameByCategorySeasonMatch(category: string, season: number, match: number) {
-    console.log(`🔍 Finding game for ${category} Season ${season}, Match ${match}...`);
+    console.log(`Finding game for ${category} Season ${season}, Match ${match}...`);
 
     const eventCategory = category.toUpperCase() as EventCategory;
 
@@ -174,43 +183,161 @@ class ScoreSimulator {
         ),
       }));
 
-    console.log(`✅ Found game with ${game.participants.length} scores submitted`);
+    console.log(`Found game with ${game.participants.length} scores submitted`);
     console.log(`   ${this.users.length} fake users waiting to submit scores`);
 
     return game;
   }
 
-  generateClassicScore(dnfRace: number | null = null): { machine: string; assistEnabled: boolean; raceResults: RaceResult[] } {
-    const machine = faker.helpers.arrayElement(F99_MACHINES);
-    const assistEnabled = faker.datatype.boolean(0.15);
+  private get isGpMode(): boolean {
+    return this.game?.match?.season?.event?.category === 'GP';
+  }
 
-    const raceResults: RaceResult[] = [];
+  private get raceCount(): number {
+    return this.isGpMode ? 5 : 3;
+  }
 
-    for (let race = 1; race <= 3; race++) {
-      if (dnfRace !== null && race >= dnfRace) {
-        // DNF at this race or after
-        raceResults.push({
+  // Per-race max positions and elimination thresholds
+  private get raceMaxPositions(): number[] {
+    return this.isGpMode ? [99, 80, 60, 40, 20] : [20, 16, 12];
+  }
+  private get eliminationThresholds(): (number | null)[] {
+    return this.isGpMode ? [81, 61, 41, 21, null] : [17, 13, 9];
+  }
+
+  /**
+   * Generate all user scores at once with unique positions per race.
+   * Simulates a realistic race: each race has unique positions,
+   * eliminated players don't participate in subsequent races.
+   */
+  generateAllScores(users: any[]): UserScore[] {
+    const userCount = users.length;
+    const scores: UserScore[] = users.map(user => ({
+      user,
+      machine: faker.helpers.arrayElement(F99_MACHINES),
+      assistEnabled: faker.datatype.boolean(0.15),
+      raceResults: [],
+    }));
+
+    // Track which users are still alive (by index)
+    let aliveIndices = Array.from({ length: userCount }, (_, i) => i);
+
+    for (let race = 1; race <= this.raceCount; race++) {
+      const raceMax = this.raceMaxPositions[race - 1];
+      const threshold = this.eliminationThresholds[race - 1];
+
+      // Shuffle alive users for random position assignment
+      const shuffled = [...aliveIndices].sort(() => Math.random() - 0.5);
+      const aliveCount = shuffled.length;
+
+      // Determine how many get eliminated this race
+      let eliminatedCount = 0;
+      if (threshold !== null) {
+        // Eliminate ~20-30% of alive users, but respect position limits
+        const maxSurvivors = threshold - 1; // positions 1..threshold-1 survive
+        eliminatedCount = Math.max(0, aliveCount - maxSurvivors);
+        if (eliminatedCount === 0 && aliveCount > maxSurvivors) {
+          eliminatedCount = aliveCount - maxSurvivors;
+        }
+        // Add some randomness: eliminate a few extra sometimes
+        const extraElim = Math.floor(Math.random() * Math.min(3, maxSurvivors));
+        eliminatedCount = Math.min(aliveCount - 1, eliminatedCount + extraElim);
+      }
+
+      const survivorCount = aliveCount - eliminatedCount;
+
+      // Assign unique positions to survivors (1..maxSurvival)
+      const maxSurvival = threshold ? threshold - 1 : raceMax;
+      const survivorPositions = this.pickUniquePositions(survivorCount, 1, maxSurvival);
+
+      // Assign unique positions to eliminated (threshold..raceMax)
+      let eliminatedPositions: number[] = [];
+      if (eliminatedCount > 0 && threshold !== null) {
+        eliminatedPositions = this.pickUniquePositions(eliminatedCount, threshold, raceMax);
+      }
+
+      const eliminatedIndices = new Set<number>();
+
+      // Assign survivor positions
+      for (let i = 0; i < survivorCount; i++) {
+        const userIdx = shuffled[i];
+        scores[userIdx].raceResults.push({
           raceNumber: race,
-          position: undefined,
-          isEliminated: true,
-        });
-      } else {
-        // Normal race - generate position 1-20
-        const position = faker.number.int({ min: 1, max: 20 });
-        raceResults.push({
-          raceNumber: race,
-          position,
+          position: survivorPositions[i],
           isEliminated: false,
         });
       }
+
+      // Assign eliminated positions
+      for (let i = 0; i < eliminatedCount; i++) {
+        const userIdx = shuffled[survivorCount + i];
+        scores[userIdx].raceResults.push({
+          raceNumber: race,
+          position: eliminatedPositions[i],
+          isEliminated: true,
+        });
+        eliminatedIndices.add(userIdx);
+      }
+
+      // Update alive list
+      aliveIndices = aliveIndices.filter(idx => !eliminatedIndices.has(idx));
     }
 
-    return { machine, assistEnabled, raceResults };
+    return scores;
   }
 
-  async submitScore(user: any, dnfRace: number | null = null) {
-    const { machine, assistEnabled, raceResults } = this.generateClassicScore(dnfRace);
+  /**
+   * Pick `count` unique random positions from [min..max].
+   * If count > range, some positions will be duplicated (same-rank tie).
+   */
+  private pickUniquePositions(count: number, min: number, max: number): number[] {
+    const range = max - min + 1;
+    if (count <= range) {
+      // Enough unique positions available
+      const all = Array.from({ length: range }, (_, i) => min + i);
+      // Fisher-Yates shuffle
+      for (let i = all.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [all[i], all[j]] = [all[j], all[i]];
+      }
+      return all.slice(0, count);
+    } else {
+      // More users than positions - allow ties (use all positions, then repeat)
+      const positions: number[] = [];
+      const all = Array.from({ length: range }, (_, i) => min + i);
+      // First fill with all unique positions
+      positions.push(...all);
+      // Remaining users get random positions (ties)
+      for (let i = range; i < count; i++) {
+        positions.push(faker.number.int({ min, max }));
+      }
+      // Shuffle the whole thing
+      for (let i = positions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [positions[i], positions[j]] = [positions[j], positions[i]];
+      }
+      return positions;
+    }
+  }
 
+  calculateTotalPoints(raceResults: RaceResult[]): number {
+    let total = 0;
+    for (const race of raceResults) {
+      if (race.position) {
+        if (this.isGpMode) {
+          if (race.position === 1) total += 200;
+          else if (race.position === 2) total += 196;
+          else total += 200 - race.position * 2;
+        } else {
+          total += 105 - (race.position * 5);
+        }
+      }
+    }
+    return total;
+  }
+
+  async submitScore(userScore: UserScore) {
+    const { user, machine, assistEnabled, raceResults } = userScore;
     const category = this.game.match.season?.event?.category?.toLowerCase() || 'classic';
     const season = this.game.match.season?.seasonNumber;
     const match = this.game.match.matchNumber;
@@ -218,11 +345,7 @@ class ScoreSimulator {
     try {
       const response = await axios.post(
         `${API_URL}/api/games/${category}/${season}/${match}/score`,
-        {
-          machine,
-          assistEnabled,
-          raceResults,
-        },
+        { machine, assistEnabled, raceResults },
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
@@ -232,98 +355,59 @@ class ScoreSimulator {
       );
 
       const displayName = user.displayName || user.discordId;
-      const dnfText = dnfRace ? `DNF race ${dnfRace}` : this.calculateTotalPoints(raceResults) + ' pts';
+      const lastRace = raceResults[raceResults.length - 1];
+      const dnfText = lastRace?.isEliminated
+        ? `DNF R${lastRace.raceNumber}`
+        : this.calculateTotalPoints(raceResults) + ' pts';
       console.log(
-        `   📤 ${displayName}: ${dnfText} | ${machine}${assistEnabled ? ' +Assist' : ''}`
+        `   ${displayName}: ${dnfText} | ${machine}${assistEnabled ? ' +Assist' : ''}`
       );
 
       return response.data;
     } catch (error: any) {
       const displayName = user.displayName || user.discordId;
       console.error(
-        `   ❌ ${displayName} failed to submit:`,
+        `   [ERROR] ${displayName} failed:`,
         error.response?.data?.message || error.message
       );
       throw error;
     }
   }
 
-  calculateTotalPoints(raceResults: RaceResult[]): number {
-    let total = 0;
-    for (const race of raceResults) {
-      if (!race.isEliminated && race.position) {
-        // 1st = 100, 2nd = 95, ... 20th = 5
-        total += 105 - (race.position * 5);
-      }
-    }
-    return total;
-  }
-
   async simulateGradual(delayMs: number = 2000) {
-    console.log(`\n🎮 Starting CLASSIC score submissions...`);
+    const modeLabel = this.isGpMode ? 'GP' : 'CLASSIC';
+    console.log(`\nStarting ${modeLabel} score submissions (${this.raceCount} races)...`);
     console.log(`   ${this.users.length} fake users, ${delayMs}ms delay\n`);
 
     if (this.users.length === 0) {
-      console.log('⚠️  No fake users waiting to submit scores!');
+      console.log('No fake users waiting to submit scores!');
       return;
     }
 
-    // Shuffle users for randomness
-    const shuffledUsers = [...this.users].sort(() => Math.random() - 0.5);
+    const allScores = this.generateAllScores(this.users);
 
-    // Assign DNF status: 4 users each for DNF race 1, 2, 3
-    const dnfAssignments: (number | null)[] = [];
+    // Shuffle submission order
+    const shuffled = [...allScores].sort(() => Math.random() - 0.5);
 
-    // First 4: DNF race 1
-    for (let i = 0; i < 4 && i < shuffledUsers.length; i++) {
-      dnfAssignments.push(1);
-    }
-    // Next 4: DNF race 2
-    for (let i = 4; i < 8 && i < shuffledUsers.length; i++) {
-      dnfAssignments.push(2);
-    }
-    // Next 4: DNF race 3
-    for (let i = 8; i < 12 && i < shuffledUsers.length; i++) {
-      dnfAssignments.push(3);
-    }
-    // Rest: no DNF
-    for (let i = 12; i < shuffledUsers.length; i++) {
-      dnfAssignments.push(null);
-    }
-
-    // Shuffle again to mix DNF and non-DNF submissions
-    const combined = shuffledUsers.map((user, i) => ({ user, dnfRace: dnfAssignments[i] }));
-    combined.sort(() => Math.random() - 0.5);
-
-    for (let i = 0; i < combined.length; i++) {
-      const { user, dnfRace } = combined[i];
-      await this.submitScore(user, dnfRace);
-
-      if (i < combined.length - 1) {
+    for (let i = 0; i < shuffled.length; i++) {
+      await this.submitScore(shuffled[i]);
+      if (i < shuffled.length - 1) {
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     }
   }
 
   async simulateBurst() {
-    console.log(`\n💥 Starting BURST score submissions...`);
+    console.log(`\nStarting BURST score submissions...`);
     console.log(`   ${this.users.length} fake users simultaneously\n`);
 
     if (this.users.length === 0) {
-      console.log('⚠️  No fake users waiting to submit scores!');
+      console.log('No fake users waiting to submit scores!');
       return;
     }
 
-    // Shuffle and assign DNF
-    const shuffledUsers = [...this.users].sort(() => Math.random() - 0.5);
-    const dnfAssignments: (number | null)[] = [];
-
-    for (let i = 0; i < 4 && i < shuffledUsers.length; i++) dnfAssignments.push(1);
-    for (let i = 4; i < 8 && i < shuffledUsers.length; i++) dnfAssignments.push(2);
-    for (let i = 8; i < 12 && i < shuffledUsers.length; i++) dnfAssignments.push(3);
-    for (let i = 12; i < shuffledUsers.length; i++) dnfAssignments.push(null);
-
-    const promises = shuffledUsers.map((user, i) => this.submitScore(user, dnfAssignments[i]));
+    const allScores = this.generateAllScores(this.users);
+    const promises = allScores.map(score => this.submitScore(score));
     await Promise.allSettled(promises);
   }
 
@@ -336,8 +420,8 @@ class ScoreSimulator {
       useLatest = false,
     } = options;
 
-    console.log('🏁 F-ZERO 99 CLASSIC Score Simulator');
-    console.log('=====================================\n');
+    console.log('F-ZERO 99 Score Simulator');
+    console.log('========================\n');
 
     try {
       if (useLatest) {
@@ -359,18 +443,18 @@ class ScoreSimulator {
       }
 
       // Display final rankings
-      console.log('\n📊 Final Rankings:');
-      console.log('==================');
+      console.log('\nFinal Rankings:');
+      console.log('==============');
       await this.displayFinalRankings();
 
       const cat = this.game.match.season?.event?.category?.toLowerCase() || category;
       const seasonNum = this.game.match.season?.seasonNumber || season;
       const matchNum = this.game.match.matchNumber || match;
 
-      console.log(`\n✅ Simulation complete!`);
-      console.log(`📊 View at: http://localhost:3001/matches/${cat}/${seasonNum}/${matchNum}`);
+      console.log(`\nSimulation complete!`);
+      console.log(`View at: http://localhost:3001/matches/${cat}/${seasonNum}/${matchNum}`);
     } catch (error) {
-      console.error('❌ Error:', error);
+      console.error('Error:', error);
     } finally {
       await prisma.$disconnect();
     }
@@ -402,16 +486,11 @@ class ScoreSimulator {
       const aElim = a.eliminatedAtRace;
       const bElim = b.eliminatedAtRace;
 
-      // Both finished - sort by score
       if (aElim === null && bElim === null) {
         return (b.totalScore ?? 0) - (a.totalScore ?? 0);
       }
-
-      // One finished, one DNF
       if (aElim === null) return -1;
       if (bElim === null) return 1;
-
-      // Both DNF - later race = higher rank
       return bElim - aElim;
     });
 
@@ -425,14 +504,11 @@ class ScoreSimulator {
       const score = p.totalScore ?? 0;
       const elim = p.eliminatedAtRace;
 
-      // Determine if this is a tie
       let isTie = false;
       if (prevElim !== undefined) {
         if (elim !== null && elim === prevElim) {
-          // Same DNF race = tied
           isTie = true;
         } else if (elim === null && prevElim === null && score === prevScore) {
-          // Both finished with same score = tied
           isTie = true;
         }
       }
@@ -447,7 +523,7 @@ class ScoreSimulator {
       prevElim = elim;
       prevScore = score;
 
-      const scoreText = elim !== null ? `DNF race ${elim}` : `${score} pts`;
+      const scoreText = elim !== null ? `DNF R${elim}` : `${score} pts`;
       const assistText = p.assistEnabled ? ' [ASSIST]' : '';
 
       console.log(

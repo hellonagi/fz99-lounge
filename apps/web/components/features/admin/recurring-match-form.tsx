@@ -24,8 +24,14 @@ import { useTranslations } from 'next-intl';
 import { Plus, Trash2 } from 'lucide-react';
 
 export const CATEGORY_OPTIONS = [
+  { value: 'GP', label: 'GP' },
   { value: 'CLASSIC', label: 'Classic Mode' },
   { value: 'TEAM_CLASSIC', label: 'Team Classic Mode' },
+];
+
+export const IN_GAME_MODE_OPTIONS_GP = [
+  { value: 'GRAND_PRIX', label: 'Grand Prix' },
+  { value: 'MIRROR_GRAND_PRIX', label: 'Mirror Grand Prix' },
 ];
 
 export const LEAGUE_OPTIONS = [
@@ -116,7 +122,35 @@ export function RecurringMatchForm({ form, isEditMode }: RecurringMatchFormProps
         />
       )}
 
-      {/* League Type - GP only */}
+      {/* In-Game Mode - GP only */}
+      {isGPMode && (
+        <FormField
+          control={form.control}
+          name="inGameMode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t('inGameMode')}</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('selectMode')} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {IN_GAME_MODE_OPTIONS_GP.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {/* League Type - GP only (optional - null means random) */}
       {isGPMode && (
         <FormField
           control={form.control}
