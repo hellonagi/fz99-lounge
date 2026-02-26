@@ -98,6 +98,7 @@ interface MatchDetailsTableProps {
   isTeamClassic?: boolean;
   teamScores?: TeamScore[];
   teamColors?: Record<number, string>; // teamIndex -> colorHex
+  mvpUserIds?: Set<number>;
 }
 
 export function MatchDetailsTable({
@@ -109,6 +110,7 @@ export function MatchDetailsTable({
   isTeamClassic = false,
   teamScores = [],
   teamColors = {},
+  mvpUserIds = new Set(),
 }: MatchDetailsTableProps) {
   const t = useTranslations('screenshotStatus');
 
@@ -287,6 +289,9 @@ export function MatchDetailsTable({
           </Link>
           {participant.assistEnabled && !isClassicMode && !isGpMode && (
             <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
+          )}
+          {isTeamClassic && mvpUserIds.has(participant.user.id) && (
+            <span className="text-xs text-amber-400 font-bold" title="MVP">MVP</span>
           )}
         </span>
       </td>

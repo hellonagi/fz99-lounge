@@ -170,7 +170,7 @@ sim-clean-scores-latest:
 
 # 全試合のスコア・スクショをクリア
 sim-clean-scores:
-	docker exec fz99-lounge-db psql -U dbuser -d fz99_lounge -c 'DELETE FROM race_results; DELETE FROM game_screenshot_submissions; DELETE FROM result_screenshots; DELETE FROM game_participants;'
+	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge < test/sql/clean-scores-all.sql
 
 # =============================================================================
 # Load Tests

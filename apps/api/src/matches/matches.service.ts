@@ -482,7 +482,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         },
       },
       orderBy: { actualStart: 'desc' },
-      take: limit,
+      take: limit * 3,
       include: {
         season: {
           include: {
@@ -545,7 +545,8 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         (match) =>
           (match.winner !== null || match.winningTeam !== null) &&
           match.playerCount > 1,
-      );
+      )
+      .slice(0, limit);
   }
 
   async getResultsPaginated(

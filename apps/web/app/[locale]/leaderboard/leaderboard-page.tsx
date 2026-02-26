@@ -39,16 +39,23 @@ interface LeaderboardEntry {
 
 type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
-const TAB_TO_CATEGORY: Record<string, Category> = {
+const MODE_TO_CATEGORY: Record<string, Category> = {
   gp: 'GP',
-  team_gp: 'TEAM_GP',
+  'team-gp': 'TEAM_GP',
   classic: 'CLASSIC',
-  team_classic: 'TEAM_CLASSIC',
+  'team-classic': 'TEAM_CLASSIC',
 };
 
-function getCategoryFromTab(tab: string | null): Category {
-  if (tab && TAB_TO_CATEGORY[tab]) {
-    return TAB_TO_CATEGORY[tab];
+const CATEGORY_TO_MODE: Record<Category, string> = {
+  GP: 'gp',
+  TEAM_GP: 'team-gp',
+  CLASSIC: 'classic',
+  TEAM_CLASSIC: 'team-classic',
+};
+
+function getCategoryFromMode(mode: string | null): Category {
+  if (mode && MODE_TO_CATEGORY[mode]) {
+    return MODE_TO_CATEGORY[mode];
   }
   return 'GP';
 }
@@ -60,7 +67,7 @@ export default function LeaderboardPage() {
   const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Category>(() =>
-    getCategoryFromTab(searchParams.get('tab'))
+    getCategoryFromMode(searchParams.get('mode'))
   );
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
@@ -130,7 +137,7 @@ export default function LeaderboardPage() {
       const category = value.toUpperCase() as Category;
       setActiveCategory(category);
       const params = new URLSearchParams(searchParams.toString());
-      params.set('tab', value);
+      params.set('mode', CATEGORY_TO_MODE[category] || value);
       router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     },
     [router, pathname, searchParams],

@@ -266,4 +266,7 @@ export interface UserRatingHistoryEntry {
   displayRating: number;
   internalRating: number;
   createdAt: string;
+  // GP/TEAM_GP modes only
+  position?: number;
+  totalParticipants?: number;
 }

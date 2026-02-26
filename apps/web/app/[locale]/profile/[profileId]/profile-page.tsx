@@ -34,12 +34,22 @@ export default function ProfilePage() {
   const [teamClassicSelectedSeason, setTeamClassicSelectedSeason] = useState<number | undefined>(undefined);
   const [teamClassicUser, setTeamClassicUser] = useState<UserProfileResponse | null>(null);
 
+  // GP independent state
+  const [gpSeasons, setGpSeasons] = useState<UserSeason[]>([]);
+  const [gpSelectedSeason, setGpSelectedSeason] = useState<number | undefined>(undefined);
+  const [gpUser, setGpUser] = useState<UserProfileResponse | null>(null);
+
   // TEAM_GP independent state
   const [teamGpSeasons, setTeamGpSeasons] = useState<UserSeason[]>([]);
   const [teamGpSelectedSeason, setTeamGpSelectedSeason] = useState<number | undefined>(undefined);
   const [teamGpUser, setTeamGpUser] = useState<UserProfileResponse | null>(null);
 
-  // Get initial season from URL query parameter
+  // Tab state (must be before any early returns)
+  const [activeTab, setActiveTab] = useState<string>(
+    (searchParams.get('mode') || '').toUpperCase().replace('-', '_')
+  );
+
+  // Get initial values from URL query parameters
   const initialSeasonFromUrl = searchParams.get('season');
 
   const fetchUserWithSeason = useCallback(async (profileId: number, seasonNumber?: number, category?: ProfileCategory) => {
@@ -62,16 +72,19 @@ export default function ProfilePage() {
         const userData: UserProfileResponse = initialResponse.data;
         setUser(userData);
 
-        // Fetch CLASSIC, TEAM_CLASSIC and TEAM_GP seasons in parallel
-        const [classicSeasonsRes, teamClassicSeasonsRes, teamGpSeasonsRes] = await Promise.all([
+        // Fetch all category seasons in parallel
+        const [classicSeasonsRes, gpSeasonsRes, teamClassicSeasonsRes, teamGpSeasonsRes] = await Promise.all([
           usersApi.getUserSeasons(userData.id, 'CLASSIC'),
+          usersApi.getUserSeasons(userData.id, 'GP'),
           usersApi.getUserSeasons(userData.id, 'TEAM_CLASSIC'),
           usersApi.getUserSeasons(userData.id, 'TEAM_GP'),
         ]);
         const userSeasons: UserSeason[] = classicSeasonsRes.data;
+        const gpSeasonsData: UserSeason[] = gpSeasonsRes.data;
         const tcSeasons: UserSeason[] = teamClassicSeasonsRes.data;
         const tgpSeasons: UserSeason[] = teamGpSeasonsRes.data;
         setSeasons(userSeasons);
+        setGpSeasons(gpSeasonsData);
         setTeamClassicSeasons(tcSeasons);
         setTeamGpSeasons(tgpSeasons);
 
@@ -95,6 +108,18 @@ export default function ProfilePage() {
           if (activeSeasonNumber !== targetSeasonNumber) {
             const seasonUserData = await fetchUserWithSeason(profileId, targetSeasonNumber, 'CLASSIC');
             setUser(seasonUserData);
+          }
+        }
+
+        // Determine GP default season
+        if (gpSeasonsData.length > 0) {
+          const gpActiveSeason = gpSeasonsData.find(s => s.isActive);
+          const gpDefaultSeason = gpActiveSeason?.seasonNumber ?? gpSeasonsData[0]?.seasonNumber;
+          setGpSelectedSeason(gpDefaultSeason);
+
+          if (gpDefaultSeason !== undefined) {
+            const gpUserData = await fetchUserWithSeason(profileId, gpDefaultSeason, 'GP');
+            setGpUser(gpUserData);
           }
         }
 
@@ -159,6 +184,20 @@ export default function ProfilePage() {
     }
   };
 
+  const handleGpSeasonChange = async (newSeasonNumber: number) => {
+    if (!user || newSeasonNumber === gpSelectedSeason) return;
+
+    setGpSelectedSeason(newSeasonNumber);
+
+    try {
+      const profileId = parseInt(params.profileId as string, 10);
+      const updatedUser = await fetchUserWithSeason(profileId, newSeasonNumber, 'GP');
+      setGpUser(updatedUser);
+    } catch (err) {
+      console.error('Failed to fetch gp season data:', err);
+    }
+  };
+
   const handleTeamClassicSeasonChange = async (newSeasonNumber: number) => {
     if (!user || newSeasonNumber === teamClassicSelectedSeason) return;
 
@@ -218,6 +257,12 @@ export default function ProfilePage() {
     );
   };
 
+  const getGpSeasonStats = (): UserSeasonStats | undefined => {
+    return gpUser?.seasonStats?.find(
+      (stats) => stats.season?.event?.category === 'GP'
+    );
+  };
+
   const getTeamClassicSeasonStats = (): UserSeasonStats | undefined => {
     return teamClassicUser?.seasonStats?.find(
       (stats) => stats.season?.event?.category === 'TEAM_CLASSIC'
@@ -230,32 +275,96 @@ export default function ProfilePage() {
     );
   };
 
-  // For header, show CLASSIC stats
+  // Resolve active tab (set default if not yet determined)
+  const validTabs: ProfileCategory[] = ['GP', 'TEAM_GP', 'CLASSIC', 'TEAM_CLASSIC'];
+  const defaultTab = gpSeasons.length > 0 ? 'GP' : 'CLASSIC';
+  const resolvedTab = (activeTab && validTabs.includes(activeTab as ProfileCategory))
+    ? activeTab
+    : defaultTab;
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const newParams = new URLSearchParams(searchParams.toString());
+    newParams.set('mode', value.toLowerCase().replace('_', '-'));
+    router.replace(`?${newParams.toString()}`, { scroll: false });
+  };
+
+  // For header, show stats for each category
   const headerStats = getSeasonStatsForCategory('CLASSIC');
   const headerTeamClassicStats = getTeamClassicSeasonStats();
+  const headerGpStats = getGpSeasonStats();
+  const headerTeamGpStats = getTeamGpSeasonStats();
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header with user info */}
-      <ProfileHeader user={user} seasonStats={headerStats} teamClassicStats={headerTeamClassicStats} />
+      <ProfileHeader
+        user={user}
+        seasonStats={headerStats}
+        teamClassicStats={headerTeamClassicStats}
+        gpStats={headerGpStats}
+        teamGpStats={headerTeamGpStats}
+      />
 
       {/* Category Tabs */}
       <Card className="bg-gray-800/50 border-gray-700 mt-6">
-        <Tabs defaultValue="CLASSIC">
+        <Tabs value={resolvedTab} onValueChange={handleTabChange}>
           <div className="p-4 pb-0">
             <TabsList>
-              <TabsTrigger value="CLASSIC">CLASSIC</TabsTrigger>
-              {teamClassicSeasons.length > 0 && (
-                <TabsTrigger value="TEAM_CLASSIC">TEAM CLASSIC</TabsTrigger>
+              {gpSeasons.length > 0 && (
+                <TabsTrigger value="GP">GP</TabsTrigger>
               )}
               {teamGpSeasons.length > 0 && (
                 <TabsTrigger value="TEAM_GP">TEAM GP</TabsTrigger>
               )}
+              <TabsTrigger value="CLASSIC">CLASSIC</TabsTrigger>
+              {teamClassicSeasons.length > 0 && (
+                <TabsTrigger value="TEAM_CLASSIC">TEAM CLASSIC</TabsTrigger>
+              )}
             </TabsList>
           </div>
 
+          {gpSeasons.length > 0 && (
+            <TabsContent value="GP" className="p-0">
+              {gpSeasons.length > 0 && (
+                <div className="flex justify-end mb-4">
+                  <ProfileSeasonSelect
+                    seasons={gpSeasons}
+                    selectedSeasonNumber={gpSelectedSeason}
+                    onSeasonChange={handleGpSeasonChange}
+                  />
+                </div>
+              )}
+              <CategoryContent
+                userId={user.id}
+                category="GP"
+                stats={getGpSeasonStats()}
+                seasonNumber={gpSelectedSeason}
+              />
+            </TabsContent>
+          )}
+
+          {teamGpSeasons.length > 0 && (
+            <TabsContent value="TEAM_GP" className="p-0">
+              {teamGpSeasons.length > 0 && (
+                <div className="flex justify-end mb-4">
+                  <ProfileSeasonSelect
+                    seasons={teamGpSeasons}
+                    selectedSeasonNumber={teamGpSelectedSeason}
+                    onSeasonChange={handleTeamGpSeasonChange}
+                  />
+                </div>
+              )}
+              <CategoryContent
+                userId={user.id}
+                category="TEAM_GP"
+                stats={getTeamGpSeasonStats()}
+                seasonNumber={teamGpSelectedSeason}
+              />
+            </TabsContent>
+          )}
+
           <TabsContent value="CLASSIC" className="p-0">
-            {/* Season Selector */}
             {seasons.length > 0 && (
               <div className="flex justify-end mb-4">
                 <ProfileSeasonSelect
@@ -275,7 +384,6 @@ export default function ProfilePage() {
 
           {teamClassicSeasons.length > 0 && (
             <TabsContent value="TEAM_CLASSIC" className="p-0">
-              {/* Season Selector */}
               {teamClassicSeasons.length > 0 && (
                 <div className="flex justify-end mb-4">
                   <ProfileSeasonSelect
@@ -290,27 +398,6 @@ export default function ProfilePage() {
                 category="TEAM_CLASSIC"
                 stats={getTeamClassicSeasonStats()}
                 seasonNumber={teamClassicSelectedSeason}
-              />
-            </TabsContent>
-          )}
-
-          {teamGpSeasons.length > 0 && (
-            <TabsContent value="TEAM_GP" className="p-0">
-              {/* Season Selector */}
-              {teamGpSeasons.length > 0 && (
-                <div className="flex justify-end mb-4">
-                  <ProfileSeasonSelect
-                    seasons={teamGpSeasons}
-                    selectedSeasonNumber={teamGpSelectedSeason}
-                    onSeasonChange={handleTeamGpSeasonChange}
-                  />
-                </div>
-              )}
-              <CategoryContent
-                userId={user.id}
-                category="TEAM_GP"
-                stats={getTeamGpSeasonStats()}
-                seasonNumber={teamGpSelectedSeason}
               />
             </TabsContent>
           )}

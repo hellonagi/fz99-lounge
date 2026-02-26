@@ -69,6 +69,7 @@ export class UsersService {
             survivedCount: true,
             assistUsedCount: true,
             mvpCount: true,
+            bestPosition: true,
             season: {
               select: {
                 seasonNumber: true,
@@ -92,12 +93,30 @@ export class UsersService {
     // Calculate leaderboard rank for each season
     const seasonStatsWithRank = await Promise.all(
       user.seasonStats.map(async (stats) => {
-        const rank = await this.prisma.userSeasonStats.count({
-          where: {
-            seasonId: stats.seasonId,
-            displayRating: { gt: stats.displayRating },
-          },
-        });
+        const eventCategory = stats.season.event.category;
+        const isGpMode = eventCategory === 'GP' || eventCategory === 'TEAM_GP';
+
+        let rank: number;
+        if (isGpMode) {
+          // GP/TEAM_GP: rank by bestPosition (lower is better), nulls last
+          rank = await this.prisma.userSeasonStats.count({
+            where: {
+              seasonId: stats.seasonId,
+              totalMatches: { gte: 1 },
+              bestPosition: stats.bestPosition != null
+                ? { lt: stats.bestPosition }
+                : undefined,
+            },
+          });
+        } else {
+          // CLASSIC/TEAM_CLASSIC: rank by displayRating (higher is better)
+          rank = await this.prisma.userSeasonStats.count({
+            where: {
+              seasonId: stats.seasonId,
+              displayRating: { gt: stats.displayRating },
+            },
+          });
+        }
         return {
           ...stats,
           leaderboardRank: rank + 1,
@@ -529,13 +548,67 @@ export class UsersService {
       },
     });
 
-    return ratingHistories.map((rh) => ({
-      matchId: rh.matchId,
-      matchNumber: rh.match.matchNumber,
-      displayRating: rh.displayRating,
-      internalRating: rh.internalRating,
-      createdAt: rh.createdAt,
-    }));
+    // GP/TEAM_GP: also fetch position data for each match
+    const isGpMode = category === 'GP' || category === 'TEAM_GP';
+    let positionByMatchId = new Map<number, { position: number; totalParticipants: number }>();
+
+    if (isGpMode && ratingHistories.length > 0) {
+      const rhMatchIds = ratingHistories.map((rh) => rh.matchId);
+      const gameParticipants = await this.prisma.gameParticipant.findMany({
+        where: {
+          userId,
+          game: { match: { id: { in: rhMatchIds } } },
+        },
+        select: {
+          teamIndex: true,
+          game: {
+            select: {
+              teamScores: true,
+              match: { select: { id: true } },
+              participants: {
+                where: { status: { not: 'UNSUBMITTED' } },
+                select: { userId: true, totalScore: true },
+                orderBy: { totalScore: 'desc' },
+              },
+            },
+          },
+        },
+      });
+
+      for (const gp of gameParticipants) {
+        const matchId = gp.game.match.id;
+        let position: number;
+        let totalParticipants: number;
+
+        if (category === 'TEAM_GP' && gp.teamIndex !== null && gp.game.teamScores) {
+          const teamScores = gp.game.teamScores as { teamIndex: number; totalScore: number }[];
+          const sorted = [...teamScores].sort((a, b) => b.totalScore - a.totalScore);
+          position = sorted.findIndex((t) => t.teamIndex === gp.teamIndex) + 1 || teamScores.length;
+          totalParticipants = teamScores.length;
+        } else {
+          const sorted = [...gp.game.participants].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
+          position = sorted.findIndex((p) => p.userId === userId) + 1 || gp.game.participants.length;
+          totalParticipants = gp.game.participants.length;
+        }
+
+        positionByMatchId.set(matchId, { position, totalParticipants });
+      }
+    }
+
+    return ratingHistories.map((rh) => {
+      const positionData = positionByMatchId.get(rh.matchId);
+      return {
+        matchId: rh.matchId,
+        matchNumber: rh.match.matchNumber,
+        displayRating: rh.displayRating,
+        internalRating: rh.internalRating,
+        createdAt: rh.createdAt,
+        ...(isGpMode && positionData && {
+          position: positionData.position,
+          totalParticipants: positionData.totalParticipants,
+        }),
+      };
+    });
   }
 
   /**
@@ -752,9 +825,14 @@ export class UsersService {
       }
     }
 
-    // 全トラック情報を取得（CLASSICはID 201-220）
+    // 全トラック情報を取得（CLASSICはID 201-220、GP/TEAM_GPはID 1-120）
+    const trackFilter = (category === 'CLASSIC' || category === 'TEAM_CLASSIC')
+      ? { id: { gte: 201, lte: 220 } }
+      : (category === 'GP' || category === 'TEAM_GP')
+        ? { id: { gte: 1, lte: 120 } }
+        : undefined;
     const allTracks = await this.prisma.track.findMany({
-      where: (category === 'CLASSIC' || category === 'TEAM_CLASSIC') ? { id: { gte: 201, lte: 220 } } : undefined,
+      where: trackFilter,
       select: {
         id: true,
         name: true,

@@ -464,6 +464,24 @@ export default function GamePage() {
   const isParticipant = user && game.match.participants.some(p => p.user.id === user.id);
   const isExcluded = user && game.participants?.some(p => p.user.id === user.id && p.isExcluded);
 
+  // Calculate MVP user IDs (per-team highest scorer) for FINALIZED team matches
+  const mvpUserIds = new Set<number>();
+  if (isTeamMode && game.match.status === 'FINALIZED' && game.participants) {
+    const teamGroups = new Map<number, { userId: number; score: number }[]>();
+    for (const p of game.participants) {
+      if (p.teamIndex == null || p.isExcluded) continue;
+      const group = teamGroups.get(p.teamIndex) || [];
+      group.push({ userId: p.user.id, score: p.totalScore ?? 0 });
+      teamGroups.set(p.teamIndex, group);
+    }
+    for (const [, members] of teamGroups) {
+      const maxScore = Math.max(...members.map(m => m.score));
+      if (maxScore > 0) {
+        members.filter(m => m.score === maxScore).forEach(m => mvpUserIds.add(m.userId));
+      }
+    }
+  }
+
   return (
     <div className="overflow-x-hidden">
       <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
@@ -504,25 +522,9 @@ export default function GamePage() {
             />
           )}
 
+          {/* Calculate MVP user IDs (per-team highest scorer) for FINALIZED team matches */}
           {/* Team Info (always show when team data available) */}
           {isTeamMode && teamData && teamData.teams.length > 0 && (() => {
-            // Calculate MVP user IDs (per-team highest scorer) for FINALIZED matches
-            const mvpUserIds = new Set<number>();
-            if (game.match.status === 'FINALIZED' && game.participants) {
-              const teamGroups = new Map<number, { userId: number; score: number }[]>();
-              for (const p of game.participants) {
-                if (p.teamIndex == null || p.isExcluded) continue;
-                const group = teamGroups.get(p.teamIndex) || [];
-                group.push({ userId: p.user.id, score: p.totalScore ?? 0 });
-                teamGroups.set(p.teamIndex, group);
-              }
-              for (const [, members] of teamGroups) {
-                const maxScore = Math.max(...members.map(m => m.score));
-                if (maxScore > 0) {
-                  members.filter(m => m.score === maxScore).forEach(m => mvpUserIds.add(m.userId));
-                }
-              }
-            }
             return (
             <TeamAnnouncementPhase
               teams={teamData.teams.map((team) => ({
@@ -618,6 +620,7 @@ export default function GamePage() {
                     acc[team.teamIndex] = team.colorHex;
                     return acc;
                   }, {} as Record<number, string>)}
+                  mvpUserIds={mvpUserIds}
                 />
               </TabsContent>
 
