@@ -194,6 +194,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         {
           delay: 0, // 即時実行
           removeOnComplete: true,
+          removeOnFail: { count: 10 },
           attempts: 3,
           jobId: `start-match-${match.id}`,
         },
@@ -329,6 +330,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         {
           delay,
           removeOnComplete: true,
+          removeOnFail: { count: 10 },
           attempts: 3,
           backoff: {
             type: 'exponential',
@@ -349,6 +351,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           {
             delay: reminderDelay,
             removeOnComplete: true,
+            removeOnFail: { count: 10 },
             jobId: `reminder-${match.id}`,
           },
         );
@@ -839,7 +842,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         await this.matchQueue.add(
           'delete-discord-channel',
           { gameId: game.id },
-          { delay: 24 * 60 * 60 * 1000 }, // 24 hours
+          { delay: 24 * 60 * 60 * 1000, removeOnComplete: true, removeOnFail: { count: 10 } }, // 24 hours
         );
       } catch (error) {
         this.logger.error(`Failed to handle Discord channel for game ${game.id}:`, error);

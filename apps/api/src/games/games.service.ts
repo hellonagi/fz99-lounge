@@ -845,7 +845,7 @@ export class GamesService {
       await this.matchQueue.add(
         'delete-discord-channel',
         { gameId: game.id },
-        { delay: 24 * 60 * 60 * 1000 }, // 24 hours
+        { delay: 24 * 60 * 60 * 1000, removeOnComplete: true, removeOnFail: { count: 10 } }, // 24 hours
       );
     } catch (error) {
       this.logger.error('Failed to schedule Discord channel deletion:', error);

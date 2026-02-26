@@ -426,6 +426,7 @@ export class MatchesProcessor {
       {
         delay: TEAM_ANNOUNCEMENT_DELAY_MS,
         removeOnComplete: true,
+        removeOnFail: { count: 10 },
         jobId: `reveal-passcode-${game.id}`,
       },
     );
