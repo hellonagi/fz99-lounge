@@ -208,6 +208,12 @@ export default function RulesPage() {
               title={t('ranking.title')}
               icon={<Trophy className="w-5 h-5" />}
             >
+              <div className="space-y-2 mb-6">
+                <h4 className="text-white font-medium">{t('ranking.ratingTitle')}</h4>
+                <p className="text-gray-300 text-sm">{t('ranking.ratingDesc1')}</p>
+                <p className="text-gray-300 text-sm">{t('ranking.ratingDesc2')}</p>
+              </div>
+
               <div className="space-y-4">
                 {ranks.map((rank) => (
                   <div key={rank.name} className="bg-gray-900/50 rounded-lg p-3">
