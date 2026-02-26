@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface SeasonStatsProps {
   stats?: UserSeasonStats;
-  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 }
 
 export function SeasonStats({ stats, category }: SeasonStatsProps) {
@@ -80,8 +80,8 @@ export function SeasonStats({ stats, category }: SeasonStatsProps) {
           <span className="font-bold text-white">{stats.seasonHighRating}</span>
         </div>
 
-        {/* MVP Count (TEAM_CLASSIC only) */}
-        {category === 'TEAM_CLASSIC' && (
+        {/* MVP Count (team modes) */}
+        {(category === 'TEAM_CLASSIC' || category === 'TEAM_GP') && (
           <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
             <span className="text-sm text-gray-400">MVP</span>
             <span className="font-bold text-amber-400">{stats.mvpCount ?? 0}</span>

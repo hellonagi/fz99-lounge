@@ -38,7 +38,7 @@ const CLASSIC_MAX_POSITIONS = [20, 16, 12];
 function buildRaceSchema(raceCount: number, maxPosition: number, isGpMode: boolean) {
   const fields: Record<string, z.ZodTypeAny> = {
     machine: z.string().min(1, 'Machine is required'),
-    assistEnabled: z.boolean(),
+    ...(!isGpMode && { assistEnabled: z.boolean() }),
   };
 
   for (let i = 1; i <= raceCount; i++) {
@@ -123,7 +123,7 @@ export function ScoreSubmissionForm({
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
 
   const isModeratorMode = !!participants && participants.length > 0;
-  const isGpMode = mode.toLowerCase() === 'gp';
+  const isGpMode = mode.toLowerCase() === 'gp' || mode.toLowerCase() === 'team_gp';
   const raceCount = isGpMode ? 5 : 3;
   const maxPosition = isGpMode ? 99 : 20;
 
@@ -143,7 +143,7 @@ export function ScoreSubmissionForm({
   const defaultValues = useMemo(() => {
     const vals: Record<string, string | boolean> = {
       machine: '',
-      assistEnabled: false,
+      ...(!isGpMode && { assistEnabled: false }),
     };
     for (let i = 1; i <= raceCount; i++) {
       vals[`race${i}Position`] = '';
@@ -263,7 +263,7 @@ export function ScoreSubmissionForm({
 
       await gamesApi.submitScore(mode, season, game, {
         machine: data.machine as string,
-        assistEnabled: data.assistEnabled as boolean,
+        ...(!isGpMode && { assistEnabled: data.assistEnabled as boolean }),
         raceResults,
         targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
@@ -468,25 +468,27 @@ export function ScoreSubmissionForm({
             })()}
           </div>
 
-          {/* Steer Assist */}
-          <FormField
-            control={form.control}
-            name="assistEnabled"
-            render={({ field }) => (
-              <FormItem className="flex items-center gap-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value as boolean}
-                    onCheckedChange={field.onChange}
-                    id="steerAssist"
-                  />
-                </FormControl>
-                <Label htmlFor="steerAssist" className="text-gray-300 cursor-pointer">
-                  {t('steerAssist')}
-                </Label>
-              </FormItem>
-            )}
-          />
+          {/* Steer Assist (Classic only) */}
+          {!isGpMode && (
+            <FormField
+              control={form.control}
+              name="assistEnabled"
+              render={({ field }) => (
+                <FormItem className="flex items-center gap-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value as boolean}
+                      onCheckedChange={field.onChange}
+                      id="steerAssist"
+                    />
+                  </FormControl>
+                  <Label htmlFor="steerAssist" className="text-gray-300 cursor-pointer">
+                    {t('steerAssist')}
+                  </Label>
+                </FormItem>
+              )}
+            />
+          )}
 
           {/* Error Message */}
           {(form.formState.errors as any).root && (

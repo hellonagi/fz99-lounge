@@ -17,6 +17,7 @@ const CATEGORY_CARD_COLORS: Record<string, { border: string; bg: string }> = {
   GP: { border: 'border-amber-500/50', bg: 'bg-amber-500/10' },
   CLASSIC: { border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
   TEAM_CLASSIC: { border: 'border-rose-500/50', bg: 'bg-rose-500/10' },
+  TEAM_GP: { border: 'border-cyan-500/50', bg: 'bg-cyan-500/10' },
   TOURNAMENT: { border: 'border-amber-500/50', bg: 'bg-amber-500/10' },
 };
 
@@ -124,7 +125,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-semibold text-white shrink-0">
-              {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category}
+              {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category === 'TEAM_GP' ? 'TEAM GP' : category}
             </span>
             {showTime && (
               <span className="text-xs font-medium text-gray-400">{timeStr}</span>
@@ -143,7 +144,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
     <div className={cn('rounded-lg border p-2.5 transition-colors', cardColors)}>
       <div className="flex items-center justify-between gap-1.5 mb-2">
         <span className="text-[11px] font-semibold text-white shrink-0 leading-none">
-          {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category}
+          {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category === 'TEAM_GP' ? 'TEAM GP' : category}
         </span>
         <span className="text-[11px] text-gray-500 tabular-nums leading-none">
           {match.participants.length}/{match.maxPlayers}

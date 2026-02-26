@@ -50,8 +50,9 @@ export class SubmitScoreDto {
   @IsEnum(F99Machine)
   machine: F99Machine; // F-ZERO 99のマシン
 
+  @IsOptional()
   @IsBoolean()
-  assistEnabled: boolean; // アシスト使用フラグ
+  assistEnabled?: boolean; // アシスト使用フラグ（CLASSICモード用、GPモードでは不要）
 
   @IsOptional()
   @IsNumber()

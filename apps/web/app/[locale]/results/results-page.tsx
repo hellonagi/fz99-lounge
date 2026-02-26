@@ -38,7 +38,7 @@ interface PaginationMeta {
   hasPrev: boolean;
 }
 
-type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
 export default function ResultsPage() {
   const t = useTranslations('results');
@@ -172,6 +172,7 @@ export default function ResultsPage() {
               <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
+              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="gp" className="p-4">
@@ -183,6 +184,10 @@ export default function ResultsPage() {
             </TabsContent>
 
             <TabsContent value="team_classic" className="p-4">
+              {renderContent()}
+            </TabsContent>
+
+            <TabsContent value="team_gp" className="p-4">
               {renderContent()}
             </TabsContent>
           </Tabs>

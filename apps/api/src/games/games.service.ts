@@ -101,7 +101,7 @@ export class GamesService {
       ? game.match?.participants?.some((p) => p.userId === userId) || false
       : false;
 
-    // Check if user is excluded (TEAM_CLASSIC)
+    // Check if user is excluded (TEAM_CLASSIC / TEAM_GP)
     const isExcluded = userId
       ? game.participants.some((p) => p.userId === userId && p.isExcluded)
       : false;
@@ -250,7 +250,7 @@ export class GamesService {
       ? game.match?.participants?.some((p) => p.userId === userId) || false
       : false;
 
-    // Check if user is excluded (TEAM_CLASSIC)
+    // Check if user is excluded (TEAM_CLASSIC / TEAM_GP)
     const isExcluded = userId
       ? game.participants.some((p) => p.userId === userId && p.isExcluded)
       : false;
@@ -294,7 +294,7 @@ export class GamesService {
     }
 
     const eventCategory = game.match.season.event.category;
-    const isGpMode = eventCategory === EventCategory.GP;
+    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
 
     // Check match status - allow score submission during IN_PROGRESS
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
@@ -309,7 +309,7 @@ export class GamesService {
       throw new BadRequestException('User is not a participant in this match');
     }
 
-    // Block excluded players from submitting scores (TEAM_CLASSIC)
+    // Block excluded players from submitting scores (TEAM_CLASSIC / TEAM_GP)
     if (game.participants.length && game.participants[0].isExcluded) {
       throw new BadRequestException('Excluded players cannot submit scores');
     }
@@ -581,7 +581,7 @@ export class GamesService {
       throw new NotFoundException('Participant not found in this game');
     }
 
-    const isGpMode = eventCategory === EventCategory.GP;
+    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
     const maxRaces = isGpMode ? 5 : 3;
 
     // Per-race max positions and elimination thresholds
@@ -807,8 +807,8 @@ export class GamesService {
     }
 
     // Calculate ratings based on event category
-    if (eventCategory === EventCategory.TEAM_CLASSIC) {
-      // For TEAM_CLASSIC: Calculate team scores first, then ratings
+    if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
+      // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
       await this.calculateAndSaveTeamScores(game.id);
       await this.teamClassicRatingService.calculateAndUpdateRatings(game.id);
     } else if (eventCategory === EventCategory.GP) {
@@ -1130,7 +1130,7 @@ export class GamesService {
       }>;
     },
   ): { teamLabel: string; score: number; rank: number; members: string[] }[] | undefined {
-    if (category !== 'TEAM_CLASSIC' || !game.teamScores) {
+    if ((category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') || !game.teamScores) {
       return undefined;
     }
 
@@ -1166,7 +1166,7 @@ export class GamesService {
       }>;
     },
   ): Array<{ label: string; score: number; rank: number; members: string[] }> | undefined {
-    if (category !== 'TEAM_CLASSIC' || !game.teamScores) {
+    if ((category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') || !game.teamScores) {
       return undefined;
     }
 
@@ -1753,7 +1753,7 @@ export class GamesService {
   }
 
   /**
-   * Calculate and save team scores for a TEAM_CLASSIC game
+   * Calculate and save team scores for a TEAM_CLASSIC / TEAM_GP game
    * Called before rating calculation
    */
   private async calculateAndSaveTeamScores(gameId: number): Promise<void> {

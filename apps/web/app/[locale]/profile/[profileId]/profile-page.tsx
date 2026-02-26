@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import type { UserProfileResponse, UserSeasonStats, Season } from '@/types';
 
-type ProfileCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+type ProfileCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
 interface UserSeason extends Season {
   event?: { category: string };
@@ -33,6 +33,11 @@ export default function ProfilePage() {
   const [teamClassicSeasons, setTeamClassicSeasons] = useState<UserSeason[]>([]);
   const [teamClassicSelectedSeason, setTeamClassicSelectedSeason] = useState<number | undefined>(undefined);
   const [teamClassicUser, setTeamClassicUser] = useState<UserProfileResponse | null>(null);
+
+  // TEAM_GP independent state
+  const [teamGpSeasons, setTeamGpSeasons] = useState<UserSeason[]>([]);
+  const [teamGpSelectedSeason, setTeamGpSelectedSeason] = useState<number | undefined>(undefined);
+  const [teamGpUser, setTeamGpUser] = useState<UserProfileResponse | null>(null);
 
   // Get initial season from URL query parameter
   const initialSeasonFromUrl = searchParams.get('season');
@@ -57,15 +62,18 @@ export default function ProfilePage() {
         const userData: UserProfileResponse = initialResponse.data;
         setUser(userData);
 
-        // Fetch CLASSIC and TEAM_CLASSIC seasons in parallel
-        const [classicSeasonsRes, teamClassicSeasonsRes] = await Promise.all([
+        // Fetch CLASSIC, TEAM_CLASSIC and TEAM_GP seasons in parallel
+        const [classicSeasonsRes, teamClassicSeasonsRes, teamGpSeasonsRes] = await Promise.all([
           usersApi.getUserSeasons(userData.id, 'CLASSIC'),
           usersApi.getUserSeasons(userData.id, 'TEAM_CLASSIC'),
+          usersApi.getUserSeasons(userData.id, 'TEAM_GP'),
         ]);
         const userSeasons: UserSeason[] = classicSeasonsRes.data;
         const tcSeasons: UserSeason[] = teamClassicSeasonsRes.data;
+        const tgpSeasons: UserSeason[] = teamGpSeasonsRes.data;
         setSeasons(userSeasons);
         setTeamClassicSeasons(tcSeasons);
+        setTeamGpSeasons(tgpSeasons);
 
         // Determine which CLASSIC season to select
         let targetSeasonNumber: number | undefined;
@@ -100,6 +108,19 @@ export default function ProfilePage() {
           if (tcDefaultSeason !== undefined) {
             const tcUserData = await fetchUserWithSeason(profileId, tcDefaultSeason, 'TEAM_CLASSIC');
             setTeamClassicUser(tcUserData);
+          }
+        }
+
+        // Determine TEAM_GP default season
+        if (tgpSeasons.length > 0) {
+          const tgpActiveSeason = tgpSeasons.find(s => s.isActive);
+          const tgpDefaultSeason = tgpActiveSeason?.seasonNumber ?? tgpSeasons[0]?.seasonNumber;
+          setTeamGpSelectedSeason(tgpDefaultSeason);
+
+          // Fetch TEAM_GP user data
+          if (tgpDefaultSeason !== undefined) {
+            const tgpUserData = await fetchUserWithSeason(profileId, tgpDefaultSeason, 'TEAM_GP');
+            setTeamGpUser(tgpUserData);
           }
         }
       } catch (err: unknown) {
@@ -152,6 +173,20 @@ export default function ProfilePage() {
     }
   };
 
+  const handleTeamGpSeasonChange = async (newSeasonNumber: number) => {
+    if (!user || newSeasonNumber === teamGpSelectedSeason) return;
+
+    setTeamGpSelectedSeason(newSeasonNumber);
+
+    try {
+      const profileId = parseInt(params.profileId as string, 10);
+      const updatedUser = await fetchUserWithSeason(profileId, newSeasonNumber, 'TEAM_GP');
+      setTeamGpUser(updatedUser);
+    } catch (err) {
+      console.error('Failed to fetch team gp season data:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -189,6 +224,12 @@ export default function ProfilePage() {
     );
   };
 
+  const getTeamGpSeasonStats = (): UserSeasonStats | undefined => {
+    return teamGpUser?.seasonStats?.find(
+      (stats) => stats.season?.event?.category === 'TEAM_GP'
+    );
+  };
+
   // For header, show CLASSIC stats
   const headerStats = getSeasonStatsForCategory('CLASSIC');
   const headerTeamClassicStats = getTeamClassicSeasonStats();
@@ -206,6 +247,9 @@ export default function ProfilePage() {
               <TabsTrigger value="CLASSIC">CLASSIC</TabsTrigger>
               {teamClassicSeasons.length > 0 && (
                 <TabsTrigger value="TEAM_CLASSIC">TEAM CLASSIC</TabsTrigger>
+              )}
+              {teamGpSeasons.length > 0 && (
+                <TabsTrigger value="TEAM_GP">TEAM GP</TabsTrigger>
               )}
             </TabsList>
           </div>
@@ -246,6 +290,27 @@ export default function ProfilePage() {
                 category="TEAM_CLASSIC"
                 stats={getTeamClassicSeasonStats()}
                 seasonNumber={teamClassicSelectedSeason}
+              />
+            </TabsContent>
+          )}
+
+          {teamGpSeasons.length > 0 && (
+            <TabsContent value="TEAM_GP" className="p-0">
+              {/* Season Selector */}
+              {teamGpSeasons.length > 0 && (
+                <div className="flex justify-end mb-4">
+                  <ProfileSeasonSelect
+                    seasons={teamGpSeasons}
+                    selectedSeasonNumber={teamGpSelectedSeason}
+                    onSeasonChange={handleTeamGpSeasonChange}
+                  />
+                </div>
+              )}
+              <CategoryContent
+                userId={user.id}
+                category="TEAM_GP"
+                stats={getTeamGpSeasonStats()}
+                seasonNumber={teamGpSelectedSeason}
               />
             </TabsContent>
           )}

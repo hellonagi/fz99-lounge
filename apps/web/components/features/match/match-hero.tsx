@@ -84,6 +84,17 @@ export function MatchHero({
                   </div>
                   <h1 className="text-4xl md:text-6xl font-black text-white mb-3">TEAM CLASSIC</h1>
                 </>
+              ) : category?.toLowerCase() === 'team_gp' ? (
+                <>
+                  <div className="mb-3">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+                      SEASON{season} #{match}
+                    </span>
+                  </div>
+                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">
+                    {league ? `TEAM ${league} GRAND PRIX` : 'TEAM GRAND PRIX'}
+                  </h1>
+                </>
               ) : category?.toLowerCase() === 'gp' ? (
                 <>
                   <div className="mb-3">

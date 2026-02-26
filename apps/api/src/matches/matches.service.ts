@@ -21,6 +21,7 @@ export const CATEGORY_SPAN_MINUTES: Partial<Record<EventCategory, number>> = {
   GP: 30,
   CLASSIC: 15,
   TEAM_CLASSIC: 15,
+  TEAM_GP: 30,
 };
 
 @Injectable()
@@ -607,7 +608,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
               select: { participants: { where: { isExcluded: false } } },
             },
             participants: {
-              ...(category === 'TEAM_CLASSIC'
+              ...((category === 'TEAM_CLASSIC' || category === 'TEAM_GP')
                 ? {
                     where: { isExcluded: false, totalScore: { not: null } },
                     orderBy: { totalScore: 'desc' as const },

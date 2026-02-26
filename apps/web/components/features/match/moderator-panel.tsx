@@ -117,7 +117,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const [uploadingFinalScore1, setUploadingFinalScore1] = useState(false);
   const [uploadingFinalScore2, setUploadingFinalScore2] = useState(false);
 
-  const isGpMode = category.toUpperCase() === 'GP';
+  const isGpMode = category.toUpperCase() === 'GP' || category.toUpperCase() === 'TEAM_GP';
   const raceCount = isGpMode ? 5 : 3;
 
   // Track selection state (CLASSIC only)

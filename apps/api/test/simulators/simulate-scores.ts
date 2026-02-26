@@ -93,7 +93,11 @@ class ScoreSimulator {
     this.game = game;
 
     // Get fake users who are match participants but haven't submitted game scores yet
-    const submittedUserIds = new Set(game.participants.map((p: any) => p.userId));
+    const submittedUserIds = new Set(
+      game.participants
+        .filter((p: any) => p.status !== 'UNSUBMITTED')
+        .map((p: any) => p.userId),
+    );
     this.users = game.match.participants
       .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId))
       .map((p: any) => ({
@@ -112,10 +116,11 @@ class ScoreSimulator {
     const category = game.match.season?.event?.category || 'Unknown';
     const seasonNumber = game.match.season?.seasonNumber || 'Unknown';
     const matchNumber = game.match.matchNumber || 'Unknown';
+    const submittedCount = game.participants.filter((p: any) => p.status !== 'UNSUBMITTED').length;
 
     console.log(`Found IN_PROGRESS game: ${category} Season ${seasonNumber}, Match ${matchNumber}`);
     console.log(`   Game ID: ${game.id}`);
-    console.log(`   ${game.participants.length} scores submitted, ${this.users.length} fake users waiting`);
+    console.log(`   ${submittedCount} scores submitted, ${this.users.length} fake users waiting`);
 
     return game;
   }
@@ -167,7 +172,11 @@ class ScoreSimulator {
     this.game = game;
 
     // Get fake users who are match participants but haven't submitted game scores yet
-    const submittedUserIds = new Set(game.participants.map((p: any) => p.userId));
+    const submittedUserIds = new Set(
+      game.participants
+        .filter((p: any) => p.status !== 'UNSUBMITTED')
+        .map((p: any) => p.userId),
+    );
     this.users = game.match.participants
       .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId))
       .map((p: any) => ({
@@ -183,14 +192,16 @@ class ScoreSimulator {
         ),
       }));
 
-    console.log(`Found game with ${game.participants.length} scores submitted`);
+    const submittedCount = game.participants.filter((p: any) => p.status !== 'UNSUBMITTED').length;
+    console.log(`Found game with ${submittedCount} scores submitted`);
     console.log(`   ${this.users.length} fake users waiting to submit scores`);
 
     return game;
   }
 
   private get isGpMode(): boolean {
-    return this.game?.match?.season?.event?.category === 'GP';
+    const category = this.game?.match?.season?.event?.category;
+    return category === 'GP' || category === 'TEAM_GP';
   }
 
   private get raceCount(): number {
@@ -206,16 +217,41 @@ class ScoreSimulator {
   }
 
   /**
+   * Collect positions already taken by submitted players for each race.
+   */
+  async collectTakenPositions(): Promise<Map<number, Set<number>>> {
+    const takenPositions = new Map<number, Set<number>>();
+    if (!this.game) return takenPositions;
+
+    const raceResults = await prisma.raceResult.findMany({
+      where: {
+        gameParticipant: { gameId: this.game.id },
+      },
+      select: { raceNumber: true, position: true },
+    });
+
+    for (const r of raceResults) {
+      if (r.position === null) continue;
+      if (!takenPositions.has(r.raceNumber)) {
+        takenPositions.set(r.raceNumber, new Set());
+      }
+      takenPositions.get(r.raceNumber)!.add(r.position);
+    }
+
+    return takenPositions;
+  }
+
+  /**
    * Generate all user scores at once with unique positions per race.
    * Simulates a realistic race: each race has unique positions,
    * eliminated players don't participate in subsequent races.
    */
-  generateAllScores(users: any[]): UserScore[] {
+  generateAllScores(users: any[], takenPositions?: Map<number, Set<number>>): UserScore[] {
     const userCount = users.length;
     const scores: UserScore[] = users.map(user => ({
       user,
       machine: faker.helpers.arrayElement(F99_MACHINES),
-      assistEnabled: faker.datatype.boolean(0.15),
+      assistEnabled: this.isGpMode ? false : faker.datatype.boolean(0.15),
       raceResults: [],
     }));
 
@@ -226,57 +262,32 @@ class ScoreSimulator {
       const raceMax = this.raceMaxPositions[race - 1];
       const threshold = this.eliminationThresholds[race - 1];
 
+      // Get positions already taken by submitted players for this race
+      const taken = takenPositions?.get(race) ?? new Set<number>();
+
+      // All alive players get unique positions from 1..raceMax (excluding taken)
+      const aliveCount = aliveIndices.length;
+      const positions = this.pickUniquePositions(aliveCount, 1, raceMax, taken);
+
       // Shuffle alive users for random position assignment
       const shuffled = [...aliveIndices].sort(() => Math.random() - 0.5);
-      const aliveCount = shuffled.length;
-
-      // Determine how many get eliminated this race
-      let eliminatedCount = 0;
-      if (threshold !== null) {
-        // Eliminate ~20-30% of alive users, but respect position limits
-        const maxSurvivors = threshold - 1; // positions 1..threshold-1 survive
-        eliminatedCount = Math.max(0, aliveCount - maxSurvivors);
-        if (eliminatedCount === 0 && aliveCount > maxSurvivors) {
-          eliminatedCount = aliveCount - maxSurvivors;
-        }
-        // Add some randomness: eliminate a few extra sometimes
-        const extraElim = Math.floor(Math.random() * Math.min(3, maxSurvivors));
-        eliminatedCount = Math.min(aliveCount - 1, eliminatedCount + extraElim);
-      }
-
-      const survivorCount = aliveCount - eliminatedCount;
-
-      // Assign unique positions to survivors (1..maxSurvival)
-      const maxSurvival = threshold ? threshold - 1 : raceMax;
-      const survivorPositions = this.pickUniquePositions(survivorCount, 1, maxSurvival);
-
-      // Assign unique positions to eliminated (threshold..raceMax)
-      let eliminatedPositions: number[] = [];
-      if (eliminatedCount > 0 && threshold !== null) {
-        eliminatedPositions = this.pickUniquePositions(eliminatedCount, threshold, raceMax);
-      }
 
       const eliminatedIndices = new Set<number>();
 
-      // Assign survivor positions
-      for (let i = 0; i < survivorCount; i++) {
+      for (let i = 0; i < aliveCount; i++) {
         const userIdx = shuffled[i];
-        scores[userIdx].raceResults.push({
-          raceNumber: race,
-          position: survivorPositions[i],
-          isEliminated: false,
-        });
-      }
+        const position = positions[i];
+        const isEliminated = threshold !== null && position >= threshold;
 
-      // Assign eliminated positions
-      for (let i = 0; i < eliminatedCount; i++) {
-        const userIdx = shuffled[survivorCount + i];
         scores[userIdx].raceResults.push({
           raceNumber: race,
-          position: eliminatedPositions[i],
-          isEliminated: true,
+          position,
+          isEliminated,
         });
-        eliminatedIndices.add(userIdx);
+
+        if (isEliminated) {
+          eliminatedIndices.add(userIdx);
+        }
       }
 
       // Update alive list
@@ -287,29 +298,29 @@ class ScoreSimulator {
   }
 
   /**
-   * Pick `count` unique random positions from [min..max].
-   * If count > range, some positions will be duplicated (same-rank tie).
+   * Pick `count` unique random positions from [min..max], excluding already taken positions.
+   * If count > available range, some positions will be duplicated (same-rank tie).
    */
-  private pickUniquePositions(count: number, min: number, max: number): number[] {
-    const range = max - min + 1;
-    if (count <= range) {
+  private pickUniquePositions(count: number, min: number, max: number, taken: Set<number> = new Set()): number[] {
+    // Build available positions excluding taken ones
+    const available = Array.from({ length: max - min + 1 }, (_, i) => min + i)
+      .filter(p => !taken.has(p));
+
+    if (count <= available.length) {
       // Enough unique positions available
-      const all = Array.from({ length: range }, (_, i) => min + i);
       // Fisher-Yates shuffle
-      for (let i = all.length - 1; i > 0; i--) {
+      for (let i = available.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [all[i], all[j]] = [all[j], all[i]];
+        [available[i], available[j]] = [available[j], available[i]];
       }
-      return all.slice(0, count);
+      return available.slice(0, count);
     } else {
-      // More users than positions - allow ties (use all positions, then repeat)
+      // More users than available positions - allow ties
       const positions: number[] = [];
-      const all = Array.from({ length: range }, (_, i) => min + i);
-      // First fill with all unique positions
-      positions.push(...all);
-      // Remaining users get random positions (ties)
-      for (let i = range; i < count; i++) {
-        positions.push(faker.number.int({ min, max }));
+      positions.push(...available);
+      // Remaining users get random available positions (ties)
+      for (let i = available.length; i < count; i++) {
+        positions.push(available[Math.floor(Math.random() * available.length)]);
       }
       // Shuffle the whole thing
       for (let i = positions.length - 1; i > 0; i--) {
@@ -343,9 +354,12 @@ class ScoreSimulator {
     const match = this.game.match.matchNumber;
 
     try {
+      const body = this.isGpMode
+        ? { machine, raceResults }
+        : { machine, assistEnabled, raceResults };
       const response = await axios.post(
         `${API_URL}/api/games/${category}/${season}/${match}/score`,
-        { machine, assistEnabled, raceResults },
+        body,
         {
           headers: {
             Authorization: `Bearer ${user.token}`,
@@ -384,7 +398,8 @@ class ScoreSimulator {
       return;
     }
 
-    const allScores = this.generateAllScores(this.users);
+    const takenPositions = await this.collectTakenPositions();
+    const allScores = this.generateAllScores(this.users, takenPositions);
 
     // Shuffle submission order
     const shuffled = [...allScores].sort(() => Math.random() - 0.5);
@@ -406,7 +421,8 @@ class ScoreSimulator {
       return;
     }
 
-    const allScores = this.generateAllScores(this.users);
+    const takenPositions = await this.collectTakenPositions();
+    const allScores = this.generateAllScores(this.users, takenPositions);
     const promises = allScores.map(score => this.submitScore(score));
     await Promise.allSettled(promises);
   }

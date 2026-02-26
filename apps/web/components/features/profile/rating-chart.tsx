@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RatingChartProps {
   userId: number;
-  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
   seasonNumber?: number;
 }
 

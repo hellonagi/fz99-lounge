@@ -81,6 +81,8 @@ export function RecurringMatchesListCard({
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/50">
                       {schedule.eventCategory === 'TEAM_CLASSIC'
                         ? 'TEAM CLASSIC'
+                        : schedule.eventCategory === 'TEAM_GP'
+                        ? 'TEAM GP'
                         : schedule.eventCategory}
                     </span>
                   </div>

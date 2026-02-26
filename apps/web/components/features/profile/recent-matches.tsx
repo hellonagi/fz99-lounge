@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface RecentMatchesProps {
   userId: number;
-  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
   initialLimit?: number;
   seasonNumber?: number;
 }

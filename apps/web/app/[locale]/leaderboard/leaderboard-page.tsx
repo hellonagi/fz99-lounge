@@ -36,7 +36,7 @@ interface LeaderboardEntry {
   };
 }
 
-type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
 export default function LeaderboardPage() {
   const t = useTranslations('leaderboard');
@@ -134,6 +134,7 @@ export default function LeaderboardPage() {
               <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
+              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="gp">
@@ -172,6 +173,21 @@ export default function LeaderboardPage() {
               ) : (
                 <>
                   <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="TEAM_CLASSIC" />
+                  <LeaderboardPagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="team_gp">
+              {error ? (
+                <div className="text-center text-red-400 py-8">{error}</div>
+              ) : (
+                <>
+                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="TEAM_GP" />
                   <LeaderboardPagination
                     currentPage={page}
                     totalPages={totalPages}

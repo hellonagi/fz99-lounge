@@ -156,6 +156,7 @@
     "gp": "GP",
     "classic": "Classic",
     "teamClassic": "Team Classic",
+    "teamGp": "Team GP",
     "failedToLoadSeasons": "シーズンの読み込みに失敗しました",
     "failedToLoadLeaderboard": "リーダーボードの読み込みに失敗しました"
   },
@@ -165,6 +166,7 @@
     "gp": "GP",
     "classic": "クラシック",
     "teamClassic": "チームクラシック",
+    "teamGp": "チームGP",
     "failedToLoadSeasons": "シーズンの読み込みに失敗しました",
     "failedToLoadResults": "結果の読み込みに失敗しました"
   },

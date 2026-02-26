@@ -165,8 +165,8 @@ export class AdminController {
 
     // Validate category
     const categoryUpper = category.toUpperCase();
-    if (categoryUpper !== 'CLASSIC' && categoryUpper !== 'TEAM_CLASSIC') {
-      throw new BadRequestException('Only CLASSIC and TEAM_CLASSIC categories are supported');
+    if (categoryUpper !== 'CLASSIC' && categoryUpper !== 'TEAM_CLASSIC' && categoryUpper !== 'TEAM_GP') {
+      throw new BadRequestException('Only CLASSIC, TEAM_CLASSIC, and TEAM_GP categories are supported');
     }
     const eventCategory = categoryUpper as EventCategory;
 
@@ -182,8 +182,8 @@ export class AdminController {
       throw new BadRequestException('Invalid match number');
     }
 
-    const result = eventCategory === EventCategory.TEAM_CLASSIC
-      ? await this.teamClassicRatingService.recalculateFromMatch(seasonNumber, fromMatchNumber)
+    const result = (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP)
+      ? await this.teamClassicRatingService.recalculateFromMatch(seasonNumber, fromMatchNumber, eventCategory)
       : await this.classicRatingService.recalculateFromMatch(eventCategory, seasonNumber, fromMatchNumber);
 
     return {

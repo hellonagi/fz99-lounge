@@ -285,7 +285,7 @@ export function MatchDetailsTable({
           >
             {participant.user.displayName || `User#${participant.user.id}`}
           </Link>
-          {participant.assistEnabled && !isClassicMode && (
+          {participant.assistEnabled && !isClassicMode && !isGpMode && (
             <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
           )}
         </span>

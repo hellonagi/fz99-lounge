@@ -42,12 +42,12 @@ interface LeaderboardTableProps {
   data: LeaderboardEntry[];
   loading?: boolean;
   startRank?: number;
-  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 }
 
 export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLASSIC' }: LeaderboardTableProps) {
-  const isTeamClassic = category === 'TEAM_CLASSIC';
-  const isGpMode = category === 'GP';
+  const isTeamClassic = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
+  const isGpMode = category === 'GP' || category === 'TEAM_GP';
   if (loading) {
     return (
       <div className="text-center text-gray-400 py-8">

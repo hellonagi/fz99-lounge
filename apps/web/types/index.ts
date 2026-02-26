@@ -35,7 +35,7 @@ export type ModeratorPermission =
   | 'RECALCULATE_RATING';
 
 // Event Category - システムレベルの分類（レート計算ロジック）
-export type EventCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
+export type EventCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' | 'TOURNAMENT';
 
 // In-Game Mode - F-Zero 99 のゲーム内モード
 export type InGameMode =

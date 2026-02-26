@@ -137,9 +137,11 @@ export class RecurringMatchService {
     // If rules changed, clean up old WAITING matches and regenerate
     const updated = await this.findById(id);
     if (dto.rules) {
+      const savedParticipants = await this.collectParticipantsForSchedule(id);
       await this.deleteWaitingMatchesForSchedule(id);
       if (updated.isEnabled) {
         await this.generateMatchesForSchedule(updated, 7, userId ?? updated.createdBy ?? undefined);
+        await this.restoreParticipantsForSchedule(id, savedParticipants);
       }
     } else if (updated.isEnabled) {
       // No rule change, just fill in any missing matches
@@ -174,6 +176,62 @@ export class RecurringMatchService {
     await this.deleteWaitingMatchesForSchedule(id);
     await this.prisma.recurringMatch.delete({ where: { id } });
     return { message: 'Recurring match schedule deleted' };
+  }
+
+  /**
+   * Collect participants from WAITING matches before deletion, keyed by scheduledStart ISO string.
+   */
+  private async collectParticipantsForSchedule(
+    scheduleId: number,
+  ): Promise<Map<string, { userId: number; joinedAt: Date }[]>> {
+    const matches = await this.prisma.match.findMany({
+      where: { recurringMatchId: scheduleId, status: 'WAITING' },
+      select: {
+        scheduledStart: true,
+        participants: { select: { userId: true, joinedAt: true } },
+      },
+    });
+    const map = new Map<string, { userId: number; joinedAt: Date }[]>();
+    for (const m of matches) {
+      if (m.participants.length > 0) {
+        map.set(m.scheduledStart.toISOString(), m.participants);
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Restore saved participants to newly generated matches that share the same scheduledStart.
+   */
+  private async restoreParticipantsForSchedule(
+    scheduleId: number,
+    savedParticipants: Map<string, { userId: number; joinedAt: Date }[]>,
+  ): Promise<void> {
+    if (savedParticipants.size === 0) return;
+
+    const newMatches = await this.prisma.match.findMany({
+      where: { recurringMatchId: scheduleId, status: 'WAITING' },
+      select: { id: true, scheduledStart: true, maxPlayers: true },
+    });
+
+    for (const match of newMatches) {
+      const key = match.scheduledStart.toISOString();
+      const participants = savedParticipants.get(key);
+      if (!participants) continue;
+
+      const toRestore = participants.slice(0, match.maxPlayers);
+      await this.prisma.matchParticipant.createMany({
+        data: toRestore.map((p) => ({
+          matchId: match.id,
+          userId: p.userId,
+          joinedAt: p.joinedAt,
+        })),
+      });
+
+      this.logger.log(
+        `Restored ${toRestore.length} participants to match #${match.id}`,
+      );
+    }
   }
 
   /**
@@ -382,7 +440,7 @@ export class RecurringMatchService {
           let inGameMode = schedule.inGameMode;
           let leagueType = schedule.leagueType ?? undefined;
 
-          if (schedule.eventCategory === EventCategory.GP && !schedule.leagueType) {
+          if ((schedule.eventCategory === EventCategory.GP || schedule.eventCategory === EventCategory.TEAM_GP) && !schedule.leagueType) {
             const allGpLeagues: League[] = [
               League.KNIGHT, League.QUEEN, League.KING, League.ACE,
               League.MIRROR_KNIGHT, League.MIRROR_QUEEN, League.MIRROR_KING, League.MIRROR_ACE,

@@ -36,6 +36,7 @@ enum EventCategory {
   GP // 常設シーズン、GPレート計算
   CLASSIC // 常設シーズン、CLASSICレート計算
   TEAM_CLASSIC // チーム戦、TEAM_CLASSICレート計算
+  TEAM_GP // チームGP戦、GPフォーマット + チームメカニクス
   TOURNAMENT // 大会、レート計算なし
 }
 

@@ -157,6 +157,7 @@
     "gp": "GP",
     "classic": "Classic",
     "teamClassic": "Team Classic",
+    "teamGp": "Team GP",
     "failedToLoadSeasons": "Failed to load seasons",
     "failedToLoadLeaderboard": "Failed to load leaderboard"
   },
@@ -166,6 +167,7 @@
     "gp": "GP",
     "classic": "Classic",
     "teamClassic": "Team Classic",
+    "teamGp": "Team GP",
     "failedToLoadSeasons": "Failed to load seasons",
     "failedToLoadResults": "Failed to load results"
   },

@@ -46,6 +46,7 @@ const CATEGORY_OPTIONS = [
   { value: 'GP', label: 'GP' },
   { value: 'CLASSIC', label: 'Classic Mode' },
   { value: 'TEAM_CLASSIC', label: 'Team Classic Mode' },
+  { value: 'TEAM_GP', label: 'Team GP Mode' },
 ];
 
 // GPモード用のIn-Game Mode選択肢
@@ -55,7 +56,7 @@ const IN_GAME_MODE_OPTIONS_GP = [
 ];
 
 const matchSchema = z.object({
-  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC']),
+  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC', 'TEAM_GP']),
   seasonId: z.string().min(1, 'Season is required'),
   inGameMode: z.string().min(1, 'In-game mode is required'),
   leagueType: z.string().optional(), // GPモードのみ必須
@@ -112,7 +113,7 @@ export function CreateMatchCard() {
 
   const { isSubmitting } = form.formState;
   const category = form.watch('category');
-  const isGPMode = category === 'GP';
+  const isGPMode = category === 'GP' || category === 'TEAM_GP';
   const inGameMode = form.watch('inGameMode');
   // GPモードのみIn-Game ModeとLeague Typeを選択可能
   // CLASSICモードはCLASSIC_MINI_PRIX固定、リーグ選択なし
@@ -146,6 +147,11 @@ export function CreateMatchCard() {
   // Update defaults when category changes
   useEffect(() => {
     if (category === 'GP') {
+      form.setValue('inGameMode', 'GRAND_PRIX');
+      form.setValue('leagueType', 'KNIGHT');
+      form.setValue('minPlayers', '30');
+      form.setValue('maxPlayers', '99');
+    } else if (category === 'TEAM_GP') {
       form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('leagueType', 'KNIGHT');
       form.setValue('minPlayers', '30');

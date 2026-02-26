@@ -10,7 +10,7 @@ export class UsersService {
   /**
    * Get seasons that a user has participated in (with at least 1 match)
    */
-  async getUserSeasons(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') {
+  async getUserSeasons(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
     return this.prisma.season.findMany({
       where: {
         userSeasonStats: { some: { userId, totalMatches: { gte: 1 } } },
@@ -21,7 +21,7 @@ export class UsersService {
     });
   }
 
-  async findById(id: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') {
+  async findById(id: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -312,7 +312,7 @@ export class UsersService {
     userId: number,
     limit = 20,
     offset = 0,
-    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
+    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
     seasonNumber?: number,
   ) {
     // ユーザーが参加したゲームを取得（FINALIZEDのみ）
@@ -439,7 +439,7 @@ export class UsersService {
       let totalParticipants: number;
 
       // TEAM_CLASSIC: compute team rank from teamScores
-      if (gameCategory === 'TEAM_CLASSIC' && gp.teamIndex !== null && gp.game.teamScores) {
+      if ((gameCategory === 'TEAM_CLASSIC' || gameCategory === 'TEAM_GP') && gp.teamIndex !== null && gp.game.teamScores) {
         const teamScores = gp.game.teamScores as { teamIndex: number; totalScore: number }[];
         const sorted = [...teamScores].sort((a, b) => b.totalScore - a.totalScore);
         position = sorted.findIndex((t) => t.teamIndex === gp.teamIndex) + 1 || teamScores.length;
@@ -476,7 +476,7 @@ export class UsersService {
   /**
    * ユーザーのレーティング履歴を取得
    */
-  async getUserRatingHistory(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC', seasonNumber?: number) {
+  async getUserRatingHistory(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP', seasonNumber?: number) {
     // シーズンを特定（seasonNumber指定があればそのシーズン、なければアクティブシーズン）
     let targetSeason: { id: number } | null = null;
 
@@ -543,7 +543,7 @@ export class UsersService {
    * GP/CLASSIC両方ともUserSeasonStatsから取得
    */
   async getLeaderboard(
-    eventCategory: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC',
+    eventCategory: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
     seasonNumber?: number,
     page = 1,
     limit = 20,
@@ -616,9 +616,9 @@ export class UsersService {
       totalMatches: { gte: 1 },
     };
 
-    // GP: sort by bestPosition asc (lower=better, null=last), then 1st/2nd/3rd desc
+    // GP/TEAM_GP: sort by bestPosition asc (lower=better, null=last), then 1st/2nd/3rd desc
     // CLASSIC/TEAM_CLASSIC: sort by displayRating desc
-    const orderBy = eventCategory === 'GP'
+    const orderBy = (eventCategory === 'GP' || eventCategory === 'TEAM_GP')
       ? [
           { bestPosition: { sort: 'asc' as const, nulls: 'last' as const } },
           { firstPlaces: 'desc' as const },
@@ -669,7 +669,7 @@ export class UsersService {
   /**
    * ユーザーのトラック別成績を取得
    */
-  async getUserTrackStats(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC') {
+  async getUserTrackStats(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
     // カテゴリに対応するアクティブシーズンを取得
     const activeSeason = await this.prisma.season.findFirst({
       where: {
@@ -813,7 +813,7 @@ export class UsersService {
           scheduledStart: { gte: weekStart, lte: weekEnd },
           season: {
             event: {
-              category: { in: [EventCategory.CLASSIC, EventCategory.TEAM_CLASSIC] },
+              category: { in: [EventCategory.CLASSIC, EventCategory.TEAM_CLASSIC, EventCategory.TEAM_GP] },
             },
           },
         },
@@ -844,7 +844,7 @@ export class UsersService {
 
     for (const game of games) {
       const category = game.match.season.event.category;
-      const isTeam = category === 'TEAM_CLASSIC';
+      const isTeam = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
 
       // 最高得点（1試合での最高スコア）
       for (const p of game.participants) {

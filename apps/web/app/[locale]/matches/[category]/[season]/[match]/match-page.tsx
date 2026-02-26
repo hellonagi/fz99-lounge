@@ -137,18 +137,21 @@ export default function GamePage() {
       const gameData = response.data;
       setGame(gameData);
 
-      // Initialize team data from API response for TEAM_CLASSIC
-      if (category.toUpperCase() === 'TEAM_CLASSIC' && gameData.teamConfig && gameData.participants) {
+      // Initialize team data from API response for team modes
+      const upperCategory = category.toUpperCase();
+      if ((upperCategory === 'TEAM_CLASSIC' || upperCategory === 'TEAM_GP') && gameData.teamConfig && gameData.participants) {
         // Grid position -> color name/hex (F-ZERO 99 color selection screen)
         const GRID_COLORS: Record<number, string> = {
           1: 'Blue', 2: 'Green', 3: 'Yellow', 4: 'Pink',
-          5: 'Red', 6: 'Purple', 8: 'Cyan', 10: 'Orange',
-          14: 'White', 15: 'Black',
+          5: 'Red', 6: 'Purple', 7: 'Rose', 8: 'Cyan',
+          9: 'Lime', 10: 'Orange', 11: 'Navy', 12: 'Magenta',
+          13: 'Teal', 14: 'White', 15: 'Black', 16: 'Gold',
         };
         const GRID_COLOR_HEX: Record<number, string> = {
           1: '#3B82F6', 2: '#22C55E', 3: '#EAB308', 4: '#EC4899',
-          5: '#EF4444', 6: '#A855F7', 8: '#06B6D4', 10: '#F97316',
-          14: '#F5F5F5', 15: '#6B7280',
+          5: '#EF4444', 6: '#A855F7', 7: '#F43F5E', 8: '#06B6D4',
+          9: '#84CC16', 10: '#F97316', 11: '#1E3A5F', 12: '#D946EF',
+          13: '#14B8A6', 14: '#F5F5F5', 15: '#6B7280', 16: '#F59E0B',
         };
 
         // Available grid positions (same as API TEAM_GRID_NUMBERS)
@@ -436,8 +439,10 @@ export default function GamePage() {
     onPasscodeRevealed: handlePasscodeRevealedEvent,
   });
 
-  // Check if this is a TEAM_CLASSIC match
+  // Check if this is a team mode match
   const isTeamClassic = category.toUpperCase() === 'TEAM_CLASSIC';
+  const isTeamGp = category.toUpperCase() === 'TEAM_GP';
+  const isTeamMode = isTeamClassic || isTeamGp;
 
   if (loading) {
     return (
@@ -491,7 +496,7 @@ export default function GamePage() {
               splitVoteStatus={splitVoteStatus}
               onSplitVote={fetchSplitVoteStatus}
               inGameMode={game.inGameMode}
-              passcodeRevealTime={isTeamClassic ? game.passcodeRevealTime : undefined}
+              passcodeRevealTime={isTeamMode ? game.passcodeRevealTime : undefined}
               onPasscodeRevealed={() => {
                 setPasscodeRevealed(true);
                 fetchGame();
@@ -499,8 +504,8 @@ export default function GamePage() {
             />
           )}
 
-          {/* TEAM_CLASSIC: Team Info (always show when team data available) */}
-          {isTeamClassic && teamData && teamData.teams.length > 0 && (() => {
+          {/* Team Info (always show when team data available) */}
+          {isTeamMode && teamData && teamData.teams.length > 0 && (() => {
             // Calculate MVP user IDs (per-team highest scorer) for FINALIZED matches
             const mvpUserIds = new Set<number>();
             if (game.match.status === 'FINALIZED' && game.participants) {
@@ -606,8 +611,8 @@ export default function GamePage() {
                   matchParticipants={game.match.participants}
                   screenshots={screenshots}
                   isClassicMode={category.toLowerCase() === 'classic' || isTeamClassic}
-                  isGpMode={category.toLowerCase() === 'gp'}
-                  isTeamClassic={isTeamClassic}
+                  isGpMode={category.toLowerCase() === 'gp' || isTeamGp}
+                  isTeamClassic={isTeamMode}
                   teamScores={game.teamScores ?? undefined}
                   teamColors={teamData?.teams.reduce((acc, team) => {
                     acc[team.teamIndex] = team.colorHex;

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface TrackStatsProps {
   userId: number;
-  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 }
 
 interface TrackStat {

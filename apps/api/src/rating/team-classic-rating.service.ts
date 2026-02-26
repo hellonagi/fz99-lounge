@@ -228,11 +228,12 @@ export class TeamClassicRatingService {
     }
 
     const eventCategory = game.match.season.event.category;
-    if (eventCategory !== EventCategory.TEAM_CLASSIC) {
+    if (eventCategory !== EventCategory.TEAM_CLASSIC && eventCategory !== EventCategory.TEAM_GP) {
       throw new Error(
-        `Game ${gameId} is not TEAM_CLASSIC mode (got ${eventCategory})`,
+        `Game ${gameId} is not a team mode (got ${eventCategory})`,
       );
     }
+    const isTeamGp = eventCategory === EventCategory.TEAM_GP;
 
     if (!game.teamScores) {
       throw new Error(`Game ${gameId} has no team scores`);
@@ -355,12 +356,32 @@ export class TeamClassicRatingService {
         seasonId,
       );
 
+      // For TEAM_GP: fetch existing bestPosition values to compare (team rank as position)
+      let existingBestPositions: Map<number, number | null> | undefined;
+      if (isTeamGp) {
+        const existingStats = await tx.userSeasonStats.findMany({
+          where: { userId: { in: userIds }, seasonId },
+          select: { userId: true, bestPosition: true },
+        });
+        existingBestPositions = new Map(existingStats.map((s: { userId: number; bestPosition: number | null }) => [s.userId, s.bestPosition]));
+      }
+
       // Update UserSeasonStats for each participant
       const updatePromises = ratingChanges.map((change) => {
         const participant = participantsWithRatings.find(
           (p) => p.userId === change.userId,
         )!;
         const medianStats = allMedianStats.get(change.userId)!;
+
+        // Calculate bestPosition for TEAM_GP (team rank)
+        let bestPosition: number | undefined;
+        if (isTeamGp && existingBestPositions) {
+          const existing = existingBestPositions.get(change.userId) ?? null;
+          const current = participant.position;
+          bestPosition = existing === null
+            ? current
+            : Math.min(existing, current);
+        }
 
         return tx.userSeasonStats.update({
           where: {
@@ -396,6 +417,7 @@ export class TeamClassicRatingService {
             medianPosition: medianStats.medianPosition,
             medianPoints: medianStats.medianPoints,
             favoriteMachine: medianStats.favoriteMachine,
+            ...(bestPosition !== undefined && { bestPosition }),
           },
         });
       });
@@ -427,9 +449,11 @@ export class TeamClassicRatingService {
   async recalculateFromMatch(
     seasonNumber: number,
     fromMatchNumber: number,
+    category: EventCategory = EventCategory.TEAM_CLASSIC,
   ): Promise<{ recalculatedMatches: number; recalculatedGames: number }> {
+    const label = category === EventCategory.TEAM_GP ? 'TEAM_GP' : 'TEAM_CLASSIC';
     this.logger.log(
-      `[TEAM_CLASSIC RECALC] Starting recalculation from match ${fromMatchNumber} for TEAM_CLASSIC season ${seasonNumber}`,
+      `[${label} RECALC] Starting recalculation from match ${fromMatchNumber} for ${label} season ${seasonNumber}`,
     );
 
     // Step 1: Get target matches
@@ -437,7 +461,7 @@ export class TeamClassicRatingService {
       where: {
         season: {
           seasonNumber,
-          event: { category: EventCategory.TEAM_CLASSIC },
+          event: { category },
         },
         matchNumber: { gte: fromMatchNumber },
         status: 'FINALIZED',

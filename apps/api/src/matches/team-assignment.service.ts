@@ -139,6 +139,67 @@ export class TeamAssignmentService {
   }
 
   /**
+   * Assign players to teams for TEAM_GP mode (30-99 players)
+   * Uses the same snake draft algorithm as TEAM_CLASSIC
+   */
+  assignTeamGpTeams(players: PlayerForAssignment[]): TeamAssignmentResult | null {
+    const playerCount = players.length;
+
+    if (!this.teamConfigService.isValidTeamGpPlayerCount(playerCount)) {
+      this.logger.warn(
+        `Invalid player count for TEAM_GP: ${playerCount}`,
+      );
+      return null;
+    }
+
+    // Step 1: Determine how many players to exclude
+    const excludeCount = this.teamConfigService.getTeamGpExcludeCount(playerCount);
+
+    // Step 2: Identify excluded players (those who joined last)
+    const sortedByJoinTime = [...players].sort(
+      (a, b) => b.joinedAt.getTime() - a.joinedAt.getTime(),
+    );
+    const excludedUserIds = sortedByJoinTime
+      .slice(0, excludeCount)
+      .map((p) => p.userId);
+
+    // Step 3: Get eligible players (not excluded)
+    const eligiblePlayers = players.filter(
+      (p) => !excludedUserIds.includes(p.userId),
+    );
+
+    // Step 4: Select random team configuration
+    const config = this.teamConfigService.selectRandomTeamGpConfig(playerCount);
+    if (!config) {
+      this.logger.error(
+        `No valid team configuration for TEAM_GP with ${playerCount} players`,
+      );
+      return null;
+    }
+
+    // Step 5: Sort eligible players by rating (descending)
+    const sortedByRating = [...eligiblePlayers].sort(
+      (a, b) => b.rating - a.rating,
+    );
+
+    // Step 6: Apply snake draft
+    const teams = this.snakeDraft(sortedByRating, config.teamCount);
+
+    // Step 7: Shuffle team labels so top-rated player isn't always Team A
+    this.shuffleTeams(teams);
+
+    this.logger.log(
+      `TEAM_GP: Assigned ${eligiblePlayers.length} players to ${config.teamCount} teams (${config.configString}), excluded ${excludeCount}`,
+    );
+
+    return {
+      config,
+      teams,
+      excludedUserIds,
+    };
+  }
+
+  /**
    * Calculate team scores from individual player scores
    */
   calculateTeamScores(

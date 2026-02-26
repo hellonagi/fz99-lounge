@@ -14,7 +14,7 @@ interface SeasonCardProps {
     endDate: string | null;
     isActive: boolean;
     event: {
-      category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
+      category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' | 'TOURNAMENT';
       name: string;
     };
   };
@@ -53,7 +53,7 @@ export function SeasonCard({ season, matchCount = 0, participantCount = 0, onMan
   };
 
   const status = getSeasonStatus();
-  const maxPlayers = season.event.category === 'GP' ? 99 : 20;
+  const maxPlayers = (season.event.category === 'GP' || season.event.category === 'TEAM_GP') ? 99 : 20;
 
   return (
     <Card className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">

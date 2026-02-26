@@ -27,6 +27,7 @@ export const CATEGORY_OPTIONS = [
   { value: 'GP', label: 'GP' },
   { value: 'CLASSIC', label: 'Classic Mode' },
   { value: 'TEAM_CLASSIC', label: 'Team Classic Mode' },
+  { value: 'TEAM_GP', label: 'Team GP Mode' },
 ];
 
 export const IN_GAME_MODE_OPTIONS_GP = [
@@ -53,7 +54,7 @@ export const ruleSchema = z.object({
 });
 
 export const recurringMatchSchema = z.object({
-  eventCategory: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC']),
+  eventCategory: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC', 'TEAM_GP']),
   inGameMode: z.string().min(1),
   leagueType: z.string().optional(),
   rules: z.array(ruleSchema).min(1, 'At least one time slot is required'),
@@ -80,7 +81,7 @@ export function RecurringMatchForm({ form, isEditMode }: RecurringMatchFormProps
   });
 
   const category = form.watch('eventCategory');
-  const isGPMode = category === 'GP';
+  const isGPMode = category === 'GP' || category === 'TEAM_GP';
 
   return (
     <div className="space-y-4">

@@ -22,7 +22,7 @@ import { AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { seasonsApi } from '@/lib/api';
 
 const seasonSchema = z.object({
-  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC']),
+  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC', 'TEAM_GP']),
   seasonNumber: z
     .string()
     .min(1, 'シーズン番号は必須です')
@@ -156,6 +156,16 @@ export function CreateSeasonForm({ onSuccess }: CreateSeasonFormProps) {
                           className="w-4 h-4 text-blue-600"
                         />
                         <span className="text-white">TEAM CLASSIC（12〜20人）</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="TEAM_GP"
+                          checked={field.value === 'TEAM_GP'}
+                          onChange={() => field.onChange('TEAM_GP')}
+                          className="w-4 h-4 text-blue-600"
+                        />
+                        <span className="text-white">TEAM GP（30〜99人）</span>
                       </label>
                     </div>
                   </FormControl>
