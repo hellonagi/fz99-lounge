@@ -76,7 +76,6 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
             {!isGpMode && <th className="text-right py-2 px-2 font-medium">Rating</th>}
             {!isGpMode && <th className="text-right py-2 px-2 font-medium">Peak</th>}
             <th className="text-right py-2 px-2 font-medium">Matches</th>
-            {isGpMode && <th className="text-right py-2 px-2 font-medium">Best Pos</th>}
             {isTeamClassic ? (
               <>
                 <th className="text-right py-2 px-2 font-medium w-12">Wins</th>
@@ -89,10 +88,11 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
               </>
             )}
+            {category === 'GP' && <th className="text-right py-2 px-2 font-medium">Best Pos</th>}
             <th className="text-right py-2 px-2 font-medium">Med Pos</th>
             <th className="text-right py-2 px-2 font-medium">Med Pts</th>
             <th className="text-right py-2 px-2 font-medium">Finish%</th>
-            <th className="text-right py-2 px-2 font-medium">Machine</th>
+            <th className="text-right py-2 px-2 font-medium">Most Used</th>
           </tr>
         </thead>
         <tbody>
@@ -176,13 +176,6 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                   {entry.totalMatches}
                 </td>
 
-                {/* Best Position (GP only) */}
-                {isGpMode && (
-                  <td className="py-2 px-2 text-right font-bold text-white">
-                    {entry.bestPosition ?? '-'}
-                  </td>
-                )}
-
                 {isTeamClassic ? (
                   <>
                     {/* Wins (Team 1st Place) */}
@@ -212,6 +205,13 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                       {entry.thirdPlaces}
                     </td>
                   </>
+                )}
+
+                {/* Best Position (GP only, after 3rd) */}
+                {category === 'GP' && (
+                  <td className="py-2 px-2 text-right font-bold text-white">
+                    {entry.bestPosition ?? '-'}
+                  </td>
                 )}
 
                 {/* Median Position */}

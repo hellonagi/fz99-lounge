@@ -97,8 +97,23 @@ export class UsersService {
         const isGpMode = eventCategory === 'GP' || eventCategory === 'TEAM_GP';
 
         let rank: number;
-        if (isGpMode) {
-          // GP/TEAM_GP: rank by bestPosition (lower is better), nulls last
+        if (eventCategory === 'TEAM_GP') {
+          // TEAM_GP: rank by wins (firstPlaces) desc, then MVP desc
+          rank = await this.prisma.userSeasonStats.count({
+            where: {
+              seasonId: stats.seasonId,
+              totalMatches: { gte: 1 },
+              OR: [
+                { firstPlaces: { gt: stats.firstPlaces } },
+                {
+                  firstPlaces: stats.firstPlaces,
+                  mvpCount: { gt: stats.mvpCount },
+                },
+              ],
+            },
+          });
+        } else if (eventCategory === 'GP') {
+          // GP: rank by bestPosition (lower is better), nulls last
           rank = await this.prisma.userSeasonStats.count({
             where: {
               seasonId: stats.seasonId,
@@ -689,16 +704,25 @@ export class UsersService {
       totalMatches: { gte: 1 },
     };
 
-    // GP/TEAM_GP: sort by bestPosition asc (lower=better, null=last), then 1st/2nd/3rd desc
+    // GP: sort by bestPosition asc, then 1st/2nd/3rd desc
+    // TEAM_GP: sort by wins (firstPlaces) desc, then MVP desc
     // CLASSIC/TEAM_CLASSIC: sort by displayRating desc
-    const orderBy = (eventCategory === 'GP' || eventCategory === 'TEAM_GP')
-      ? [
-          { bestPosition: { sort: 'asc' as const, nulls: 'last' as const } },
-          { firstPlaces: 'desc' as const },
-          { secondPlaces: 'desc' as const },
-          { thirdPlaces: 'desc' as const },
-        ]
-      : [{ displayRating: 'desc' as const }];
+    let orderBy;
+    if (eventCategory === 'TEAM_GP') {
+      orderBy = [
+        { firstPlaces: 'desc' as const },
+        { mvpCount: 'desc' as const },
+      ];
+    } else if (eventCategory === 'GP') {
+      orderBy = [
+        { bestPosition: { sort: 'asc' as const, nulls: 'last' as const } },
+        { firstPlaces: 'desc' as const },
+        { secondPlaces: 'desc' as const },
+        { thirdPlaces: 'desc' as const },
+      ];
+    } else {
+      orderBy = [{ displayRating: 'desc' as const }];
+    }
 
     const [total, data] = await Promise.all([
       this.prisma.userSeasonStats.count({ where }),
