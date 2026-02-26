@@ -1,6 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { League } from '@prisma/client';
+
+/** GP mode: 5 fixed tracks per league */
+const GP_TRACKS_BY_LEAGUE: Record<string, number[]> = {
+  KNIGHT: [1, 2, 3, 4, 5],
+  QUEEN: [6, 7, 8, 9, 10],
+  KING: [11, 12, 13, 14, 15],
+  ACE: [16, 17, 18, 19, 20],
+  MIRROR_KNIGHT: [101, 102, 103, 104, 105],
+  MIRROR_QUEEN: [106, 107, 108, 109, 110],
+  MIRROR_KING: [111, 112, 113, 114, 115],
+  MIRROR_ACE: [116, 117, 118, 119, 120],
+};
 import {
   TRACKSET_REFERENCE_TIME,
   TRACKSET_REFERENCE_ID,
@@ -29,6 +41,17 @@ export class TracksService {
     return this.prisma.track.findUnique({
       where: { id },
     });
+  }
+
+  /**
+   * Get GP track IDs by league (5 tracks per league)
+   */
+  getGpTracksByLeague(league: League): number[] {
+    const tracks = GP_TRACKS_BY_LEAGUE[league];
+    if (!tracks) {
+      return [];
+    }
+    return [...tracks];
   }
 
   /**

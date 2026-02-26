@@ -18,13 +18,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RatingChartProps {
   userId: number;
-  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
   seasonNumber?: number;
 }
 
 interface ChartDataPoint {
   matchNumber: number;
   displayRating: number;
+  position?: number;
+  totalParticipants?: number;
   date: string;
 }
 
@@ -32,6 +34,8 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isGpMode = category === 'GP' || category === 'TEAM_GP';
 
   useEffect(() => {
     async function fetchData() {
@@ -43,6 +47,8 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
         const chartData = history.map((entry) => ({
           matchNumber: entry.matchNumber,
           displayRating: entry.displayRating,
+          position: entry.position,
+          totalParticipants: entry.totalParticipants,
           date: new Date(entry.createdAt).toLocaleDateString('ja-JP', {
             month: 'short',
             day: 'numeric',
@@ -52,20 +58,22 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
         setData(chartData);
         setError(null);
       } catch {
-        setError('Failed to load rating history');
+        setError(isGpMode ? 'Failed to load position history' : 'Failed to load rating history');
       } finally {
         setLoading(false);
       }
     }
 
     fetchData();
-  }, [userId, category, seasonNumber]);
+  }, [userId, category, seasonNumber, isGpMode]);
+
+  const title = isGpMode ? 'Position History' : 'Rating History';
 
   if (loading) {
     return (
       <Card className="bg-gray-800/50 border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg">Rating History</CardTitle>
+          <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] flex items-center justify-center text-gray-400">
@@ -80,7 +88,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
     return (
       <Card className="bg-gray-800/50 border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg">Rating History</CardTitle>
+          <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] flex items-center justify-center text-red-400">
@@ -95,18 +103,105 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
     return (
       <Card className="bg-gray-800/50 border-gray-700">
         <CardHeader>
-          <CardTitle className="text-lg">Rating History</CardTitle>
+          <CardTitle className="text-lg">{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] flex items-center justify-center text-gray-500">
-            No rating history yet
+            No {isGpMode ? 'position' : 'rating'} history yet
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Calculate Y-axis domain
+  // GP/TEAM_GP: Position chart (inverted Y-axis, 1st at top)
+  if (isGpMode) {
+    const positions = data.map((d) => d.position).filter((p): p is number => p != null);
+    if (positions.length === 0) {
+      return (
+        <Card className="bg-gray-800/50 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-lg">{title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px] flex items-center justify-center text-gray-500">
+              No position history yet
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    const maxPosition = Math.max(...positions);
+    const yMax = Math.max(maxPosition + 1, 4); // At least show up to 4th
+
+    // Calculate average position
+    const avgPosition = (positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1);
+
+    return (
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            {title}
+            <span className="text-sm font-normal text-gray-400 ml-auto">
+              Avg: <span className="font-bold text-white">{avgPosition}</span>
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={250} minWidth={0}>
+            <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis
+                dataKey="date"
+                stroke="#9ca3af"
+                tick={{ fill: '#9ca3af', fontSize: 12 }}
+              />
+              <YAxis
+                domain={[1, yMax]}
+                reversed
+                stroke="#9ca3af"
+                tick={{ fill: '#9ca3af', fontSize: 12 }}
+                width={30}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#1f2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                }}
+                labelStyle={{ color: '#9ca3af' }}
+                itemStyle={{ color: '#fff' }}
+                formatter={(value: number, _name: string, props: { payload: ChartDataPoint }) => {
+                  const tp = props.payload.totalParticipants;
+                  return [`#${value}${tp ? ` / ${tp}` : ''}`, 'Position'];
+                }}
+                labelFormatter={(label) => label}
+              />
+              {/* Reference line for 1st place */}
+              <ReferenceLine
+                y={1}
+                stroke="#facc15"
+                strokeDasharray="5 5"
+                strokeOpacity={0.5}
+              />
+              <Line
+                type="monotone"
+                dataKey="position"
+                stroke="#60a5fa"
+                strokeWidth={2}
+                dot={{ fill: '#60a5fa', strokeWidth: 0, r: 3 }}
+                activeDot={{ fill: '#60a5fa', strokeWidth: 2, stroke: '#fff', r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // CLASSIC/TEAM_CLASSIC: Rating chart (original behavior)
   const ratings = data.map((d) => d.displayRating);
   const minRating = Math.min(...ratings);
   const maxRating = Math.max(...ratings);

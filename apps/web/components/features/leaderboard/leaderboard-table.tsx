@@ -17,6 +17,7 @@ interface LeaderboardEntry {
   thirdPlaces: number;
   survivedCount: number;
   assistUsedCount: number;
+  bestPosition?: number | null;
   medianPosition: number | null;
   medianPoints: number | null;
   favoriteMachine: string | null;
@@ -41,11 +42,12 @@ interface LeaderboardTableProps {
   data: LeaderboardEntry[];
   loading?: boolean;
   startRank?: number;
-  category?: 'CLASSIC' | 'TEAM_CLASSIC';
+  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 }
 
 export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLASSIC' }: LeaderboardTableProps) {
-  const isTeamClassic = category === 'TEAM_CLASSIC';
+  const isTeamClassic = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
+  const isGpMode = category === 'GP' || category === 'TEAM_GP';
   if (loading) {
     return (
       <div className="text-center text-gray-400 py-8">
@@ -64,15 +66,15 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm min-w-[850px] sm:min-w-[1000px]">
+      <table className={cn("w-full text-sm", isGpMode ? "min-w-[700px] sm:min-w-[850px]" : "min-w-[850px] sm:min-w-[1000px]")}>
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
             <th className="text-left py-2 px-2 font-medium w-12">#</th>
             <th className="py-2 px-1 w-6"></th>
             <th className="text-left py-2 px-2 font-medium">Player</th>
-            <th className="text-left py-2 px-1 font-medium">Rank</th>
-            <th className="text-right py-2 px-2 font-medium">Rating</th>
-            <th className="text-right py-2 px-2 font-medium">Peak</th>
+            {!isGpMode && <th className="text-left py-2 px-1 font-medium">Rank</th>}
+            {!isGpMode && <th className="text-right py-2 px-2 font-medium">Rating</th>}
+            {!isGpMode && <th className="text-right py-2 px-2 font-medium">Peak</th>}
             <th className="text-right py-2 px-2 font-medium">Matches</th>
             {isTeamClassic ? (
               <>
@@ -86,10 +88,11 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
               </>
             )}
+            {category === 'GP' && <th className="text-right py-2 px-2 font-medium">Best Pos</th>}
             <th className="text-right py-2 px-2 font-medium">Med Pos</th>
             <th className="text-right py-2 px-2 font-medium">Med Pts</th>
             <th className="text-right py-2 px-2 font-medium">Finish%</th>
-            <th className="text-right py-2 px-2 font-medium">Machine</th>
+            <th className="text-right py-2 px-2 font-medium">Most Used</th>
           </tr>
         </thead>
         <tbody>
@@ -145,22 +148,28 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 </td>
 
                 {/* Rank Badge */}
-                <td className="py-2 px-1 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <div className={cn('w-2.5 h-2.5 rounded-full', rankInfo.color)} />
-                    <span className="text-gray-100">{rankInfo.name}</span>
-                  </div>
-                </td>
+                {!isGpMode && (
+                  <td className="py-2 px-1 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <div className={cn('w-2.5 h-2.5 rounded-full', rankInfo.color)} />
+                      <span className="text-gray-100">{rankInfo.name}</span>
+                    </div>
+                  </td>
+                )}
 
                 {/* Rating */}
-                <td className="py-2 px-2 text-right font-bold text-white">
-                  {entry.displayRating}
-                </td>
+                {!isGpMode && (
+                  <td className="py-2 px-2 text-right font-bold text-white">
+                    {entry.displayRating}
+                  </td>
+                )}
 
                 {/* Peak (Season High) */}
-                <td className="py-2 px-2 text-right text-gray-100">
-                  {entry.seasonHighRating}
-                </td>
+                {!isGpMode && (
+                  <td className="py-2 px-2 text-right text-gray-100">
+                    {entry.seasonHighRating}
+                  </td>
+                )}
 
                 {/* Matches */}
                 <td className="py-2 px-2 text-right text-gray-100">
@@ -196,6 +205,13 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                       {entry.thirdPlaces}
                     </td>
                   </>
+                )}
+
+                {/* Best Position (GP only, after 3rd) */}
+                {category === 'GP' && (
+                  <td className="py-2 px-2 text-right font-bold text-white">
+                    {entry.bestPosition ?? '-'}
+                  </td>
                 )}
 
                 {/* Median Position */}

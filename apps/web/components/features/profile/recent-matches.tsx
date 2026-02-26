@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface RecentMatchesProps {
   userId: number;
-  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
   initialLimit?: number;
   seasonNumber?: number;
 }
@@ -189,14 +189,16 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
                 </div>
               )}
 
-              {/* Rating Change */}
-              <div className="text-right w-20">
-                <div className="text-gray-400 text-xs">Rating</div>
-                <div className={cn('font-medium', getRatingChangeStyle(match.ratingChange))}>
-                  {match.ratingChange > 0 ? '+' : ''}
-                  {match.ratingChange}
+              {/* Rating Change (hidden for GP/TEAM_GP) */}
+              {category !== 'GP' && category !== 'TEAM_GP' && (
+                <div className="text-right w-20">
+                  <div className="text-gray-400 text-xs">Rating</div>
+                  <div className={cn('font-medium', getRatingChangeStyle(match.ratingChange))}>
+                    {match.ratingChange > 0 ? '+' : ''}
+                    {match.ratingChange}
+                  </div>
                 </div>
-              </div>
+              )}
             </Link>
           ))}
         </div>

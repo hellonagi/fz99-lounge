@@ -6,9 +6,11 @@ interface ProfileHeaderProps {
   user: User;
   seasonStats?: UserSeasonStats;
   teamClassicStats?: UserSeasonStats;
+  gpStats?: UserSeasonStats;
+  teamGpStats?: UserSeasonStats;
 }
 
-export function ProfileHeader({ user, seasonStats, teamClassicStats }: ProfileHeaderProps) {
+export function ProfileHeader({ user, seasonStats, teamClassicStats, gpStats, teamGpStats }: ProfileHeaderProps) {
   const avatarUrl = useAvatarUrl(user.discordId, user.avatarHash, 96);
 
   const formatDate = (dateString: string) => {
@@ -46,50 +48,37 @@ export function ProfileHeader({ user, seasonStats, teamClassicStats }: ProfileHe
               <h1 className="text-2xl font-bold text-white">{user.displayName}</h1>
             </div>
 
-            {/* Stats Row */}
-            {seasonStats && (
-              <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2 text-sm">
-                {/* Leaderboard Rank */}
-                {seasonStats.leaderboardRank && (
-                  <div>
-                    <span className="text-gray-400">CLASSIC </span>
-                    <span className="font-bold text-yellow-400">#{seasonStats.leaderboardRank}</span>
-                  </div>
-                )}
-
-                {/* Total Matches */}
-                <div>
-                  <span className="text-gray-400">Matches </span>
-                  <span className="font-bold text-white">{seasonStats.totalMatches}</span>
-                </div>
-
-                {/* Wins */}
-                <div>
-                  <span className="text-gray-400">Wins </span>
-                  <span className="font-bold text-yellow-400">{seasonStats.firstPlaces}</span>
-                </div>
-              </div>
-            )}
-
-            {/* TEAM CLASSIC Stats Row */}
-            {teamClassicStats && (
-              <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-x-6 gap-y-2 text-sm">
-                {teamClassicStats.leaderboardRank && (
-                  <div>
-                    <span className="text-gray-400">TEAM </span>
-                    <span className="font-bold text-amber-400">#{teamClassicStats.leaderboardRank}</span>
-                  </div>
-                )}
-                <div>
-                  <span className="text-gray-400">Matches </span>
-                  <span className="font-bold text-white">{teamClassicStats.totalMatches}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Wins </span>
-                  <span className="font-bold text-amber-400">{teamClassicStats.firstPlaces}</span>
-                </div>
-              </div>
-            )}
+            {/* Stats Table */}
+            <div className="mt-3 inline-grid grid-cols-[auto_auto_auto] gap-x-3 gap-y-1 text-sm tabular-nums text-left">
+              {gpStats && gpStats.leaderboardRank && (
+                <>
+                  <span className="text-gray-400">GP</span>
+                  <span className="font-bold text-yellow-400">#{gpStats.leaderboardRank}</span>
+                  <span><span className="text-gray-400">Wins </span><span className="font-bold text-yellow-400">{gpStats.firstPlaces}</span></span>
+                </>
+              )}
+              {teamGpStats && teamGpStats.leaderboardRank && (
+                <>
+                  <span className="text-gray-400">TEAM GP</span>
+                  <span className="font-bold text-yellow-400">#{teamGpStats.leaderboardRank}</span>
+                  <span><span className="text-gray-400">Wins </span><span className="font-bold text-yellow-400">{teamGpStats.firstPlaces}</span></span>
+                </>
+              )}
+              {seasonStats && seasonStats.leaderboardRank && (
+                <>
+                  <span className="text-gray-400">CLASSIC</span>
+                  <span className="font-bold text-yellow-400">#{seasonStats.leaderboardRank}</span>
+                  <span><span className="text-gray-400">Wins </span><span className="font-bold text-yellow-400">{seasonStats.firstPlaces}</span></span>
+                </>
+              )}
+              {teamClassicStats && teamClassicStats.leaderboardRank && (
+                <>
+                  <span className="text-gray-400">TEAM CLASSIC</span>
+                  <span className="font-bold text-yellow-400">#{teamClassicStats.leaderboardRank}</span>
+                  <span><span className="text-gray-400">Wins </span><span className="font-bold text-yellow-400">{teamClassicStats.firstPlaces}</span></span>
+                </>
+              )}
+            </div>
 
             {/* Join Date */}
             {user.createdAt && (

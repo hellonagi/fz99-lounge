@@ -18,18 +18,18 @@ export enum F99Machine {
   FIRE_STINGRAY = 'Fire Stingray',
 }
 
-// Individual race result for CLASSIC mode
+// Individual race result for CLASSIC/GP mode
 export class RaceResultDto {
   @IsInt()
   @Min(1)
-  @Max(3)
-  raceNumber: number; // 1, 2, or 3
+  @Max(5)
+  raceNumber: number; // 1-3 (CLASSIC) or 1-5 (GP)
 
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(20)
-  position?: number; // 1-20, null if eliminated or disconnected
+  @Max(99)
+  position?: number; // 1-20 (CLASSIC) or 1-99 (GP), null if eliminated or disconnected
 
   @IsBoolean()
   isEliminated: boolean; // true if ranked out or crashed out
@@ -50,8 +50,9 @@ export class SubmitScoreDto {
   @IsEnum(F99Machine)
   machine: F99Machine; // F-ZERO 99のマシン
 
+  @IsOptional()
   @IsBoolean()
-  assistEnabled: boolean; // アシスト使用フラグ
+  assistEnabled?: boolean; // アシスト使用フラグ（CLASSICモード用、GPモードでは不要）
 
   @IsOptional()
   @IsNumber()

@@ -10,6 +10,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string
   GP: { bg: 'bg-blue-500/30', border: 'border-l-blue-500', text: 'text-blue-200' },
   CLASSIC: { bg: 'bg-purple-500/30', border: 'border-l-purple-500', text: 'text-purple-200' },
   TEAM_CLASSIC: { bg: 'bg-rose-500/30', border: 'border-l-rose-500', text: 'text-rose-200' },
+  TEAM_GP: { bg: 'bg-cyan-500/30', border: 'border-l-cyan-500', text: 'text-cyan-200' },
   TOURNAMENT: { bg: 'bg-amber-500/30', border: 'border-l-amber-500', text: 'text-amber-200' },
 };
 
@@ -67,7 +68,7 @@ export function ScheduleWeeklyGrid({ schedules }: ScheduleWeeklyGridProps) {
         for (const day of rule.daysOfWeek) {
           byDay[day].push({
             category: schedule.eventCategory,
-            label: schedule.eventCategory === 'TEAM_CLASSIC' ? 'TEAM' : schedule.eventCategory,
+            label: schedule.eventCategory === 'TEAM_CLASSIC' ? 'TEAM' : schedule.eventCategory === 'TEAM_GP' ? 'T-GP' : schedule.eventCategory,
             name: schedule.name,
             isEnabled: schedule.isEnabled,
             timeStr: rule.timeOfDay,

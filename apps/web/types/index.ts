@@ -35,11 +35,12 @@ export type ModeratorPermission =
   | 'RECALCULATE_RATING';
 
 // Event Category - システムレベルの分類（レート計算ロジック）
-export type EventCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TOURNAMENT';
+export type EventCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' | 'TOURNAMENT';
 
 // In-Game Mode - F-Zero 99 のゲーム内モード
 export type InGameMode =
   | 'GRAND_PRIX'
+  | 'MIRROR_GRAND_PRIX'
   | 'MINI_PRIX'
   | 'TEAM_BATTLE'
   | 'CLASSIC_MINI_PRIX'
@@ -195,6 +196,7 @@ export interface UserSeasonStats {
   survivedCount: number;
   assistUsedCount: number;
   mvpCount: number;
+  bestPosition?: number | null;
   // リーダーボード順位
   leaderboardRank?: number;
   // Relations
@@ -264,4 +266,7 @@ export interface UserRatingHistoryEntry {
   displayRating: number;
   internalRating: number;
   createdAt: string;
+  // GP/TEAM_GP modes only
+  position?: number;
+  totalParticipants?: number;
 }

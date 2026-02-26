@@ -231,9 +231,9 @@ export class ClassicRatingService {
     }
 
     const eventCategory = game.match.season.event.category;
-    if (eventCategory !== EventCategory.CLASSIC) {
+    if (eventCategory !== EventCategory.CLASSIC && eventCategory !== EventCategory.GP) {
       throw new Error(
-        `Game ${gameId} is not CLASSIC mode (got ${eventCategory})`,
+        `Game ${gameId} is not CLASSIC or GP mode (got ${eventCategory})`,
       );
     }
 
@@ -304,12 +304,32 @@ export class ClassicRatingService {
         seasonId,
       );
 
+      // For GP: fetch existing bestPosition values to compare
+      let existingBestPositions: Map<number, number | null> | undefined;
+      if (eventCategory === EventCategory.GP) {
+        const existingStats = await tx.userSeasonStats.findMany({
+          where: { userId: { in: userIds }, seasonId },
+          select: { userId: true, bestPosition: true },
+        });
+        existingBestPositions = new Map(existingStats.map(s => [s.userId, s.bestPosition]));
+      }
+
       // Update UserSeasonStats for each participant
       const updatePromises = ratingChanges.map((change) => {
         const participant = participantsWithRatings.find(
           (p) => p.userId === change.userId,
         )!;
         const medianStats = allMedianStats.get(change.userId)!;
+
+        // Calculate bestPosition for GP
+        let bestPosition: number | undefined;
+        if (eventCategory === EventCategory.GP && existingBestPositions) {
+          const existing = existingBestPositions.get(change.userId) ?? null;
+          const current = participant.position;
+          bestPosition = existing === null
+            ? current
+            : Math.min(existing, current);
+        }
 
         return tx.userSeasonStats.update({
           where: {
@@ -342,6 +362,7 @@ export class ClassicRatingService {
             medianPosition: medianStats.medianPosition,
             medianPoints: medianStats.medianPoints,
             favoriteMachine: medianStats.favoriteMachine,
+            ...(bestPosition !== undefined && { bestPosition }),
           },
         });
       });

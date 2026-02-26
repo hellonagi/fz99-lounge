@@ -43,6 +43,9 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
     if (mode?.toLowerCase() === 'team_classic') {
       return 'Team Classic';
     }
+    if (mode?.toLowerCase() === 'team_gp') {
+      return league ? `Team ${league} GP` : 'Team GP';
+    }
     if (!league) {
       // CLASSICモードはリーグ選択なし
       return 'Classic';

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface SeasonStatsProps {
   stats?: UserSeasonStats;
-  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 }
 
 export function SeasonStats({ stats, category }: SeasonStatsProps) {
@@ -22,6 +22,7 @@ export function SeasonStats({ stats, category }: SeasonStatsProps) {
     );
   }
 
+  const isGpMode = category === 'GP' || category === 'TEAM_GP';
   const rankInfo = getRankInfo(stats.displayRating);
 
   // Calculate progress to next rank
@@ -44,44 +45,58 @@ export function SeasonStats({ stats, category }: SeasonStatsProps) {
         <CardTitle className="text-lg">Season Stats</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Rank Display */}
-        <div className="bg-gray-900/50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className={cn('w-4 h-4 rounded-full', rankInfo.color)} />
-              <span className="text-lg font-bold text-white">{rankInfo.name}</span>
+        {isGpMode ? (
+          /* GP/TEAM_GP: Show best position instead of rating */
+          <div className="bg-gray-900/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-400">Best Position</span>
+              <span className="text-2xl font-bold text-yellow-400">
+                {stats.bestPosition != null ? `#${stats.bestPosition}` : '-'}
+              </span>
             </div>
-            <span className="text-2xl font-bold text-white">{stats.displayRating}</span>
           </div>
+        ) : (
+          /* CLASSIC/TEAM_CLASSIC: Show rating and rank */
+          <>
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div className={cn('w-4 h-4 rounded-full', rankInfo.color)} />
+                  <span className="text-lg font-bold text-white">{rankInfo.name}</span>
+                </div>
+                <span className="text-2xl font-bold text-white">{stats.displayRating}</span>
+              </div>
 
-          {/* Progress Bar */}
-          {nextThreshold && (
-            <div className="mt-3">
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>{currentThreshold.name}</span>
-                <span>{nextThreshold.name}</span>
-              </div>
-              <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={cn('h-full rounded-full transition-all', rankInfo.color.replace('bg-', 'bg-'))}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <div className="text-center text-xs text-gray-500 mt-1">
-                {pointsToNext} points to {nextThreshold.name}
-              </div>
+              {/* Progress Bar */}
+              {nextThreshold && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>{currentThreshold.name}</span>
+                    <span>{nextThreshold.name}</span>
+                  </div>
+                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={cn('h-full rounded-full transition-all', rankInfo.color.replace('bg-', 'bg-'))}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="text-center text-xs text-gray-500 mt-1">
+                    {pointsToNext} points to {nextThreshold.name}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Season High */}
-        <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
-          <span className="text-sm text-gray-400">Season High</span>
-          <span className="font-bold text-white">{stats.seasonHighRating}</span>
-        </div>
+            {/* Season High */}
+            <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
+              <span className="text-sm text-gray-400">Season High</span>
+              <span className="font-bold text-white">{stats.seasonHighRating}</span>
+            </div>
+          </>
+        )}
 
-        {/* MVP Count (TEAM_CLASSIC only) */}
-        {category === 'TEAM_CLASSIC' && (
+        {/* MVP Count (team modes) */}
+        {(category === 'TEAM_CLASSIC' || category === 'TEAM_GP') && (
           <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
             <span className="text-sm text-gray-400">MVP</span>
             <span className="font-bold text-amber-400">{stats.mvpCount ?? 0}</span>

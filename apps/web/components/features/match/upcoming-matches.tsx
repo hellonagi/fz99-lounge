@@ -115,14 +115,18 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
                   <span
                     className={cn(
                       'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
-                      category === 'CLASSIC'
-                        ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
-                        : category === 'TEAM_CLASSIC'
-                          ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                          : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
+                      category === 'GP'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                        : category === 'CLASSIC'
+                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+                          : category === 'TEAM_CLASSIC'
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
+                            : category === 'TEAM_GP'
+                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                              : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
                     )}
                   >
-                    {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category}
+                    {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category === 'TEAM_GP' ? 'TEAM GP' : category === 'GP' ? 'GP' : category}
                   </span>
                   <span className="text-gray-400 text-sm font-medium">
                     Season{match.season?.seasonNumber} #{match.matchNumber}

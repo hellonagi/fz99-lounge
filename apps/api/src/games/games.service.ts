@@ -101,7 +101,7 @@ export class GamesService {
       ? game.match?.participants?.some((p) => p.userId === userId) || false
       : false;
 
-    // Check if user is excluded (TEAM_CLASSIC)
+    // Check if user is excluded (TEAM_CLASSIC / TEAM_GP)
     const isExcluded = userId
       ? game.participants.some((p) => p.userId === userId && p.isExcluded)
       : false;
@@ -250,7 +250,7 @@ export class GamesService {
       ? game.match?.participants?.some((p) => p.userId === userId) || false
       : false;
 
-    // Check if user is excluded (TEAM_CLASSIC)
+    // Check if user is excluded (TEAM_CLASSIC / TEAM_GP)
     const isExcluded = userId
       ? game.participants.some((p) => p.userId === userId && p.isExcluded)
       : false;
@@ -278,6 +278,9 @@ export class GamesService {
         match: {
           include: {
             participants: true,
+            season: {
+              include: { event: true },
+            },
           },
         },
         participants: {
@@ -289,6 +292,9 @@ export class GamesService {
     if (!game) {
       throw new NotFoundException('Game not found');
     }
+
+    const eventCategory = game.match.season.event.category;
+    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
 
     // Check match status - allow score submission during IN_PROGRESS
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
@@ -303,7 +309,7 @@ export class GamesService {
       throw new BadRequestException('User is not a participant in this match');
     }
 
-    // Block excluded players from submitting scores (TEAM_CLASSIC)
+    // Block excluded players from submitting scores (TEAM_CLASSIC / TEAM_GP)
     if (game.participants.length && game.participants[0].isExcluded) {
       throw new BadRequestException('Excluded players cannot submit scores');
     }
@@ -344,39 +350,50 @@ export class GamesService {
       participantId = game.participants[0].id;
     }
 
-    // Handle race results for CLASSIC mode
+    // Handle race results for CLASSIC/GP mode
     if (submitScoreDto.raceResults && submitScoreDto.raceResults.length > 0) {
-      const race1 = submitScoreDto.raceResults.find(r => r.raceNumber === 1);
-      const race2 = submitScoreDto.raceResults.find(r => r.raceNumber === 2);
-      const race3 = submitScoreDto.raceResults.find(r => r.raceNumber === 3);
+      const maxRaces = isGpMode ? 5 : 3;
 
-      // Validate: Race 1 position is required unless disconnected
-      if (!race1?.isDisconnected) {
-        if (!race1 || race1.position === undefined || race1.position === null) {
-          throw new BadRequestException('Race 1 position is required');
-        }
-        if (race1.position < 1 || race1.position > 20) {
-          throw new BadRequestException('Race 1 position must be between 1 and 20');
-        }
-      }
+      // Per-race max positions and elimination thresholds
+      const raceMaxPositions = isGpMode ? [99, 80, 60, 40, 20] : [20, 16, 12];
+      const eliminationThresholds: (number | null)[] = isGpMode
+        ? [81, 61, 41, 21, null]
+        : [17, 13, 9];
 
-      // Validate: Race 2 position is required if race1 is not eliminated/dc AND race2 is not dc
-      if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isDisconnected) {
-        if (!race2 || race2.position === undefined || race2.position === null) {
-          throw new BadRequestException('Race 2 position is required');
-        }
-        if (race2.position < 1 || race2.position > 20) {
-          throw new BadRequestException('Race 2 position must be between 1 and 20');
-        }
-      }
+      // Generic race validation: validate each race sequentially
+      const races = Array.from({ length: maxRaces }, (_, i) =>
+        submitScoreDto.raceResults!.find(r => r.raceNumber === i + 1),
+      );
 
-      // Validate: Race 3 position is required if race1/2 are not eliminated/dc AND race3 is not dc
-      if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isEliminated && !race2?.isDisconnected && !race3?.isDisconnected) {
-        if (!race3 || race3.position === undefined || race3.position === null) {
-          throw new BadRequestException('Race 3 position is required');
+      let eliminated = false;
+      for (let i = 0; i < maxRaces; i++) {
+        const race = races[i];
+        if (eliminated) break; // Subsequent races after elimination don't need validation
+
+        const raceMaxPosition = raceMaxPositions[i];
+
+        if (!race?.isDisconnected) {
+          // Check if all previous races are not eliminated/dc
+          const prevEliminated = races.slice(0, i).some(r => r?.isEliminated || r?.isDisconnected);
+          if (!prevEliminated) {
+            if (!race || race.position === undefined || race.position === null) {
+              throw new BadRequestException(`Race ${i + 1} position is required`);
+            }
+            if (race.position < 1 || race.position > raceMaxPosition) {
+              throw new BadRequestException(`Race ${i + 1} position must be between 1 and ${raceMaxPosition}`);
+            }
+          }
         }
-        if (race3.position < 1 || race3.position > 20) {
-          throw new BadRequestException('Race 3 position must be between 1 and 20');
+
+        // Auto-enforce elimination based on position threshold
+        if (race && race.position && eliminationThresholds[i] !== null) {
+          if (race.position >= eliminationThresholds[i]!) {
+            race.isEliminated = true;
+          }
+        }
+
+        if (race?.isEliminated || race?.isDisconnected) {
+          eliminated = true;
         }
       }
 
@@ -421,8 +438,10 @@ export class GamesService {
           isDisconnected = true;
           eliminatedAtRace = raceResult.raceNumber;
         } else if (raceResult.position) {
-          // 順位がある場合
-          points = this.calculateRacePoints(raceResult.position);
+          // 順位がある場合 - GP uses different points formula
+          points = isGpMode
+            ? this.calculateGpRacePoints(raceResult.position)
+            : this.calculateRacePoints(raceResult.position);
           position = raceResult.position;
           isEliminated = raceResult.isEliminated ?? false;
           isDisconnected = false;
@@ -562,38 +581,48 @@ export class GamesService {
       throw new NotFoundException('Participant not found in this game');
     }
 
-    // Validate race results
-    const race1 = updateScoreDto.raceResults.find(r => r.raceNumber === 1);
-    const race2 = updateScoreDto.raceResults.find(r => r.raceNumber === 2);
-    const race3 = updateScoreDto.raceResults.find(r => r.raceNumber === 3);
+    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
+    const maxRaces = isGpMode ? 5 : 3;
 
-    // Validate: Race 1 position is required unless disconnected
-    if (!race1?.isDisconnected) {
-      if (!race1 || race1.position === undefined || race1.position === null) {
-        throw new BadRequestException('Race 1 position is required');
-      }
-      if (race1.position < 1 || race1.position > 20) {
-        throw new BadRequestException('Race 1 position must be between 1 and 20');
-      }
-    }
+    // Per-race max positions and elimination thresholds
+    const raceMaxPositions = isGpMode ? [99, 80, 60, 40, 20] : [20, 16, 12];
+    const eliminationThresholds: (number | null)[] = isGpMode
+      ? [81, 61, 41, 21, null]
+      : [17, 13, 9];
 
-    // Validate: Race 2 position is required if race1 is not eliminated/dc AND race2 is not dc
-    if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isDisconnected) {
-      if (!race2 || race2.position === undefined || race2.position === null) {
-        throw new BadRequestException('Race 2 position is required');
-      }
-      if (race2.position < 1 || race2.position > 20) {
-        throw new BadRequestException('Race 2 position must be between 1 and 20');
-      }
-    }
+    // Generic race validation: validate each race sequentially
+    const races = Array.from({ length: maxRaces }, (_, i) =>
+      updateScoreDto.raceResults.find(r => r.raceNumber === i + 1),
+    );
 
-    // Validate: Race 3 position is required if race1/2 are not eliminated/dc AND race3 is not dc
-    if (!race1?.isEliminated && !race1?.isDisconnected && !race2?.isEliminated && !race2?.isDisconnected && !race3?.isDisconnected) {
-      if (!race3 || race3.position === undefined || race3.position === null) {
-        throw new BadRequestException('Race 3 position is required');
+    let eliminatedCheck = false;
+    for (let i = 0; i < maxRaces; i++) {
+      const race = races[i];
+      if (eliminatedCheck) break;
+
+      const raceMaxPosition = raceMaxPositions[i];
+
+      if (!race?.isDisconnected) {
+        const prevEliminated = races.slice(0, i).some(r => r?.isEliminated || r?.isDisconnected);
+        if (!prevEliminated) {
+          if (!race || race.position === undefined || race.position === null) {
+            throw new BadRequestException(`Race ${i + 1} position is required`);
+          }
+          if (race.position < 1 || race.position > raceMaxPosition) {
+            throw new BadRequestException(`Race ${i + 1} position must be between 1 and ${raceMaxPosition}`);
+          }
+        }
       }
-      if (race3.position < 1 || race3.position > 20) {
-        throw new BadRequestException('Race 3 position must be between 1 and 20');
+
+      // Auto-enforce elimination based on position threshold
+      if (race && race.position && eliminationThresholds[i] !== null) {
+        if (race.position >= eliminationThresholds[i]!) {
+          race.isEliminated = true;
+        }
+      }
+
+      if (race?.isEliminated || race?.isDisconnected) {
+        eliminatedCheck = true;
       }
     }
 
@@ -638,8 +667,10 @@ export class GamesService {
         isDisconnected = true;
         eliminatedAtRace = raceResult.raceNumber;
       } else if (raceResult.position) {
-        // 順位がある場合
-        points = this.calculateRacePoints(raceResult.position);
+        // 順位がある場合 - GP uses different points formula
+        points = isGpMode
+          ? this.calculateGpRacePoints(raceResult.position)
+          : this.calculateRacePoints(raceResult.position);
         position = raceResult.position;
         isEliminated = raceResult.isEliminated ?? false;
         isDisconnected = false;
@@ -716,6 +747,17 @@ export class GamesService {
   }
 
   /**
+   * Calculate points from position (GP mode)
+   * 1st=200, 2nd=196, 3rd=194, 4th=192, ..., 99th=2
+   * Formula: pos=1 → 200, pos>=2 → 200 - position * 2
+   */
+  private calculateGpRacePoints(position: number): number {
+    if (position < 1 || position > 99) return 0;
+    if (position === 1) return 200;
+    return 200 - position * 2; // 2nd=196, 3rd=194, ..., 99th=2
+  }
+
+  /**
    * Finalize a match - calculate ratings and mark as FINALIZED
    * Can be called from IN_PROGRESS or COMPLETED status
    * Only MODERATOR/ADMIN can call this
@@ -765,10 +807,13 @@ export class GamesService {
     }
 
     // Calculate ratings based on event category
-    if (eventCategory === EventCategory.TEAM_CLASSIC) {
-      // For TEAM_CLASSIC: Calculate team scores first, then ratings
+    if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
+      // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
       await this.calculateAndSaveTeamScores(game.id);
       await this.teamClassicRatingService.calculateAndUpdateRatings(game.id);
+    } else if (eventCategory === EventCategory.GP) {
+      // For GP: Use same classic rating algorithm (stored in DB, not displayed on frontend)
+      await this.classicRatingService.calculateAndUpdateRatings(game.id);
     } else {
       // For CLASSIC: Use standard rating calculation
       await this.classicRatingService.calculateAndUpdateRatings(game.id);
@@ -800,7 +845,7 @@ export class GamesService {
       await this.matchQueue.add(
         'delete-discord-channel',
         { gameId: game.id },
-        { delay: 24 * 60 * 60 * 1000 }, // 24 hours
+        { delay: 24 * 60 * 60 * 1000, removeOnComplete: true, removeOnFail: { count: 10 } }, // 24 hours
       );
     } catch (error) {
       this.logger.error('Failed to schedule Discord channel deletion:', error);
@@ -1085,7 +1130,7 @@ export class GamesService {
       }>;
     },
   ): { teamLabel: string; score: number; rank: number; members: string[] }[] | undefined {
-    if (category !== 'TEAM_CLASSIC' || !game.teamScores) {
+    if ((category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') || !game.teamScores) {
       return undefined;
     }
 
@@ -1121,7 +1166,7 @@ export class GamesService {
       }>;
     },
   ): Array<{ label: string; score: number; rank: number; members: string[] }> | undefined {
-    if (category !== 'TEAM_CLASSIC' || !game.teamScores) {
+    if ((category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') || !game.teamScores) {
       return undefined;
     }
 
@@ -1708,7 +1753,7 @@ export class GamesService {
   }
 
   /**
-   * Calculate and save team scores for a TEAM_CLASSIC game
+   * Calculate and save team scores for a TEAM_CLASSIC / TEAM_GP game
    * Called before rating calculation
    */
   private async calculateAndSaveTeamScores(gameId: number): Promise<void> {

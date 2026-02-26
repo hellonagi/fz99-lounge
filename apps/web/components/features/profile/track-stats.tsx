@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { usersApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Maximize2 } from 'lucide-react';
 
 interface TrackStatsProps {
   userId: number;
-  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC';
+  category: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 }
 
 interface TrackStat {
@@ -107,7 +108,12 @@ export function TrackStats({ userId, category }: TrackStatsProps) {
               {stats.map((track) => (
                 <tr key={track.trackId} className="hover:bg-gray-700/30">
                   <td className="px-4 py-2 text-white">
-                    {track.trackName}
+                    <span className="flex items-center gap-1">
+                      {track.league?.startsWith('MIRROR') && (
+                        <Maximize2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      )}
+                      {track.trackName}
+                    </span>
                   </td>
                   <td className="text-center px-2 py-2 text-gray-300">
                     {track.races}

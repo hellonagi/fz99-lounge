@@ -36,7 +36,8 @@ help:
 	@echo "  make sim-score-classic       - CLASSIC専用 (スコア+スクショ提出)"
 	@echo "  make sim-score-team-classic  - TEAM_CLASSIC専用 (チーム戦)"
 	@echo "  make sim-split-classic       - CLASSIC専用 Split投票 (10人)"
-	@echo "  make sim-clean-scores        - スコア・スクショをクリア"
+	@echo "  make sim-clean-scores-latest  - 最新試合のスコア・スクショをクリア"
+	@echo "  make sim-clean-scores        - 全試合のスコア・スクショをクリア"
 	@echo ""
 	@echo "=== Load Tests (Artillery負荷テスト) ==="
 	@echo "  make load-lobby     - ロビー操作の負荷テスト"
@@ -163,9 +164,13 @@ sim-leave:
 sim-leave-all:
 	npx dotenv -e ../../.env -- ts-node test/simulators/leave-lobby-simulator.ts --all --delay=$(DELAY)
 
-# スコア・スクショをクリア
+# 最新試合のスコア・スクショをクリア
+sim-clean-scores-latest:
+	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge < test/sql/clean-scores-latest.sql
+
+# 全試合のスコア・スクショをクリア
 sim-clean-scores:
-	docker exec fz99-lounge-db psql -U dbuser -d fz99_lounge -c 'DELETE FROM race_results; DELETE FROM game_screenshot_submissions; DELETE FROM result_screenshots; DELETE FROM game_participants;'
+	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge < test/sql/clean-scores-all.sql
 
 # =============================================================================
 # Load Tests

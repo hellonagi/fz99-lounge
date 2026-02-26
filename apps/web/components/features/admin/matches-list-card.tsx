@@ -188,7 +188,7 @@ export function MatchesListCard() {
                         {match.matchNumber ?? '-'}
                       </td>
                       <td className="py-3 px-2 text-white">
-                        {category === 'GP' ? '99' : category || '-'}
+                        {category === 'GP' ? 'GP' : category || '-'}
                       </td>
                       <td className="py-3 px-2 text-white">{leagueType}</td>
                       <td className="py-3 px-2">

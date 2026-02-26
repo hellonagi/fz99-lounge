@@ -6,7 +6,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { EventCategory, MatchStatus } from '@prisma/client';
-import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS } from './team-config.service';
+import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS, TEAM_GP_GRID_NUMBERS } from './team-config.service';
 import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
 import { TracksService } from '../tracks/tracks.service';
 import { MatchesService } from './matches.service';
@@ -127,19 +127,23 @@ export class MatchesProcessor {
       // Generate 4-digit passcode
       const passcode = this.generatePasscode();
 
-      // Check if this is a TEAM_CLASSIC match
+      // Check if this is a team mode match
       const isTeamClassic =
         match.season.event.category === EventCategory.TEAM_CLASSIC;
+      const isTeamGp =
+        match.season.event.category === EventCategory.TEAM_GP;
+      const isTeamMode = isTeamClassic || isTeamGp;
 
       let updatedGame;
 
-      if (isTeamClassic) {
-        // TEAM_CLASSIC: Assign teams and delay passcode reveal
-        updatedGame = await this.handleTeamClassicStart(
+      if (isTeamMode) {
+        // TEAM_CLASSIC / TEAM_GP: Assign teams and delay passcode reveal
+        updatedGame = await this.handleTeamModeStart(
           match,
           game,
           passcode,
           currentPlayers,
+          isTeamGp,
         );
         if (!updatedGame) {
           return; // Team assignment failed
@@ -180,8 +184,8 @@ export class MatchesProcessor {
         return;
       }
 
-      // For TEAM_CLASSIC, hide passcode in the initial event (will be revealed later)
-      const emitPasscode = isTeamClassic ? '' : updatedGame.passcode;
+      // For team modes, hide passcode in the initial event (will be revealed later)
+      const emitPasscode = isTeamMode ? '' : updatedGame.passcode;
 
       // Emit WebSocket event to all clients
       this.eventsGateway.emitMatchStarted({
@@ -218,8 +222,8 @@ export class MatchesProcessor {
         // Continue even if push notifications fail
       }
 
-      // Create Discord passcode channel for participants (skip for TEAM_CLASSIC - done at reveal)
-      if (!isTeamClassic) {
+      // Create Discord passcode channel for participants (skip for team modes - done at reveal)
+      if (!isTeamMode) {
         try {
           const participantDiscordIds = match.participants
             .map((p) => p.user?.discordId)
@@ -254,22 +258,29 @@ export class MatchesProcessor {
   }
 
   /**
-   * Handle TEAM_CLASSIC match start:
+   * Handle TEAM_CLASSIC / TEAM_GP match start:
    * 1. Assign teams using snake draft
    * 2. Create GameParticipants with team assignments
    * 3. Recalculate tracks based on passcode reveal time
    * 4. Schedule passcode reveal after announcement phase
    */
-  private async handleTeamClassicStart(
+  private async handleTeamModeStart(
     match: any,
     game: any,
     passcode: string,
     currentPlayers: number,
+    isTeamGp: boolean = false,
   ) {
-    // Validate player count for TEAM_CLASSIC
-    if (!this.teamConfigService.isValidPlayerCount(currentPlayers)) {
+    // Validate player count
+    const modeLabel = isTeamGp ? 'TEAM_GP' : 'TEAM_CLASSIC';
+    const isValid = isTeamGp
+      ? this.teamConfigService.isValidTeamGpPlayerCount(currentPlayers)
+      : this.teamConfigService.isValidPlayerCount(currentPlayers);
+
+    if (!isValid) {
+      const range = isTeamGp ? '30-99' : '12-20';
       this.logger.error(
-        `Invalid player count for TEAM_CLASSIC: ${currentPlayers} (need 12-20)`,
+        `Invalid player count for ${modeLabel}: ${currentPlayers} (need ${range})`,
       );
 
       // Cancel the match
@@ -332,7 +343,9 @@ export class MatchesProcessor {
     }));
 
     // Assign teams
-    const assignment = this.teamAssignmentService.assignTeams(players);
+    const assignment = isTeamGp
+      ? this.teamAssignmentService.assignTeamGpTeams(players)
+      : this.teamAssignmentService.assignTeams(players);
     if (!assignment) {
       this.logger.error(`Team assignment failed for match ${match.id}`);
       return null;
@@ -340,17 +353,23 @@ export class MatchesProcessor {
 
     const passcodeRevealTime = new Date(Date.now() + TEAM_ANNOUNCEMENT_DELAY_MS);
 
-    // Recalculate tracks based on passcode reveal time (not match creation time)
-    const tracks = this.tracksService.calculateClassicMiniTracks(passcodeRevealTime);
+    // Recalculate tracks based on passcode reveal time
+    // TEAM_GP uses GP tracks (already set at match creation), TEAM_CLASSIC recalculates classic mini tracks
+    let tracks: number[] | null = null;
+    if (!isTeamGp) {
+      tracks = this.tracksService.calculateClassicMiniTracks(passcodeRevealTime);
+    }
 
     // Randomly pick N colors from available grid positions, then sort ascending
     // so that Team A < B < C < D in grid position order
     const teamCount = assignment.teams.length;
-    const shuffled = [...TEAM_GRID_NUMBERS].sort(() => Math.random() - 0.5);
-    const selectedGridNumbers = shuffled.slice(0, teamCount).sort((a, b) => a - b);
+    const gridPool = isTeamGp ? TEAM_GP_GRID_NUMBERS : TEAM_GRID_NUMBERS;
+    const shuffled = [...gridPool].sort(() => Math.random() - 0.5);
+    // teamCount <= 16 is guaranteed by getTeamGpDivisorPairs constraint
+    const finalGridNumbers = shuffled.slice(0, teamCount).sort((a, b) => a - b);
 
     // Store config with color mapping: "4x3|5,1,8" (configString|gridNumbers)
-    const teamConfigWithColors = `${assignment.config.configString}|${selectedGridNumbers.join(',')}`;
+    const teamConfigWithColors = `${assignment.config.configString}|${finalGridNumbers.join(',')}`;
 
     // Update game and create GameParticipants in transaction
     const updatedGame = await this.prisma.$transaction(async (tx) => {
@@ -363,7 +382,8 @@ export class MatchesProcessor {
           startedAt: new Date(),
           teamConfig: teamConfigWithColors,
           passcodeRevealTime,
-          tracks,
+          // TEAM_GP tracks are already set at match creation; TEAM_CLASSIC recalculates
+          ...(tracks && { tracks }),
         },
       });
 
@@ -406,13 +426,14 @@ export class MatchesProcessor {
       {
         delay: TEAM_ANNOUNCEMENT_DELAY_MS,
         removeOnComplete: true,
+        removeOnFail: { count: 10 },
         jobId: `reveal-passcode-${game.id}`,
       },
     );
 
     // Build team data for WebSocket event
     const teamsData = assignment.teams.map((userIds, index) => {
-      const teamNumber = selectedGridNumbers[index];
+      const teamNumber = finalGridNumbers[index];
       return {
         teamIndex: index,
         teamNumber,
@@ -433,7 +454,7 @@ export class MatchesProcessor {
     });
 
     this.logger.log(
-      `TEAM_CLASSIC match ${match.id}: Assigned ${assignment.teams.length} teams (${assignment.config.configString}), ${assignment.excludedUserIds.length} excluded`,
+      `${modeLabel} match ${match.id}: Assigned ${assignment.teams.length} teams (${assignment.config.configString}), ${assignment.excludedUserIds.length} excluded`,
     );
 
     // Create Discord channel immediately at team assignment

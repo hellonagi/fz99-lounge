@@ -94,9 +94,11 @@ interface MatchDetailsTableProps {
   matchParticipants?: MatchParticipant[];
   screenshots?: Screenshot[];
   isClassicMode?: boolean;
+  isGpMode?: boolean;
   isTeamClassic?: boolean;
   teamScores?: TeamScore[];
   teamColors?: Record<number, string>; // teamIndex -> colorHex
+  mvpUserIds?: Set<number>;
 }
 
 export function MatchDetailsTable({
@@ -104,9 +106,11 @@ export function MatchDetailsTable({
   matchParticipants = [],
   screenshots = [],
   isClassicMode = false,
+  isGpMode = false,
   isTeamClassic = false,
   teamScores = [],
   teamColors = {},
+  mvpUserIds = new Set(),
 }: MatchDetailsTableProps) {
   const t = useTranslations('screenshotStatus');
 
@@ -283,8 +287,11 @@ export function MatchDetailsTable({
           >
             {participant.user.displayName || `User#${participant.user.id}`}
           </Link>
-          {participant.assistEnabled && !isClassicMode && (
+          {participant.assistEnabled && !isClassicMode && !isGpMode && (
             <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
+          )}
+          {isTeamClassic && mvpUserIds.has(participant.user.id) && (
+            <span className="text-xs text-amber-400 font-bold" title="MVP">MVP</span>
           )}
         </span>
       </td>
@@ -295,20 +302,12 @@ export function MatchDetailsTable({
         <span className="hidden sm:inline">{participant.machine || '-'}</span>
       </td>
 
-      {/* R1 */}
-      <td className="py-2 px-1 text-center text-gray-100">
-        {getRaceDisplay(participant, 1)}
-      </td>
-
-      {/* R2 */}
-      <td className="py-2 px-1 text-center text-gray-100">
-        {getRaceDisplay(participant, 2)}
-      </td>
-
-      {/* R3 */}
-      <td className="py-2 px-1 text-center text-gray-100">
-        {getRaceDisplay(participant, 3)}
-      </td>
+      {/* Race columns - dynamic based on mode */}
+      {Array.from({ length: isGpMode ? 5 : 3 }, (_, i) => (
+        <td key={`r${i + 1}`} className="py-2 px-1 text-center text-gray-100">
+          {getRaceDisplay(participant, i + 1)}
+        </td>
+      ))}
 
       {/* Points */}
       <td className="py-2 px-2 text-right font-medium text-white">
@@ -337,26 +336,31 @@ export function MatchDetailsTable({
         )}
       </td>
 
-      {/* Rating After */}
-      <td className="py-2 px-2 text-right text-gray-100">
-        {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
-      </td>
+      {/* Rating After - hidden for GP */}
+      {!isGpMode && (
+        <td className="py-2 px-2 text-right text-gray-100">
+          {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
+        </td>
+      )}
 
-      {/* Rating Change */}
-      <td className={cn(
-        'py-2 px-2 text-right font-medium',
-        participant.ratingChange == null ? 'text-gray-400' :
-        participant.ratingChange > 0 ? 'text-green-400' :
-        participant.ratingChange < 0 ? 'text-red-400' : 'text-gray-300'
-      )}>
-        {participant.ratingChange != null ? (
-          participant.ratingChange > 0 ? `+${participant.ratingChange}` : participant.ratingChange
-        ) : '-'}
-      </td>
+      {/* Rating Change - hidden for GP */}
+      {!isGpMode && (
+        <td className={cn(
+          'py-2 px-2 text-right font-medium',
+          participant.ratingChange == null ? 'text-gray-400' :
+          participant.ratingChange > 0 ? 'text-green-400' :
+          participant.ratingChange < 0 ? 'text-red-400' : 'text-gray-300'
+        )}>
+          {participant.ratingChange != null ? (
+            participant.ratingChange > 0 ? `+${participant.ratingChange}` : participant.ratingChange
+          ) : '-'}
+        </td>
+      )}
     </tr>
   );};
 
   // Table header
+  const raceColumnCount = isGpMode ? 5 : 3;
   const tableHeader = (
     <thead>
       <tr className="border-b border-gray-700 text-gray-400">
@@ -367,13 +371,13 @@ export function MatchDetailsTable({
           <span className="sm:hidden">MC</span>
           <span className="hidden sm:inline">Machine</span>
         </th>
-        <th className="text-center py-2 px-1 font-medium w-10">R1</th>
-        <th className="text-center py-2 px-1 font-medium w-10">R2</th>
-        <th className="text-center py-2 px-1 font-medium w-10">R3</th>
+        {Array.from({ length: raceColumnCount }, (_, i) => (
+          <th key={`rh${i + 1}`} className="text-center py-2 px-1 font-medium w-10">R{i + 1}</th>
+        ))}
         <th className="text-right py-2 px-2 font-medium">Pts</th>
         <th className="text-center py-2 px-2 font-medium">Status</th>
-        <th className="text-right py-2 px-2 font-medium">Rating</th>
-        <th className="text-right py-2 px-2 font-medium">+/-</th>
+        {!isGpMode && <th className="text-right py-2 px-2 font-medium">Rating</th>}
+        {!isGpMode && <th className="text-right py-2 px-2 font-medium">+/-</th>}
       </tr>
     </thead>
   );

@@ -117,6 +117,9 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const [uploadingFinalScore1, setUploadingFinalScore1] = useState(false);
   const [uploadingFinalScore2, setUploadingFinalScore2] = useState(false);
 
+  const isGpMode = category.toUpperCase() === 'GP' || category.toUpperCase() === 'TEAM_GP';
+  const raceCount = isGpMode ? 5 : 3;
+
   // Track selection state (CLASSIC only)
   const [selectedTracks, setSelectedTracks] = useState<(number | null)[]>([
     tracks?.[0] ?? null,
@@ -152,10 +155,9 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const allSubmitted = submittedCount >= totalRequired && totalRequired > 0;
 
   const positionConflicts = useMemo<ConflictResult[]>(() => {
-    if (!isClassic) return [];
     if (!allSubmitted) return [];
-    return detectAllPositionConflicts(participants);
-  }, [isClassic, allSubmitted, participants]);
+    return detectAllPositionConflicts(participants, isGpMode);
+  }, [allSubmitted, participants, isGpMode]);
 
   const conflictUserIds = useMemo(() => {
     const ids = new Set<number>();
@@ -484,8 +486,8 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
         )}
       </div>
 
-      {/* Position Conflict Detection (CLASSIC only) */}
-      {isClassic && (
+      {/* Position Conflict Detection */}
+      {(isClassic || isGpMode) && (
         <div className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-gray-400 text-sm">Position Conflict Check</span>
@@ -538,9 +540,9 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
               <th className="py-2 px-1 w-6"></th>
               <th className="text-left py-2 px-2 font-medium">Player</th>
               <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">Machine</th>
-              <th className="text-center py-2 px-1 font-medium w-10">R1</th>
-              <th className="text-center py-2 px-1 font-medium w-10">R2</th>
-              <th className="text-center py-2 px-1 font-medium w-10">R3</th>
+              {Array.from({ length: raceCount }, (_, i) => (
+                <th key={`rh${i + 1}`} className="text-center py-2 px-1 font-medium w-10">R{i + 1}</th>
+              ))}
               <th className="text-right py-2 px-2 font-medium">Pts</th>
               <th className="text-center py-2 px-2 font-medium">Status</th>
               <th className="text-center py-2 px-2 font-medium">Verify</th>
@@ -548,10 +550,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
           </thead>
           <tbody>
             {sortedParticipants.map((participant, index) => {
-              const r1 = participant.raceResults?.find(r => r.raceNumber === 1);
-              const r2 = participant.raceResults?.find(r => r.raceNumber === 2);
-              const r3 = participant.raceResults?.find(r => r.raceNumber === 3);
-
               return (
                 <tr
                   key={participant.user.id}
@@ -588,20 +586,12 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                     {participant.machine || '-'}
                   </td>
 
-                  {/* R1 */}
-                  <td className="py-2 px-1 text-center text-gray-100">
-                    {getRaceDisplay(r1)}
-                  </td>
-
-                  {/* R2 */}
-                  <td className="py-2 px-1 text-center text-gray-100">
-                    {getRaceDisplay(r2)}
-                  </td>
-
-                  {/* R3 */}
-                  <td className="py-2 px-1 text-center text-gray-100">
-                    {getRaceDisplay(r3)}
-                  </td>
+                  {/* Race columns */}
+                  {Array.from({ length: raceCount }, (_, i) => (
+                    <td key={`r${i + 1}`} className="py-2 px-1 text-center text-gray-100">
+                      {getRaceDisplay(participant.raceResults?.find(r => r.raceNumber === i + 1))}
+                    </td>
+                  ))}
 
                   {/* Points */}
                   <td className="py-2 px-2 text-right font-medium text-white">

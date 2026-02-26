@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { matchesApi, seasonsApi } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
@@ -38,12 +39,34 @@ interface PaginationMeta {
   hasPrev: boolean;
 }
 
-type Category = 'CLASSIC' | 'TEAM_CLASSIC';
+type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
+
+const MODE_TO_CATEGORY: Record<string, Category> = {
+  gp: 'GP',
+  'team-gp': 'TEAM_GP',
+  classic: 'CLASSIC',
+  'team-classic': 'TEAM_CLASSIC',
+};
+
+const CATEGORY_TO_MODE: Record<Category, string> = {
+  GP: 'gp',
+  TEAM_GP: 'team-gp',
+  CLASSIC: 'classic',
+  TEAM_CLASSIC: 'team-classic',
+};
+
+function getCategoryFromMode(mode: string | null): Category {
+  if (mode && MODE_TO_CATEGORY[mode]) return MODE_TO_CATEGORY[mode];
+  return 'GP';
+}
 
 export default function ResultsPage() {
   const t = useTranslations('results');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<Category>('CLASSIC');
+  const [activeCategory, setActiveCategory] = useState<Category>(() => getCategoryFromMode(searchParams.get('mode')));
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [page, setPage] = useState(1);
@@ -118,6 +141,14 @@ export default function ResultsPage() {
     setPage(1);
   };
 
+  const handleCategoryChange = useCallback((value: string) => {
+    const category = value.toUpperCase() as Category;
+    setActiveCategory(category);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('mode', CATEGORY_TO_MODE[category] || value);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, pathname]);
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
@@ -166,12 +197,22 @@ export default function ResultsPage() {
         {mounted ? (
           <Tabs
             value={activeCategory.toLowerCase()}
-            onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
+            onValueChange={handleCategoryChange}
           >
             <TabsList>
+              <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
+              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="gp" className="p-4">
+              {renderContent()}
+            </TabsContent>
+
+            <TabsContent value="team_gp" className="p-4">
+              {renderContent()}
+            </TabsContent>
 
             <TabsContent value="classic" className="p-4">
               {renderContent()}

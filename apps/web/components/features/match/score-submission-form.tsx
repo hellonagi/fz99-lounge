@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +14,6 @@ import { Label } from '@/components/ui/label';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -28,39 +27,30 @@ const F99_MACHINES = [
   { value: 'Fire Stingray', name: 'Fire Stingray', color: 'text-red-400' },
 ] as const;
 
-// GP mode schema (points-based)
-const gpScoreSchema = z.object({
-  points: z
-    .string()
-    .min(1, 'Points is required')
-    .refine((val) => !isNaN(parseInt(val, 10)), 'Points must be a number')
-    .refine((val) => {
-      const num = parseInt(val, 10);
-      return num >= 0 && num <= 1000;
-    }, 'Points must be between 0 and 1000'),
-  machine: z.string().min(1, 'Machine is required'),
-  assistEnabled: z.boolean(),
-});
+// Race field names for up to 5 races
+type RaceField = `race${1 | 2 | 3 | 4 | 5}${'Position' | 'Out' | 'Dc'}`;
 
-// CLASSIC mode schema (race-by-race positions with elimination status)
-const classicScoreSchema = z
-  .object({
+// Per-race max positions
+const GP_MAX_POSITIONS = [99, 80, 60, 40, 20];
+const CLASSIC_MAX_POSITIONS = [20, 16, 12];
+
+// Build dynamic race schema based on race count and max position
+function buildRaceSchema(raceCount: number, maxPosition: number, isGpMode: boolean) {
+  const fields: Record<string, z.ZodTypeAny> = {
     machine: z.string().min(1, 'Machine is required'),
-    assistEnabled: z.boolean(),
-    race1Position: z.string().optional(),
-    race1Out: z.boolean(),
-    race1Dc: z.boolean(),
-    race2Position: z.string().optional(),
-    race2Out: z.boolean(),
-    race2Dc: z.boolean(),
-    race3Position: z.string().optional(),
-    race3Out: z.boolean(),
-    race3Dc: z.boolean(),
-  })
-  .superRefine((data, ctx) => {
-    // Helper to validate position
-    const validatePosition = (pos: string | undefined, path: string, label: string) => {
-      if (!pos || pos.trim() === '') {
+    ...(!isGpMode && { assistEnabled: z.boolean() }),
+  };
+
+  for (let i = 1; i <= raceCount; i++) {
+    fields[`race${i}Position`] = z.string().optional();
+    fields[`race${i}Out`] = z.boolean();
+    fields[`race${i}Dc`] = z.boolean();
+  }
+
+  return z.object(fields).superRefine((data: Record<string, unknown>, ctx) => {
+    const validatePosition = (pos: unknown, path: string, label: string, raceMax: number) => {
+      const posStr = pos as string | undefined;
+      if (!posStr || (posStr as string).trim() === '') {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `${label} position is required`,
@@ -68,11 +58,11 @@ const classicScoreSchema = z
         });
         return false;
       }
-      const num = parseInt(pos, 10);
-      if (isNaN(num) || num < 1 || num > 20) {
+      const num = parseInt(posStr as string, 10);
+      if (isNaN(num) || num < 1 || num > raceMax) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `${label} position must be between 1 and 20`,
+          message: `${label} position must be between 1 and ${raceMax}`,
           path: [path],
         });
         return false;
@@ -80,24 +70,26 @@ const classicScoreSchema = z
       return true;
     };
 
-    // Race 1: required unless disconnected
-    if (!data.race1Dc) {
-      validatePosition(data.race1Position, 'race1Position', 'Race 1');
-    }
+    // Check each race: required unless previous race was out/dc, or this race is dc
+    let eliminated = false;
+    for (let i = 1; i <= raceCount; i++) {
+      if (eliminated) break;
+      const dc = data[`race${i}Dc`] as boolean;
+      const out = data[`race${i}Out`] as boolean;
+      const raceMax = isGpMode ? GP_MAX_POSITIONS[i - 1] : CLASSIC_MAX_POSITIONS[i - 1];
 
-    // Race 2: required if race1 is not out/dc AND race2 is not dc
-    if (!data.race1Out && !data.race1Dc && !data.race2Dc) {
-      validatePosition(data.race2Position, 'race2Position', 'Race 2');
-    }
+      if (!dc && !eliminated) {
+        validatePosition(data[`race${i}Position`], `race${i}Position`, `Race ${i}`, raceMax);
+      }
 
-    // Race 3: required if race1 and race2 are not out/dc AND race3 is not dc
-    if (!data.race1Out && !data.race1Dc && !data.race2Out && !data.race2Dc && !data.race3Dc) {
-      validatePosition(data.race3Position, 'race3Position', 'Race 3');
+      if (out || dc) {
+        eliminated = true;
+      }
     }
   });
+}
 
-type GpScoreFormData = z.infer<typeof gpScoreSchema>;
-type ClassicScoreFormData = z.infer<typeof classicScoreSchema>;
+type RaceFormData = Record<string, string | boolean | undefined>;
 
 interface Participant {
   user: {
@@ -112,7 +104,6 @@ interface ScoreSubmissionFormProps {
   game: number;
   deadline: string;
   onScoreSubmitted?: () => void;
-  // Moderator mode: show player selector
   participants?: Participant[];
   title?: string;
 }
@@ -131,144 +122,104 @@ export function ScoreSubmissionForm({
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
 
-  // Is this moderator mode?
   const isModeratorMode = !!participants && participants.length > 0;
+  const isGpMode = mode.toLowerCase() === 'gp' || mode.toLowerCase() === 'team_gp';
+  const raceCount = isGpMode ? 5 : 3;
+  const maxPosition = isGpMode ? 99 : 20;
 
-  // Determine if this is CLASSIC mode (includes Team Classic)
-  const isClassicMode = mode.toLowerCase() === 'classic' || mode.toLowerCase() === 'team_classic';
+  // Per-race max positions and elimination thresholds
+  const raceMaxPositions = isGpMode ? [99, 80, 60, 40, 20] : [20, 16, 12];
+  const eliminationThresholds: (number | null)[] = isGpMode
+    ? [81, 61, 41, 21, null]
+    : [17, 13, 9];
+  const getRaceMaxPosition = (raceNum: number) => raceMaxPositions[raceNum - 1];
+  const getEliminationThreshold = (raceNum: number) => eliminationThresholds[raceNum - 1];
 
-  // Format deadline for display
   const deadlineDate = new Date(deadline);
   const formattedDeadline = deadlineDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  // GP mode form
-  const gpForm = useForm<GpScoreFormData>({
-    resolver: zodResolver(gpScoreSchema),
-    defaultValues: {
-      points: '',
+  const schema = useMemo(() => buildRaceSchema(raceCount, maxPosition, isGpMode), [raceCount, maxPosition, isGpMode]);
+
+  const defaultValues = useMemo(() => {
+    const vals: Record<string, string | boolean> = {
       machine: '',
-      assistEnabled: false,
-    },
+      ...(!isGpMode && { assistEnabled: false }),
+    };
+    for (let i = 1; i <= raceCount; i++) {
+      vals[`race${i}Position`] = '';
+      vals[`race${i}Out`] = false;
+      vals[`race${i}Dc`] = false;
+    }
+    return vals;
+  }, [raceCount]);
+
+  const form = useForm<RaceFormData>({
+    resolver: zodResolver(schema),
+    defaultValues,
   });
 
-  // CLASSIC mode form
-  const classicForm = useForm<ClassicScoreFormData>({
-    resolver: zodResolver(classicScoreSchema),
-    defaultValues: {
-      machine: '',
-      assistEnabled: false,
-      race1Position: '',
-      race1Out: false,
-      race1Dc: false,
-      race2Position: '',
-      race2Out: false,
-      race2Dc: false,
-      race3Position: '',
-      race3Out: false,
-      race3Dc: false,
-    },
-  });
+  const { isSubmitting } = form.formState;
+  const selectedMachine = form.watch('machine') as string;
 
-  // Watch out/dc status to disable subsequent race inputs
-  const race1Out = classicForm.watch('race1Out');
-  const race1Dc = classicForm.watch('race1Dc');
-  const race2Out = classicForm.watch('race2Out');
-  const race2Dc = classicForm.watch('race2Dc');
-  const race3Dc = classicForm.watch('race3Dc');
+  // Watch all out/dc flags
+  const watchedValues = form.watch();
 
-  // Disconnected disables position input for that race AND all subsequent races
-  const isRace1PositionDisabled = race1Dc;
-  const isRace2Disabled = race1Out || race1Dc;
-  const isRace2PositionDisabled = isRace2Disabled || race2Dc;
-  const isRace3Disabled = race1Out || race1Dc || race2Out || race2Dc;
-  const isRace3PositionDisabled = isRace3Disabled || race3Dc;
+  // Calculate disabled state for each race
+  const isRaceDisabled = useCallback((raceNum: number): boolean => {
+    for (let i = 1; i < raceNum; i++) {
+      if (watchedValues[`race${i}Out`] || watchedValues[`race${i}Dc`]) return true;
+    }
+    return false;
+  }, [watchedValues]);
+
+  const isPositionDisabled = useCallback((raceNum: number): boolean => {
+    return isRaceDisabled(raceNum) || !!watchedValues[`race${raceNum}Dc`];
+  }, [isRaceDisabled, watchedValues]);
+
+  // Auto-check elimination when position is in elimination range
+  useEffect(() => {
+    for (let i = 1; i <= raceCount; i++) {
+      const posStr = watchedValues[`race${i}Position`] as string;
+      const threshold = getEliminationThreshold(i);
+      if (!posStr || !threshold) continue;
+      const pos = parseInt(posStr, 10);
+      if (!isNaN(pos) && pos >= threshold) {
+        if (!watchedValues[`race${i}Out`]) {
+          form.setValue(`race${i}Out`, true);
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Position`])]);
 
   // Clear subsequent race values when a race is marked as out or dc
   useEffect(() => {
-    if (race1Out || race1Dc) {
-      classicForm.setValue('race2Position', '');
-      classicForm.setValue('race2Out', false);
-      classicForm.setValue('race2Dc', false);
-      classicForm.setValue('race3Position', '');
-      classicForm.setValue('race3Out', false);
-      classicForm.setValue('race3Dc', false);
-    }
-    if (race1Dc) {
-      classicForm.setValue('race1Position', '');
-      classicForm.setValue('race1Out', false);
-    }
-  }, [race1Out, race1Dc, classicForm]);
+    for (let i = 1; i <= raceCount; i++) {
+      const isOut = watchedValues[`race${i}Out`] as boolean;
+      const isDc = watchedValues[`race${i}Dc`] as boolean;
 
-  useEffect(() => {
-    if ((race2Out || race2Dc) && !race1Out && !race1Dc) {
-      classicForm.setValue('race3Position', '');
-      classicForm.setValue('race3Out', false);
-      classicForm.setValue('race3Dc', false);
-    }
-    if (race2Dc && !race1Out && !race1Dc) {
-      classicForm.setValue('race2Position', '');
-      classicForm.setValue('race2Out', false);
-    }
-  }, [race2Out, race2Dc, race1Out, race1Dc, classicForm]);
-
-  useEffect(() => {
-    if (race3Dc && !race1Out && !race1Dc && !race2Out && !race2Dc) {
-      classicForm.setValue('race3Position', '');
-      classicForm.setValue('race3Out', false);
-    }
-  }, [race3Dc, race1Out, race1Dc, race2Out, race2Dc, classicForm]);
-
-  const form = isClassicMode ? classicForm : gpForm;
-  const { isSubmitting } = form.formState;
-  const selectedMachine = isClassicMode
-    ? classicForm.watch('machine')
-    : gpForm.watch('machine');
-
-  const onSubmitGp = async (data: GpScoreFormData) => {
-    // In moderator mode, require target user selection
-    if (isModeratorMode && !targetUserId) {
-      gpForm.setError('root', {
-        type: 'manual',
-        message: 'Please select a player',
-      });
-      return;
-    }
-
-    try {
-      // Step 1: Submit score (always)
-      await gamesApi.submitScore(mode, season, game, {
-        reportedPoints: parseInt(data.points, 10),
-        machine: data.machine,
-        assistEnabled: data.assistEnabled,
-        targetUserId: isModeratorMode ? targetUserId! : undefined,
-      });
-
-      // Show success message
-      setSuccess(true);
-      setSuccessMessage(t('scoreSuccess'));
-
-      // Reset form state
-      gpForm.reset();
-      if (isModeratorMode) setTargetUserId(null);
-
-      if (onScoreSubmitted) {
-        onScoreSubmitted();
+      if (isOut || isDc) {
+        // Clear all subsequent races
+        for (let j = i + 1; j <= raceCount; j++) {
+          form.setValue(`race${j}Position`, '');
+          form.setValue(`race${j}Out`, false);
+          form.setValue(`race${j}Dc`, false);
+        }
+        // DC clears own position and out
+        if (isDc) {
+          form.setValue(`race${i}Position`, '');
+          form.setValue(`race${i}Out`, false);
+        }
+        break;
       }
-
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
-      gpForm.setError('root', {
-        type: 'manual',
-        message: axiosError.response?.data?.message || axiosError.message || 'Failed to submit score',
-      });
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Out`]),
+     ...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Dc`])]);
 
-  const onSubmitClassic = async (data: ClassicScoreFormData) => {
-    // In moderator mode, require target user selection
+  const onSubmit = async (data: RaceFormData) => {
     if (isModeratorMode && !targetUserId) {
-      classicForm.setError('root', {
+      form.setError('root' as any, {
         type: 'manual',
         message: 'Please select a player',
       });
@@ -276,75 +227,56 @@ export function ScoreSubmissionForm({
     }
 
     try {
-      // Build race results array
       const raceResults = [];
+      let eliminated = false;
 
-      // Race 1
-      raceResults.push({
-        raceNumber: 1,
-        position: data.race1Dc ? undefined : (data.race1Position ? parseInt(data.race1Position, 10) : undefined),
-        isEliminated: data.race1Out,
-        isDisconnected: data.race1Dc,
-      });
+      for (let i = 1; i <= raceCount; i++) {
+        const isDc = data[`race${i}Dc`] as boolean;
+        const isOut = data[`race${i}Out`] as boolean;
 
-      // Race 2 - if race1 is out/dc, this race was not participated
-      if (data.race1Out || data.race1Dc) {
-        raceResults.push({
-          raceNumber: 2,
-          position: undefined,
-          isEliminated: false,
-          isDisconnected: false,
-        });
-      } else {
-        raceResults.push({
-          raceNumber: 2,
-          position: data.race2Dc ? undefined : (data.race2Position ? parseInt(data.race2Position, 10) : undefined),
-          isEliminated: data.race2Out,
-          isDisconnected: data.race2Dc,
-        });
+        if (eliminated) {
+          raceResults.push({
+            raceNumber: i,
+            position: undefined,
+            isEliminated: false,
+            isDisconnected: false,
+          });
+        } else if (isDc) {
+          raceResults.push({
+            raceNumber: i,
+            position: undefined,
+            isEliminated: false,
+            isDisconnected: true,
+          });
+          eliminated = true;
+        } else {
+          const posStr = data[`race${i}Position`] as string | undefined;
+          raceResults.push({
+            raceNumber: i,
+            position: posStr ? parseInt(posStr, 10) : undefined,
+            isEliminated: isOut,
+            isDisconnected: false,
+          });
+          if (isOut) eliminated = true;
+        }
       }
 
-      // Race 3 - if race1/race2 is out/dc, this race was not participated
-      if (data.race1Out || data.race1Dc || data.race2Out || data.race2Dc) {
-        raceResults.push({
-          raceNumber: 3,
-          position: undefined,
-          isEliminated: false,
-          isDisconnected: false,
-        });
-      } else {
-        raceResults.push({
-          raceNumber: 3,
-          position: data.race3Dc ? undefined : (data.race3Position ? parseInt(data.race3Position, 10) : undefined),
-          isEliminated: data.race3Out,
-          isDisconnected: data.race3Dc,
-        });
-      }
-
-      // Submit score
       await gamesApi.submitScore(mode, season, game, {
-        machine: data.machine,
-        assistEnabled: data.assistEnabled,
+        machine: data.machine as string,
+        ...(!isGpMode && { assistEnabled: data.assistEnabled as boolean }),
         raceResults,
         targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
 
-      // Show success message
       setSuccess(true);
       setSuccessMessage(t('scoreSuccess'));
-
-      // Reset form state
-      classicForm.reset();
+      form.reset();
       if (isModeratorMode) setTargetUserId(null);
-
-      if (onScoreSubmitted) {
-        onScoreSubmitted();
-      }
-
+      if (onScoreSubmitted) onScoreSubmitted();
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
-      classicForm.setError('root', {
+      form.setError('root' as any, {
         type: 'manual',
         message: axiosError.response?.data?.message || axiosError.message || 'Failed to submit score',
       });
@@ -362,18 +294,18 @@ export function ScoreSubmissionForm({
           : t('description', { deadline: formattedDeadline })}
       </p>
 
-      {/* Player Selector for Moderator Mode */}
       {isModeratorMode && (
         <div className="mb-4">
           <Label className="text-gray-300 mb-2 block">
-            {t('targetPlayer')}          </Label>
+            {t('targetPlayer')}
+          </Label>
           <select
             value={targetUserId ?? ''}
             onChange={(e) => setTargetUserId(e.target.value ? parseInt(e.target.value, 10) : null)}
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">{t('selectPlayer')}</option>
-            {participants.map((p) => (
+            {participants!.map((p) => (
               <option key={p.user.id} value={p.user.id}>
                 {p.user.displayName || `User#${p.user.id}`}
               </option>
@@ -382,406 +314,202 @@ export function ScoreSubmissionForm({
         </div>
       )}
 
-      {isClassicMode ? (
-        // CLASSIC mode form
-        <Form {...classicForm}>
-          <form onSubmit={classicForm.handleSubmit(onSubmitClassic)} className="space-y-4">
-            {/* Machine Selection */}
-            <FormField
-              control={classicForm.control}
-              name="machine"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">
-                    {t('machine')}                  </FormLabel>
-                  <FormControl>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                      {F99_MACHINES.map((m) => (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => field.onChange(m.value)}
-                          className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg border-2 transition-all ${
-                            selectedMachine === m.value
-                              ? 'bg-gray-700 border-blue-500'
-                              : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
-                          }`}
-                        >
-                          <span className={`font-medium text-sm sm:text-base ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
-                            {m.name}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Race Results */}
-            <div className="space-y-3">
-              <FormLabel className="text-gray-300">{t('raceResults')}</FormLabel>
-              <p className="text-sm text-gray-400">{t('raceResultsDescription')}</p>
-
-              {/* Race 1 */}
-              <div className="p-2 bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 text-sm font-medium text-gray-300">Race 1</div>
-                  <FormField
-                    control={classicForm.control}
-                    name="race1Position"
-                    render={({ field, fieldState }) => (
-                      <FormItem className="w-14">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="#"
-                            min="1"
-                            max="20"
-                            disabled={isRace1PositionDisabled}
-                            className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center gap-3 ml-2">
-                    <FormField
-                      control={classicForm.control}
-                      name="race1Out"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={race1Dc}
-                              id="race1Out"
-                              className="h-4 w-4"
-                            />
-                          </FormControl>
-                          <Label htmlFor="race1Out" className={`text-xs cursor-pointer ${race1Dc ? 'text-gray-500' : 'text-gray-300'}`}>
-                            {t('rankedOutShort')}
-                          </Label>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={classicForm.control}
-                      name="race1Dc"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              id="race1Dc"
-                              className="h-4 w-4"
-                            />
-                          </FormControl>
-                          <Label htmlFor="race1Dc" className="text-gray-300 text-xs cursor-pointer">
-                            {t('disconnectedShort')}
-                          </Label>
-                        </FormItem>
-                      )}
-                    />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* Machine Selection */}
+          <FormField
+            control={form.control}
+            name="machine"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-300">{t('machine')}</FormLabel>
+                <FormControl>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    {F99_MACHINES.map((m) => (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => field.onChange(m.value)}
+                        className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg border-2 transition-all ${
+                          selectedMachine === m.value
+                            ? 'bg-gray-700 border-blue-500'
+                            : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
+                        }`}
+                      >
+                        <span className={`font-medium text-sm sm:text-base ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
+                          {m.name}
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                </div>
-              </div>
-
-              {/* Race 2 */}
-              <div className="p-2 bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 text-sm font-medium text-gray-300">Race 2</div>
-                  <FormField
-                    control={classicForm.control}
-                    name="race2Position"
-                    render={({ field, fieldState }) => (
-                      <FormItem className="w-14">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="#"
-                            min="1"
-                            max="20"
-                            disabled={isRace2PositionDisabled}
-                            className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center gap-3 ml-2">
-                    <FormField
-                      control={classicForm.control}
-                      name="race2Out"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isRace2Disabled || race2Dc}
-                              id="race2Out"
-                              className="h-4 w-4"
-                            />
-                          </FormControl>
-                          <Label htmlFor="race2Out" className={`text-xs cursor-pointer ${isRace2Disabled || race2Dc ? 'text-gray-500' : 'text-gray-300'}`}>
-                            {t('rankedOutShort')}
-                          </Label>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={classicForm.control}
-                      name="race2Dc"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isRace2Disabled}
-                              id="race2Dc"
-                              className="h-4 w-4"
-                            />
-                          </FormControl>
-                          <Label htmlFor="race2Dc" className={`text-xs cursor-pointer ${isRace2Disabled ? 'text-gray-500' : 'text-gray-300'}`}>
-                            {t('disconnectedShort')}
-                          </Label>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Race 3 */}
-              <div className="p-2 bg-gray-800 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="w-14 text-sm font-medium text-gray-300">Race 3</div>
-                  <FormField
-                    control={classicForm.control}
-                    name="race3Position"
-                    render={({ field, fieldState }) => (
-                      <FormItem className="w-14">
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="#"
-                            min="1"
-                            max="20"
-                            disabled={isRace3PositionDisabled}
-                            className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
-                            {...field}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center gap-3 ml-2">
-                    <FormField
-                      control={classicForm.control}
-                      name="race3Out"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isRace3Disabled || race3Dc}
-                              id="race3Out"
-                              className="h-4 w-4"
-                            />
-                          </FormControl>
-                          <Label htmlFor="race3Out" className={`text-xs cursor-pointer ${isRace3Disabled || race3Dc ? 'text-gray-500' : 'text-gray-300'}`}>
-                            {t('rankedOutShort')}
-                          </Label>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={classicForm.control}
-                      name="race3Dc"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isRace3Disabled}
-                              id="race3Dc"
-                              className="h-4 w-4"
-                            />
-                          </FormControl>
-                          <Label htmlFor="race3Dc" className={`text-xs cursor-pointer ${isRace3Disabled ? 'text-gray-500' : 'text-gray-300'}`}>
-                            {t('disconnectedShort')}
-                          </Label>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Validation Errors */}
-              {(() => {
-                const errors = classicForm.formState.errors;
-                const rangeErrors: string[] = [];
-
-                // Check for range errors (1-20)
-                if (errors.race1Position?.message?.includes('between')) {
-                  rangeErrors.push(t('race', { number: 1 }));
-                }
-                if (errors.race2Position?.message?.includes('between')) {
-                  rangeErrors.push(t('race', { number: 2 }));
-                }
-                if (errors.race3Position?.message?.includes('between')) {
-                  rangeErrors.push(t('race', { number: 3 }));
-                }
-
-                if (rangeErrors.length > 0) {
-                  return (
-                    <p className="text-sm text-red-400">
-                      {t('positionRange', { races: rangeErrors.join(', ') })}
-                    </p>
-                  );
-                }
-
-                // Otherwise show generic required message
-                if (errors.race1Position || errors.race2Position || errors.race3Position) {
-                  return <p className="text-sm text-red-400">{t('enterAllResults')}</p>;
-                }
-
-                return null;
-              })()}
-
-            </div>
-
-            {/* Error Message */}
-            {classicForm.formState.errors.root && (
-              <Alert variant="destructive">{classicForm.formState.errors.root.message}</Alert>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
+          />
 
-            {/* Success Message */}
-            {success && (
-              <Alert variant="success">{successMessage}</Alert>
-            )}
+          {/* Race Results */}
+          <div className="space-y-3">
+            <FormLabel className="text-gray-300">{t('raceResults')}</FormLabel>
+            <p className="text-sm text-gray-400">{t('raceResultsDescription')}</p>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700"
-            >
-              {isSubmitting ? t('submitting') : t('submitButton')}
-            </Button>
-          </form>
-        </Form>
-      ) : (
-        // GP mode form (original)
-        <Form {...gpForm}>
-          <form onSubmit={gpForm.handleSubmit(onSubmitGp)} className="space-y-4">
-            {/* Points Input */}
-            <FormField
-              control={gpForm.control}
-              name="points"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">
-                    {t('points')}                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      placeholder="0-1000"
-                      min="0"
-                      max="1000"
-                      className="bg-gray-700 border-gray-600 text-white"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {Array.from({ length: raceCount }, (_, idx) => {
+              const raceNum = idx + 1;
+              const disabled = isRaceDisabled(raceNum);
+              const posDisabled = isPositionDisabled(raceNum);
+              const dcValue = !!watchedValues[`race${raceNum}Dc`];
+              const raceMax = getRaceMaxPosition(raceNum);
 
-            {/* Machine Selection */}
-            <FormField
-              control={gpForm.control}
-              name="machine"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-300">
-                    {t('machine')}                  </FormLabel>
-                  <FormControl>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                      {F99_MACHINES.map((m) => (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => field.onChange(m.value)}
-                          className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg border-2 transition-all ${
-                            selectedMachine === m.value
-                              ? 'bg-gray-700 border-blue-500'
-                              : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
-                          }`}
-                        >
-                          <span className={`font-medium text-sm sm:text-base ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
-                            {m.name}
-                          </span>
-                        </button>
-                      ))}
+              return (
+                <div key={raceNum} className="p-2 bg-gray-800 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 text-sm font-medium text-gray-300">
+                      {t('race', { number: raceNum })}
                     </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormField
+                      control={form.control}
+                      name={`race${raceNum}Position`}
+                      render={({ field, fieldState }) => (
+                        <FormItem className="w-14">
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="#"
+                              min="1"
+                              max={raceMax}
+                              disabled={posDisabled}
+                              className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
+                              {...field}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex items-center gap-3 ml-2">
+                      <FormField
+                        control={form.control}
+                        name={`race${raceNum}Out`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value as boolean}
+                                onCheckedChange={field.onChange}
+                                disabled={disabled || dcValue}
+                                id={`race${raceNum}Out`}
+                                className="h-4 w-4"
+                              />
+                            </FormControl>
+                            <Label
+                              htmlFor={`race${raceNum}Out`}
+                              className={`text-xs cursor-pointer ${disabled || dcValue ? 'text-gray-500' : 'text-gray-300'}`}
+                            >
+                              {t('rankedOutShort')}
+                            </Label>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`race${raceNum}Dc`}
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center gap-1.5 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value as boolean}
+                                onCheckedChange={field.onChange}
+                                disabled={disabled}
+                                id={`race${raceNum}Dc`}
+                                className="h-4 w-4"
+                              />
+                            </FormControl>
+                            <Label
+                              htmlFor={`race${raceNum}Dc`}
+                              className={`text-xs cursor-pointer ${disabled ? 'text-gray-500' : 'text-gray-300'}`}
+                            >
+                              {t('disconnectedShort')}
+                            </Label>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
 
-            {/* Steer Assist */}
+            {/* Validation Errors */}
+            {(() => {
+              const errors = form.formState.errors;
+              const maxPositions = isGpMode ? GP_MAX_POSITIONS : CLASSIC_MAX_POSITIONS;
+              const rangeErrors: { race: string; max: number }[] = [];
+              for (let i = 1; i <= raceCount; i++) {
+                const err = errors[`race${i}Position`];
+                if (err && typeof err.message === 'string' && err.message.includes('between')) {
+                  rangeErrors.push({ race: t('race', { number: i }), max: maxPositions[i - 1] });
+                }
+              }
+              if (rangeErrors.length > 0) {
+                return (
+                  <div className="space-y-1">
+                    {rangeErrors.map(({ race, max }) => (
+                      <p key={race} className="text-sm text-red-400">
+                        {t('positionRange', { races: race, max })}
+                      </p>
+                    ))}
+                  </div>
+                );
+              }
+              const hasAnyError = Array.from({ length: raceCount }, (_, i) => errors[`race${i + 1}Position`]).some(Boolean);
+              if (hasAnyError) {
+                return <p className="text-sm text-red-400">{t('enterAllResults')}</p>;
+              }
+              return null;
+            })()}
+          </div>
+
+          {/* Steer Assist (Classic only) */}
+          {!isGpMode && (
             <FormField
-              control={gpForm.control}
+              control={form.control}
               name="assistEnabled"
               render={({ field }) => (
                 <FormItem className="flex items-center gap-2">
                   <FormControl>
                     <Checkbox
-                      checked={field.value}
+                      checked={field.value as boolean}
                       onCheckedChange={field.onChange}
-                      id="steerAssistGp"
+                      id="steerAssist"
                     />
                   </FormControl>
-                  <Label htmlFor="steerAssistGp" className="text-gray-300 cursor-pointer">
+                  <Label htmlFor="steerAssist" className="text-gray-300 cursor-pointer">
                     {t('steerAssist')}
                   </Label>
                 </FormItem>
               )}
             />
+          )}
 
-            {/* Error Message */}
-            {gpForm.formState.errors.root && (
-              <Alert variant="destructive">{gpForm.formState.errors.root.message}</Alert>
-            )}
+          {/* Error Message */}
+          {(form.formState.errors as any).root && (
+            <Alert variant="destructive">{(form.formState.errors as any).root.message}</Alert>
+          )}
 
-            {/* Success Message */}
-            {success && (
-              <Alert variant="success">{successMessage}</Alert>
-            )}
+          {/* Success Message */}
+          {success && (
+            <Alert variant="success">{successMessage}</Alert>
+          )}
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700"
-            >
-              {isSubmitting ? t('submitting') : t('submitButton')}
-            </Button>
-          </form>
-        </Form>
-      )}
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700"
+          >
+            {isSubmitting ? t('submitting') : t('submitButton')}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }

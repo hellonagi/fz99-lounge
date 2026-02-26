@@ -43,22 +43,20 @@ const LEAGUE_OPTIONS_99 = [
 
 // カテゴリ選択肢
 const CATEGORY_OPTIONS = [
-  // { value: 'GP', label: '99 Mode' }, // 未実装
+  { value: 'GP', label: 'GP' },
   { value: 'CLASSIC', label: 'Classic Mode' },
   { value: 'TEAM_CLASSIC', label: 'Team Classic Mode' },
+  { value: 'TEAM_GP', label: 'Team GP Mode' },
 ];
 
 // GPモード用のIn-Game Mode選択肢
 const IN_GAME_MODE_OPTIONS_GP = [
   { value: 'GRAND_PRIX', label: 'Grand Prix' },
-  { value: 'MINI_PRIX', label: 'Mini Prix' },
-  { value: 'TEAM_BATTLE', label: 'Team Battle' },
-  { value: 'PRO', label: 'Pro' },
-  { value: 'NINETY_NINE', label: '99' },
+  { value: 'MIRROR_GRAND_PRIX', label: 'Mirror Grand Prix' },
 ];
 
 const matchSchema = z.object({
-  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC']),
+  category: z.enum(['GP', 'CLASSIC', 'TEAM_CLASSIC', 'TEAM_GP']),
   seasonId: z.string().min(1, 'Season is required'),
   inGameMode: z.string().min(1, 'In-game mode is required'),
   leagueType: z.string().optional(), // GPモードのみ必須
@@ -115,9 +113,19 @@ export function CreateMatchCard() {
 
   const { isSubmitting } = form.formState;
   const category = form.watch('category');
-  const isGPMode = category === 'GP';
+  const isGPMode = category === 'GP' || category === 'TEAM_GP';
+  const inGameMode = form.watch('inGameMode');
   // GPモードのみIn-Game ModeとLeague Typeを選択可能
   // CLASSICモードはCLASSIC_MINI_PRIX固定、リーグ選択なし
+
+  // Filter league options based on in-game mode for GP
+  const gpLeagueOptions = isGPMode
+    ? LEAGUE_OPTIONS_99.filter((opt) =>
+        inGameMode === 'MIRROR_GRAND_PRIX'
+          ? opt.value.startsWith('MIRROR_')
+          : !opt.value.startsWith('MIRROR_')
+      )
+    : LEAGUE_OPTIONS_99;
 
   // Fetch active season for selected category
   useEffect(() => {
@@ -139,9 +147,14 @@ export function CreateMatchCard() {
   // Update defaults when category changes
   useEffect(() => {
     if (category === 'GP') {
-      form.setValue('leagueType', 'KNIGHT');
       form.setValue('inGameMode', 'GRAND_PRIX');
-      form.setValue('minPlayers', '40');
+      form.setValue('leagueType', 'KNIGHT');
+      form.setValue('minPlayers', '30');
+      form.setValue('maxPlayers', '99');
+    } else if (category === 'TEAM_GP') {
+      form.setValue('inGameMode', 'GRAND_PRIX');
+      form.setValue('leagueType', 'KNIGHT');
+      form.setValue('minPlayers', '30');
       form.setValue('maxPlayers', '99');
     } else if (category === 'TEAM_CLASSIC') {
       form.setValue('leagueType', undefined);
@@ -156,6 +169,16 @@ export function CreateMatchCard() {
     }
     // seasonId is set by the active season fetch effect
   }, [category, form]);
+
+  // Update league when in-game mode changes for GP
+  useEffect(() => {
+    if (!isGPMode) return;
+    if (inGameMode === 'MIRROR_GRAND_PRIX') {
+      form.setValue('leagueType', 'MIRROR_KNIGHT');
+    } else if (inGameMode === 'GRAND_PRIX') {
+      form.setValue('leagueType', 'KNIGHT');
+    }
+  }, [inGameMode, isGPMode, form]);
 
   const onSubmit = async (data: MatchFormData) => {
     try {
@@ -281,7 +304,7 @@ export function CreateMatchCard() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {LEAGUE_OPTIONS_99.map((option) => (
+                        {gpLeagueOptions.map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>
