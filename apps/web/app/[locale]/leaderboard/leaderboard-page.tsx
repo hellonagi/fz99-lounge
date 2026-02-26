@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { usersApi, seasonsApi } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
@@ -38,10 +39,29 @@ interface LeaderboardEntry {
 
 type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
+const TAB_TO_CATEGORY: Record<string, Category> = {
+  gp: 'GP',
+  team_gp: 'TEAM_GP',
+  classic: 'CLASSIC',
+  team_classic: 'TEAM_CLASSIC',
+};
+
+function getCategoryFromTab(tab: string | null): Category {
+  if (tab && TAB_TO_CATEGORY[tab]) {
+    return TAB_TO_CATEGORY[tab];
+  }
+  return 'GP';
+}
+
 export default function LeaderboardPage() {
   const t = useTranslations('leaderboard');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<Category>('CLASSIC');
+  const [activeCategory, setActiveCategory] = useState<Category>(() =>
+    getCategoryFromTab(searchParams.get('tab'))
+  );
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -105,6 +125,17 @@ export default function LeaderboardPage() {
     setPage(1);
   };
 
+  const handleCategoryChange = useCallback(
+    (value: string) => {
+      const category = value.toUpperCase() as Category;
+      setActiveCategory(category);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', value);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
@@ -128,13 +159,13 @@ export default function LeaderboardPage() {
         {mounted ? (
           <Tabs
             value={activeCategory.toLowerCase()}
-            onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
+            onValueChange={handleCategoryChange}
           >
             <TabsList>
               <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
+              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
-              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="gp">
@@ -143,6 +174,21 @@ export default function LeaderboardPage() {
               ) : (
                 <>
                   <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="GP" />
+                  <LeaderboardPagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </>
+              )}
+            </TabsContent>
+
+            <TabsContent value="team_gp">
+              {error ? (
+                <div className="text-center text-red-400 py-8">{error}</div>
+              ) : (
+                <>
+                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="TEAM_GP" />
                   <LeaderboardPagination
                     currentPage={page}
                     totalPages={totalPages}
@@ -173,21 +219,6 @@ export default function LeaderboardPage() {
               ) : (
                 <>
                   <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="TEAM_CLASSIC" />
-                  <LeaderboardPagination
-                    currentPage={page}
-                    totalPages={totalPages}
-                    onPageChange={handlePageChange}
-                  />
-                </>
-              )}
-            </TabsContent>
-
-            <TabsContent value="team_gp">
-              {error ? (
-                <div className="text-center text-red-400 py-8">{error}</div>
-              ) : (
-                <>
-                  <LeaderboardTable data={leaderboardData} loading={loading} startRank={(page - 1) * 20 + 1} category="TEAM_GP" />
                   <LeaderboardPagination
                     currentPage={page}
                     totalPages={totalPages}

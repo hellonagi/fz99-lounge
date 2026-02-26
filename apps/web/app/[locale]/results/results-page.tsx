@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { matchesApi, seasonsApi } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
@@ -40,10 +41,25 @@ interface PaginationMeta {
 
 type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
+const TAB_TO_CATEGORY: Record<string, Category> = {
+  gp: 'GP',
+  team_gp: 'TEAM_GP',
+  classic: 'CLASSIC',
+  team_classic: 'TEAM_CLASSIC',
+};
+
+function getCategoryFromTab(tab: string | null): Category {
+  if (tab && TAB_TO_CATEGORY[tab]) return TAB_TO_CATEGORY[tab];
+  return 'GP';
+}
+
 export default function ResultsPage() {
   const t = useTranslations('results');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<Category>('CLASSIC');
+  const [activeCategory, setActiveCategory] = useState<Category>(() => getCategoryFromTab(searchParams.get('tab')));
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [page, setPage] = useState(1);
@@ -118,6 +134,14 @@ export default function ResultsPage() {
     setPage(1);
   };
 
+  const handleCategoryChange = useCallback((value: string) => {
+    const category = value.toUpperCase() as Category;
+    setActiveCategory(category);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', value);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, pathname]);
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
   };
@@ -166,16 +190,20 @@ export default function ResultsPage() {
         {mounted ? (
           <Tabs
             value={activeCategory.toLowerCase()}
-            onValueChange={(value) => setActiveCategory(value.toUpperCase() as Category)}
+            onValueChange={handleCategoryChange}
           >
             <TabsList>
               <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
+              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
-              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="gp" className="p-4">
+              {renderContent()}
+            </TabsContent>
+
+            <TabsContent value="team_gp" className="p-4">
               {renderContent()}
             </TabsContent>
 
@@ -184,10 +212,6 @@ export default function ResultsPage() {
             </TabsContent>
 
             <TabsContent value="team_classic" className="p-4">
-              {renderContent()}
-            </TabsContent>
-
-            <TabsContent value="team_gp" className="p-4">
               {renderContent()}
             </TabsContent>
           </Tabs>
