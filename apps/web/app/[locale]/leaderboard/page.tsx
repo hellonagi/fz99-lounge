@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { getAlternates } from '@/lib/metadata';
@@ -18,5 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default function Page() {
-  return <LeaderboardPage />;
+  return (
+    <Suspense>
+      <LeaderboardPage />
+    </Suspense>
+  );
 }
