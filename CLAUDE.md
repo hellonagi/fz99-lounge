@@ -18,62 +18,37 @@
 
 ## 📊 Prismaスキーマ変更時の手順
 
-### コマンドの違い
-| コマンド | 用途 | マイグレーションファイル |
-|---------|------|------------------------|
-| `prisma db push` | プロトタイピング・開発中の試行錯誤 | 作成しない |
-| `prisma migrate dev` | 開発環境でマイグレーション作成 | 作成する |
-| `prisma migrate deploy` | 本番/stg環境でマイグレーション適用 | 既存を適用 |
+### `prisma db push` は禁止。必ず `prisma migrate dev` を使う
 
-### 方法1: プロトタイピング用（db push）
+本番は `migrate deploy` でマイグレーションファイルを順に適用する。
+`db push` はマイグレーションファイルを作らないため、ローカルでは動くが本番にデプロイすると反映されず500エラーになる。
 
-開発中の試行錯誤には `db push` が便利:
+schema.prisma を変更したら、**同じコミットに必ずマイグレーションファイルを含める**こと。
+schema.prisma の変更だけがコミットされてマイグレーションが無い状態は禁止。
 
-```bash
-# 1. ローカルでスキーマ変更を適用
-cd apps/api
-npx prisma db push --accept-data-loss
-
-# 2. 【重要】コンテナ内のPrismaクライアントを再生成
-docker exec fz99-lounge-api npx prisma generate
-
-# 3. APIサーバーを再起動して変更を反映
-docker restart fz99-lounge-api
-
-# 4. ログを確認してエラーがないかチェック
-docker logs fz99-lounge-api --tail 20
-```
-
-### 方法2: 本番デプロイ用（migrate dev → migrate deploy）
-
-本番にデプロイする変更は migrate を使用:
+### 手順
 
 ```bash
-# 1. 開発環境でマイグレーション作成
+# 1. schema.prisma を編集
+# 2. マイグレーション作成（これがDBへの適用とファイル生成を同時にやる）
 cd apps/api
 npx prisma migrate dev --name <変更内容>
-
-# 2. マイグレーションファイルをGitにコミット
-git add prisma/migrations/
-git commit -m "Add migration: <変更内容>"
-
-# 3. 【重要】コンテナ内のPrismaクライアントを再生成
+# 3. コンテナに反映
 docker exec fz99-lounge-api npx prisma generate
-
-# 4. APIサーバーを再起動
 docker restart fz99-lounge-api
+# 4. schema.prisma とマイグレーションファイルを一緒にコミット
+git add prisma/schema.prisma prisma/migrations/
 ```
 
-#### 本番/stg環境への適用
+### 本番/stg環境への適用
 ```bash
-# EC2上でマイグレーション適用
 IMAGE_TAG=xxx docker compose -f compose.ecr.yaml --env-file .env.stg run --rm api npx prisma migrate deploy
 ```
 
 ### よくある問題
-- **"column does not exist"エラー**: コンテナ内のPrismaクライアントが古い
-- **型エラー**: TypeScriptの定義が更新されていない → コンテナ再起動が必要
-- **Drift detected**: DB状態とマイグレーション履歴が不一致 → `migrate reset`（開発）または`migrate resolve`（本番）
+- **本番だけ500エラー**: マイグレーションファイルが無い可能性大。`prisma migrate status` で確認
+- **"column does not exist"エラー**: コンテナ内のPrismaクライアントが古い → `prisma generate` + 再起動
+- **Drift detected**: ローカルDBとマイグレーション履歴が不一致 → `prisma migrate resolve --applied <名前>` で解消
 
 ## 環境変数追加時
 
