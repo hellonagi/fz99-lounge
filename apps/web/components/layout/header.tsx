@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
+import { authApi } from '@/lib/api';
 import { SiDiscord } from 'react-icons/si';
 import { User, LogOut, Shield } from 'lucide-react';
 import { LanguageSwitcher } from './language-switcher';
@@ -35,7 +36,12 @@ export default function Header({ mounted, locale }: HeaderProps) {
     window.location.href = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/discord`;
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Cookie clear failed, continue with local cleanup
+    }
     logout();
     router.push(`/${locale}`);
   };

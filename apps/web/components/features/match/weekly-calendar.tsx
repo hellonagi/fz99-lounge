@@ -3,9 +3,11 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
 import { useWeeklyMatches } from '@/hooks/useWeeklyMatches';
 import { Loader2 } from 'lucide-react';
+import { SiDiscord } from 'react-icons/si';
 import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
@@ -76,7 +78,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
       {isInProgress && match.matchNumber && (
         <Link
           href={`/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
-          className="inline-flex items-center justify-center gap-1 px-2.5 h-6 rounded text-[10px] font-medium bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors"
+          className={cn(buttonVariants({ size: 'xs' }), 'gap-1 bg-red-500/20 text-red-300 hover:bg-red-500/30')}
         >
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -88,20 +90,27 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
       {isFinished && match.matchNumber && (
         <Link
           href={`/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
-          className="inline-flex items-center justify-center px-2.5 h-6 rounded text-[10px] font-medium bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 transition-colors"
+          className={cn(buttonVariants({ size: 'xs' }), 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30')}
         >
           {tCal('ended')}
         </Link>
+      )}
+      {isWaiting && !isAuthenticated && (
+        <a
+          href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
+          className={cn(buttonVariants({ size: 'xs', variant: 'discord' }), 'gap-1')}
+        >
+          <SiDiscord className="w-3 h-3" />
+          {tHero('join')}
+        </a>
       )}
       {isWaiting && isAuthenticated && (
         <button
           onClick={() => onJoinLeave(match.id)}
           disabled={isJoiningThis}
           className={cn(
-            'inline-flex items-center justify-center px-2.5 h-6 rounded text-[10px] font-medium transition-colors',
-            isJoiningThis
-              ? 'opacity-50 animate-pulse pointer-events-none'
-              : '',
+            buttonVariants({ size: 'xs' }),
+            isJoiningThis && 'opacity-50 animate-pulse pointer-events-none',
             isInMatch
               ? 'bg-gray-600/60 text-gray-300 hover:bg-gray-600/80'
               : 'bg-green-600/60 text-green-100 hover:bg-green-600/80',
@@ -300,7 +309,7 @@ export function WeeklyCalendar() {
                   );
                   return (
                     <SwiperSlide key={dateKey}>
-                      <div className="min-h-[200px]">
+                      <div>
                         {dayHasMatches ? (
                           <div className="space-y-3">
                             {timeSlots.map((slot) => {
