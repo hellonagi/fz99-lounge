@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
@@ -194,16 +194,18 @@ export function WeeklyCalendar() {
   } = useWeeklyMatches();
 
   const todayKey = getTodayKeyJST();
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [swiperInstance, setSwiperInstance] = useState<SwiperType | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Generate day keys for the week and group matches by day and by time slot
+  // Generate day keys for the week, rotated so today is first
   const { dayKeys, timeSlots, timeSlotGrid } = useMemo(() => {
-    const keys: string[] = [];
+    const allKeys: string[] = [];
     for (let i = 0; i < 7; i++) {
-      keys.push(jstDateKey(weekStartLocal, i));
+      allKeys.push(jstDateKey(weekStartLocal, i));
     }
+    const todayIdx = allKeys.indexOf(todayKey);
+    const rotateBy = todayIdx >= 0 ? todayIdx : 0;
+    const keys = [...allKeys.slice(rotateBy), ...allKeys.slice(0, rotateBy)];
 
     const timeSet = new Set<string>();
     const tsGrid: Record<string, Record<string, typeof matches>> = {};
@@ -221,28 +223,9 @@ export function WeeklyCalendar() {
 
     const timeSlots = Array.from(timeSet).sort();
     return { dayKeys: keys, timeSlots, timeSlotGrid: tsGrid };
-  }, [matches, weekStartLocal]);
+  }, [matches, weekStartLocal, todayKey]);
 
-  const todayIndex = useMemo(() => {
-    const idx = dayKeys.indexOf(todayKey);
-    return idx >= 0 ? idx : 0;
-  }, [dayKeys, todayKey]);
-
-  // Sync activeSlide with todayIndex on load
-  useEffect(() => {
-    setActiveSlide(todayIndex);
-  }, [todayIndex]);
-
-  // Desktop: auto-scroll to today
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el || todayIndex < 0) return;
-    requestAnimationFrame(() => {
-      const timeColWidth = 56;
-      const colWidth = (el.scrollWidth - timeColWidth) / 7;
-      el.scrollLeft = Math.max(0, timeColWidth + colWidth * todayIndex - 16);
-    });
-  }, [todayIndex, loading]);
+  // Today is always at index 0 after rotation
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -299,7 +282,7 @@ export function WeeklyCalendar() {
               <Swiper
                 spaceBetween={16}
                 slidesPerView={1}
-                initialSlide={todayIndex}
+                initialSlide={0}
                 onSwiper={setSwiperInstance}
                 onSlideChange={(swiper) => setActiveSlide(swiper.activeIndex)}
               >
@@ -351,7 +334,7 @@ export function WeeklyCalendar() {
             </div>
 
             {/* Desktop: full table */}
-            <div ref={scrollRef} className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb:hover]:bg-white/20">
+            <div className="hidden md:block overflow-x-auto [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb:hover]:bg-white/20">
               <table className="w-full border-separate border-spacing-0 table-fixed" style={{ minWidth: 1022 }}>
                 <thead>
                   <tr>
