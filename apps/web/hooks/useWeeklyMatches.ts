@@ -36,27 +36,25 @@ interface WeeklyMatch {
 
 const JST_OFFSET = 9 * 60 * 60 * 1000;
 
-/** Get current week range (Sun-Sat) based on JST */
+/** Get 7-day range starting from today based on JST */
 function getCurrentWeekRangeJST(): { from: string; to: string; weekStartLocal: Date } {
   const nowJst = new Date(Date.now() + JST_OFFSET);
-  const dayOfWeek = nowJst.getUTCDay(); // 0=Sun, 1=Mon, ...
-  const sundayOffset = -dayOfWeek;
 
-  // Sunday 00:00 JST
-  const sundayJst = new Date(Date.UTC(
+  // Today 00:00 JST
+  const todayJst = new Date(Date.UTC(
     nowJst.getUTCFullYear(),
     nowJst.getUTCMonth(),
-    nowJst.getUTCDate() + sundayOffset,
+    nowJst.getUTCDate(),
     0, 0, 0,
   ));
   // Convert to UTC for API query
-  const fromUtc = new Date(sundayJst.getTime() - JST_OFFSET);
+  const fromUtc = new Date(todayJst.getTime() - JST_OFFSET);
   const toUtc = new Date(fromUtc.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   return {
     from: fromUtc.toISOString(),
     to: toUtc.toISOString(),
-    weekStartLocal: sundayJst, // Sunday in JST (stored as UTC-like Date for day key generation)
+    weekStartLocal: todayJst, // Today in JST (stored as UTC-like Date for day key generation)
   };
 }
 

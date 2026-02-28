@@ -197,15 +197,12 @@ export function WeeklyCalendar() {
   const [swiperInstance, setSwiperInstance] = useState<SwiperType | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  // Generate day keys for the week, rotated so today is first
+  // Generate day keys for 7 days starting from today
   const { dayKeys, timeSlots, timeSlotGrid } = useMemo(() => {
-    const allKeys: string[] = [];
+    const keys: string[] = [];
     for (let i = 0; i < 7; i++) {
-      allKeys.push(jstDateKey(weekStartLocal, i));
+      keys.push(jstDateKey(weekStartLocal, i));
     }
-    const todayIdx = allKeys.indexOf(todayKey);
-    const rotateBy = todayIdx >= 0 ? todayIdx : 0;
-    const keys = [...allKeys.slice(rotateBy), ...allKeys.slice(0, rotateBy)];
 
     const timeSet = new Set<string>();
     const tsGrid: Record<string, Record<string, typeof matches>> = {};
@@ -223,7 +220,7 @@ export function WeeklyCalendar() {
 
     const timeSlots = Array.from(timeSet).sort();
     return { dayKeys: keys, timeSlots, timeSlotGrid: tsGrid };
-  }, [matches, weekStartLocal, todayKey]);
+  }, [matches, weekStartLocal]);
 
   // Today is always at index 0 after rotation
 
