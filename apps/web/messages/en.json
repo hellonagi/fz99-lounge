@@ -362,7 +362,7 @@
     "excluded": "Unable to participate in this game",
     "excludedDescription": "You were the {count}th (last) to register and were not assigned to a team.",
     "passcodeRevealIn": "Passcode reveals in",
-    "passcodeHidden": "While you wait, check the team setup below",
+    "passcodeHidden": "While you wait, set up your team colors",
     "allTeams": "Teams",
     "excludedPlayers": "Excluded Players",
     "teamResults": "Team Results",
