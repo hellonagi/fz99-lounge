@@ -361,7 +361,7 @@
     "excluded": "ゲームに参加できませんでした",
     "excludedDescription": "あなたは{count}番目（最後）の登録だったため、チーム割り当ての対象外となりました。",
     "passcodeRevealIn": "パスコード公開まで",
-    "passcodeHidden": "待ち時間の間に下のチームセットアップを確認してください",
+    "passcodeHidden": "待ち時間の間にチームカラーの設定をしてください",
     "allTeams": "チーム",
     "excludedPlayers": "除外されたプレイヤー",
     "teamResults": "チーム結果",
