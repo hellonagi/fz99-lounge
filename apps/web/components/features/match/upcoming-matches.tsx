@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
+import { CategoryBadge } from '@/components/ui/category-badge';
 import { useAuthStore } from '@/store/authStore';
 import { Loader2 } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
@@ -112,22 +113,7 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
               <Card key={match.id} className="p-4 flex flex-col gap-3 bg-gray-700/50 border-gray-600">
                 {/* Header: Badge + Match number */}
                 <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
-                      category === 'GP'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                        : category === 'CLASSIC'
-                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
-                          : category === 'TEAM_CLASSIC'
-                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                            : category === 'TEAM_GP'
-                              ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
-                              : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
-                    )}
-                  >
-                    {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category === 'TEAM_GP' ? 'TEAM GP' : category === 'GP' ? 'GP' : category}
-                  </span>
+                  <CategoryBadge category={category} />
                   <span className="text-gray-400 text-sm font-medium">
                     Season{match.season?.seasonNumber} #{match.matchNumber}
                   </span>

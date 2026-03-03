@@ -47,8 +47,9 @@ export class SubmitScoreDto {
   @Max(1000)
   reportedPoints?: number; // ポイント (0-1000) - GPモード用
 
+  @IsOptional()
   @IsEnum(F99Machine)
-  machine: F99Machine; // F-ZERO 99のマシン
+  machine?: F99Machine; // F-ZERO 99のマシン（レース1切断時は省略可）
 
   @IsOptional()
   @IsBoolean()

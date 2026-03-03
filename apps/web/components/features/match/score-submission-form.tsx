@@ -37,7 +37,7 @@ const CLASSIC_MAX_POSITIONS = [20, 16, 12];
 // Build dynamic race schema based on race count and max position
 function buildRaceSchema(raceCount: number, maxPosition: number, isGpMode: boolean) {
   const fields: Record<string, z.ZodTypeAny> = {
-    machine: z.string().min(1, 'Machine is required'),
+    machine: z.string(),
   };
 
   for (let i = 1; i <= raceCount; i++) {
@@ -68,6 +68,16 @@ function buildRaceSchema(raceCount: number, maxPosition: number, isGpMode: boole
       }
       return true;
     };
+
+    // Machine is required unless race 1 is DC
+    const race1Dc = data['race1Dc'] as boolean;
+    if (!race1Dc && !(data.machine as string)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Machine is required',
+        path: ['machine'],
+      });
+    }
 
     // Check each race: required unless previous race was out/dc, or this race is dc
     let eliminated = false;
@@ -215,6 +225,14 @@ export function ScoreSubmissionForm({
   }, [...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Out`]),
      ...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Dc`])]);
 
+  // Clear machine when race 1 is DC
+  const isRace1Dc = !!watchedValues['race1Dc'];
+  useEffect(() => {
+    if (isRace1Dc) {
+      form.setValue('machine', '');
+    }
+  }, [isRace1Dc, form]);
+
   const onSubmit = async (data: RaceFormData) => {
     if (isModeratorMode && !targetUserId) {
       form.setError('root' as any, {
@@ -260,7 +278,7 @@ export function ScoreSubmissionForm({
       }
 
       await gamesApi.submitScore(mode, season, game, {
-        machine: data.machine as string,
+        machine: (data.machine as string) || undefined,
         raceResults,
         targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
@@ -327,13 +345,16 @@ export function ScoreSubmissionForm({
                         key={m.value}
                         type="button"
                         onClick={() => field.onChange(m.value)}
+                        disabled={isRace1Dc}
                         className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg border-2 transition-all ${
-                          selectedMachine === m.value
-                            ? 'bg-gray-700 border-blue-500'
-                            : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
+                          isRace1Dc
+                            ? 'bg-gray-900 border-gray-700 opacity-50 cursor-not-allowed'
+                            : selectedMachine === m.value
+                              ? 'bg-gray-700 border-blue-500'
+                              : 'bg-gray-900 border-gray-600 hover:bg-gray-800'
                         }`}
                       >
-                        <span className={`font-medium text-sm sm:text-base ${selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
+                        <span className={`font-medium text-sm sm:text-base ${!isRace1Dc && selectedMachine === m.value ? m.color : 'text-gray-400'}`}>
                           {m.name}
                         </span>
                       </button>

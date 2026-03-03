@@ -324,7 +324,7 @@ export class GamesService {
         data: {
           gameId,
           userId,
-          machine: submitScoreDto.machine,
+          machine: submitScoreDto.machine || null,
           assistEnabled: submitScoreDto.assistEnabled,
           status: ResultStatus.PENDING,
           submittedAt: now,
@@ -338,7 +338,7 @@ export class GamesService {
           id: game.participants[0].id,
         },
         data: {
-          machine: submitScoreDto.machine,
+          machine: submitScoreDto.machine || null,
           assistEnabled: submitScoreDto.assistEnabled,
           status: ResultStatus.PENDING,
           submittedAt: now,
@@ -1517,7 +1517,7 @@ export class GamesService {
           const targetRr = participant.raceResults.find(
             (r) => r.raceNumber === raceNumber,
           );
-          if (targetRr?.position !== null && !targetRr?.isDisconnected) {
+          if (targetRr && targetRr.position !== null && !targetRr.isDisconnected) {
             const tiedUsers = positionCounts.get(targetRr!.position!);
             if (tiedUsers && tiedUsers.length > 1 && tiedUsers.includes(targetUserId)) {
               // Check if this tie causes the invalid position

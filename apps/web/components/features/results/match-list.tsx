@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
-import { cn } from '@/lib/utils';
+import { CategoryBadge } from '@/components/ui/category-badge';
 
 interface MatchResult {
   id: number;
@@ -56,24 +56,7 @@ export function MatchList({ matches, loading }: MatchListProps) {
           <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 transition-colors">
             {/* Left: Category & Match Info */}
             <div className="flex items-center gap-3 shrink-0">
-              <span
-                className={cn(
-                  'inline-flex items-center px-2 py-1 rounded text-xs font-medium border',
-                  match.category === 'GP'
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                    : match.category === 'CLASSIC'
-                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
-                      : match.category === 'TEAM_CLASSIC'
-                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                        : match.category === 'TEAM_GP'
-                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
-                          : match.category === 'TOURNAMENT'
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                            : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
-                )}
-              >
-                {match.category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : match.category === 'TEAM_GP' ? 'TEAM GP' : match.category === 'GP' ? 'GP' : match.category}
-              </span>
+              <CategoryBadge category={match.category} />
               <span className="text-gray-300 text-sm whitespace-nowrap">
                 S{match.seasonNumber} #{match.matchNumber}
               </span>

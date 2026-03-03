@@ -437,6 +437,9 @@ export default function GamePage() {
     onScreenshotUpdated: handleScreenshotUpdated,
     onTeamAssigned: handleTeamAssigned,
     onPasscodeRevealed: handlePasscodeRevealedEvent,
+    onParticipantVerified: handleScoreUpdated,
+    onParticipantRejected: handleScoreUpdated,
+    onScreenshotRequested: handleScoreUpdated,
   });
 
   // Check if this is a team mode match
@@ -492,6 +495,7 @@ export default function GamePage() {
             seasonNumber={game.match.season?.seasonNumber || null}
             gameNumber={game.match.matchNumber}
             leagueType={game.leagueType}
+            inGameMode={game.inGameMode}
             startedAt={game.startedAt || game.match.scheduledStart}
             completedAt={game.completedAt}
             status={game.match.status}
@@ -502,8 +506,8 @@ export default function GamePage() {
             <TrackBanners tracks={game.tracks} />
           )}
 
-          {/* Passcode Card - hide from excluded players */}
-          {!isExcluded && (
+          {/* Passcode Card - visible to admins and participants only */}
+          {!isExcluded && (isParticipant || user?.role === 'ADMIN') && (
             <MatchPasscodeCard
               passcode={game.passcode}
               isParticipant={!!isParticipant}
@@ -514,6 +518,7 @@ export default function GamePage() {
               splitVoteStatus={splitVoteStatus}
               onSplitVote={fetchSplitVoteStatus}
               inGameMode={game.inGameMode}
+              leagueType={game.leagueType}
               passcodeRevealTime={isTeamMode ? game.passcodeRevealTime : undefined}
               onPasscodeRevealed={() => {
                 setPasscodeRevealed(true);

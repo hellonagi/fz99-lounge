@@ -412,15 +412,15 @@ export function MatchDetailsTable({
   const displayTeamScores = sortedTeamScores.length > 0 ? sortedTeamScores : calculatedTeamScores;
 
   // Calculate per-race scores for each team
-  const teamRaceScores = new Map<number, { r1: number; r2: number; r3: number }>();
+  const teamRaceScores = new Map<number, number[]>();
   if (isTeamClassic) {
     participantsWithRank.forEach((p) => {
       if (p.teamIndex === null || p.teamIndex === undefined) return;
-      const current = teamRaceScores.get(p.teamIndex) || { r1: 0, r2: 0, r3: 0 };
+      const current = teamRaceScores.get(p.teamIndex) || Array(raceColumnCount).fill(0);
       p.raceResults?.forEach((r) => {
-        if (r.raceNumber === 1) current.r1 += r.points ?? 0;
-        else if (r.raceNumber === 2) current.r2 += r.points ?? 0;
-        else if (r.raceNumber === 3) current.r3 += r.points ?? 0;
+        if (r.raceNumber >= 1 && r.raceNumber <= raceColumnCount) {
+          current[r.raceNumber - 1] += r.points ?? 0;
+        }
       });
       teamRaceScores.set(p.teamIndex, current);
     });
@@ -436,9 +436,9 @@ export function MatchDetailsTable({
             <tr className="border-b border-gray-700 text-gray-400">
               <th className="text-left py-2 px-2 font-medium w-0">#</th>
               <th className="text-left py-2 px-2 font-medium">Team</th>
-              <th className="text-center py-2 px-1 font-medium w-10">R1</th>
-              <th className="text-center py-2 px-1 font-medium w-10">R2</th>
-              <th className="text-center py-2 px-1 font-medium w-10">R3</th>
+              {Array.from({ length: raceColumnCount }, (_, i) => (
+                <th key={`trh${i + 1}`} className="text-center py-2 px-1 font-medium w-10">R{i + 1}</th>
+              ))}
               <th className="text-right py-2 px-2 font-medium">Pts</th>
             </tr>
           </thead>
@@ -462,9 +462,9 @@ export function MatchDetailsTable({
                   <td className="py-2 px-2 text-white">
                     Team {String.fromCharCode(65 + team.teamIndex)}
                   </td>
-                  <td className="py-2 px-1 text-center text-gray-100">{races?.r1 ?? '-'}</td>
-                  <td className="py-2 px-1 text-center text-gray-100">{races?.r2 ?? '-'}</td>
-                  <td className="py-2 px-1 text-center text-gray-100">{races?.r3 ?? '-'}</td>
+                  {Array.from({ length: raceColumnCount }, (_, i) => (
+                    <td key={`tr${i + 1}`} className="py-2 px-1 text-center text-gray-100">{races?.[i] ?? '-'}</td>
+                  ))}
                   <td className="py-2 px-2 text-right font-medium text-white">
                     {team.score.toLocaleString()}
                   </td>

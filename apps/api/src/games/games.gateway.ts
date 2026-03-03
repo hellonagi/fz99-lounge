@@ -106,6 +106,21 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Passcode regenerated event emitted to game room: ${payload.gameId}`);
   }
 
+  @OnEvent('game.participantVerified')
+  handleParticipantVerified(payload: { gameId: number; participant: any }) {
+    this.server.to(`game:${payload.gameId}`).emit('participantVerified', payload.participant);
+  }
+
+  @OnEvent('game.participantRejected')
+  handleParticipantRejected(payload: { gameId: number; participant: any }) {
+    this.server.to(`game:${payload.gameId}`).emit('participantRejected', payload.participant);
+  }
+
+  @OnEvent('game.screenshotRequested')
+  handleScreenshotRequested(payload: { gameId: number; participant: any }) {
+    this.server.to(`game:${payload.gameId}`).emit('screenshotRequested', payload.participant);
+  }
+
   @OnEvent('game.screenshotUpdated')
   handleScreenshotUpdated(payload: {
     gameId: number;
