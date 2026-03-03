@@ -503,8 +503,8 @@ export default function GamePage() {
             <TrackBanners tracks={game.tracks} />
           )}
 
-          {/* Passcode Card - hide from excluded players */}
-          {!isExcluded && (
+          {/* Passcode Card - visible to admins and participants only */}
+          {!isExcluded && (isParticipant || user?.role === 'ADMIN') && (
             <MatchPasscodeCard
               passcode={game.passcode}
               isParticipant={!!isParticipant}
