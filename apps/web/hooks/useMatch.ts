@@ -29,6 +29,14 @@ interface Match {
   }>;
 }
 
+// Minutes after match start to stop showing on hero and move to next match
+const MATCH_DISPLAY_DURATION: Record<string, number> = {
+  classic: 10,
+  team_classic: 12,
+  gp: 15,
+  team_gp: 17,
+};
+
 export function useMatch() {
   const [nextMatch, setNextMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,19 +54,25 @@ export function useMatch() {
       const inProgressResponse = await matchesApi.getAll(undefined, 'IN_PROGRESS');
       const inProgressMatches = inProgressResponse.data;
 
-      // If there's an IN_PROGRESS match, show it with game page link
+      // If there's an IN_PROGRESS match that hasn't exceeded display duration, show it
       if (inProgressMatches && inProgressMatches.length > 0) {
-        const inProgressMatch = inProgressMatches[0]; // Get the first one
+        const inProgressMatch = inProgressMatches[0];
         const category = inProgressMatch.category?.toLowerCase() ||
                          inProgressMatch.season?.event?.category?.toLowerCase() || 'gp';
-        const season = inProgressMatch.season?.seasonNumber ?? 0;
-        const match = inProgressMatch.matchNumber ?? 0;
+        const durationMin = MATCH_DISPLAY_DURATION[category] ?? 15;
+        const startedAt = new Date(inProgressMatch.scheduledStart).getTime();
+        const elapsed = (Date.now() - startedAt) / 60000;
 
-        setOngoingGameInfo({ category, season, match });
-        setNextMatch(inProgressMatch);
-        setError(null);
-        setLoading(false);
-        return;
+        if (elapsed < durationMin) {
+          const season = inProgressMatch.season?.seasonNumber ?? 0;
+          const match = inProgressMatch.matchNumber ?? 0;
+
+          setOngoingGameInfo({ category, season, match });
+          setNextMatch(inProgressMatch);
+          setError(null);
+          setLoading(false);
+          return;
+        }
       }
 
       // No IN_PROGRESS match, fetch next waiting match (all categories)
