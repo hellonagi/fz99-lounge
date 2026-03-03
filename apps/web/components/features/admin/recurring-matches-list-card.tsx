@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { useTranslations } from 'next-intl';
 import { recurringMatchesApi } from '@/lib/api';
 import { Pencil, Trash2 } from 'lucide-react';
+import { CategoryBadge } from '@/components/ui/category-badge';
 import type { RecurringMatch } from '@/types';
 
 interface RecurringMatchesListCardProps {
@@ -78,13 +79,7 @@ export function RecurringMatchesListCard({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-500/20 text-purple-300 border border-purple-500/50">
-                      {schedule.eventCategory === 'TEAM_CLASSIC'
-                        ? 'TEAM CLASSIC'
-                        : schedule.eventCategory === 'TEAM_GP'
-                        ? 'TEAM GP'
-                        : schedule.eventCategory}
-                    </span>
+                    <CategoryBadge category={schedule.eventCategory} />
                   </div>
                   <div className="space-y-0.5">
                     {schedule.rules.map((rule) => (
