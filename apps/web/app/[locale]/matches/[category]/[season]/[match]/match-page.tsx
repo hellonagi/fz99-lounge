@@ -437,6 +437,9 @@ export default function GamePage() {
     onScreenshotUpdated: handleScreenshotUpdated,
     onTeamAssigned: handleTeamAssigned,
     onPasscodeRevealed: handlePasscodeRevealedEvent,
+    onParticipantVerified: handleScoreUpdated,
+    onParticipantRejected: handleScoreUpdated,
+    onScreenshotRequested: handleScoreUpdated,
   });
 
   // Check if this is a team mode match

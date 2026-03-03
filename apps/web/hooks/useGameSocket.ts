@@ -89,6 +89,9 @@ interface UseGameSocketProps {
   onScreenshotUpdated?: (data: ScreenshotUpdate) => void;
   onTeamAssigned?: (data: TeamAssignedUpdate) => void;
   onPasscodeRevealed?: (data: PasscodeRevealedUpdate) => void;
+  onParticipantVerified?: (participant: ParticipantUpdate) => void;
+  onParticipantRejected?: (participant: ParticipantUpdate) => void;
+  onScreenshotRequested?: (participant: ParticipantUpdate) => void;
 }
 
 export function useGameSocket({
@@ -100,6 +103,9 @@ export function useGameSocket({
   onScreenshotUpdated,
   onTeamAssigned,
   onPasscodeRevealed,
+  onParticipantVerified,
+  onParticipantRejected,
+  onScreenshotRequested,
 }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
@@ -173,6 +179,24 @@ export function useGameSocket({
       }
     });
 
+    socket.on('participantVerified', (participant: ParticipantUpdate) => {
+      if (onParticipantVerified) {
+        onParticipantVerified(participant);
+      }
+    });
+
+    socket.on('participantRejected', (participant: ParticipantUpdate) => {
+      if (onParticipantRejected) {
+        onParticipantRejected(participant);
+      }
+    });
+
+    socket.on('screenshotRequested', (participant: ParticipantUpdate) => {
+      if (onScreenshotRequested) {
+        onScreenshotRequested(participant);
+      }
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('leaveGame', gameId);
@@ -180,7 +204,7 @@ export function useGameSocket({
         socketRef.current = null;
       }
     };
-  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated, onTeamAssigned, onPasscodeRevealed]);
+  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated, onTeamAssigned, onPasscodeRevealed, onParticipantVerified, onParticipantRejected, onScreenshotRequested]);
 
   return socketRef.current;
 }
