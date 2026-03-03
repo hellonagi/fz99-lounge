@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from 'react';
 import { matchesApi } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/authStore';
@@ -68,14 +68,19 @@ export function useWeeklyMatches() {
   // Compute once on mount (current week doesn't change during session)
   const { from, to, weekStartLocal } = useMemo(() => getCurrentWeekRangeJST(), []);
 
-  const fetchMatches = useCallback(async () => {
+  const fetchMatches = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const response = await matchesApi.getWeek(from, to);
-      setMatches(response.data);
+      if (showLoading) {
+        setMatches(response.data);
+      } else {
+        startTransition(() => setMatches(response.data));
+      }
     } catch (err) {
       console.error('Failed to fetch weekly matches:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [from, to]);
 
@@ -88,21 +93,27 @@ export function useWeeklyMatches() {
     const socket = getSocket();
 
     const handleMatchUpdated = (data: WeeklyMatch) => {
-      setMatches((prev) =>
-        prev.map((m) => (m.id === data.id ? { ...m, ...data } : m)),
-      );
+      startTransition(() => {
+        setMatches((prev) =>
+          prev.map((m) => (m.id === data.id ? { ...m, ...data } : m)),
+        );
+      });
     };
 
     const handleMatchCancelled = (data: { matchId: number }) => {
-      setMatches((prev) => prev.filter((m) => m.id !== data.matchId));
+      startTransition(() => {
+        setMatches((prev) => prev.filter((m) => m.id !== data.matchId));
+      });
     };
 
     const handleMatchStarted = (data: { matchId: number }) => {
-      setMatches((prev) =>
-        prev.map((m) =>
-          m.id === data.matchId ? { ...m, status: 'IN_PROGRESS' } : m,
-        ),
-      );
+      startTransition(() => {
+        setMatches((prev) =>
+          prev.map((m) =>
+            m.id === data.matchId ? { ...m, status: 'IN_PROGRESS' } : m,
+          ),
+        );
+      });
     };
 
     socket.on('match-updated', handleMatchUpdated);
@@ -134,7 +145,6 @@ export function useWeeklyMatches() {
         } else {
           await matchesApi.join(matchId);
         }
-        await fetchMatches();
       } catch (err: unknown) {
         const axiosError = err as { response?: { data?: { message?: string } } };
         alert(axiosError.response?.data?.message || 'Failed to join/leave match');
@@ -142,7 +152,7 @@ export function useWeeklyMatches() {
         setJoiningMatchId(null);
       }
     },
-    [isAuthenticated, user, fetchMatches],
+    [isAuthenticated, user],
   );
 
   return {

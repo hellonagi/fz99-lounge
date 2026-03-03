@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
 import { useWeeklyMatches } from '@/hooks/useWeeklyMatches';
+import { CategoryBadge } from '@/components/ui/category-badge';
 import { Loader2 } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
 import Link from 'next/link';
@@ -15,15 +16,15 @@ import 'swiper/css';
 
 const JST_OFFSET = 9 * 60 * 60 * 1000;
 
-const CATEGORY_CARD_COLORS: Record<string, { border: string; bg: string }> = {
-  GP: { border: 'border-amber-500/50', bg: 'bg-amber-500/10' },
-  CLASSIC: { border: 'border-purple-500/50', bg: 'bg-purple-500/10' },
-  TEAM_CLASSIC: { border: 'border-rose-500/50', bg: 'bg-rose-500/10' },
-  TEAM_GP: { border: 'border-cyan-500/50', bg: 'bg-cyan-500/10' },
-  TOURNAMENT: { border: 'border-amber-500/50', bg: 'bg-amber-500/10' },
+const CATEGORY_CARD_COLORS: Record<string, { accent: string; bg: string }> = {
+  GP: { accent: 'border-l-amber-500', bg: 'bg-amber-500/5' },
+  CLASSIC: { accent: 'border-l-purple-500', bg: 'bg-purple-500/5' },
+  TEAM_CLASSIC: { accent: 'border-l-rose-500', bg: 'bg-rose-500/5' },
+  TEAM_GP: { accent: 'border-l-cyan-500', bg: 'bg-cyan-500/5' },
+  TOURNAMENT: { accent: 'border-l-amber-500', bg: 'bg-amber-500/5' },
 };
 
-const COMPLETED_CARD = { border: 'border-gray-500/30', bg: 'bg-gray-500/10' };
+const COMPLETED_CARD = { accent: 'border-l-gray-500', bg: 'bg-gray-500/5' };
 
 interface MatchCardProps {
   match: {
@@ -125,17 +126,15 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
   const cardColors = (() => {
     const fin = match.status === 'COMPLETED' || match.status === 'FINALIZED';
     const colors = fin ? COMPLETED_CARD : (CATEGORY_CARD_COLORS[category] || CATEGORY_CARD_COLORS.GP);
-    return `${colors.border} ${colors.bg}`;
+    return `border-l-2 ${colors.accent} ${colors.bg}`;
   })();
 
   if (layout === 'horizontal') {
     return (
-      <div className={cn('rounded-lg border px-3 py-2 transition-colors', cardColors)}>
+      <div className={cn('rounded-md border border-white/5 backdrop-blur-sm px-3 py-2 transition-colors', cardColors)}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold text-white shrink-0">
-              {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category === 'TEAM_GP' ? 'TEAM GP' : category}
-            </span>
+            <CategoryBadge category={category} className="whitespace-nowrap" />
             {showTime && (
               <span className="text-xs font-medium text-gray-400">{timeStr}</span>
             )}
@@ -150,11 +149,9 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
   }
 
   return (
-    <div className={cn('rounded-lg border p-2.5 transition-colors', cardColors)}>
+    <div className={cn('rounded-md border border-white/5 backdrop-blur-sm p-2 transition-colors', cardColors)}>
       <div className="flex items-center justify-between gap-1.5 mb-2">
-        <span className="text-[11px] font-semibold text-white shrink-0 leading-none">
-          {category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : category === 'TEAM_GP' ? 'TEAM GP' : category}
-        </span>
+        <CategoryBadge category={category} className="whitespace-nowrap text-[10px] px-1.5 py-0.5" />
         <span className="text-[11px] text-gray-500 tabular-nums leading-none">
           {match.participants.length}/{match.maxPlayers}
         </span>
