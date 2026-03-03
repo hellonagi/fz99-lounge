@@ -548,7 +548,7 @@ model GameParticipant {
   user   User @relation(fields: [userId], references: [id])
 
   // ゲーム参加時に決定（レース間で変更不可）
-  machine       String
+  machine       String?
   assistEnabled Boolean @default(false)
 
   // 結果ステータス（UNSUBMITTED→PENDING→VERIFIED/REJECTED）

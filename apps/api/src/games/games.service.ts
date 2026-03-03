@@ -324,7 +324,7 @@ export class GamesService {
         data: {
           gameId,
           userId,
-          machine: submitScoreDto.machine,
+          machine: submitScoreDto.machine || null,
           assistEnabled: submitScoreDto.assistEnabled,
           status: ResultStatus.PENDING,
           submittedAt: now,
@@ -338,7 +338,7 @@ export class GamesService {
           id: game.participants[0].id,
         },
         data: {
-          machine: submitScoreDto.machine,
+          machine: submitScoreDto.machine || null,
           assistEnabled: submitScoreDto.assistEnabled,
           status: ResultStatus.PENDING,
           submittedAt: now,
