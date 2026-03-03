@@ -25,6 +25,7 @@ interface MatchPasscodeCardProps {
   passcodeRevealTime?: string | null;
   onPasscodeRevealed?: () => void;
   inGameMode?: string | null;
+  leagueType?: string | null;
 }
 
 export function MatchPasscodeCard({
@@ -39,6 +40,7 @@ export function MatchPasscodeCard({
   passcodeRevealTime,
   onPasscodeRevealed,
   inGameMode,
+  leagueType,
 }: MatchPasscodeCardProps) {
   const [voting, setVoting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
@@ -128,6 +130,7 @@ export function MatchPasscodeCard({
         {inGameMode && (
           <p className="text-sm text-gray-400 mb-1">
             {inGameMode.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}
+            {leagueType && ` - ${leagueType.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')} League`}
           </p>
         )}
         <p className="text-sm text-gray-400 mb-2">Passcode</p>

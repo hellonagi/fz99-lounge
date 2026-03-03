@@ -492,6 +492,7 @@ export default function GamePage() {
             seasonNumber={game.match.season?.seasonNumber || null}
             gameNumber={game.match.matchNumber}
             leagueType={game.leagueType}
+            inGameMode={game.inGameMode}
             startedAt={game.startedAt || game.match.scheduledStart}
             completedAt={game.completedAt}
             status={game.match.status}
@@ -514,6 +515,7 @@ export default function GamePage() {
               splitVoteStatus={splitVoteStatus}
               onSplitVote={fetchSplitVoteStatus}
               inGameMode={game.inGameMode}
+              leagueType={game.leagueType}
               passcodeRevealTime={isTeamMode ? game.passcodeRevealTime : undefined}
               onPasscodeRevealed={() => {
                 setPasscodeRevealed(true);
