@@ -235,6 +235,7 @@ export class MatchesProcessor {
             seasonNumber,
             matchNumber,
             passcode,
+            inGameMode: updatedGame.inGameMode,
             leagueType: updatedGame.leagueType,
             participantDiscordIds,
           });
