@@ -499,6 +499,11 @@ export default function GamePage() {
             startedAt={game.startedAt || game.match.scheduledStart}
             completedAt={game.completedAt}
             status={game.match.status}
+            totalPlayers={
+              game.participants
+                ? game.participants.filter(p => !p.isExcluded).length
+                : game.match.participants?.length ?? 0
+            }
           />
 
           {/* Track Banners (CLASSIC, TEAM_CLASSIC only) */}
