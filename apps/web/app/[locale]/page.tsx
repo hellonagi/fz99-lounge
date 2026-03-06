@@ -125,7 +125,7 @@ export default function Home() {
             season={nextMatch.season?.seasonNumber}
             match={nextMatch.matchNumber}
             league={nextMatch.leagueType}
-            currentPlayers={nextMatch.participants?.length ?? 0}
+            currentPlayers={nextMatch.currentPlayers ?? nextMatch.participants?.length ?? 0}
             minPlayers={nextMatch.minPlayers}
             maxPlayers={nextMatch.maxPlayers}
             scheduledStart={nextMatch.scheduledStart}

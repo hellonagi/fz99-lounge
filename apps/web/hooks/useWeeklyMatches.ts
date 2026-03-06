@@ -10,6 +10,7 @@ interface WeeklyMatch {
   scheduledStart: string;
   minPlayers: number;
   maxPlayers: number;
+  currentPlayers?: number;
   notes: string | null;
   season: {
     id: number;

@@ -18,6 +18,7 @@ interface LeaderboardEntry {
   survivedCount: number;
   assistUsedCount: number;
   bestPosition?: number | null;
+  bestPoints?: number | null;
   medianPosition: number | null;
   medianPoints: number | null;
   favoriteMachine: string | null;
@@ -88,8 +89,9 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 <th className="text-right py-2 px-2 font-medium w-12">3rd</th>
               </>
             )}
-            {category === 'GP' && <th className="text-right py-2 px-2 font-medium">Best Pos</th>}
+            {isGpMode && <th className="text-right py-2 px-2 font-medium">Best Pos</th>}
             <th className="text-right py-2 px-2 font-medium">Med Pos</th>
+            {isGpMode && <th className="text-right py-2 px-2 font-medium">Best Pts</th>}
             <th className="text-right py-2 px-2 font-medium">Med Pts</th>
             <th className="text-right py-2 px-2 font-medium">Finish%</th>
             <th className="text-right py-2 px-2 font-medium">Most Used</th>
@@ -207,9 +209,9 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                   </>
                 )}
 
-                {/* Best Position (GP only, after 3rd) */}
-                {category === 'GP' && (
-                  <td className="py-2 px-2 text-right font-bold text-white">
+                {/* Best Position (GP & TEAM_GP) */}
+                {isGpMode && (
+                  <td className="py-2 px-2 text-right text-gray-100">
                     {entry.bestPosition ?? '-'}
                   </td>
                 )}
@@ -218,6 +220,13 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 <td className="py-2 px-2 text-right text-gray-100">
                   {medianPosition}
                 </td>
+
+                {/* Best Points (GP & TEAM_GP) */}
+                {isGpMode && (
+                  <td className="py-2 px-2 text-right text-gray-100">
+                    {entry.bestPoints ?? '-'}
+                  </td>
+                )}
 
                 {/* Median Points */}
                 <td className="py-2 px-2 text-right text-gray-100">

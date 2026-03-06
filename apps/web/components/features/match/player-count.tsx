@@ -14,7 +14,9 @@ interface PlayerCountProps {
 }
 
 export function PlayerCount(props: PlayerCountProps) {
-  const { current, max, onJoin, isJoined = false, isJoining = false, isAuthenticated = true } = props;
+  const { current, min, max, onJoin, isJoined = false, isJoining = false, isAuthenticated = true } = props;
+  const hasMin = min !== undefined && min > 0;
+  const isConfirmed = !hasMin || current >= min;
   const t = useTranslations('matchHero');
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
@@ -23,8 +25,8 @@ export function PlayerCount(props: PlayerCountProps) {
       <div className="flex flex-row items-center gap-4">
         <div className="flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-full px-5 py-3 border border-white/20">
           <div className="relative">
-            <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-            <div className="absolute inset-0 w-3 h-3 bg-green-400 rounded-full animate-ping"></div>
+            <div className={cn('w-3 h-3 rounded-full', isConfirmed ? 'bg-green-400' : 'bg-amber-400')}></div>
+            <div className={cn('absolute inset-0 w-3 h-3 rounded-full animate-ping', isConfirmed ? 'bg-green-400' : 'bg-amber-400')}></div>
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-semibold text-white">

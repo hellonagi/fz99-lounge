@@ -16,6 +16,7 @@ interface Match {
   status: string;
   scheduledStart: string;
   maxPlayers: number;
+  currentPlayers?: number;
   createdAt: string;
   season?: {
     seasonNumber: number;
@@ -174,7 +175,7 @@ export function MatchesListCard() {
                 <tbody>
                   {paginatedMatches.map((match) => {
                     const category = match.season?.event?.category;
-                    const currentPlayers = match.participants?.length ?? 0;
+                    const currentPlayers = match.currentPlayers ?? match.participants?.length ?? 0;
                     const leagueType = match.games?.[0]?.leagueType ?? '-';
                     return (
                     <tr key={match.id} className="border-b border-gray-800 hover:bg-gray-800/50">
