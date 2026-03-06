@@ -34,6 +34,7 @@ interface MatchCardProps {
     scheduledStart: string;
     minPlayers: number;
     maxPlayers: number;
+    currentPlayers?: number;
     season: {
       seasonNumber: number;
       event: { category: string };
@@ -139,7 +140,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
               <span className="text-xs font-medium text-gray-400">{timeStr}</span>
             )}
             <span className="text-xs text-gray-500 tabular-nums">
-              {match.participants.length}/{match.maxPlayers}
+              {match.currentPlayers ?? match.participants.length}/{match.maxPlayers}
             </span>
           </div>
           <div className="shrink-0">{actionButton}</div>
@@ -153,7 +154,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
       <div className="flex items-center justify-between gap-1.5 mb-2">
         <CategoryBadge category={category} className="whitespace-nowrap text-[10px] px-1.5 py-0.5" />
         <span className="text-[11px] text-gray-500 tabular-nums leading-none">
-          {match.participants.length}/{match.maxPlayers}
+          {match.currentPlayers ?? match.participants.length}/{match.maxPlayers}
         </span>
       </div>
       <div className="[&>a]:w-full [&>button]:w-full">{actionButton}</div>

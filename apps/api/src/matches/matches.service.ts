@@ -127,6 +127,21 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`Failed to remove job ${jobId}:`, error);
       }
     }
+
+    // Clean up fake count jobs
+    try {
+      const delayedJobs = await this.matchQueue.getDelayed();
+      for (const job of delayedJobs) {
+        if (
+          job.data?.matchId === matchId &&
+          (job.name === 'fake-count-increase' || job.name === 'fake-count-decrease')
+        ) {
+          await job.remove();
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to remove fake jobs for match ${matchId}:`, error);
+    }
   }
 
   /**
@@ -201,6 +216,24 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       );
       this.logger.log(`Re-queued start-match job for overdue match ${match.id}`);
     }
+  }
+
+  /**
+   * Strip fakeCount/joinCount from response and add computed currentPlayers.
+   */
+  private transformMatchResponse(match: any) {
+    if (!match) return match;
+    const { fakeCount, joinCount, ...rest } = match;
+    const participantCount = match.participants?.length ?? 0;
+    const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
+    return {
+      ...rest,
+      currentPlayers: Math.min(rawCurrentPlayers, match.maxPlayers ?? rawCurrentPlayers),
+    };
+  }
+
+  private transformMatchResponses(matches: any[]) {
+    return matches.map((m) => this.transformMatchResponse(m));
   }
 
   async create(createMatchDto: CreateMatchDto, createdBy: number, options?: { silent?: boolean }) {
@@ -356,6 +389,32 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           },
         );
       }
+
+      // Schedule fake player count increase jobs
+      const minPlayers = match.minPlayers || 4;
+      const maxFake = Math.round(minPlayers * (0.25 + Math.random() * 0.15));
+      if (maxFake > 0) {
+        const fakeWindow = delay * 0.6;
+        const fakeTimes: number[] = [];
+        for (let i = 0; i < maxFake; i++) {
+          fakeTimes.push(Math.random() * fakeWindow);
+        }
+        fakeTimes.sort((a, b) => a - b);
+
+        for (let i = 0; i < fakeTimes.length; i++) {
+          await this.matchQueue.add(
+            'fake-count-increase',
+            { matchId: match.id },
+            {
+              delay: Math.max(Math.round(fakeTimes[i]), 1000),
+              removeOnComplete: true,
+              removeOnFail: { count: 3 },
+              jobId: `fake-inc-${match.id}-${i}`,
+            },
+          );
+        }
+        this.logger.log(`Scheduled ${maxFake} fake-count-increase jobs for match ${match.id}`);
+      }
     }
 
     // Announce match creation to Discord (fire and forget - don't block on errors)
@@ -385,11 +444,11 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    return matchWithIncludes;
+    return this.transformMatchResponse(matchWithIncludes);
   }
 
   async getByDateRange(from: Date, to: Date) {
-    return this.prisma.match.findMany({
+    const matches = await this.prisma.match.findMany({
       where: {
         scheduledStart: {
           gte: from,
@@ -402,10 +461,11 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       orderBy: { scheduledStart: 'asc' },
       include: this.matchDetailInclude,
     });
+    return this.transformMatchResponses(matches);
   }
 
   async getAll(eventCategory?: EventCategory, status?: MatchStatus) {
-    return this.prisma.match.findMany({
+    const matches = await this.prisma.match.findMany({
       where: {
         ...(eventCategory && {
           season: {
@@ -419,6 +479,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       orderBy: { scheduledStart: 'asc' },
       include: this.matchDetailInclude,
     });
+    return this.transformMatchResponses(matches);
   }
 
   async getNext(eventCategory?: EventCategory) {
@@ -454,13 +515,31 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     }
 
     // レーティング付きで再取得
-    return this.prisma.match.findUnique({
+    const matchWithRating = await this.prisma.match.findUnique({
       where: { id: match.id },
       include: this.getMatchDetailIncludeWithRating(match.seasonId),
     });
+    return this.transformMatchResponse(matchWithRating);
   }
 
   async getById(matchId: number) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: this.matchDetailInclude,
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    return this.transformMatchResponse(match);
+  }
+
+  /**
+   * Internal getById that returns raw match data (with fakeCount/joinCount).
+   * Used by join() and leave() where we need the raw fields.
+   */
+  private async getByIdRaw(matchId: number) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: this.matchDetailInclude,
@@ -684,14 +763,14 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
   }
 
   async join(matchId: number, userId: number) {
-    const match = await this.getById(matchId);
+    const match = await this.getByIdRaw(matchId);
 
     // Check if match is in WAITING status
     if (match.status !== MatchStatus.WAITING) {
       throw new BadRequestException('Match is not accepting players');
     }
 
-    // Check if match is full
+    // Check if match is full (real participants only for capacity check)
     const currentPlayers = match.participants.length;
     if (currentPlayers >= match.maxPlayers) {
       throw new BadRequestException('Match is full');
@@ -738,20 +817,48 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    // Fetch updated match
-    const updatedMatch = await this.prisma.match.findUnique({
+    // Only increment joinCount for unique users (not re-joins after leave)
+    // Use participant count as the source of truth for unique joins
+    const updatedMatchRaw = await this.prisma.match.findUnique({
       where: { id: matchId },
       include: this.matchDetailInclude,
     });
 
-    // Emit WebSocket event to notify all clients
-    this.eventsGateway.emitMatchUpdated(updatedMatch);
+    if (!updatedMatchRaw) {
+      throw new NotFoundException('Match not found');
+    }
 
-    return updatedMatch;
+    const participantCount = updatedMatchRaw.participants?.length ?? 0;
+
+    // participantCount is the real unique join count (re-joins don't inflate it)
+    // Schedule fake decrease every 2 real participants
+    if (participantCount % 2 === 0 && updatedMatchRaw.fakeCount > 0) {
+      const remainingMs = new Date(updatedMatchRaw.scheduledStart).getTime() - Date.now();
+      if (remainingMs > 0) {
+        const fakeDecDelay = Math.max(Math.round(remainingMs * (0.03 + Math.random() * 0.05)), 3000);
+        await this.matchQueue.add(
+          'fake-count-decrease',
+          { matchId },
+          {
+            delay: fakeDecDelay,
+            removeOnComplete: true,
+            removeOnFail: { count: 3 },
+            jobId: `fake-dec-${matchId}-p${participantCount}`,
+          },
+        );
+      }
+    }
+
+    const transformed = this.transformMatchResponse(updatedMatchRaw);
+
+    // Emit WebSocket event to notify all clients
+    this.eventsGateway.emitMatchUpdated(transformed);
+
+    return transformed;
   }
 
   async leave(matchId: number, userId: number) {
-    const match = await this.getById(matchId);
+    const match = await this.getByIdRaw(matchId);
 
     // Check if match is in WAITING status
     if (match.status !== MatchStatus.WAITING) {
@@ -772,7 +879,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       throw new BadRequestException('Not in match');
     }
 
-    // Remove user from participants
+    // Remove user from participants (leave does NOT affect fakeCount)
     await this.prisma.matchParticipant.delete({
       where: { id: participant.id },
     });
@@ -783,10 +890,12 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       include: this.matchDetailInclude,
     });
 
-    // Emit WebSocket event to notify all clients
-    this.eventsGateway.emitMatchUpdated(updatedMatch);
+    const transformed = this.transformMatchResponse(updatedMatch);
 
-    return updatedMatch;
+    // Emit WebSocket event to notify all clients
+    this.eventsGateway.emitMatchUpdated(transformed);
+
+    return transformed;
   }
 
   async cancel(matchId: number) {
@@ -870,9 +979,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     await this.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
 
     // Emit WebSocket event to notify all clients
-    this.eventsGateway.emitMatchUpdated(updatedMatch);
+    this.eventsGateway.emitMatchUpdated(this.transformMatchResponse(updatedMatch));
 
-    return { message: 'Match cancelled successfully', match: updatedMatch };
+    return { message: 'Match cancelled successfully', match: this.transformMatchResponse(updatedMatch) };
   }
 
   async delete(matchId: number) {

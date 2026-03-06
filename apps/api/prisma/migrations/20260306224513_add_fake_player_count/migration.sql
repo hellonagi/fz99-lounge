@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "matches" ADD COLUMN     "fakeCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "joinCount" INTEGER NOT NULL DEFAULT 0;

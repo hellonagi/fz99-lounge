@@ -160,12 +160,13 @@ export class MatchesProcessor {
         });
       }
 
-      // Update match status
+      // Update match status and reset fakeCount (safety net)
       await this.prisma.match.update({
         where: { id: matchId },
         data: {
           status: MatchStatus.IN_PROGRESS,
           actualStart: new Date(),
+          fakeCount: 0,
         },
       });
 
@@ -571,6 +572,94 @@ export class MatchesProcessor {
       this.logger.log(`Deleted Discord channel for game ${gameId}`);
     } catch (error) {
       this.logger.error(`Failed to delete Discord channel for game ${gameId}:`, error);
+    }
+  }
+
+  @Process('fake-count-increase')
+  async handleFakeCountIncrease(job: Job<{ matchId: number }>) {
+    const { matchId } = job.data;
+
+    try {
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { id: true, status: true, maxPlayers: true, fakeCount: true },
+      });
+
+      if (!match || match.status !== MatchStatus.WAITING) {
+        return;
+      }
+
+      const updated = await this.prisma.match.update({
+        where: { id: matchId },
+        data: { fakeCount: { increment: 1 } },
+        include: {
+          season: { include: { event: true, tournamentConfig: true } },
+          participants: {
+            include: {
+              user: {
+                select: { id: true, discordId: true, displayName: true, avatarHash: true },
+              },
+            },
+          },
+          games: true,
+        },
+      });
+
+      // Emit transformed match data
+      const { fakeCount, joinCount, ...rest } = updated;
+      const participantCount = updated.participants?.length ?? 0;
+      const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
+      const transformed = {
+        ...rest,
+        currentPlayers: Math.min(rawCurrentPlayers, updated.maxPlayers),
+      };
+      this.eventsGateway.emitMatchUpdated(transformed);
+    } catch (error) {
+      this.logger.error(`Failed to increment fake count for match ${matchId}:`, error);
+    }
+  }
+
+  @Process('fake-count-decrease')
+  async handleFakeCountDecrease(job: Job<{ matchId: number }>) {
+    const { matchId } = job.data;
+
+    try {
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        select: { id: true, status: true, maxPlayers: true, fakeCount: true },
+      });
+
+      if (!match || match.status !== MatchStatus.WAITING || match.fakeCount <= 0) {
+        return;
+      }
+
+      const updated = await this.prisma.match.update({
+        where: { id: matchId },
+        data: { fakeCount: { decrement: 1 } },
+        include: {
+          season: { include: { event: true, tournamentConfig: true } },
+          participants: {
+            include: {
+              user: {
+                select: { id: true, discordId: true, displayName: true, avatarHash: true },
+              },
+            },
+          },
+          games: true,
+        },
+      });
+
+      // Emit transformed match data
+      const { fakeCount, joinCount, ...rest } = updated;
+      const participantCount = updated.participants?.length ?? 0;
+      const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
+      const transformed = {
+        ...rest,
+        currentPlayers: Math.min(rawCurrentPlayers, updated.maxPlayers),
+      };
+      this.eventsGateway.emitMatchUpdated(transformed);
+    } catch (error) {
+      this.logger.error(`Failed to decrement fake count for match ${matchId}:`, error);
     }
   }
 
