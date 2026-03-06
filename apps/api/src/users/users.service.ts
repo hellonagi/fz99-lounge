@@ -439,13 +439,14 @@ export class UsersService {
         userId,
         match: {
           status: MatchStatus.FINALIZED,
+          matchNumber: { not: null },
           season: {
             seasonNumber: { in: seasonIds },
             ...(category && { event: { category: category as EventCategory } }),
           },
         },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { match: { matchNumber: 'asc' } },
       select: {
         matchId: true,
         displayRating: true,
