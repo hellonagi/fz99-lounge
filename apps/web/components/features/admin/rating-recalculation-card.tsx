@@ -27,7 +27,7 @@ import {
 import { adminApi } from '@/lib/api';
 
 const recalculateSchema = z.object({
-  category: z.enum(['classic', 'team_classic', 'team_gp']),
+  category: z.enum(['classic', 'gp', 'team_classic', 'team_gp']),
   season: z.coerce.number().min(0, 'Season must be at least 0'),
   fromMatchNumber: z.coerce.number().min(1, 'Match number must be at least 1'),
 });
@@ -103,6 +103,7 @@ export function RatingRecalculationCard() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="classic">Classic</SelectItem>
+                      <SelectItem value="gp">GP</SelectItem>
                       <SelectItem value="team_classic">Team Classic</SelectItem>
                       <SelectItem value="team_gp">Team GP</SelectItem>
                     </SelectContent>

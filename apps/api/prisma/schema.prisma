@@ -267,6 +267,7 @@ model UserSeasonStats {
   medianPosition  Float?  // 順位の中央値
   medianPoints    Float?  // ポイントの中央値
   bestPosition    Int?    // 最高順位（GP用）
+  bestPoints      Int?    // 最高スコア（GP用）
   favoriteMachine String? // 最も使用しているマシン
 
   createdAt DateTime @default(now())

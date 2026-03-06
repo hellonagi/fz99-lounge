@@ -713,6 +713,8 @@ export class UsersService {
       orderBy = [
         { firstPlaces: 'desc' as const },
         { mvpCount: 'desc' as const },
+        { bestPosition: { sort: 'asc' as const, nulls: 'last' as const } },
+        { bestPoints: { sort: 'desc' as const, nulls: 'last' as const } },
       ];
     } else if (eventCategory === 'GP') {
       orderBy = [
@@ -720,6 +722,7 @@ export class UsersService {
         { firstPlaces: 'desc' as const },
         { secondPlaces: 'desc' as const },
         { thirdPlaces: 'desc' as const },
+        { bestPoints: { sort: 'desc' as const, nulls: 'last' as const } },
       ];
     } else {
       orderBy = [{ displayRating: 'desc' as const }];

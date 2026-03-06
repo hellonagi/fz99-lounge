@@ -86,7 +86,6 @@ export class TeamClassicRatingService {
         totalScore: true,
         machine: true,
         gameId: true,
-        teamIndex: true,
       },
     });
 
@@ -101,17 +100,28 @@ export class TeamClassicRatingService {
       ),
     ];
 
-    // Get all games to fetch team scores
-    const games = await tx.game.findMany({
-      where: { id: { in: gameIds } },
-      select: { id: true, teamScores: true },
+    // Get all participants for these games to calculate individual positions
+    const allGameParticipants = await tx.gameParticipant.findMany({
+      where: {
+        gameId: { in: gameIds },
+        status: 'VERIFIED',
+      },
+      select: {
+        gameId: true,
+        userId: true,
+        totalScore: true,
+      },
     });
 
-    const gameTeamScoresMap = new Map<number, TeamScore[]>();
-    for (const game of games) {
-      if (game.teamScores) {
-        gameTeamScoresMap.set(game.id, game.teamScores as TeamScore[]);
-      }
+    // Group participants by game
+    const gameParticipantsMap = new Map<
+      number,
+      Array<{ userId: number; totalScore: number }>
+    >();
+    for (const p of allGameParticipants) {
+      const list = gameParticipantsMap.get(p.gameId) || [];
+      list.push({ userId: p.userId, totalScore: p.totalScore ?? 0 });
+      gameParticipantsMap.set(p.gameId, list);
     }
 
     // Group user participations by user
@@ -121,7 +131,6 @@ export class TeamClassicRatingService {
         totalScore: number | null;
         machine: string | null;
         gameId: number;
-        teamIndex: number | null;
       }>
     >();
     for (const p of allUserParticipations) {
@@ -130,7 +139,6 @@ export class TeamClassicRatingService {
         totalScore: p.totalScore,
         machine: p.machine,
         gameId: p.gameId,
-        teamIndex: p.teamIndex,
       });
       userParticipationsMap.set(p.userId, list);
     }
@@ -147,14 +155,29 @@ export class TeamClassicRatingService {
       const machineCount = new Map<string, number>();
 
       for (const userPart of userParticipations) {
-        const teamScores = gameTeamScoresMap.get(userPart.gameId);
-        if (teamScores && userPart.teamIndex !== null) {
-          const teamScore = teamScores.find(
-            (ts) => ts.teamIndex === userPart.teamIndex,
-          );
-          if (teamScore) {
-            positions.push(teamScore.rank);
+        const gameParticipants =
+          gameParticipantsMap.get(userPart.gameId) || [];
+        // Sort by score descending
+        const sorted = [...gameParticipants].sort(
+          (a, b) => b.totalScore - a.totalScore,
+        );
+
+        // Find user's position (with tie handling)
+        let position = 1;
+        let prevScore: number | null = null;
+        let sameCount = 0;
+        for (const p of sorted) {
+          if (prevScore !== null && p.totalScore === prevScore) {
+            sameCount++;
+          } else {
+            position += sameCount;
+            sameCount = 1;
           }
+          if (p.userId === userId) {
+            positions.push(position);
+            break;
+          }
+          prevScore = p.totalScore;
         }
 
         points.push(userPart.totalScore ?? 0);
@@ -356,14 +379,14 @@ export class TeamClassicRatingService {
         seasonId,
       );
 
-      // For TEAM_GP: fetch existing bestPosition values to compare (team rank as position)
-      let existingBestPositions: Map<number, number | null> | undefined;
+      // For TEAM_GP: fetch existing bestPosition/bestPoints values to compare (team rank as position)
+      let existingBestStats: Map<number, { bestPosition: number | null; bestPoints: number | null }> | undefined;
       if (isTeamGp) {
         const existingStats = await tx.userSeasonStats.findMany({
           where: { userId: { in: userIds }, seasonId },
-          select: { userId: true, bestPosition: true },
+          select: { userId: true, bestPosition: true, bestPoints: true },
         });
-        existingBestPositions = new Map(existingStats.map((s: { userId: number; bestPosition: number | null }) => [s.userId, s.bestPosition]));
+        existingBestStats = new Map(existingStats.map((s: { userId: number; bestPosition: number | null; bestPoints: number | null }) => [s.userId, { bestPosition: s.bestPosition, bestPoints: s.bestPoints }]));
       }
 
       // Update UserSeasonStats for each participant
@@ -373,14 +396,19 @@ export class TeamClassicRatingService {
         )!;
         const medianStats = allMedianStats.get(change.userId)!;
 
-        // Calculate bestPosition for TEAM_GP (team rank)
+        // Calculate bestPosition and bestPoints for TEAM_GP (team rank)
         let bestPosition: number | undefined;
-        if (isTeamGp && existingBestPositions) {
-          const existing = existingBestPositions.get(change.userId) ?? null;
-          const current = participant.position;
-          bestPosition = existing === null
-            ? current
-            : Math.min(existing, current);
+        let bestPoints: number | undefined;
+        if (isTeamGp && existingBestStats) {
+          const existing = existingBestStats.get(change.userId) ?? { bestPosition: null, bestPoints: null };
+          const currentPosition = participant.position;
+          bestPosition = existing.bestPosition === null
+            ? currentPosition
+            : Math.min(existing.bestPosition, currentPosition);
+          const currentPoints = participant.totalScore ?? 0;
+          bestPoints = existing.bestPoints === null
+            ? currentPoints
+            : Math.max(existing.bestPoints, currentPoints);
         }
 
         return tx.userSeasonStats.update({
@@ -418,6 +446,7 @@ export class TeamClassicRatingService {
             medianPoints: medianStats.medianPoints,
             favoriteMachine: medianStats.favoriteMachine,
             ...(bestPosition !== undefined && { bestPosition }),
+            ...(bestPoints !== undefined && { bestPoints }),
           },
         });
       });
@@ -602,6 +631,8 @@ export class TeamClassicRatingService {
             thirdPlaces: 0,
             survivedCount: 0,
             mvpCount: 0,
+            bestPosition: null,
+            bestPoints: null,
           },
           create: {
             userId,

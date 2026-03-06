@@ -165,8 +165,8 @@ export class AdminController {
 
     // Validate category
     const categoryUpper = category.toUpperCase();
-    if (categoryUpper !== 'CLASSIC' && categoryUpper !== 'TEAM_CLASSIC' && categoryUpper !== 'TEAM_GP') {
-      throw new BadRequestException('Only CLASSIC, TEAM_CLASSIC, and TEAM_GP categories are supported');
+    if (categoryUpper !== 'CLASSIC' && categoryUpper !== 'GP' && categoryUpper !== 'TEAM_CLASSIC' && categoryUpper !== 'TEAM_GP') {
+      throw new BadRequestException('Only CLASSIC, GP, TEAM_CLASSIC, and TEAM_GP categories are supported');
     }
     const eventCategory = categoryUpper as EventCategory;
 

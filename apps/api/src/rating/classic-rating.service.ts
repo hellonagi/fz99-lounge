@@ -304,14 +304,14 @@ export class ClassicRatingService {
         seasonId,
       );
 
-      // For GP: fetch existing bestPosition values to compare
-      let existingBestPositions: Map<number, number | null> | undefined;
+      // For GP: fetch existing bestPosition/bestPoints values to compare
+      let existingBestStats: Map<number, { bestPosition: number | null; bestPoints: number | null }> | undefined;
       if (eventCategory === EventCategory.GP) {
         const existingStats = await tx.userSeasonStats.findMany({
           where: { userId: { in: userIds }, seasonId },
-          select: { userId: true, bestPosition: true },
+          select: { userId: true, bestPosition: true, bestPoints: true },
         });
-        existingBestPositions = new Map(existingStats.map(s => [s.userId, s.bestPosition]));
+        existingBestStats = new Map(existingStats.map(s => [s.userId, { bestPosition: s.bestPosition, bestPoints: s.bestPoints }]));
       }
 
       // Update UserSeasonStats for each participant
@@ -321,14 +321,19 @@ export class ClassicRatingService {
         )!;
         const medianStats = allMedianStats.get(change.userId)!;
 
-        // Calculate bestPosition for GP
+        // Calculate bestPosition and bestPoints for GP
         let bestPosition: number | undefined;
-        if (eventCategory === EventCategory.GP && existingBestPositions) {
-          const existing = existingBestPositions.get(change.userId) ?? null;
-          const current = participant.position;
-          bestPosition = existing === null
-            ? current
-            : Math.min(existing, current);
+        let bestPoints: number | undefined;
+        if (eventCategory === EventCategory.GP && existingBestStats) {
+          const existing = existingBestStats.get(change.userId) ?? { bestPosition: null, bestPoints: null };
+          const currentPosition = participant.position;
+          bestPosition = existing.bestPosition === null
+            ? currentPosition
+            : Math.min(existing.bestPosition, currentPosition);
+          const currentPoints = participant.totalScore ?? 0;
+          bestPoints = existing.bestPoints === null
+            ? currentPoints
+            : Math.max(existing.bestPoints, currentPoints);
         }
 
         return tx.userSeasonStats.update({
@@ -363,6 +368,7 @@ export class ClassicRatingService {
             medianPoints: medianStats.medianPoints,
             favoriteMachine: medianStats.favoriteMachine,
             ...(bestPosition !== undefined && { bestPosition }),
+            ...(bestPoints !== undefined && { bestPoints }),
           },
         });
       });
@@ -594,6 +600,8 @@ export class ClassicRatingService {
             secondPlaces: 0,
             thirdPlaces: 0,
             survivedCount: 0,
+            bestPosition: null,
+            bestPoints: null,
           },
           create: {
             userId,
