@@ -43,10 +43,11 @@ interface MatchHeaderCardProps {
   startedAt: string;
   completedAt: string | null;
   status: string;
+  totalPlayers?: number;
 }
 
 export function MatchHeaderCard(props: MatchHeaderCardProps) {
-  const { gameMode, seasonNumber, gameNumber, leagueType, inGameMode, startedAt, status } = props;
+  const { gameMode, seasonNumber, gameNumber, leagueType, inGameMode, startedAt, status, totalPlayers } = props;
   // Format time as HH:MM
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -71,7 +72,9 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
   const isLive = status === 'IN_PROGRESS';
 
   const formatWords = (str: string) =>
-    str.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+    str.split('_').map(w =>
+      w.toUpperCase() === 'GP' ? 'GP' : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+    ).join(' ');
 
   const formatLeagueDisplay = () => {
     const modePart = inGameMode ? formatWords(inGameMode) : formatWords(gameMode);
@@ -93,29 +96,31 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
               alt=""
               width={280}
               height={280}
-              className="opacity-[0.08] select-none"
+              className="opacity-[0.15] select-none"
             />
           </div>
         )}
         <div className="relative">
-          {/* Time */}
-          <div className="text-5xl md:text-6xl font-black text-white mb-2">
-            {formatTime(startedAt)}
-          </div>
-
-          {/* Date */}
-          <div className="text-xl text-gray-400 mb-6">
-            {formatDate(startedAt)}
-          </div>
-
-          {/* Season Game */}
-          <div className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Season {seasonNumber} #{gameNumber}
+          {/* Category - Season Game */}
+          <div className="text-3xl md:text-4xl font-bold text-white mb-1">
+            {formatWords(gameMode)} - Season {seasonNumber} #{gameNumber}
           </div>
 
           {/* League */}
-          <div className="text-lg text-gray-300 mb-4">
+          <div className="text-lg text-gray-300 mb-3">
             {formatLeagueDisplay()}
+          </div>
+
+          {/* Players */}
+          {totalPlayers != null && totalPlayers > 0 && (
+            <div className="text-lg text-gray-400 mb-1">
+              {totalPlayers} players
+            </div>
+          )}
+
+          {/* Date Time */}
+          <div className="text-lg text-gray-400 mb-3">
+            {formatDate(startedAt)} {formatTime(startedAt)}
           </div>
 
           {/* Status Badge */}

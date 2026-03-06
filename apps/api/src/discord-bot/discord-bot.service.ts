@@ -39,6 +39,7 @@ export interface CreatePasscodeChannelParams {
   seasonNumber: number;
   matchNumber: number;
   passcode: string;
+  inGameMode: string;
   leagueType: string | null;
   participantDiscordIds: string[];
 }
@@ -90,6 +91,31 @@ export interface AnnounceMatchResultsParams {
   seasonName: string;
   topParticipants: MatchResultParticipant[];
   topTeams?: { teamLabel: string; score: number; rank: number; members: string[] }[];
+}
+
+const IN_GAME_MODE_DISPLAY: Record<string, string> = {
+  GRAND_PRIX: 'Grand Prix',
+  MIRROR_GRAND_PRIX: 'Mirror Grand Prix',
+  MINI_PRIX: 'Mini Prix',
+  CLASSIC_MINI_PRIX: 'Classic Mini Prix',
+  PRO: 'Pro',
+  CLASSIC: 'Classic',
+  NINETY_NINE: 'Ninety Nine',
+  TEAM_BATTLE: 'Team Battle',
+};
+
+function formatGameModeDisplay(inGameMode: string): string {
+  return IN_GAME_MODE_DISPLAY[inGameMode] || inGameMode;
+}
+
+function formatLeagueDisplay(leagueType: string | null): string | null {
+  if (!leagueType) return null;
+  return (
+    leagueType
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase()) + ' League'
+  );
 }
 
 @Injectable()
@@ -463,20 +489,26 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       // Post initial passcode message
       const baseUrl = this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
-      const leagueDisplay = params.leagueType
-        ? params.leagueType
-            .replace(/_/g, ' ')
-            .toLowerCase()
-            .replace(/\b\w/g, (c) => c.toUpperCase())
-        : 'Classic';
+
+      const fields: { name: string; value: string; inline?: boolean }[] = [
+        { name: 'Game Mode', value: formatGameModeDisplay(params.inGameMode) },
+      ];
+      const leagueDisplay = formatLeagueDisplay(params.leagueType);
+      if (leagueDisplay) {
+        fields.push({ name: 'League', value: leagueDisplay });
+      }
+      fields.push(
+        { name: 'Passcode', value: params.passcode },
+        { name: 'Score Submission', value: matchUrl },
+      );
 
       const embed = new EmbedBuilder()
-        .setTitle(`${leagueDisplay}\npasscode: ${params.passcode}`)
+        .setTitle('Match Started')
         .setColor(0x3498db)
         .setDescription(
           'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
         )
-        .addFields({ name: 'Score Submission', value: matchUrl });
+        .addFields(...fields);
 
       await channel.send({ content: '@here', embeds: [embed] });
 
@@ -577,7 +609,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .setTitle('Match Setup')
         .setColor(0x3498db)
         .setDescription(
-          'Please check the match page, and change your machine color and name.\n試合ページを確認して、マシンカラーと名前を変更してください。',
+          'Please check the match page and change your machine color.\n試合ページを確認して、マシンカラーを変更してください。',
         )
         .addFields(
           ...teamFields,
@@ -618,7 +650,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     try {
       const game = await this.prisma.game.findUnique({
         where: { id: gameId },
-        select: { discordChannelId: true },
+        select: { discordChannelId: true, inGameMode: true, leagueType: true },
       });
 
       if (!game?.discordChannelId) {
@@ -634,12 +666,22 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
 
+      const fields: { name: string; value: string }[] = [
+        { name: 'Game Mode', value: formatGameModeDisplay(game.inGameMode) },
+      ];
+      const leagueDisplay = formatLeagueDisplay(game.leagueType);
+      if (leagueDisplay) {
+        fields.push({ name: 'League', value: leagueDisplay });
+      }
+      fields.push({ name: 'Passcode', value: passcode });
+
       const embed = new EmbedBuilder()
-        .setTitle(`passcode: ${passcode}`)
+        .setTitle('Passcode Revealed')
         .setColor(0x3498db)
         .setDescription(
           'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
-        );
+        )
+        .addFields(...fields);
 
       await (channel as TextChannel).send({ content: '@here', embeds: [embed] });
 
@@ -669,7 +711,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     try {
       const game = await this.prisma.game.findUnique({
         where: { id: params.gameId },
-        select: { discordChannelId: true },
+        select: { discordChannelId: true, inGameMode: true, leagueType: true },
       });
 
       if (!game?.discordChannelId) {
@@ -685,12 +727,22 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
 
+      const fields: { name: string; value: string }[] = [
+        { name: 'Game Mode', value: formatGameModeDisplay(game.inGameMode) },
+      ];
+      const leagueDisplay = formatLeagueDisplay(game.leagueType);
+      if (leagueDisplay) {
+        fields.push({ name: 'League', value: leagueDisplay });
+      }
+      fields.push({ name: 'New Passcode', value: params.passcode });
+
       const embed = new EmbedBuilder()
-        .setTitle(`New Passcode: ${params.passcode}`)
+        .setTitle('Split Vote - New Passcode')
         .setColor(0xf1c40f)
         .setDescription(
           'Split Vote triggered. Please rejoin with the new passcode.\nスプリット投票が成立しました。新しいパスコードで再参加してください。',
-        );
+        )
+        .addFields(...fields);
 
       await (channel as TextChannel).send({ content: '@here', embeds: [embed] });
 
