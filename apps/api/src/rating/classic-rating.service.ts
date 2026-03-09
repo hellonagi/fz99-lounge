@@ -208,7 +208,7 @@ export class ClassicRatingService {
       include: {
         participants: {
           where: {
-            status: 'VERIFIED',
+            status: { in: ['VERIFIED', 'NO_SHOW'] },
           },
           include: {
             user: true,

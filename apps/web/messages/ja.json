@@ -308,7 +308,8 @@
   "screenshotStatus": {
     "ok": "OK",
     "ng": "NG",
-    "pending": "承認待ち"
+    "pending": "承認待ち",
+    "noShow": "未提出"
   },
   "screenshotUpload": {
     "individualTitle": "個人結果のスクリーンショットを送信",
@@ -337,7 +338,9 @@
     "positionLabel": "({position}位)"
   },
   "moderatorPanel": {
-    "waitingForAllSubmissions": "あと{count}名の提出を待っています。全員提出後にVerify/Rejectが有効になります。"
+    "waitingForAllSubmissions": "あと{count}名の提出を待っています。全員提出後にVerify/Rejectが有効になります。",
+    "markNoShow": "未提出",
+    "markNoShowConfirm": "このプレイヤーを未提出としてマークしますか？レート計算で0ポイント扱いになります。"
   },
   "screenshotRequest": {
     "title": "スクリーンショット提出依頼",

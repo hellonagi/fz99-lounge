@@ -114,6 +114,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   // Score verification state
   const [verifyingScoreUserId, setVerifyingScoreUserId] = useState<number | null>(null);
   const [rejectingScoreUserId, setRejectingScoreUserId] = useState<number | null>(null);
+  const [markingNoShowUserId, setMarkingNoShowUserId] = useState<number | null>(null);
   const [uploadingFinalScore1, setUploadingFinalScore1] = useState(false);
   const [uploadingFinalScore2, setUploadingFinalScore2] = useState(false);
 
@@ -148,11 +149,15 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   // Calculate verification progress (scores only, based on total match participants)
   const verifiedCount = participants.filter(p => p.status === 'VERIFIED').length;
   const totalRequired = props.matchParticipants.length;
+  const noShowCount = participants.filter(p => p.status === 'NO_SHOW').length;
+  const effectiveTotal = totalRequired - noShowCount;
 
   // Position conflict detection (CLASSIC mode only)
-  const submittedCount = participants.filter(p => p.status !== 'UNSUBMITTED').length;
-  const unsubmittedCount = totalRequired - submittedCount;
-  const allSubmitted = submittedCount >= totalRequired && totalRequired > 0;
+  const submittedCount = participants.filter(p =>
+    p.status !== 'UNSUBMITTED' && p.status !== 'NO_SHOW'
+  ).length;
+  const unsubmittedCount = effectiveTotal - submittedCount;
+  const allSubmitted = submittedCount >= effectiveTotal && effectiveTotal > 0;
 
   const positionConflicts = useMemo<ConflictResult[]>(() => {
     if (!allSubmitted) return [];
@@ -222,6 +227,21 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       alert('Failed to reject score');
     } finally {
       setRejectingScoreUserId(null);
+    }
+  };
+
+  // Mark a participant as no-show (DNS)
+  const handleMarkNoShow = async (userId: number) => {
+    if (!confirm(tMod('markNoShowConfirm'))) return;
+    setMarkingNoShowUserId(userId);
+    try {
+      await gamesApi.markNoShow(category, season, match, userId);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to mark no-show:', error);
+      alert('Failed to mark no-show');
+    } finally {
+      setMarkingNoShowUserId(null);
     }
   };
 
@@ -332,11 +352,11 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     });
   }, [participants, props.matchParticipants]);
 
-  // Sort: submitted players by totalScore descending, then unsubmitted at the bottom
+  // Sort: submitted players by totalScore descending, then unsubmitted/no-show at the bottom
   const sortedParticipants = useMemo(() => {
     return [...allParticipants].sort((a, b) => {
-      const aSubmitted = a.status !== 'UNSUBMITTED';
-      const bSubmitted = b.status !== 'UNSUBMITTED';
+      const aSubmitted = a.status !== 'UNSUBMITTED' && a.status !== 'NO_SHOW';
+      const bSubmitted = b.status !== 'UNSUBMITTED' && b.status !== 'NO_SHOW';
       if (aSubmitted !== bSubmitted) return aSubmitted ? -1 : 1;
       return (b.totalScore ?? 0) - (a.totalScore ?? 0);
     });
@@ -410,7 +430,7 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
             variant="destructive"
             size="sm"
             onClick={handleEndMatch}
-            disabled={endingMatch || totalRequired === 0 || verifiedCount < totalRequired}
+            disabled={endingMatch || effectiveTotal === 0 || verifiedCount < effectiveTotal}
           >
             {endingMatch ? 'Processing...' : matchStatus === 'IN_PROGRESS' ? 'End Match' : 'Finalize'}
           </Button>
@@ -465,18 +485,21 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
           <span className="text-gray-400 text-sm">Verification Progress</span>
           <span className={cn(
             "font-medium",
-            verifiedCount >= totalRequired ? "text-green-400" : "text-yellow-400"
+            verifiedCount >= effectiveTotal ? "text-green-400" : "text-yellow-400"
           )}>
-            {verifiedCount} / {totalRequired} verified
+            {verifiedCount} / {effectiveTotal} verified
+            {noShowCount > 0 && (
+              <span className="text-orange-400 ml-2">({noShowCount} DNS)</span>
+            )}
           </span>
         </div>
         <div className="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
           <div
             className={cn(
               "h-full transition-all",
-              verifiedCount >= totalRequired ? "bg-green-500" : "bg-yellow-500"
+              verifiedCount >= effectiveTotal ? "bg-green-500" : "bg-yellow-500"
             )}
-            style={{ width: `${Math.min((verifiedCount / totalRequired) * 100, 100)}%` }}
+            style={{ width: `${Math.min((verifiedCount / Math.max(effectiveTotal, 1)) * 100, 100)}%` }}
           />
         </div>
         {!allSubmitted && unsubmittedCount > 0 && (
@@ -600,7 +623,11 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
 
                   {/* Status */}
                   <td className="py-2 px-2 text-center">
-                    {participant.status !== 'UNSUBMITTED' ? (
+                    {participant.status === 'NO_SHOW' ? (
+                      <span className="text-xs font-medium text-orange-400">
+                        {t('noShow')}
+                      </span>
+                    ) : participant.status !== 'UNSUBMITTED' ? (
                       <span className={cn(
                         "text-xs font-medium",
                         participant.status === 'VERIFIED'
@@ -625,6 +652,10 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                     {(() => {
                       if (participant.status === 'VERIFIED') {
                         return <Check className="w-4 h-4 text-green-400 mx-auto" />;
+                      }
+
+                      if (participant.status === 'NO_SHOW') {
+                        return <span className="text-orange-400 text-xs">{tMod('markNoShow')}</span>;
                       }
 
                       // Show buttons if pending or rejected
@@ -659,6 +690,21 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                               </Button>
                             )}
                           </div>
+                        );
+                      }
+
+                      // UNSUBMITTED: show DNS button for moderators
+                      if (participant.status === 'UNSUBMITTED' && hasPermission(user, 'VERIFY_SCORE')) {
+                        return (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleMarkNoShow(participant.user.id)}
+                            disabled={markingNoShowUserId === participant.user.id}
+                            className="h-6 px-2 text-xs bg-orange-600/20 border-orange-600 text-orange-400 hover:bg-orange-600/40"
+                          >
+                            {markingNoShowUserId === participant.user.id ? '...' : tMod('markNoShow')}
+                          </Button>
                         );
                       }
 

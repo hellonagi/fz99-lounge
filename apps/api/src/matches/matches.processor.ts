@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
-import { EventCategory, MatchStatus } from '@prisma/client';
+import { EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
 import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS, TEAM_GP_GRID_NUMBERS } from './team-config.service';
 import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
 import { TracksService } from '../tracks/tracks.service';
@@ -244,6 +244,22 @@ export class MatchesProcessor {
           this.logger.error('Failed to create Discord channel:', error);
           // Continue even if Discord channel creation fails
         }
+      }
+
+      // Schedule 30-minute score submission reminder
+      try {
+        await this.matchQueue.add(
+          'score-submission-reminder',
+          { matchId: match.id, gameId: updatedGame.id },
+          {
+            delay: 30 * 60 * 1000,
+            removeOnComplete: true,
+            removeOnFail: { count: 10 },
+            jobId: `score-reminder-${updatedGame.id}`,
+          },
+        );
+      } catch (error) {
+        this.logger.error('Failed to schedule score submission reminder:', error);
       }
 
       return updatedGame;
@@ -582,10 +598,22 @@ export class MatchesProcessor {
     try {
       const match = await this.prisma.match.findUnique({
         where: { id: matchId },
-        select: { id: true, status: true, maxPlayers: true, fakeCount: true },
+        select: {
+          id: true,
+          status: true,
+          minPlayers: true,
+          fakeCount: true,
+          _count: { select: { participants: true } },
+        },
       });
 
       if (!match || match.status !== MatchStatus.WAITING) {
+        return;
+      }
+
+      // Don't add fake players when near minPlayers threshold
+      const totalPlayers = match._count.participants + (match.fakeCount ?? 0);
+      if (totalPlayers >= match.minPlayers - 3) {
         return;
       }
 
@@ -709,6 +737,92 @@ export class MatchesProcessor {
       this.logger.log(`Sent reminder for match ${matchId}`);
     } catch (error) {
       this.logger.error(`Failed to send reminder for match ${matchId}:`, error);
+    }
+  }
+
+  @Process('score-submission-reminder')
+  async handleScoreSubmissionReminder(
+    job: Job<{ matchId: number; gameId: number }>,
+  ) {
+    const { matchId, gameId } = job.data;
+    this.logger.log(
+      `Processing score-submission-reminder for match ${matchId}, game ${gameId}`,
+    );
+
+    try {
+      const match = await this.prisma.match.findUnique({
+        where: { id: matchId },
+        include: {
+          participants: {
+            where: { hasWithdrawn: false },
+            include: {
+              user: { select: { id: true, discordId: true } },
+            },
+          },
+          season: { include: { event: true } },
+        },
+      });
+
+      if (!match || match.status !== MatchStatus.IN_PROGRESS) {
+        this.logger.log(
+          `Skipping score reminder for match ${matchId} (not IN_PROGRESS)`,
+        );
+        return;
+      }
+
+      const game = await this.prisma.game.findUnique({
+        where: { id: gameId },
+        include: {
+          participants: { select: { userId: true, status: true } },
+        },
+      });
+
+      if (!game) return;
+
+      // Find unsubmitted participants
+      const submittedUserIds = new Set(
+        game.participants
+          .filter((p) => p.status !== ResultStatus.UNSUBMITTED)
+          .map((p) => p.userId),
+      );
+
+      // Also count those without GameParticipant at all as unsubmitted
+      const unsubmittedParticipants = match.participants.filter(
+        (mp) => !submittedUserIds.has(mp.userId),
+      );
+
+      if (unsubmittedParticipants.length === 0) {
+        this.logger.log(`All participants have submitted for match ${matchId}`);
+        return;
+      }
+
+      const unsubmittedDiscordIds = unsubmittedParticipants
+        .map((p) => p.user?.discordId)
+        .filter((id): id is string => !!id);
+
+      if (unsubmittedDiscordIds.length === 0 || !game.discordChannelId) {
+        return;
+      }
+
+      const categoryStr = match.season.event.category.toLowerCase();
+      const baseUrl = process.env.CORS_ORIGIN || 'https://fz99lounge.com';
+      const matchUrl = `${baseUrl}/matches/${categoryStr}/${match.season.seasonNumber}/${match.matchNumber}`;
+
+      await this.discordBotService.postScoreSubmissionReminder(
+        game.discordChannelId,
+        unsubmittedDiscordIds,
+        matchUrl,
+        match.deadline,
+      );
+
+      this.logger.log(
+        `Sent score submission reminder for match ${matchId} (${unsubmittedDiscordIds.length} unsubmitted)`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to process score submission reminder for match ${matchId}:`,
+        error,
+      );
     }
   }
 }

@@ -3,6 +3,13 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { matchesApi } from '@/lib/api';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
 import { Trash2, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -27,6 +34,17 @@ interface Match {
   participants?: Array<{ userId: number }>;
   games?: Array<{ leagueType: string | null }>;
 }
+
+const LEAGUE_OPTIONS = [
+  { value: 'KNIGHT', label: 'Knight' },
+  { value: 'QUEEN', label: 'Queen' },
+  { value: 'KING', label: 'King' },
+  { value: 'ACE', label: 'Ace' },
+  { value: 'MIRROR_KNIGHT', label: 'M.Knight' },
+  { value: 'MIRROR_QUEEN', label: 'M.Queen' },
+  { value: 'MIRROR_KING', label: 'M.King' },
+  { value: 'MIRROR_ACE', label: 'M.Ace' },
+];
 
 const STATUS_COLORS: Record<string, string> = {
   WAITING: 'bg-blue-500/20 text-blue-300 border-blue-500/50',
@@ -117,6 +135,19 @@ export function MatchesListCard() {
     }
   };
 
+  const handleLeagueChange = async (matchId: number, leagueType: string) => {
+    try {
+      await matchesApi.updateLeague(matchId, leagueType);
+      await fetchMatches();
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to update league');
+    }
+  };
+
+  const isGpCategory = (category?: string) =>
+    category === 'GP' || category === 'TEAM_GP';
+
   if (loading) {
     return (
       <Card>
@@ -191,7 +222,27 @@ export function MatchesListCard() {
                       <td className="py-3 px-2 text-white">
                         {category === 'GP' ? 'GP' : category || '-'}
                       </td>
-                      <td className="py-3 px-2 text-white">{leagueType}</td>
+                      <td className="py-3 px-2 text-white">
+                        {match.status === 'WAITING' && isGpCategory(category) && hasPermission(user, 'CREATE_MATCH') ? (
+                          <Select
+                            value={leagueType !== '-' ? leagueType : undefined}
+                            onValueChange={(value) => handleLeagueChange(match.id, value)}
+                          >
+                            <SelectTrigger className="h-7 w-[110px] text-xs">
+                              <SelectValue placeholder="-" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {LEAGUE_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          leagueType
+                        )}
+                      </td>
                       <td className="py-3 px-2">
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${

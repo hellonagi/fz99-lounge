@@ -92,6 +92,7 @@ interface UseGameSocketProps {
   onParticipantVerified?: (participant: ParticipantUpdate) => void;
   onParticipantRejected?: (participant: ParticipantUpdate) => void;
   onScreenshotRequested?: (participant: ParticipantUpdate) => void;
+  onParticipantNoShow?: (participant: ParticipantUpdate) => void;
 }
 
 export function useGameSocket({
@@ -106,6 +107,7 @@ export function useGameSocket({
   onParticipantVerified,
   onParticipantRejected,
   onScreenshotRequested,
+  onParticipantNoShow,
 }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
@@ -197,6 +199,12 @@ export function useGameSocket({
       }
     });
 
+    socket.on('participantNoShow', (participant: ParticipantUpdate) => {
+      if (onParticipantNoShow) {
+        onParticipantNoShow(participant);
+      }
+    });
+
     return () => {
       if (socketRef.current) {
         socketRef.current.emit('leaveGame', gameId);
@@ -204,7 +212,7 @@ export function useGameSocket({
         socketRef.current = null;
       }
     };
-  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated, onTeamAssigned, onPasscodeRevealed, onParticipantVerified, onParticipantRejected, onScreenshotRequested]);
+  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated, onTeamAssigned, onPasscodeRevealed, onParticipantVerified, onParticipantRejected, onScreenshotRequested, onParticipantNoShow]);
 
   return socketRef.current;
 }

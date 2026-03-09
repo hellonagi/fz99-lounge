@@ -227,7 +227,7 @@ export class TeamClassicRatingService {
       include: {
         participants: {
           where: {
-            status: 'VERIFIED',
+            status: { in: ['VERIFIED', 'NO_SHOW'] },
             isExcluded: false, // Exclude excluded players from rating calculation
           },
           include: {

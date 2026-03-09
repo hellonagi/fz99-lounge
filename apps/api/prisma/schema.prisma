@@ -79,6 +79,7 @@ enum ResultStatus {
   PENDING     // 提出済・検証待ち
   VERIFIED    // 検証済み
   REJECTED    // 却下
+  NO_SHOW     // 未提出確定（モデレーター/締切による）
   DISPUTED    // 異議審査中（将来用）
   INVALIDATED // 無効化（将来用）
 }
