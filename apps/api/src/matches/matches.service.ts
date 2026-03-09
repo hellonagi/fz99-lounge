@@ -831,22 +831,28 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     const participantCount = updatedMatchRaw.participants?.length ?? 0;
 
-    // participantCount is the real unique join count (re-joins don't inflate it)
-    // Schedule fake decrease every 2 real participants
-    if (participantCount % 2 === 0 && updatedMatchRaw.fakeCount > 0) {
-      const remainingMs = new Date(updatedMatchRaw.scheduledStart).getTime() - Date.now();
-      if (remainingMs > 0) {
-        const fakeDecDelay = Math.max(Math.round(remainingMs * (0.03 + Math.random() * 0.05)), 3000);
-        await this.matchQueue.add(
-          'fake-count-decrease',
-          { matchId },
-          {
-            delay: fakeDecDelay,
-            removeOnComplete: true,
-            removeOnFail: { count: 3 },
-            jobId: `fake-dec-${matchId}-p${participantCount}`,
-          },
-        );
+    // Schedule fake player departures
+    if (updatedMatchRaw.fakeCount > 0) {
+      const totalPlayers = participantCount + updatedMatchRaw.fakeCount;
+      const nearMinPlayers = totalPlayers >= updatedMatchRaw.minPlayers - 3;
+
+      if (nearMinPlayers || participantCount % 2 === 0) {
+        const remainingMs = new Date(updatedMatchRaw.scheduledStart).getTime() - Date.now();
+        if (remainingMs > 0) {
+          const fakeDecDelay = nearMinPlayers
+            ? Math.max(3000 + Math.round(Math.random() * 5000), 3000)
+            : Math.max(Math.round(remainingMs * (0.03 + Math.random() * 0.05)), 3000);
+          await this.matchQueue.add(
+            'fake-count-decrease',
+            { matchId },
+            {
+              delay: fakeDecDelay,
+              removeOnComplete: true,
+              removeOnFail: { count: 3 },
+              jobId: `fake-dec-${matchId}-p${participantCount}`,
+            },
+          );
+        }
       }
     }
 

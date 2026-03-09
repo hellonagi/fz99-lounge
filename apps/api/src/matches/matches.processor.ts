@@ -598,10 +598,22 @@ export class MatchesProcessor {
     try {
       const match = await this.prisma.match.findUnique({
         where: { id: matchId },
-        select: { id: true, status: true, maxPlayers: true, fakeCount: true },
+        select: {
+          id: true,
+          status: true,
+          minPlayers: true,
+          fakeCount: true,
+          _count: { select: { participants: true } },
+        },
       });
 
       if (!match || match.status !== MatchStatus.WAITING) {
+        return;
+      }
+
+      // Don't add fake players when near minPlayers threshold
+      const totalPlayers = match._count.participants + (match.fakeCount ?? 0);
+      if (totalPlayers >= match.minPlayers - 3) {
         return;
       }
 
