@@ -241,6 +241,8 @@ export const gamesApi = {
     api.post(`/games/${category}/${season}/${match}/participants/${userId}/verify`),
   rejectScore: (category: string, season: number, match: number, userId: number) =>
     api.post(`/games/${category}/${season}/${match}/participants/${userId}/reject`),
+  markNoShow: (category: string, season: number, match: number, userId: number) =>
+    api.post(`/games/${category}/${season}/${match}/participants/${userId}/no-show`),
 };
 
 // Tracks API

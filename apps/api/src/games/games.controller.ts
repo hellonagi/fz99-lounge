@@ -104,12 +104,16 @@ export class GamesController {
       targetUserId = submitScoreDto.targetUserId;
     }
 
+    const isModeratorAction = !!submitScoreDto.targetUserId;
+
     return this.gamesService.submitScoreByEventSeasonMatch(
       eventCategory,
       seasonNumber,
       matchNumber,
       targetUserId,
       submitScoreDto,
+      1,
+      isModeratorAction,
     );
   }
 
@@ -333,6 +337,26 @@ export class GamesController {
       matchNumber,
     );
     return this.gamesService.requestScreenshot(game.id, targetId, user.id);
+  }
+
+  @Post(':category/:season/:match/participants/:userId/no-show')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.VERIFY_SCORE)
+  @HttpCode(HttpStatus.OK)
+  async markNoShow(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+  ) {
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const seasonNumber = parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+    const targetId = parseInt(targetUserId, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.markNoShow(game.id, targetId);
   }
 
   // ========================================

@@ -440,6 +440,7 @@ export default function GamePage() {
     onParticipantVerified: handleScoreUpdated,
     onParticipantRejected: handleScoreUpdated,
     onScreenshotRequested: handleScoreUpdated,
+    onParticipantNoShow: handleScoreUpdated,
   });
 
   // Check if this is a team mode match

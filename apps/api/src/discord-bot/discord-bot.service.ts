@@ -814,6 +814,62 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Post score submission reminder to match channel, mentioning unsubmitted players
+   */
+  async postScoreSubmissionReminder(
+    channelId: string,
+    unsubmittedDiscordIds: string[],
+    matchUrl: string,
+    deadline: Date,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug('Discord bot not ready or disabled, skipping score submission reminder');
+      return false;
+    }
+
+    if (unsubmittedDiscordIds.length === 0) return false;
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(`Channel ${channelId} not found or not text-based`);
+        return false;
+      }
+
+      const mentions = unsubmittedDiscordIds.map((id) => `<@${id}>`).join(' ');
+
+      // Format deadline in JST
+      const deadlineJST = new Date(deadline.getTime() + 9 * 60 * 60 * 1000);
+      const deadlineStr = `${deadlineJST.getUTCHours().toString().padStart(2, '0')}:${deadlineJST.getUTCMinutes().toString().padStart(2, '0')} JST`;
+
+      const embed = new EmbedBuilder()
+        .setTitle('Score Submission Reminder / スコア提出リマインダー')
+        .setColor(0xf39c12)
+        .setDescription(
+          `Please submit your score on the match page.\n` +
+          `If not submitted by **${deadlineStr}**, your score will be counted as 0 points.\n\n` +
+          `試合ページからスコアを提出してください。\n` +
+          `**${deadlineStr}** までに未提出の場合、0ポイント扱いになります。`,
+        )
+        .addFields({ name: 'Match Page', value: matchUrl });
+
+      await (channel as TextChannel).send({ content: mentions, embeds: [embed] });
+
+      this.logger.log(
+        `Posted score submission reminder to channel ${channelId} for ${unsubmittedDiscordIds.length} users`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post score submission reminder to channel ${channelId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Post cancellation message to existing channel
    */
   async postCancellationMessage(gameId: number): Promise<boolean> {

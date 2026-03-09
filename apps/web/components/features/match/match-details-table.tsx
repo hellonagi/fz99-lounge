@@ -316,7 +316,11 @@ export function MatchDetailsTable({
 
       {/* Status - Based on score verification */}
       <td className="py-2 px-2 text-center whitespace-nowrap">
-        {participant.status && participant.status !== 'UNSUBMITTED' ? (
+        {participant.status === 'NO_SHOW' ? (
+          <span className="text-xs font-medium text-orange-400">
+            {t('noShow')}
+          </span>
+        ) : participant.status && participant.status !== 'UNSUBMITTED' ? (
           <span className={cn(
             "text-xs font-medium",
             participant.status === 'VERIFIED'

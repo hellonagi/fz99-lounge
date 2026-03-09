@@ -309,7 +309,8 @@
   "screenshotStatus": {
     "ok": "OK",
     "ng": "NG",
-    "pending": "Pending"
+    "pending": "Pending",
+    "noShow": "No Submission"
   },
   "screenshotUpload": {
     "individualTitle": "Submit Individual Score Screenshot",
@@ -338,7 +339,9 @@
     "positionLabel": "({position})"
   },
   "moderatorPanel": {
-    "waitingForAllSubmissions": "Waiting for {count} more player(s) to submit. Verify/Reject will be enabled after all submissions."
+    "waitingForAllSubmissions": "Waiting for {count} more player(s) to submit. Verify/Reject will be enabled after all submissions.",
+    "markNoShow": "No Submission",
+    "markNoShowConfirm": "Mark this player as No Submission? They will receive 0 points in rating calculation."
   },
   "screenshotRequest": {
     "title": "Screenshot Required",

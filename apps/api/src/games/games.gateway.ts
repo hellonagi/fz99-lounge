@@ -121,6 +121,11 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`game:${payload.gameId}`).emit('screenshotRequested', payload.participant);
   }
 
+  @OnEvent('game.participantNoShow')
+  handleParticipantNoShow(payload: { gameId: number; participant: any }) {
+    this.server.to(`game:${payload.gameId}`).emit('participantNoShow', payload.participant);
+  }
+
   @OnEvent('game.screenshotUpdated')
   handleScreenshotUpdated(payload: {
     gameId: number;

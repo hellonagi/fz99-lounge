@@ -276,7 +276,7 @@ export class GamesService {
    * Current implementation creates GameParticipant with basic info,
    * RaceResult submission needs to be implemented separately
    */
-  async submitScore(gameId: number, userId: number, submitScoreDto: SubmitScoreDto) {
+  async submitScore(gameId: number, userId: number, submitScoreDto: SubmitScoreDto, isModeratorAction: boolean = false) {
     // Find the game and verify it's in progress
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
@@ -303,8 +303,11 @@ export class GamesService {
     const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
 
     // Check match status - allow score submission during IN_PROGRESS
+    // Moderator proxy submission is also allowed during COMPLETED
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
-      throw new BadRequestException('Cannot submit score - match is not in progress');
+      if (!(isModeratorAction && game.match.status === MatchStatus.COMPLETED)) {
+        throw new BadRequestException('Cannot submit score - match is not in progress');
+      }
     }
 
     // Check user is a match participant
@@ -516,6 +519,7 @@ export class GamesService {
     userId: number,
     submitScoreDto: SubmitScoreDto,
     gameNumber: number = 1,
+    isModeratorAction: boolean = false,
   ) {
     // Find game by event category, season number, match number, and sequence
     const game = await this.prisma.game.findFirst({
@@ -537,7 +541,7 @@ export class GamesService {
       throw new NotFoundException('Game not found');
     }
 
-    return this.submitScore(game.id, userId, submitScoreDto);
+    return this.submitScore(game.id, userId, submitScoreDto, isModeratorAction);
   }
 
   /**
@@ -1683,6 +1687,90 @@ export class GamesService {
   }
 
   /**
+   * Mark a participant as NO_SHOW (moderator action)
+   * Only allowed for UNSUBMITTED participants
+   */
+  async markNoShow(gameId: number, targetUserId: number) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            participants: true,
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    // Verify the target user is a match participant
+    const isMatchParticipant = game.match.participants.some(
+      (p) => p.userId === targetUserId,
+    );
+    if (!isMatchParticipant) {
+      throw new BadRequestException('User is not a participant in this match');
+    }
+
+    const existing = await this.prisma.gameParticipant.findFirst({
+      where: { gameId, userId: targetUserId },
+    });
+
+    let updated;
+
+    if (existing) {
+      // Already has a GameParticipant record
+      if (existing.status !== ResultStatus.UNSUBMITTED) {
+        throw new BadRequestException(
+          'Cannot mark as no-show: participant has already submitted a score',
+        );
+      }
+      updated = await this.prisma.gameParticipant.update({
+        where: { id: existing.id },
+        data: { status: ResultStatus.NO_SHOW },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              profile: { select: { country: true } },
+            },
+          },
+          raceResults: true,
+        },
+      });
+    } else {
+      // No GameParticipant yet (non-team mode) - create one with NO_SHOW
+      updated = await this.prisma.gameParticipant.create({
+        data: {
+          gameId,
+          userId: targetUserId,
+          status: ResultStatus.NO_SHOW,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              profile: { select: { country: true } },
+            },
+          },
+          raceResults: true,
+        },
+      });
+    }
+
+    this.eventEmitter.emit('game.participantNoShow', {
+      gameId,
+      participant: updated,
+    });
+
+    return updated;
+  }
+
+  /**
    * Request a participant to submit a screenshot (moderator action)
    */
   async requestScreenshot(
@@ -1768,7 +1856,7 @@ export class GamesService {
       include: {
         participants: {
           where: {
-            status: ResultStatus.VERIFIED,
+            status: { in: [ResultStatus.VERIFIED, ResultStatus.NO_SHOW] },
             isExcluded: false,
           },
           select: {
