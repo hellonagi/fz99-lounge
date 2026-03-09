@@ -38,12 +38,19 @@ export function ClientLayout({ children, locale }: ClientLayoutProps) {
     authApi
       .getProfile()
       .then((response) => {
+        // OptionalJwtAuthGuardはJWT無効時にnullを返す
         if (response.data) {
           setUser(response.data);
+        } else {
+          setUser(null);
         }
       })
-      .catch(() => {
-        // ネットワークエラー等 → 何もしない
+      .catch((err) => {
+        // JWT期限切れ等(401) → ログアウト状態にする
+        if (err.response?.status === 401) {
+          setUser(null);
+        }
+        // ネットワークエラー等 → キャッシュで表示を維持
       })
       .finally(() => {
         setReady(true);
