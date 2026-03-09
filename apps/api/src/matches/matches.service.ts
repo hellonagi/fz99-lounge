@@ -14,7 +14,8 @@ import { EventsGateway } from '../events/events.gateway';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { TracksService } from '../tracks/tracks.service';
 import { CreateMatchDto } from './dto/create-match.dto';
-import { EventCategory, InGameMode, MatchStatus, UserStatus } from '@prisma/client';
+import { UpdateGameLeagueDto } from './dto/update-game-league.dto';
+import { EventCategory, InGameMode, League, MatchStatus, UserStatus } from '@prisma/client';
 
 /** カテゴリごとのマッチ占有時間（分）。ここに定義されたカテゴリ同士でスパン重複チェックを行う */
 export const CATEGORY_SPAN_MINUTES: Partial<Record<EventCategory, number>> = {
@@ -1019,6 +1020,51 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     });
 
     return { message: 'Match deleted successfully' };
+  }
+
+  async updateGameLeague(matchId: number, dto: UpdateGameLeagueDto) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: { games: true, season: { include: { event: true } } },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    if (match.status !== MatchStatus.WAITING) {
+      throw new BadRequestException('Can only change league for WAITING matches');
+    }
+
+    const category = match.season.event.category;
+    if (category !== 'GP' && category !== 'TEAM_GP') {
+      throw new BadRequestException('League change is only supported for GP/TEAM_GP matches');
+    }
+
+    const game = match.games[0];
+    if (!game) {
+      throw new BadRequestException('Match has no game');
+    }
+
+    const { leagueType } = dto;
+    const isMirror = leagueType.startsWith('MIRROR_');
+    const inGameMode = isMirror ? InGameMode.MIRROR_GRAND_PRIX : InGameMode.GRAND_PRIX;
+    const tracks = this.tracksService.getGpTracksByLeague(leagueType);
+
+    await this.prisma.game.update({
+      where: { id: game.id },
+      data: { leagueType, inGameMode, tracks },
+    });
+
+    const updated = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: this.matchDetailInclude,
+    });
+
+    const transformed = this.transformMatchResponse(updated);
+    this.eventsGateway.emitMatchUpdated(transformed);
+
+    return transformed;
   }
 
   /**

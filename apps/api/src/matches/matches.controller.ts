@@ -14,6 +14,7 @@ import {
 import type { Request } from 'express';
 import { MatchesService } from './matches.service';
 import { CreateMatchDto } from './dto/create-match.dto';
+import { UpdateGameLeagueDto } from './dto/update-game-league.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -105,6 +106,14 @@ export class MatchesController {
   async leave(@Param('id') id: string, @Req() req: Request) {
     const user = req.user as any;
     return this.matchesService.leave(parseInt(id, 10), user.id);
+  }
+
+  @Patch(':id/league')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.CREATE_MATCH)
+  async updateLeague(@Param('id') id: string, @Body() dto: UpdateGameLeagueDto) {
+    return this.matchesService.updateGameLeague(parseInt(id, 10), dto);
   }
 
   @Patch(':id/cancel')
