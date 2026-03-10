@@ -93,10 +93,10 @@ export function MatchParticipantsCard({ participants, embedded = false }: MatchP
                     {/* Name and Rating */}
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`/profile/${participant.user.id}`}
+                        href={`/profile/${participant.user.profileNumber}`}
                         className="text-white font-semibold truncate block hover:text-blue-400 hover:underline"
                       >
-                        {participant.user.displayName || `Player ${participant.user.profileId}`}
+                        {participant.user.displayName || `Player ${participant.user.profileNumber}`}
                       </Link>
                     </div>
 

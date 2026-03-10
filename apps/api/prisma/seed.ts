@@ -252,6 +252,10 @@ async function main() {
       })),
     ];
 
+    // profileNumber の最大値を取得して連番を振る
+    const maxResult = await prisma.user.aggregate({ _max: { profileNumber: true } });
+    let nextProfileNumber = (maxResult._max.profileNumber || 0) + 1;
+
     for (const userData of users) {
       const user = await prisma.user.upsert({
         where: { discordId: userData.discordId },
@@ -262,6 +266,7 @@ async function main() {
           displayName: userData.displayName,
           role: userData.role,
           isFake: true,
+          profileNumber: nextProfileNumber++,
         },
       });
 

@@ -14,15 +14,15 @@ export default function ProfileRedirectPage() {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
-      if (isAuthenticated && user && user.id) {
-        // ログイン済み: 自分のユーザーIDにリダイレクト
-        router.push(`/profile/${user.id}`);
-      } else {
-        // 未ログイン: トップページにリダイレクト
-        router.push('/');
-      }
+    if (!mounted) return;
+
+    if (isAuthenticated && user?.profileNumber) {
+      router.push(`/profile/${user.profileNumber}`);
+    } else if (!isAuthenticated && user === null) {
+      // 未ログイン確定: トップページにリダイレクト
+      router.push('/');
     }
+    // profileNumberがまだない場合はAPI更新を待つ（client-layout.tsxがsetUserする）
   }, [mounted, isAuthenticated, user, router]);
 
   return (

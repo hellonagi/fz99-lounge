@@ -55,10 +55,10 @@ export function RecurringMatchFormCard({
   // Update defaults when category changes (create mode only)
   useEffect(() => {
     if (isEditMode) return;
-    if (category === 'GP') {
+    if (category === 'GP' || category === 'TEAM_GP') {
       form.setValue('leagueType', 'KNIGHT');
       form.setValue('inGameMode', 'GRAND_PRIX');
-      form.setValue('minPlayers', '40');
+      form.setValue('minPlayers', '30');
       form.setValue('maxPlayers', '99');
     } else {
       form.setValue('leagueType', undefined);
@@ -67,6 +67,17 @@ export function RecurringMatchFormCard({
       form.setValue('maxPlayers', '20');
     }
   }, [category, form, isEditMode]);
+
+  // Reset leagueType when inGameMode changes
+  const inGameMode = form.watch('inGameMode');
+  useEffect(() => {
+    if (isEditMode) return;
+    if (inGameMode === 'MIRROR_GRAND_PRIX') {
+      form.setValue('leagueType', 'MIRROR_KNIGHT');
+    } else if (inGameMode === 'GRAND_PRIX') {
+      form.setValue('leagueType', 'KNIGHT');
+    }
+  }, [inGameMode, form, isEditMode]);
 
   // Prefill form when editing
   useEffect(() => {

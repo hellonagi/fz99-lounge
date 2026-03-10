@@ -21,11 +21,23 @@ export class UsersService {
     });
   }
 
+  async findByProfileNumber(profileNumber: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
+    const user = await this.prisma.user.findUnique({
+      where: { profileNumber },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.findById(user.id, seasonNumber, category);
+  }
+
   async findById(id: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
+        profileNumber: true,
         discordId: true,
         username: true,
         displayName: true,
@@ -739,6 +751,7 @@ export class UsersService {
           user: {
             select: {
               id: true,
+              profileNumber: true,
               displayName: true,
               avatarHash: true,
               profile: {
@@ -1030,6 +1043,7 @@ export class UsersService {
       where: { id: { in: [...awardUserIds] } },
       select: {
         id: true,
+        profileNumber: true,
         discordId: true,
         displayName: true,
         avatarHash: true,
@@ -1042,6 +1056,7 @@ export class UsersService {
       const user = userMap.get(uid);
       return {
         userId: uid,
+        profileNumber: user?.profileNumber || 0,
         discordId: user?.discordId || '',
         displayName: user?.displayName || '',
         avatarHash: user?.avatarHash || null,

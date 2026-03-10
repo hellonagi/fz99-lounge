@@ -93,7 +93,7 @@ export default function Header({ mounted, locale }: HeaderProps) {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => router.push(`/${locale}/profile/${user.id}`)}>
+                  <DropdownMenuItem onClick={() => router.push(user.profileNumber ? `/${locale}/profile/${user.profileNumber}` : `/${locale}/profile`)}>
                     <User className="mr-2 h-4 w-4" />
                     <span>{t('profile')}</span>
                   </DropdownMenuItem>

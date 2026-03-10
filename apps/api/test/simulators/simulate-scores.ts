@@ -98,8 +98,13 @@ class ScoreSimulator {
         .filter((p: any) => p.status !== 'UNSUBMITTED')
         .map((p: any) => p.userId),
     );
+    const excludedUserIds = new Set(
+      game.participants
+        .filter((p: any) => p.isExcluded)
+        .map((p: any) => p.userId),
+    );
     this.users = game.match.participants
-      .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId))
+      .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId))
       .map((p: any) => ({
         ...p.user,
         token: jwt.sign(
@@ -177,8 +182,13 @@ class ScoreSimulator {
         .filter((p: any) => p.status !== 'UNSUBMITTED')
         .map((p: any) => p.userId),
     );
+    const excludedUserIds = new Set(
+      game.participants
+        .filter((p: any) => p.isExcluded)
+        .map((p: any) => p.userId),
+    );
     this.users = game.match.participants
-      .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId))
+      .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId))
       .map((p: any) => ({
         ...p.user,
         token: jwt.sign(

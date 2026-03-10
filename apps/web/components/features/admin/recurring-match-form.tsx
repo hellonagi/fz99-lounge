@@ -35,11 +35,14 @@ export const IN_GAME_MODE_OPTIONS_GP = [
   { value: 'MIRROR_GRAND_PRIX', label: 'Mirror Grand Prix' },
 ];
 
-export const LEAGUE_OPTIONS = [
+export const LEAGUE_OPTIONS_NORMAL = [
   { value: 'KNIGHT', label: 'Knight League' },
   { value: 'QUEEN', label: 'Queen League' },
   { value: 'KING', label: 'King League' },
   { value: 'ACE', label: 'Ace League' },
+];
+
+export const LEAGUE_OPTIONS_MIRROR = [
   { value: 'MIRROR_KNIGHT', label: 'Mirror Knight League' },
   { value: 'MIRROR_QUEEN', label: 'Mirror Queen League' },
   { value: 'MIRROR_KING', label: 'Mirror King League' },
@@ -81,7 +84,10 @@ export function RecurringMatchForm({ form, isEditMode }: RecurringMatchFormProps
   });
 
   const category = form.watch('eventCategory');
+  const inGameMode = form.watch('inGameMode');
   const isGPMode = category === 'GP' || category === 'TEAM_GP';
+  const isMirror = inGameMode === 'MIRROR_GRAND_PRIX';
+  const leagueOptions = isMirror ? LEAGUE_OPTIONS_MIRROR : LEAGUE_OPTIONS_NORMAL;
 
   return (
     <div className="space-y-4">
@@ -166,7 +172,7 @@ export function RecurringMatchForm({ form, isEditMode }: RecurringMatchFormProps
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {LEAGUE_OPTIONS.map((option) => (
+                  {leagueOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
                     </SelectItem>

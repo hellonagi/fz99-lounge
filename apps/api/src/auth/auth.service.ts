@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
-import { User, UserRole, UserStatus } from '@prisma/client';
+import { Prisma, User, UserRole, UserStatus } from '@prisma/client';
 
 interface DiscordUser {
   discordId: string;
@@ -27,18 +27,38 @@ export class AuthService {
 
     if (!user) {
       isNewUser = true;
-      user = await this.prisma.user.create({
-        data: {
-          discordId: discordUser.discordId,
-          username: discordUser.username,
-          displayName: null, // 初回はnull、モーダルで設定させる
-          avatarHash: discordUser.avatarHash,
-          email: discordUser.email,
-          role: UserRole.PLAYER,
-          status: UserStatus.ACTIVE,
-          lastLoginAt: new Date(),
-        },
-      });
+
+      // profileNumber: MAX+1 で採番、UNIQUE制約違反時はリトライ
+      const MAX_RETRIES = 3;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          const [{ next }] = await this.prisma.$queryRaw<[{ next: bigint }]>`
+            SELECT COALESCE(MAX("profileNumber"), 0) + 1 AS next FROM "users"
+          `;
+          user = await this.prisma.user.create({
+            data: {
+              discordId: discordUser.discordId,
+              username: discordUser.username,
+              displayName: null,
+              avatarHash: discordUser.avatarHash,
+              email: discordUser.email,
+              role: UserRole.PLAYER,
+              status: UserStatus.ACTIVE,
+              lastLoginAt: new Date(),
+              profileNumber: Number(next),
+            },
+          });
+          break;
+        } catch (e) {
+          const isUniqueViolation = e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002';
+          if (!isUniqueViolation || attempt === MAX_RETRIES - 1) {
+            throw e;
+          }
+        }
+      }
+      if (!user) {
+        throw new InternalServerErrorException('Failed to create user');
+      }
 
       // UserSeasonStats is created when user first plays in a season
     } else {
@@ -76,6 +96,7 @@ export class AuthService {
       isNewUser,
       user: {
         id: user.id,
+        profileNumber: user.profileNumber,
         discordId: user.discordId,
         username: user.username,
         displayName: user.displayName,

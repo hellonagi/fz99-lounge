@@ -158,6 +158,7 @@ model Track {
 
 model User {
   id                       Int       @id @default(autoincrement())
+  profileNumber            Int       @unique
   discordId                String    @unique
   username                 String
   displayName              String?   @db.VarChar(10)
@@ -209,6 +210,7 @@ model User {
   permissions          UserPermission[]
   recurringMatches     RecurringMatch[]    @relation("RecurringMatchCreator")
 
+  @@index([profileNumber])
   @@index([discordId])
   @@index([displayName])
   @@index([status])

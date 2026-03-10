@@ -1,6 +1,7 @@
 // User & Auth Types
 export interface User {
   id: number;
+  profileNumber: number;
   discordId: string;
   username: string;
   displayName: string | null;

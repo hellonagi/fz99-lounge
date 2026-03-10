@@ -47,6 +47,7 @@ interface Game {
     participants: Array<{
       user: {
         id: number;
+        profileNumber: number;
         discordId: string;
         displayName: string | null;
         avatarHash: string | null;
@@ -60,7 +61,7 @@ interface Game {
   participants?: Array<{
     user: {
       id: number;
-      profileId: number;
+      profileNumber: number;
       displayName: string | null;
       avatarHash: string | null;
     };
