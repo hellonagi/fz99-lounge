@@ -379,7 +379,7 @@ export class TeamClassicRatingService {
         seasonId,
       );
 
-      // For TEAM_GP: fetch existing bestPosition/bestPoints values to compare (team rank as position)
+      // For TEAM_GP: fetch existing bestPosition/bestPoints values to compare
       let existingBestStats: Map<number, { bestPosition: number | null; bestPoints: number | null }> | undefined;
       if (isTeamGp) {
         const existingStats = await tx.userSeasonStats.findMany({
@@ -389,6 +389,21 @@ export class TeamClassicRatingService {
         existingBestStats = new Map(existingStats.map((s: { userId: number; bestPosition: number | null; bestPoints: number | null }) => [s.userId, { bestPosition: s.bestPosition, bestPoints: s.bestPoints }]));
       }
 
+      // Calculate individual rankings by totalScore for bestPosition
+      const individualRanks = new Map<number, number>();
+      if (isTeamGp) {
+        const sorted = [...participantsWithRatings].sort(
+          (a, b) => b.totalScore - a.totalScore,
+        );
+        let rank = 1;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i > 0 && sorted[i].totalScore < sorted[i - 1].totalScore) {
+            rank = i + 1;
+          }
+          individualRanks.set(sorted[i].userId, rank);
+        }
+      }
+
       // Update UserSeasonStats for each participant
       const updatePromises = ratingChanges.map((change) => {
         const participant = participantsWithRatings.find(
@@ -396,12 +411,12 @@ export class TeamClassicRatingService {
         )!;
         const medianStats = allMedianStats.get(change.userId)!;
 
-        // Calculate bestPosition and bestPoints for TEAM_GP (team rank)
+        // Calculate bestPosition (individual rank by score) and bestPoints for TEAM_GP
         let bestPosition: number | undefined;
         let bestPoints: number | undefined;
         if (isTeamGp && existingBestStats) {
           const existing = existingBestStats.get(change.userId) ?? { bestPosition: null, bestPoints: null };
-          const currentPosition = participant.position;
+          const currentPosition = individualRanks.get(change.userId)!;
           bestPosition = existing.bestPosition === null
             ? currentPosition
             : Math.min(existing.bestPosition, currentPosition);
