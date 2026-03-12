@@ -7,6 +7,7 @@ import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 
 interface AwardPlayer {
   userId: number;
+  profileNumber: number;
   discordId: string;
   displayName: string;
   avatarHash: string | null;
@@ -80,7 +81,7 @@ function AwardCard({ award }: { award: Award }) {
             />
           )}
           <Link
-            href={`/profile/${award.player.userId}`}
+            href={`/profile/${award.player.profileNumber}`}
             className="text-sm sm:text-base font-semibold text-white hover:text-blue-400 transition-colors truncate"
           >
             {award.player.displayName}

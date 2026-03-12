@@ -74,7 +74,7 @@ export interface ParticipantUpdate {
   }>;
   user: {
     id: number;
-    profileId: number;
+    profileNumber: number;
     displayName: string | null;
     avatarHash: string | null;
   };

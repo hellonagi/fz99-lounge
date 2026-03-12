@@ -64,6 +64,7 @@ export class GamesService {
                 user: {
                   select: {
                     id: true,
+                    profileNumber: true,
                     discordId: true,
                     displayName: true,
                     avatarHash: true,
@@ -78,6 +79,7 @@ export class GamesService {
             user: {
               select: {
                 id: true,
+                profileNumber: true,
                 discordId: true,
                 displayName: true,
                 avatarHash: true,
@@ -150,6 +152,7 @@ export class GamesService {
                 user: {
                   select: {
                     id: true,
+                    profileNumber: true,
                     discordId: true,
                     displayName: true,
                     avatarHash: true,
@@ -181,6 +184,7 @@ export class GamesService {
             user: {
               select: {
                 id: true,
+                profileNumber: true,
                 discordId: true,
                 displayName: true,
                 avatarHash: true,
@@ -491,6 +495,7 @@ export class GamesService {
         user: {
           select: {
             id: true,
+            profileNumber: true,
             discordId: true,
             displayName: true,
             avatarHash: true,
@@ -725,6 +730,7 @@ export class GamesService {
         user: {
           select: {
             id: true,
+            profileNumber: true,
             discordId: true,
             displayName: true,
             avatarHash: true,
@@ -1558,6 +1564,7 @@ export class GamesService {
         user: {
           select: {
             id: true,
+            profileNumber: true,
             displayName: true,
             profile: { select: { country: true } },
           },
@@ -1734,6 +1741,7 @@ export class GamesService {
           user: {
             select: {
               id: true,
+              profileNumber: true,
               displayName: true,
               profile: { select: { country: true } },
             },
@@ -1753,6 +1761,7 @@ export class GamesService {
           user: {
             select: {
               id: true,
+              profileNumber: true,
               displayName: true,
               profile: { select: { country: true } },
             },

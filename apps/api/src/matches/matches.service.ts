@@ -40,6 +40,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         user: {
           select: {
             id: true,
+            profileNumber: true,
             discordId: true,
             displayName: true,
             avatarHash: true,
@@ -64,6 +65,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           user: {
             select: {
               id: true,
+              profileNumber: true,
               discordId: true,
               displayName: true,
               avatarHash: true,

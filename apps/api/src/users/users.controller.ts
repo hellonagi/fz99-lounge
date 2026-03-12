@@ -71,7 +71,7 @@ export class UsersController {
     @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
   ) {
     const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
-    return this.usersService.findById(parseInt(profileId, 10), parsedSeason, category);
+    return this.usersService.findByProfileNumber(parseInt(profileId, 10), parsedSeason, category);
   }
 
   @Get(':id/seasons')

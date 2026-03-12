@@ -118,13 +118,13 @@ export default function Home() {
       {/* Next Match Section */}
       <div>
         {error || !nextMatch ? (
-          <MatchHero errorMessage={getErrorMessage()} />
+          <MatchHero errorMessage={getErrorMessage() ?? undefined} />
         ) : (
           <MatchHero
             category={nextMatch.category || nextMatch.season?.event?.category}
             season={nextMatch.season?.seasonNumber}
             match={nextMatch.matchNumber}
-            league={nextMatch.leagueType}
+            league={nextMatch.leagueType ?? undefined}
             currentPlayers={nextMatch.currentPlayers ?? nextMatch.participants?.length ?? 0}
             minPlayers={nextMatch.minPlayers}
             maxPlayers={nextMatch.maxPlayers}

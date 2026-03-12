@@ -344,19 +344,19 @@ export class MatchesProcessor {
       },
       select: {
         userId: true,
-        internalRating: true,
+        displayRating: true,
       },
     });
 
     const ratingMap = new Map<number, number>();
     for (const stat of participantRatings) {
-      ratingMap.set(stat.userId, stat.internalRating);
+      ratingMap.set(stat.userId, stat.displayRating);
     }
 
     // Build player data for team assignment
     const players: PlayerForAssignment[] = match.participants.map((p: any) => ({
       userId: p.userId,
-      rating: ratingMap.get(p.userId) ?? 2750, // Default rating if not found
+      rating: ratingMap.get(p.userId) ?? 0, // Default rating if not found
       joinedAt: p.joinedAt,
     }));
 

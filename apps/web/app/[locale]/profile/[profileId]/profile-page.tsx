@@ -11,11 +11,14 @@ import { TrackStats } from '@/components/features/profile/track-stats';
 import { ProfileSeasonSelect } from '@/components/features/profile/profile-season-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import type { UserProfileResponse, UserSeasonStats, Season } from '@/types';
+import type { UserProfileResponse, UserSeasonStats } from '@/types';
 
 type ProfileCategory = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
-interface UserSeason extends Season {
+interface UserSeason {
+  id: number;
+  seasonNumber: number;
+  isActive: boolean;
   event?: { category: string };
 }
 

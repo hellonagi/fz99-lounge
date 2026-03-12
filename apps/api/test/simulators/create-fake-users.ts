@@ -21,12 +21,16 @@ async function createFakeUsers(count: number) {
     const username = faker.internet.username({ firstName }).toLowerCase().slice(0, 32);
 
     try {
+      const [{ next }] = await prisma.$queryRaw<[{ next: bigint }]>`
+        SELECT COALESCE(MAX("profileNumber"), 0) + 1 AS next FROM "users"
+      `;
       const user = await prisma.user.create({
         data: {
           discordId,
           username,
           displayName,
           isFake: true,
+          profileNumber: Number(next),
           profile: {
             create: {
               country: faker.location.countryCode('alpha-2'),

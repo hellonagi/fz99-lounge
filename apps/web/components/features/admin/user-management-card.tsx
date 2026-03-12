@@ -41,7 +41,7 @@ export function UserManagementCard() {
   const [page, setPage] = useState(1);
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
   const [successUserId, setSuccessUserId] = useState<number | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const fetchUsers = useCallback(async (pageNum: number, searchQuery: string) => {
     setLoading(true);

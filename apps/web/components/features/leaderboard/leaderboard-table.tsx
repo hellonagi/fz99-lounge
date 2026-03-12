@@ -25,6 +25,7 @@ interface LeaderboardEntry {
   mvpCount?: number;
   user: {
     id: number;
+    profileNumber: number;
     displayName: string | null;
     avatarHash: string | null;
     profile?: { country: string | null } | null;
@@ -141,11 +142,11 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 {/* Player */}
                 <td className="py-2 px-2">
                   <Link
-                    href={`/profile/${entry.user.id}`}
+                    href={`/profile/${entry.user.profileNumber}`}
                     prefetch={false}
                     className="text-white truncate max-w-[150px] hover:text-blue-400"
                   >
-                    {entry.user.displayName || `User#${entry.user.id}`}
+                    {entry.user.displayName || `User#${entry.user.profileNumber}`}
                   </Link>
                 </td>
 

@@ -16,6 +16,7 @@ interface RaceResult {
 interface GameParticipant {
   user: {
     id: number;
+    profileNumber: number;
     displayName: string | null;
     profile?: { country: string | null } | null;
   };
@@ -36,6 +37,7 @@ interface GameParticipant {
 interface MatchParticipant {
   user: {
     id: number;
+    profileNumber: number;
     discordId: string;
     displayName: string | null;
     avatarHash: string | null;
@@ -63,6 +65,7 @@ interface Screenshot {
 interface MergedParticipant {
   user: {
     id: number;
+    profileNumber: number;
     displayName: string | null;
     profile?: { country: string | null } | null;
   };
@@ -128,6 +131,7 @@ export function MatchDetailsTable({
     mergedParticipants.push({
       user: {
         id: mp.user.id,
+        profileNumber: mp.user.profileNumber,
         displayName: mp.user.displayName,
         profile: mp.user.profile || gameData?.user.profile,
       },
@@ -282,10 +286,10 @@ export function MatchDetailsTable({
             title={participant.user.profile?.country || 'Unknown'}
           />
           <Link
-            href={`/profile/${participant.user.id}`}
+            href={`/profile/${participant.user.profileNumber}`}
             className="hover:text-blue-400 hover:underline"
           >
-            {participant.user.displayName || `User#${participant.user.id}`}
+            {participant.user.displayName || `User#${participant.user.profileNumber}`}
           </Link>
           {participant.assistEnabled && !isClassicMode && !isGpMode && (
             <span className="text-xs text-yellow-400 font-bold" title="Assist Mode">A</span>
