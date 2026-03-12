@@ -30,6 +30,19 @@ interface ChartDataPoint {
   date: string;
 }
 
+/** Returns matchNumbers where the date changes (first point of each new date) */
+function getDateBoundaries(data: ChartDataPoint[]): Map<number, string> {
+  const boundaries = new Map<number, string>();
+  let prevDate = '';
+  for (const d of data) {
+    if (d.date !== prevDate) {
+      boundaries.set(d.matchNumber, d.date);
+      prevDate = d.date;
+    }
+  }
+  return boundaries;
+}
+
 export function RatingChart({ userId, category, seasonNumber }: RatingChartProps) {
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +127,9 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
     );
   }
 
+  const dateBoundaries = getDateBoundaries(data);
+  const boundaryMatchNumbers = [...dateBoundaries.keys()];
+
   // GP/TEAM_GP: Position chart (inverted Y-axis, 1st at top)
   if (isGpMode) {
     const positions = data.map((d) => d.position).filter((p): p is number => p != null);
@@ -153,9 +169,11 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
             <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
-                dataKey="date"
+                dataKey="matchNumber"
                 stroke="#9ca3af"
                 tick={{ fill: '#9ca3af', fontSize: 12 }}
+                ticks={boundaryMatchNumbers}
+                tickFormatter={(mn) => dateBoundaries.get(mn) || ''}
               />
               <YAxis
                 domain={[1, yMax]}
@@ -177,8 +195,21 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
                   const tp = props.payload.totalParticipants;
                   return [`#${value}${tp ? ` / ${tp}` : ''}`, 'Position'];
                 }}
-                labelFormatter={(label) => label}
+                labelFormatter={(_label, payload) => {
+                  const point = payload?.[0]?.payload as ChartDataPoint | undefined;
+                  return point?.date || '';
+                }}
               />
+              {/* Vertical date boundary lines */}
+              {boundaryMatchNumbers.slice(1).map((mn) => (
+                <ReferenceLine
+                  key={`date-${mn}`}
+                  x={mn}
+                  stroke="#4b5563"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.6}
+                />
+              ))}
               {/* Reference line for 1st place */}
               <ReferenceLine
                 y={1}
@@ -187,7 +218,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
                 strokeOpacity={0.5}
               />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="position"
                 stroke="#60a5fa"
                 strokeWidth={2}
@@ -235,9 +266,11 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
           <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis
-              dataKey="date"
+              dataKey="matchNumber"
               stroke="#9ca3af"
               tick={{ fill: '#9ca3af', fontSize: 12 }}
+              ticks={boundaryMatchNumbers}
+              tickFormatter={(mn) => dateBoundaries.get(mn) || ''}
             />
             <YAxis
               domain={[yMin, yMax]}
@@ -254,8 +287,21 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
               labelStyle={{ color: '#9ca3af' }}
               itemStyle={{ color: '#fff' }}
               formatter={(value) => [value, 'Rating']}
-              labelFormatter={(label) => label}
+              labelFormatter={(_label, payload) => {
+                const point = payload?.[0]?.payload as ChartDataPoint | undefined;
+                return point?.date || '';
+              }}
             />
+            {/* Vertical date boundary lines */}
+            {boundaryMatchNumbers.slice(1).map((mn) => (
+              <ReferenceLine
+                key={`date-${mn}`}
+                x={mn}
+                stroke="#4b5563"
+                strokeDasharray="3 3"
+                strokeOpacity={0.6}
+              />
+            ))}
             {visibleThresholds.map((threshold) => (
               <ReferenceLine
                 key={threshold.rating}
@@ -266,7 +312,7 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
               />
             ))}
             <Line
-              type="monotone"
+              type="linear"
               dataKey="displayRating"
               stroke={lineColor}
               strokeWidth={2}
