@@ -18,7 +18,7 @@ import {
 interface Participant {
   user: {
     id: number;
-    profileId: number;
+    profileNumber: number;
     discordId: string;
     displayName: string | null;
     avatarHash: string | null;

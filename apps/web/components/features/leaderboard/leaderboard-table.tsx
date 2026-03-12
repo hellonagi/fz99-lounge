@@ -25,6 +25,7 @@ interface LeaderboardEntry {
   mvpCount?: number;
   user: {
     id: number;
+    profileNumber: number;
     displayName: string | null;
     avatarHash: string | null;
     profile?: { country: string | null } | null;

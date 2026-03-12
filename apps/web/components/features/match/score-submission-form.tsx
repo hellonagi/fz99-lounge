@@ -162,7 +162,8 @@ export function ScoreSubmissionForm({
   }, [raceCount]);
 
   const form = useForm<RaceFormData>({
-    resolver: zodResolver(schema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(schema) as any,
     defaultValues,
   });
 
@@ -278,7 +279,8 @@ export function ScoreSubmissionForm({
       }
 
       await gamesApi.submitScore(mode, season, game, {
-        machine: (data.machine as string) || undefined,
+        machine: (data.machine as string) || '',
+        assistEnabled: false,
         raceResults,
         targetUserId: isModeratorMode ? targetUserId! : undefined,
       });
@@ -398,6 +400,7 @@ export function ScoreSubmissionForm({
                               disabled={posDisabled}
                               className={`bg-gray-700 border-gray-600 text-white text-sm h-8 px-2 disabled:opacity-50 ${fieldState.error ? 'border-red-500' : ''}`}
                               {...field}
+                              value={field.value as string ?? ''}
                             />
                           </FormControl>
                         </FormItem>

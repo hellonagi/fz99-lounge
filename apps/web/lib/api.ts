@@ -61,7 +61,7 @@ export const usersApi = {
     const params = category ? `?category=${category}` : '';
     return api.get(`/users/${userId}/seasons${params}`);
   },
-  getLeaderboard: (mode: 'GP' | 'CLASSIC' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
+  getLeaderboard: (mode: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
     const params = new URLSearchParams({ mode, page: String(page), limit: String(limit) });
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);

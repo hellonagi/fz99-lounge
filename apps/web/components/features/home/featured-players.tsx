@@ -7,6 +7,7 @@ import { useAvatarUrl } from '@/hooks/useAvatarUrl';
 
 interface AwardPlayer {
   userId: number;
+  profileNumber: number;
   discordId: string;
   displayName: string;
   avatarHash: string | null;

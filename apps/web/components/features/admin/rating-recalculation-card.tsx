@@ -44,7 +44,8 @@ export function RatingRecalculationCard() {
   const [result, setResult] = useState<RecalculateResult | null>(null);
 
   const form = useForm<RecalculateFormData>({
-    resolver: zodResolver(recalculateSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(recalculateSchema) as any,
     defaultValues: {
       category: 'classic',
       season: 1,

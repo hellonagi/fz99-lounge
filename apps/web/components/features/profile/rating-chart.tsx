@@ -191,8 +191,8 @@ export function RatingChart({ userId, category, seasonNumber }: RatingChartProps
                 }}
                 labelStyle={{ color: '#9ca3af' }}
                 itemStyle={{ color: '#fff' }}
-                formatter={(value: number, _name: string, props: { payload: ChartDataPoint }) => {
-                  const tp = props.payload.totalParticipants;
+                formatter={(value, _name, props) => {
+                  const tp = (props.payload as ChartDataPoint)?.totalParticipants;
                   return [`#${value}${tp ? ` / ${tp}` : ''}`, 'Position'];
                 }}
                 labelFormatter={(_label, payload) => {

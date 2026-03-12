@@ -29,8 +29,14 @@ interface LeaderboardEntry {
   survivedCount: number;
   assistUsedCount: number;
   bestPosition?: number | null;
+  bestPoints?: number | null;
+  medianPosition: number | null;
+  medianPoints: number | null;
+  favoriteMachine: string | null;
+  mvpCount?: number;
   user: {
     id: number;
+    profileNumber: number;
     displayName: string | null;
     avatarHash: string | null;
     profile?: { country: string | null } | null;
