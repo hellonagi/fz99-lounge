@@ -502,9 +502,8 @@ export default function GamePage() {
             completedAt={game.completedAt}
             status={game.match.status}
             totalPlayers={
-              game.participants
-                ? game.participants.filter(p => !p.isExcluded).length
-                : game.match.participants?.length ?? 0
+              (game.match.participants?.length ?? 0)
+              - (game.participants?.filter(p => p.isExcluded).length ?? 0)
             }
           />
 
