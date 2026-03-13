@@ -279,7 +279,7 @@ export function ScoreSubmissionForm({
       }
 
       await gamesApi.submitScore(mode, season, game, {
-        machine: (data.machine as string) || '',
+        machine: (data.machine as string) || undefined,
         assistEnabled: false,
         raceResults,
         targetUserId: isModeratorMode ? targetUserId! : undefined,
