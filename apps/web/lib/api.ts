@@ -189,7 +189,7 @@ export const gamesApi = {
     api.get(`/games/${category}/${season}/${match}`),
   submitScore: (category: string, season: number, match: number, data: {
     reportedPoints?: number;
-    machine: string;
+    machine?: string;
     assistEnabled: boolean;
     targetUserId?: number;
     raceResults?: Array<{
