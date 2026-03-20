@@ -15,6 +15,16 @@ function TrackPlane() {
     '/tracks/mc1_skyway.webp',
   ]);
 
+  // Fix for Android Chrome: NPOT textures (951px height) need explicit filter settings
+  [trackTex, skywayTex].forEach((tex) => {
+    tex.generateMipmaps = false;
+    tex.minFilter = THREE.LinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.needsUpdate = true;
+  });
+
   return (
     <>
       {/* Track (floating above grid) */}
