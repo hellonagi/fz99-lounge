@@ -1,13 +1,13 @@
 /**
  * Classic Mini Prix トラックセットローテーション
  *
- * 基準時刻: 2026-01-04T06:11:00+09:00 (JST) = セットID 002
+ * 基準時刻: 2026-03-21T01:35:00+09:00 (JST) = セットID 010
  * ローテーション: 29セット、1分刻み、29分周期
  */
 
 // 基準時刻設定
-export const TRACKSET_REFERENCE_TIME = new Date('2026-01-04T06:11:00+09:00');
-export const TRACKSET_REFERENCE_ID = 2;
+export const TRACKSET_REFERENCE_TIME = new Date('2026-03-21T01:35:00+09:00');
+export const TRACKSET_REFERENCE_ID = 10;
 export const TRACKSET_COUNT = 29;
 
 // 29セットのトラックデータ (トラックID使用: CLASSIC=201-220)

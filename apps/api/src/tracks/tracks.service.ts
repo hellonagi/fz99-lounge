@@ -73,7 +73,6 @@ export class TracksService {
     const diffMs = targetTime.getTime() - TRACKSET_REFERENCE_TIME.getTime();
     const diffMinutes = Math.floor(diffMs / (60 * 1000));
 
-    // 基準時刻がセットID 2 なので調整
     let offset = diffMinutes % TRACKSET_COUNT;
     if (offset < 0) offset += TRACKSET_COUNT;
 
