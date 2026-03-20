@@ -428,7 +428,8 @@
     "prevWeek": "Previous week",
     "nextWeek": "Next week",
 "inProgress": "LIVE",
-    "login": "Login"
+    "login": "Login",
+    "loginToJoin": "Log in to join"
   },
   "createMatch": {
     "title": "Create Match",

@@ -77,8 +77,8 @@
           "description": "ゲーム内で使用する名前を設定"
         },
         "join": {
-          "title": "試合に参加",
-          "description": "トップページから試合を見つけて参加"
+          "title": "試合にエントリー",
+          "description": "トップページから試合を見つけてエントリー"
         },
         "submit": {
           "title": "結果を送信",
@@ -144,9 +144,9 @@
     "goToMatchPage": "参加者は試合ページに移動してパスコードを確認してください。",
     "goToMatchButton": "試合ページへ",
     "startsIn": "あと",
-    "reviewRules": "参加前に<matchRules>ルール</matchRules>をご確認ください",
-    "join": "参加",
-    "loginToJoin": "ログインして参加",
+    "reviewRules": "エントリー前に<matchRules>ルール</matchRules>をご確認ください",
+    "join": "エントリー",
+    "loginToJoin": "ログインしてエントリー",
     "leave": "キャンセル",
     "joining": "読み込み中...",
     "passcodeNotice": "試合時間になるとパスコードが公開されます。"
@@ -427,7 +427,8 @@
     "prevWeek": "前の週",
     "nextWeek": "次の週",
 "inProgress": "LIVE",
-    "login": "ログイン"
+    "login": "ログイン",
+    "loginToJoin": "ログインしてエントリー"
   },
   "createMatch": {
     "title": "マッチ作成",
