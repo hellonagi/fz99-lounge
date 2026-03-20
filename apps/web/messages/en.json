@@ -130,8 +130,10 @@
       "noData": "No matches played this week yet",
       "categories": {
         "mostWins": "Most Wins",
+        "classicTopScorer": "Classic Highest Score",
+        "gpTopScorer": "GP Highest Score",
         "mostMvps": "Most Team MVPs",
-        "topScorer": "Highest Score"
+        "rookie": "Rising Rookie"
       },
       "units": {
         "mostWins": "wins",
