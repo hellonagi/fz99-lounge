@@ -901,10 +901,8 @@ export class UsersService {
   }
 
   /**
-   * 先週の注目プレイヤー3部門を取得
-   * - 最多勝利（CLASSIC + TEAM_CLASSIC混合）
-   * - 最多MVP（TEAM_CLASSICのチーム内最高スコア）
-   * - 最高得点（CLASSIC + TEAM_CLASSIC混合、1試合での最高totalScore）
+   * 先週の注目プレイヤー5部門を取得
+   * - Classic最多勝利 / GP最多勝利 / Classic最高得点 / GP最高得点 / 最多チームMVP
    */
   async getFeaturedWeeklyPlayers() {
     // 先週の日曜 00:00 UTC 〜 土曜 23:59:59.999 UTC を算出
@@ -924,7 +922,7 @@ export class UsersService {
       23, 59, 59, 999,
     ));
 
-    // 先週のFINALIZEDなCLASSIC + TEAM_CLASSICゲームを取得
+    // 先週のFINALIZEDゲームを取得（CLASSIC, GP, TEAM_CLASSIC, TEAM_GP）
     const games = await this.prisma.game.findMany({
       where: {
         match: {
@@ -932,7 +930,7 @@ export class UsersService {
           scheduledStart: { gte: weekStart, lte: weekEnd },
           season: {
             event: {
-              category: { in: [EventCategory.CLASSIC, EventCategory.TEAM_CLASSIC, EventCategory.TEAM_GP] },
+              category: { in: [EventCategory.CLASSIC, EventCategory.GP, EventCategory.TEAM_CLASSIC, EventCategory.TEAM_GP] },
             },
           },
         },
@@ -956,36 +954,40 @@ export class UsersService {
       },
     });
 
-    // 集計用Map
-    const userWins = new Map<number, number>();
+    // 集計用Map: 勝利はClassic+GP合算、得点はClassic/GP別、Team MVP別
+    const soloWins = new Map<number, number>();
+    const classicHighScore = new Map<number, number>();
+    const gpHighScore = new Map<number, number>();
     const userMvps = new Map<number, number>();
-    const userHighScore = new Map<number, number>();
 
     for (const game of games) {
       const category = game.match.season.event.category;
       const isTeam = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
+      const isClassic = category === 'CLASSIC';
+      const isGp = category === 'GP';
 
-      // 最高得点（1試合での最高スコア）
-      for (const p of game.participants) {
-        const score = p.totalScore ?? 0;
-        const current = userHighScore.get(p.userId) || 0;
-        if (score > current) {
-          userHighScore.set(p.userId, score);
-        }
-      }
+      if (isClassic || isGp) {
+        const highScoreMap = isClassic ? classicHighScore : gpHighScore;
 
-      // 勝利判定
-      if (isTeam && game.teamScores) {
-        const scores = game.teamScores as { teamIndex: number; score: number; rank: number }[];
-        const winningIndices = new Set(
-          scores.filter((t) => t.rank === 1).map((t) => t.teamIndex),
-        );
+        // 最高得点
         for (const p of game.participants) {
-          if (p.teamIndex !== null && winningIndices.has(p.teamIndex)) {
-            userWins.set(p.userId, (userWins.get(p.userId) || 0) + 1);
+          const score = p.totalScore ?? 0;
+          const current = highScoreMap.get(p.userId) || 0;
+          if (score > current) {
+            highScoreMap.set(p.userId, score);
           }
         }
 
+        // 勝利判定: totalScore最高が勝利（Classic+GP合算）
+        const maxScore = Math.max(...game.participants.map((p) => p.totalScore || 0));
+        if (maxScore > 0) {
+          for (const p of game.participants) {
+            if ((p.totalScore || 0) === maxScore) {
+              soloWins.set(p.userId, (soloWins.get(p.userId) || 0) + 1);
+            }
+          }
+        }
+      } else if (isTeam && game.teamScores) {
         // MVP判定: チームごとにtotalScore最高のプレイヤー
         const teamGroups = new Map<number, { userId: number; totalScore: number }[]>();
         for (const p of game.participants) {
@@ -1004,35 +1006,123 @@ export class UsersService {
             }
           }
         }
-      } else if (!isTeam) {
-        // CLASSIC: totalScore最高が勝利
-        const maxScore = Math.max(...game.participants.map((p) => p.totalScore || 0));
-        if (maxScore > 0) {
-          for (const p of game.participants) {
-            if ((p.totalScore || 0) === maxScore) {
-              userWins.set(p.userId, (userWins.get(p.userId) || 0) + 1);
-            }
-          }
-        }
       }
     }
 
     // 各部門の1位を決定
-    const mostWins = [...userWins.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+    const getTop = (map: Map<number, number>) =>
+      [...map.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0] || null;
 
-    const mostMvps = [...userMvps.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+    const results = {
+      mostWins: getTop(soloWins),
+      classicTopScorer: getTop(classicHighScore),
+      gpTopScorer: getTop(gpHighScore),
+      mostMvps: getTop(userMvps),
+    };
 
-    const topScorer = [...userHighScore.entries()]
-      .filter(([, score]) => score > 0)
-      .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+    // 期待の新人: 先週登録したユーザーの中で最高スコアを出した人
+    // 全ゲームの参加者から先週登録ユーザーを特定
+    const allParticipantUserIds = new Set<number>();
+    for (const game of games) {
+      for (const p of game.participants) {
+        allParticipantUserIds.add(p.userId);
+      }
+    }
+
+    // 期待の新人: 先週登録ユーザーの中から 勝利数 > MVP数 > 最高得点 の優先順で選出
+    let rookieEntry: { userId: number; value: number; type: 'wins' | 'mvps' | 'score' } | null = null;
+    if (allParticipantUserIds.size > 0) {
+      const newUsers = await this.prisma.user.findMany({
+        where: {
+          id: { in: [...allParticipantUserIds] },
+          createdAt: { gte: weekStart, lte: weekEnd },
+        },
+        select: { id: true },
+      });
+      const newUserIds = new Set(newUsers.map((u) => u.id));
+
+      if (newUserIds.size > 0) {
+        // 新規ユーザーの勝利数・MVP数・最高スコアを集計
+        const rookieWins = new Map<number, number>();
+        const rookieMvps = new Map<number, number>();
+        const rookieHighScore = new Map<number, number>();
+
+        for (const game of games) {
+          const category = game.match.season.event.category;
+          const isTeam = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
+
+          // 最高スコア
+          for (const p of game.participants) {
+            if (!newUserIds.has(p.userId)) continue;
+            const score = p.totalScore ?? 0;
+            const current = rookieHighScore.get(p.userId) || 0;
+            if (score > current) rookieHighScore.set(p.userId, score);
+          }
+
+          if (!isTeam) {
+            // ソロ勝利
+            const maxScore = Math.max(...game.participants.map((p) => p.totalScore || 0));
+            if (maxScore > 0) {
+              for (const p of game.participants) {
+                if (!newUserIds.has(p.userId)) continue;
+                if ((p.totalScore || 0) === maxScore) {
+                  rookieWins.set(p.userId, (rookieWins.get(p.userId) || 0) + 1);
+                }
+              }
+            }
+          } else if (game.teamScores) {
+            // チーム勝利
+            const scores = game.teamScores as { teamIndex: number; score: number; rank: number }[];
+            const winningIndices = new Set(scores.filter((t) => t.rank === 1).map((t) => t.teamIndex));
+            for (const p of game.participants) {
+              if (!newUserIds.has(p.userId)) continue;
+              if (p.teamIndex !== null && winningIndices.has(p.teamIndex)) {
+                rookieWins.set(p.userId, (rookieWins.get(p.userId) || 0) + 1);
+              }
+            }
+            // チームMVP
+            const teamGroups = new Map<number, { userId: number; totalScore: number }[]>();
+            for (const p of game.participants) {
+              if (p.teamIndex === null) continue;
+              const group = teamGroups.get(p.teamIndex) || [];
+              group.push({ userId: p.userId, totalScore: p.totalScore ?? 0 });
+              teamGroups.set(p.teamIndex, group);
+            }
+            for (const [, members] of teamGroups) {
+              const maxS = Math.max(...members.map((m) => m.totalScore));
+              if (maxS > 0) {
+                for (const m of members) {
+                  if (!newUserIds.has(m.userId)) continue;
+                  if (m.totalScore === maxS) {
+                    rookieMvps.set(m.userId, (rookieMvps.get(m.userId) || 0) + 1);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // 優先順: 勝利 > MVP > 最高得点
+        const topWins = getTop(rookieWins);
+        const topMvps = getTop(rookieMvps);
+        const topScore = getTop(rookieHighScore);
+
+        if (topWins) {
+          rookieEntry = { userId: topWins[0], value: topWins[1], type: 'wins' };
+        } else if (topMvps) {
+          rookieEntry = { userId: topMvps[0], value: topMvps[1], type: 'mvps' };
+        } else if (topScore) {
+          rookieEntry = { userId: topScore[0], value: topScore[1], type: 'score' };
+        }
+      }
+    }
 
     // 受賞者のuserIdを収集
     const awardUserIds = new Set<number>();
-    if (mostWins) awardUserIds.add(mostWins[0]);
-    if (mostMvps) awardUserIds.add(mostMvps[0]);
-    if (topScorer) awardUserIds.add(topScorer[0]);
+    for (const entry of Object.values(results)) {
+      if (entry) awardUserIds.add(entry[0]);
+    }
+    if (rookieEntry) awardUserIds.add(rookieEntry.userId);
 
     if (awardUserIds.size === 0) {
       return { weekStart, weekEnd, awards: [] };
@@ -1068,29 +1158,24 @@ export class UsersService {
       category: string;
       player: ReturnType<typeof buildPlayer>;
       value: number;
-      detail?: string;
+      rookieType?: string;
     }[] = [];
 
-    if (mostWins) {
-      awards.push({
-        category: 'mostWins',
-        player: buildPlayer(mostWins[0]),
-        value: mostWins[1],
-      });
+    // 順序: gpTopScorer, mostWins, rookie, mostMvps, classicTopScorer
+    if (results.gpTopScorer) {
+      awards.push({ category: 'gpTopScorer', player: buildPlayer(results.gpTopScorer[0]), value: results.gpTopScorer[1] });
     }
-    if (topScorer) {
-      awards.push({
-        category: 'topScorer',
-        player: buildPlayer(topScorer[0]),
-        value: topScorer[1],
-      });
+    if (results.mostWins) {
+      awards.push({ category: 'mostWins', player: buildPlayer(results.mostWins[0]), value: results.mostWins[1] });
     }
-    if (mostMvps) {
-      awards.push({
-        category: 'mostMvps',
-        player: buildPlayer(mostMvps[0]),
-        value: mostMvps[1],
-      });
+    if (rookieEntry) {
+      awards.push({ category: 'rookie', player: buildPlayer(rookieEntry.userId), value: rookieEntry.value, rookieType: rookieEntry.type });
+    }
+    if (results.mostMvps) {
+      awards.push({ category: 'mostMvps', player: buildPlayer(results.mostMvps[0]), value: results.mostMvps[1] });
+    }
+    if (results.classicTopScorer) {
+      awards.push({ category: 'classicTopScorer', player: buildPlayer(results.classicTopScorer[0]), value: results.classicTopScorer[1] });
     }
 
     return { weekStart, weekEnd, awards };

@@ -97,15 +97,6 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
           {tCal('ended')}
         </Link>
       )}
-      {isWaiting && !isAuthenticated && (
-        <a
-          href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
-          className={cn(buttonVariants({ size: 'xs', variant: 'discord' }), 'gap-1')}
-        >
-          <SiDiscord className="w-3 h-3" />
-          {tHero('join')}
-        </a>
-      )}
       {isWaiting && isAuthenticated && (
         <button
           onClick={() => onJoinLeave(match.id)}
@@ -183,6 +174,7 @@ function getJstTimeStr(scheduledStart: string): string {
 
 export function WeeklyCalendar() {
   const t = useTranslations('weeklyCalendar');
+  const { isAuthenticated } = useAuthStore();
   const {
     matches,
     loading,
@@ -240,7 +232,18 @@ export function WeeklyCalendar() {
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
         ) : (
-          <>
+          <div className="relative">
+            {!isAuthenticated && (
+              <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center h-2/3 bg-gradient-to-t from-gray-950 via-gray-950/50 to-transparent rounded-b-lg">
+                <a
+                  href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
+                  className={cn(buttonVariants({ variant: 'discord', size: 'lg' }), 'gap-2')}
+                >
+                  <SiDiscord className="w-4 h-4" />
+                  {t('loginToJoin')}
+                </a>
+              </div>
+            )}
             {/* Mobile: Swiper day view */}
             <div className="md:hidden">
               {/* Day tab bar */}
@@ -402,7 +405,7 @@ export function WeeklyCalendar() {
                 </tbody>
               </table>
             </div>
-          </>
+          </div>
         )}
       </div>
     </section>
