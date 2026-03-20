@@ -932,14 +932,20 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     // Save original matchNumber before clearing it (for Discord announcement)
     const originalMatchNumber = match.matchNumber;
 
-    // Update match status to CANCELLED and clear matchNumber to free it for reuse
-    const updatedMatch = await this.prisma.match.update({
-      where: { id: matchId },
-      data: {
-        status: MatchStatus.CANCELLED,
-        matchNumber: null,
-      },
-      include: this.matchDetailInclude,
+    // Cancel match and reassign numbers in a single transaction to prevent race conditions
+    const updatedMatch = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.match.update({
+        where: { id: matchId },
+        data: {
+          status: MatchStatus.CANCELLED,
+          matchNumber: null,
+        },
+        include: this.matchDetailInclude,
+      });
+
+      await this.reassignWaitingMatchNumbers(tx, match.seasonId);
+
+      return updated;
     });
 
     // Remove scheduled reminder job if exists
@@ -983,9 +989,6 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         this.logger.error('Failed to announce match cancellation to Discord:', error);
       }
     }
-
-    // Reassign WAITING matchNumbers after cancellation to fill gaps
-    await this.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
 
     // Emit WebSocket event to notify all clients
     this.eventsGateway.emitMatchUpdated(this.transformMatchResponse(updatedMatch));
@@ -1089,12 +1092,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     },
     seasonId: number,
   ): Promise<void> {
-    // Get all non-cancelled matches in this season
+    // Get all matches in this season (including CANCELLED to avoid matchNumber collisions)
     const allMatches = await tx.match.findMany({
-      where: {
-        seasonId,
-        status: { not: MatchStatus.CANCELLED },
-      },
+      where: { seasonId },
       select: {
         id: true,
         matchNumber: true,
@@ -1103,8 +1103,8 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    // Separate locked (non-WAITING) vs flexible (WAITING)
-    const locked = allMatches.filter(
+    // Separate flexible (WAITING) vs everything else (locked numbers)
+    const nonWaiting = allMatches.filter(
       (m: { status: MatchStatus }) => m.status !== MatchStatus.WAITING,
     );
     const flexible = allMatches.filter(
@@ -1113,9 +1113,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     if (flexible.length === 0) return;
 
-    // Get locked number set
+    // Get all occupied matchNumbers (including CANCELLED) to avoid unique constraint violations
     const lockedNumbers = new Set<number>(
-      locked
+      nonWaiting
         .map((m: { matchNumber: number | null }) => m.matchNumber)
         .filter((n): n is number => n !== null),
     );

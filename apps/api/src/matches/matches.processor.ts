@@ -82,22 +82,23 @@ export class MatchesProcessor {
         // Save original matchNumber before clearing it (for Discord announcement)
         const originalMatchNumber = match.matchNumber;
 
-        // Update match status to CANCELLED and clear matchNumber to free it for reuse
-        await this.prisma.match.update({
-          where: { id: matchId },
-          data: {
-            status: MatchStatus.CANCELLED,
-            matchNumber: null,
-          },
+        // Cancel match and reassign numbers in a single transaction to prevent race conditions
+        await this.prisma.$transaction(async (tx) => {
+          await tx.match.update({
+            where: { id: matchId },
+            data: {
+              status: MatchStatus.CANCELLED,
+              matchNumber: null,
+            },
+          });
+
+          await this.matchesService.reassignWaitingMatchNumbers(tx, match.seasonId);
         });
 
         this.logger.log(`Match ${matchId} cancelled due to insufficient players`);
 
         // Emit WebSocket event to notify clients
         this.eventsGateway.emitMatchCancelled(matchId);
-
-        // Reassign WAITING matchNumbers after cancellation to fill gaps
-        await this.matchesService.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
 
         // Announce cancellation to Discord
         if (originalMatchNumber !== null) {
@@ -301,20 +302,21 @@ export class MatchesProcessor {
         `Invalid player count for ${modeLabel}: ${currentPlayers} (need ${range})`,
       );
 
-      // Cancel the match
+      // Cancel match and reassign numbers in a single transaction to prevent race conditions
       const originalMatchNumber = match.matchNumber;
-      await this.prisma.match.update({
-        where: { id: match.id },
-        data: {
-          status: MatchStatus.CANCELLED,
-          matchNumber: null,
-        },
+      await this.prisma.$transaction(async (tx) => {
+        await tx.match.update({
+          where: { id: match.id },
+          data: {
+            status: MatchStatus.CANCELLED,
+            matchNumber: null,
+          },
+        });
+
+        await this.matchesService.reassignWaitingMatchNumbers(tx, match.seasonId);
       });
 
       this.eventsGateway.emitMatchCancelled(match.id);
-
-      // Reassign WAITING matchNumbers after cancellation to fill gaps
-      await this.matchesService.reassignWaitingMatchNumbers(this.prisma, match.seasonId);
 
       if (originalMatchNumber !== null) {
         try {
