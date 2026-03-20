@@ -121,7 +121,7 @@ export function FeaturedPlayers({ awards, loading }: FeaturedPlayersProps) {
   }
 
   return (
-    <section className="pt-4 pb-8">
+    <section className="pt-4 pb-8 overflow-hidden">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 overflow-visible">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">
           {t('title')}
