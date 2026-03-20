@@ -58,7 +58,7 @@ export class RecurringMatchService {
     });
 
     // Generate matches for the next 7 days
-    await this.generateMatchesForSchedule(schedule, 7, createdBy);
+    await this.generateMatchesForSchedule(schedule, 8, createdBy);
 
     return this.findById(schedule.id);
   }
@@ -140,12 +140,12 @@ export class RecurringMatchService {
       const savedParticipants = await this.collectParticipantsForSchedule(id);
       await this.deleteWaitingMatchesForSchedule(id);
       if (updated.isEnabled) {
-        await this.generateMatchesForSchedule(updated, 7, userId ?? updated.createdBy ?? undefined);
+        await this.generateMatchesForSchedule(updated, 8, userId ?? updated.createdBy ?? undefined);
         await this.restoreParticipantsForSchedule(id, savedParticipants);
       }
     } else if (updated.isEnabled) {
       // No rule change, just fill in any missing matches
-      await this.generateMatchesForSchedule(updated, 7, userId ?? updated.createdBy ?? undefined);
+      await this.generateMatchesForSchedule(updated, 8, userId ?? updated.createdBy ?? undefined);
     }
 
     return updated;
@@ -161,7 +161,7 @@ export class RecurringMatchService {
 
     if (enabled) {
       // Re-enabling: generate matches for 7 days
-      await this.generateMatchesForSchedule(schedule, 7, userId ?? schedule.createdBy ?? undefined);
+      await this.generateMatchesForSchedule(schedule, 8, userId ?? schedule.createdBy ?? undefined);
     } else {
       // Disabling: clean up WAITING matches
       await this.deleteWaitingMatchesForSchedule(id);

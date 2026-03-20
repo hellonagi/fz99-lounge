@@ -25,7 +25,7 @@ export class RecurringMatchCron {
       try {
         await this.recurringMatchService.generateMatchesForSchedule(
           schedule,
-          7,
+          8,
           schedule.createdBy ?? undefined,
         );
       } catch (error) {
