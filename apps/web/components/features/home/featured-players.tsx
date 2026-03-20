@@ -122,16 +122,18 @@ export function FeaturedPlayers({ awards, loading }: FeaturedPlayersProps) {
 
   return (
     <section className="pt-4 pb-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 overflow-visible">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">
           {t('title')}
         </h2>
 
         <Swiper
+          className="!overflow-visible"
           modules={[EffectCoverflow]}
           effect="coverflow"
           grabCursor
           centeredSlides
+          slideToClickedSlide
           initialSlide={2}
           coverflowEffect={{
             rotate: 0,
@@ -142,8 +144,8 @@ export function FeaturedPlayers({ awards, loading }: FeaturedPlayersProps) {
             slideShadows: false,
           }}
           breakpoints={{
-            0: { slidesPerView: 1.4, spaceBetween: 12 },
-            640: { slidesPerView: 2.5, spaceBetween: 16 },
+            0: { slidesPerView: 2, spaceBetween: 12 },
+            640: { slidesPerView: 3, spaceBetween: 16 },
             1024: { slidesPerView: 3.5, spaceBetween: 20 },
           }}
         >
