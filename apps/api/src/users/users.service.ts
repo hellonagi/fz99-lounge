@@ -963,13 +963,12 @@ export class UsersService {
     for (const game of games) {
       const category = game.match.season.event.category;
       const isTeam = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
-      const isClassic = category === 'CLASSIC';
-      const isGp = category === 'GP';
+      const isClassicFamily = category === 'CLASSIC' || category === 'TEAM_CLASSIC';
+      const isGpFamily = category === 'GP' || category === 'TEAM_GP';
 
-      if (isClassic || isGp) {
-        const highScoreMap = isClassic ? classicHighScore : gpHighScore;
-
-        // 最高得点
+      // 最高得点: Classic系 / GP系それぞれで集計
+      if (isClassicFamily || isGpFamily) {
+        const highScoreMap = isClassicFamily ? classicHighScore : gpHighScore;
         for (const p of game.participants) {
           const score = p.totalScore ?? 0;
           const current = highScoreMap.get(p.userId) || 0;
@@ -977,8 +976,10 @@ export class UsersService {
             highScoreMap.set(p.userId, score);
           }
         }
+      }
 
-        // 勝利判定: totalScore最高が勝利（Classic+GP合算）
+      // 勝利判定: ソロ戦はtotalScore最高、チーム戦はrank=1のチーム所属
+      if (!isTeam) {
         const maxScore = Math.max(...game.participants.map((p) => p.totalScore || 0));
         if (maxScore > 0) {
           for (const p of game.participants) {
@@ -987,7 +988,16 @@ export class UsersService {
             }
           }
         }
-      } else if (isTeam && game.teamScores) {
+      } else if (game.teamScores) {
+        // チーム勝利
+        const scores = game.teamScores as { teamIndex: number; score: number; rank: number }[];
+        const winningIndices = new Set(scores.filter((t) => t.rank === 1).map((t) => t.teamIndex));
+        for (const p of game.participants) {
+          if (p.teamIndex !== null && winningIndices.has(p.teamIndex)) {
+            soloWins.set(p.userId, (soloWins.get(p.userId) || 0) + 1);
+          }
+        }
+
         // MVP判定: チームごとにtotalScore最高のプレイヤー
         const teamGroups = new Map<number, { userId: number; totalScore: number }[]>();
         for (const p of game.participants) {
