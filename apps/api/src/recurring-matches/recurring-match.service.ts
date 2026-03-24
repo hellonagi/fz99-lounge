@@ -159,12 +159,14 @@ export class RecurringMatchService {
       data: { isEnabled: enabled },
     });
 
+    const savedParticipants = await this.collectParticipantsForSchedule(id);
+    await this.deleteWaitingMatchesForSchedule(id);
+
     if (enabled) {
-      // Re-enabling: generate matches for 7 days
-      await this.generateMatchesForSchedule(schedule, 8, userId ?? schedule.createdBy ?? undefined);
-    } else {
-      // Disabling: clean up WAITING matches
-      await this.deleteWaitingMatchesForSchedule(id);
+      // Re-fetch after deleteWaitingMatchesForSchedule resets lastScheduledAt to null
+      const freshSchedule = await this.findById(id);
+      await this.generateMatchesForSchedule(freshSchedule, 8, userId ?? freshSchedule.createdBy ?? undefined);
+      await this.restoreParticipantsForSchedule(id, savedParticipants);
     }
 
     return this.findById(id);
