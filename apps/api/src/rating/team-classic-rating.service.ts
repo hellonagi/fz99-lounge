@@ -327,6 +327,7 @@ export class TeamClassicRatingService {
         currentDisplayRating: seasonStats.displayRating,
         currentConvergencePoints: seasonStats.convergencePoints,
         teamIndex: p.teamIndex ?? undefined,
+        isNoShow: p.status === 'NO_SHOW',
       });
     }
 

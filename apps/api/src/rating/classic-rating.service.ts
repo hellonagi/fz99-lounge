@@ -288,6 +288,7 @@ export class ClassicRatingService {
         gamesPlayed: seasonStats.totalMatches,
         currentDisplayRating: seasonStats.displayRating,
         currentConvergencePoints: seasonStats.convergencePoints,
+        isNoShow: p.status === 'NO_SHOW',
       });
     }
 
@@ -400,8 +401,11 @@ export class ClassicRatingService {
   private sortAndRankParticipants(
     participants: any[],
   ): Array<any & { calculatedPosition: number }> {
-    // Sort by score (descending)
+    // Sort by score (descending), NO_SHOW always last
     const sorted = [...participants].sort((a, b) => {
+      const aNoShow = a.status === 'NO_SHOW' ? 1 : 0;
+      const bNoShow = b.status === 'NO_SHOW' ? 1 : 0;
+      if (aNoShow !== bNoShow) return aNoShow - bNoShow;
       return (b.totalScore ?? 0) - (a.totalScore ?? 0);
     });
 
@@ -416,7 +420,9 @@ export class ClassicRatingService {
       const score = p.totalScore ?? 0;
 
       let isTie = false;
-      if (i > 0 && score === prevScore) {
+      const isNoShow = p.status === 'NO_SHOW';
+      const prevIsNoShow = i > 0 && sorted[i - 1].status === 'NO_SHOW';
+      if (i > 0 && score === prevScore && isNoShow === prevIsNoShow) {
         isTie = true;
       }
 

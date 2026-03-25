@@ -470,10 +470,10 @@ function buildRatingChanges(
     const newInternalRating = p.currentRating + delta;
     const newGamesPlayed = p.gamesPlayed + 1;
 
-    const newConvergencePoints = calculateNewConvergencePoints(
-      p.currentConvergencePoints,
-      p.position,
-    );
+    // NO_SHOW: no convergence earned (0 points added)
+    const newConvergencePoints = p.isNoShow
+      ? p.currentConvergencePoints
+      : calculateNewConvergencePoints(p.currentConvergencePoints, p.position);
 
     const newDisplayRating = calculateDisplayRating(
       p.currentRating,
