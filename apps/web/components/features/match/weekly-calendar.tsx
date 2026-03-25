@@ -14,8 +14,6 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 
-const JST_OFFSET = 9 * 60 * 60 * 1000;
-
 const CATEGORY_CARD_COLORS: Record<string, { accent: string; bg: string }> = {
   GP: { accent: 'border-l-amber-500', bg: 'bg-amber-500/5' },
   CLASSIC: { accent: 'border-l-purple-500', bg: 'bg-purple-500/5' },
@@ -72,7 +70,6 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-    timeZone: 'Asia/Tokyo',
   });
 
   const actionButton = (
@@ -153,23 +150,23 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
   );
 }
 
-/** Get JST date key (YYYY-MM-DD) from a UTC Date object that represents a JST midnight */
-function jstDateKey(jstMidnight: Date, offsetDays: number): string {
-  const d = new Date(jstMidnight.getTime());
-  d.setUTCDate(d.getUTCDate() + offsetDays);
-  return d.toISOString().split('T')[0];
+/** Get local date key (YYYY-MM-DD) from a local midnight Date */
+function localDateKey(localMidnight: Date, offsetDays: number): string {
+  const d = new Date(localMidnight.getTime());
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Get today's date key in JST */
-function getTodayKeyJST(): string {
-  const nowJst = new Date(Date.now() + JST_OFFSET);
-  return `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, '0')}-${String(nowJst.getUTCDate()).padStart(2, '0')}`;
+/** Get today's date key in local timezone */
+function getTodayKeyLocal(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-/** Get JST time string (HH:mm) from a scheduledStart */
-function getJstTimeStr(scheduledStart: string): string {
-  const jst = new Date(new Date(scheduledStart).getTime() + JST_OFFSET);
-  return `${String(jst.getUTCHours()).padStart(2, '0')}:${String(jst.getUTCMinutes()).padStart(2, '0')}`;
+/** Get local time string (HH:mm) from a scheduledStart */
+function getLocalTimeStr(scheduledStart: string): string {
+  const d = new Date(scheduledStart);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 export function WeeklyCalendar() {
@@ -183,7 +180,7 @@ export function WeeklyCalendar() {
     handleJoinLeave,
   } = useWeeklyMatches();
 
-  const todayKey = getTodayKeyJST();
+  const todayKey = getTodayKeyLocal();
   const [swiperInstance, setSwiperInstance] = useState<SwiperType | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -191,16 +188,16 @@ export function WeeklyCalendar() {
   const { dayKeys, timeSlots, timeSlotGrid } = useMemo(() => {
     const keys: string[] = [];
     for (let i = 0; i < 7; i++) {
-      keys.push(jstDateKey(weekStartLocal, i));
+      keys.push(localDateKey(weekStartLocal, i));
     }
 
     const timeSet = new Set<string>();
     const tsGrid: Record<string, Record<string, typeof matches>> = {};
 
     for (const match of matches) {
-      const timeKey = getJstTimeStr(match.scheduledStart);
-      const jst = new Date(new Date(match.scheduledStart).getTime() + JST_OFFSET);
-      const dateKey = `${jst.getUTCFullYear()}-${String(jst.getUTCMonth() + 1).padStart(2, '0')}-${String(jst.getUTCDate()).padStart(2, '0')}`;
+      const timeKey = getLocalTimeStr(match.scheduledStart);
+      const d = new Date(match.scheduledStart);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
       timeSet.add(timeKey);
       if (!tsGrid[timeKey]) tsGrid[timeKey] = {};

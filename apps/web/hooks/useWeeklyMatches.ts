@@ -35,27 +35,16 @@ interface WeeklyMatch {
   }>;
 }
 
-const JST_OFFSET = 9 * 60 * 60 * 1000;
-
-/** Get 7-day range starting from today based on JST */
-function getCurrentWeekRangeJST(): { from: string; to: string; weekStartLocal: Date } {
-  const nowJst = new Date(Date.now() + JST_OFFSET);
-
-  // Today 00:00 JST
-  const todayJst = new Date(Date.UTC(
-    nowJst.getUTCFullYear(),
-    nowJst.getUTCMonth(),
-    nowJst.getUTCDate(),
-    0, 0, 0,
-  ));
-  // Convert to UTC for API query
-  const fromUtc = new Date(todayJst.getTime() - JST_OFFSET);
-  const toUtc = new Date(fromUtc.getTime() + 7 * 24 * 60 * 60 * 1000);
+/** Get 7-day range starting from today in local timezone */
+function getCurrentWeekRangeLocal(): { from: string; to: string; weekStartLocal: Date } {
+  const now = new Date();
+  const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endLocal = new Date(todayLocal.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   return {
-    from: fromUtc.toISOString(),
-    to: toUtc.toISOString(),
-    weekStartLocal: todayJst, // Today in JST (stored as UTC-like Date for day key generation)
+    from: todayLocal.toISOString(),
+    to: endLocal.toISOString(),
+    weekStartLocal: todayLocal,
   };
 }
 
@@ -67,7 +56,7 @@ export function useWeeklyMatches() {
   matchesRef.current = matches;
 
   // Compute once on mount (current week doesn't change during session)
-  const { from, to, weekStartLocal } = useMemo(() => getCurrentWeekRangeJST(), []);
+  const { from, to, weekStartLocal } = useMemo(() => getCurrentWeekRangeLocal(), []);
 
   const fetchMatches = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
