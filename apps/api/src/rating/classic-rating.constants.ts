@@ -44,6 +44,7 @@ export interface ParticipantWithRating {
   currentDisplayRating: number;
   currentConvergencePoints: number;
   teamIndex?: number;
+  isNoShow?: boolean; // NO_SHOW (no submission) - ranked below all, 0 convergence
 }
 
 /**
