@@ -528,6 +528,9 @@ model Game {
 
   startedAt DateTime?
 
+  // トラック予想表示フラグ（Classic/Team Classic用）
+  showTracks Boolean @default(true)
+
   // TEAM_CLASSIC用
   teamConfig         String?   // "4x3" など、選ばれた構成
   teamScores         Json?     // [{"teamIndex": 0, "score": 450, "rank": 1}, ...]

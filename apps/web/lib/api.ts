@@ -127,6 +127,8 @@ export const matchesApi = {
   leave: (id: number) => api.delete(`/matches/${id}/leave`),
   updateLeague: (id: number, leagueType: string) =>
     api.patch(`/matches/${id}/league`, { leagueType }),
+  updateShowTracks: (id: number, showTracks: boolean) =>
+    api.patch(`/matches/${id}/show-tracks`, { showTracks }),
   cancel: (id: number) => api.patch(`/matches/${id}/cancel`),
   delete: (id: number) => api.delete(`/matches/${id}`),
   getWeek: (from: string, to: string) => {

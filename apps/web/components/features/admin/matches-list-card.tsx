@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import { matchesApi } from '@/lib/api';
 import { DeleteConfirmDialog } from './delete-confirm-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { hasPermission } from '@/lib/permissions';
@@ -32,7 +33,7 @@ interface Match {
     };
   };
   participants?: Array<{ userId: number }>;
-  games?: Array<{ leagueType: string | null }>;
+  games?: Array<{ leagueType: string | null; showTracks?: boolean; inGameMode?: string }>;
 }
 
 const LEAGUE_OPTIONS = [
@@ -148,6 +149,19 @@ export function MatchesListCard() {
   const isGpCategory = (category?: string) =>
     category === 'GP' || category === 'TEAM_GP';
 
+  const isClassicCategory = (category?: string) =>
+    category === 'CLASSIC' || category === 'TEAM_CLASSIC';
+
+  const handleShowTracksChange = async (matchId: number, checked: boolean) => {
+    try {
+      await matchesApi.updateShowTracks(matchId, checked);
+      await fetchMatches();
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      alert(axiosError.response?.data?.message || 'Failed to update show tracks');
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -198,6 +212,7 @@ export function MatchesListCard() {
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">League</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Status</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Scheduled</th>
+                    <th className="text-left py-3 px-2 text-gray-400 font-medium">Tracks</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Players</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Created</th>
                     <th className="text-left py-3 px-2 text-gray-400 font-medium">Actions</th>
@@ -254,6 +269,18 @@ export function MatchesListCard() {
                       </td>
                       <td className="py-3 px-2 text-gray-300">
                         {new Date(match.scheduledStart).toLocaleString()}
+                      </td>
+                      <td className="py-3 px-2 text-center">
+                        {isClassicCategory(category) ? (
+                          <Checkbox
+                            checked={match.games?.[0]?.showTracks !== false}
+                            onCheckedChange={(checked) =>
+                              handleShowTracksChange(match.id, !!checked)
+                            }
+                          />
+                        ) : (
+                          <span className="text-gray-500">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-2 text-white">
                         {currentPlayers}/{match.maxPlayers}

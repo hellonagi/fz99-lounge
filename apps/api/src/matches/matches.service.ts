@@ -1033,6 +1033,29 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     return { message: 'Match deleted successfully' };
   }
 
+  async updateShowTracks(matchId: number, showTracks: boolean) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      include: { games: true },
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    const game = match.games[0];
+    if (!game) {
+      throw new BadRequestException('Match has no game');
+    }
+
+    await this.prisma.game.update({
+      where: { id: game.id },
+      data: { showTracks },
+    });
+
+    return { showTracks };
+  }
+
   async updateGameLeague(matchId: number, dto: UpdateGameLeagueDto) {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },

@@ -25,6 +25,7 @@ interface Game {
   leagueType: string | null;
   passcode: string | null;
   tracks?: number[] | null;
+  showTracks?: boolean;
   totalPlayers: number;
   startedAt: string | null;
   completedAt: string | null;
