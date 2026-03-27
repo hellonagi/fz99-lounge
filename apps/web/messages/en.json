@@ -106,7 +106,8 @@
     "newPasscodeDescription": "New passcode: {passcode}",
     "regenerate": "Regenerate Passcode",
     "regenerateDescription": "Force generate a new passcode for split lobby",
-    "regenerating": "Regenerating..."
+    "regenerating": "Regenerating...",
+    "trackDisclaimer": "Track predictions may not always be accurate."
   },
   "nav": {
     "rules": "Rules",

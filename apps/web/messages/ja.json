@@ -106,7 +106,8 @@
     "newPasscodeDescription": "新しいパスコード: {passcode}",
     "regenerate": "パスコード再生成",
     "regenerateDescription": "Splitロビー用に新しいパスコードを強制生成",
-    "regenerating": "再生成中..."
+    "regenerating": "再生成中...",
+    "trackDisclaimer": "コース予想は外れることがあります。"
   },
   "nav": {
     "rules": "ルール",
