@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
-import { EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
+import { Prisma, EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
 import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS, TEAM_GP_GRID_NUMBERS } from './team-config.service';
 import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
 import { TracksService } from '../tracks/tracks.service';
@@ -151,12 +151,14 @@ export class MatchesProcessor {
         }
       } else {
         // Normal mode: Reveal passcode immediately
+        // showTracks OFF: clear auto-predicted tracks (mods set manually)
         updatedGame = await this.prisma.game.update({
           where: { id: game.id },
           data: {
             passcode,
             passcodePublishedAt: new Date(),
             startedAt: new Date(),
+            ...(!game.showTracks && { tracks: Prisma.DbNull }),
           },
         });
       }
@@ -375,8 +377,9 @@ export class MatchesProcessor {
 
     // Recalculate tracks based on passcode reveal time
     // TEAM_GP uses GP tracks (already set at match creation), TEAM_CLASSIC recalculates classic mini tracks
+    // showTracks OFF: skip auto-prediction (mods set manually)
     let tracks: number[] | null = null;
-    if (!isTeamGp) {
+    if (!isTeamGp && game.showTracks) {
       tracks = this.tracksService.calculateClassicMiniTracks(passcodeRevealTime);
     }
 
@@ -403,7 +406,8 @@ export class MatchesProcessor {
           teamConfig: teamConfigWithColors,
           passcodeRevealTime,
           // TEAM_GP tracks are already set at match creation; TEAM_CLASSIC recalculates
-          ...(tracks && { tracks }),
+          // showTracks OFF: clear auto-predicted tracks
+          ...(tracks ? { tracks } : !game.showTracks ? { tracks: Prisma.DbNull } : {}),
         },
       });
 

@@ -116,6 +116,17 @@ export class MatchesController {
     return this.matchesService.updateGameLeague(parseInt(id, 10), dto);
   }
 
+  @Patch(':id/show-tracks')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.UPDATE_TRACKS)
+  async updateShowTracks(
+    @Param('id') id: string,
+    @Body() body: { showTracks: boolean },
+  ) {
+    return this.matchesService.updateShowTracks(parseInt(id, 10), body.showTracks);
+  }
+
   @Patch(':id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)

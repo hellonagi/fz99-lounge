@@ -55,7 +55,7 @@ export function MatchHero({
           {errorMessage ? (
             // Error state
             <div className="py-16">
-              <h1 className="text-3xl md:text-5xl font-black text-white mb-4">
+              <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-4">
                 {errorMessage}
               </h1>
               <p className="text-gray-400">
@@ -73,7 +73,7 @@ export function MatchHero({
                       SEASON{season} #{match}
                     </span>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">CLASSIC MINI</h1>
+                  <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-3">CLASSIC MINI</h1>
                 </>
               ) : category?.toLowerCase() === 'team_classic' ? (
                 <>
@@ -82,7 +82,7 @@ export function MatchHero({
                       SEASON{season} #{match}
                     </span>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">TEAM CLASSIC</h1>
+                  <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-3">TEAM CLASSIC</h1>
                 </>
               ) : category?.toLowerCase() === 'team_gp' ? (
                 <>
@@ -91,7 +91,7 @@ export function MatchHero({
                       SEASON{season} #{match}
                     </span>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">
+                  <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-3">
                     {league ? `TEAM ${league} GRAND PRIX` : 'TEAM GRAND PRIX'}
                   </h1>
                 </>
@@ -102,7 +102,7 @@ export function MatchHero({
                       SEASON{season} #{match}
                     </span>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">
+                  <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-3">
                     {league ? `${league} GRAND PRIX` : 'GRAND PRIX'}
                   </h1>
                 </>
@@ -113,7 +113,7 @@ export function MatchHero({
                       Season {season} #{match}
                     </span>
                   </div>
-                  <h1 className="text-4xl md:text-6xl font-black text-white mb-3">{league} LEAGUE</h1>
+                  <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-3">{league} LEAGUE</h1>
                 </>
               )}
 

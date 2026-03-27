@@ -153,6 +153,12 @@ export function MatchPasscodeCard({
               {passcode}
             </p>
 
+            {(category?.toUpperCase() === 'CLASSIC' || category?.toUpperCase() === 'TEAM_CLASSIC') && (
+              <p className="text-sm text-gray-500 mt-2">
+                {t('trackDisclaimer')}
+              </p>
+            )}
+
             {showSplitButton && revealed && (
               <div className="mt-4 flex flex-col items-center gap-2">
                 <p className="text-sm text-gray-400 mb-1">
