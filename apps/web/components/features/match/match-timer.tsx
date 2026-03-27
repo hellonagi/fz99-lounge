@@ -47,17 +47,17 @@ export function MatchTimer({ scheduledStart, timeOffset }: MatchTimerProps) {
       <div className="inline-flex items-baseline space-x-2 text-white">
         {hours > 0 && (
           <>
-            <span className="text-6xl md:text-7xl font-black tabular-nums">
+            <span className="text-6xl md:text-7xl font-extrabold tabular-nums">
               {hours.toString().padStart(2, '0')}
             </span>
             <span className="text-5xl md:text-6xl font-thin opacity-50">:</span>
           </>
         )}
-        <span className="text-6xl md:text-7xl font-black tabular-nums">
+        <span className="text-6xl md:text-7xl font-extrabold tabular-nums">
           {minutes.toString().padStart(2, '0')}
         </span>
         <span className="text-5xl md:text-6xl font-thin opacity-50">:</span>
-        <span className="text-6xl md:text-7xl font-black tabular-nums">
+        <span className="text-6xl md:text-7xl font-extrabold tabular-nums">
           {seconds.toString().padStart(2, '0')}
         </span>
       </div>
