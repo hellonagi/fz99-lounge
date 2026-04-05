@@ -125,6 +125,15 @@ enum PenaltyType {
   LATE_SUBMISSION // 遅延報告
 }
 
+enum TournamentStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  IN_PROGRESS
+  RESULTS_PENDING
+  COMPLETED
+}
+
 enum ModeratorPermission {
   CREATE_MATCH
   DELETE_MATCH
@@ -208,7 +217,8 @@ model User {
   ratingHistories      RatingHistory[]            @relation("RatingHistory")
   profile              Profile?
   permissions          UserPermission[]
-  recurringMatches     RecurringMatch[]    @relation("RecurringMatchCreator")
+  recurringMatches          RecurringMatch[]          @relation("RecurringMatchCreator")
+  tournamentRegistrations   TournamentRegistration[]
 
   @@index([profileNumber])
   @@index([discordId])
@@ -387,27 +397,52 @@ model TournamentConfig {
   seasonId Int    @unique
   season   Season @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
-  // 大会形式
+  name             String           // "FZ99 Lounge Masters"
+  tournamentNumber Int              // #1, #2, #3...
+  status           TournamentStatus @default(DRAFT)
+
+  // ラウンド設定 JSON: [{ roundNumber, inGameMode, league }]
+  rounds      Json
   totalRounds Int
-  leagues     Json // ["KNIGHT", "QUEEN", "ACE"]
+
+  // スケジュール
+  tournamentDate    DateTime
+  registrationStart DateTime
+  registrationEnd   DateTime
 
   // 参加人数
   minPlayers Int @default(40)
   maxPlayers Int @default(99)
 
-  // スケジュール
-  registrationStart DateTime
-  registrationEnd   DateTime
-
-  // 大会設定
-  intervalMinutes   Int @default(10)
+  // タイミング
   editWindowMinutes Int @default(10)
   disputeDays       Int @default(7)
+
+  // コンテンツ（日英対応: { en: string, ja: string }）
+  content Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  registrations TournamentRegistration[]
+
+  @@index([status])
   @@map("tournament_configs")
+}
+
+model TournamentRegistration {
+  id                 Int              @id @default(autoincrement())
+  userId             Int
+  user               User             @relation(fields: [userId], references: [id])
+  tournamentConfigId Int
+  tournamentConfig   TournamentConfig @relation(fields: [tournamentConfigId], references: [id], onDelete: Cascade)
+  registeredAt       DateTime         @default(now())
+  prizeEntry         Boolean          @default(false)
+
+  @@unique([userId, tournamentConfigId])
+  @@index([tournamentConfigId])
+  @@index([userId])
+  @@map("tournament_registrations")
 }
 
 // ==================== MATCH ====================

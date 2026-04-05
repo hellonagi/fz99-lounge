@@ -460,6 +460,11 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         status: {
           not: MatchStatus.CANCELLED,
         },
+        season: {
+          event: {
+            category: { not: EventCategory.TOURNAMENT },
+          },
+        },
       },
       orderBy: { scheduledStart: 'asc' },
       include: this.matchDetailInclude,

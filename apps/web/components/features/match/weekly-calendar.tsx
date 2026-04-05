@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 import { useAuthStore } from '@/store/authStore';
 import { useWeeklyMatches } from '@/hooks/useWeeklyMatches';
+import { useWeeklyTournaments, type WeeklyTournament } from '@/hooks/useWeeklyTournaments';
 import { CategoryBadge } from '@/components/ui/category-badge';
 import { Loader2 } from 'lucide-react';
 import { SiDiscord } from 'react-icons/si';
@@ -150,6 +151,69 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
   );
 }
 
+interface TournamentCardProps {
+  tournament: WeeklyTournament;
+  showTime?: boolean;
+  layout?: 'stacked' | 'horizontal';
+}
+
+function TournamentCard({ tournament, showTime = true, layout = 'stacked' }: TournamentCardProps) {
+  const tCal = useTranslations('weeklyCalendar');
+  const locale = useLocale();
+  const colors = CATEGORY_CARD_COLORS.TOURNAMENT;
+  const cardColors = `border-l-2 ${colors.accent} ${colors.bg}`;
+  const scheduledDate = new Date(tournament.tournamentDate);
+  const timeStr = scheduledDate.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const entryButton = (
+    <Link
+      href={`/${locale}/tournament/${tournament.id}`}
+      className={cn(buttonVariants({ size: 'xs' }), 'bg-amber-600/60 text-amber-100 hover:bg-amber-600/80')}
+    >
+      {tCal('entry')}
+    </Link>
+  );
+
+  if (layout === 'horizontal') {
+    return (
+      <div className={cn('rounded-md border border-white/5 backdrop-blur-sm px-3 py-2 transition-colors', cardColors)}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 uppercase tracking-wide whitespace-nowrap">
+              {tCal('tournament')}
+            </span>
+            {showTime && (
+              <span className="text-xs font-medium text-gray-400">{timeStr}</span>
+            )}
+            <span className="text-xs text-gray-500 tabular-nums">
+              {tournament.registrationCount}/{tournament.maxPlayers}
+            </span>
+          </div>
+          <div className="shrink-0">{entryButton}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('rounded-md border border-white/5 backdrop-blur-sm p-2 transition-colors', cardColors)}>
+      <div className="flex items-center justify-between gap-1.5 mb-2">
+        <span className="inline-flex items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400 uppercase tracking-wide whitespace-nowrap">
+          {tCal('tournament')}
+        </span>
+        <span className="text-[11px] text-gray-500 tabular-nums leading-none">
+          {tournament.registrationCount}/{tournament.maxPlayers}
+        </span>
+      </div>
+      <div className="[&>a]:w-full">{entryButton}</div>
+    </div>
+  );
+}
+
 /** Get local date key (YYYY-MM-DD) from a local midnight Date */
 function localDateKey(localMidnight: Date, offsetDays: number): string {
   const d = new Date(localMidnight.getTime());
@@ -169,6 +233,10 @@ function getLocalTimeStr(scheduledStart: string): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+type CalendarItem =
+  | { _type: 'match'; data: ReturnType<typeof useWeeklyMatches>['matches'][number] }
+  | { _type: 'tournament'; data: WeeklyTournament };
+
 export function WeeklyCalendar() {
   const t = useTranslations('weeklyCalendar');
   const { isAuthenticated } = useAuthStore();
@@ -179,10 +247,13 @@ export function WeeklyCalendar() {
     joiningMatchId,
     handleJoinLeave,
   } = useWeeklyMatches();
+  const { tournaments, loading: tournamentsLoading } = useWeeklyTournaments();
 
   const todayKey = getTodayKeyLocal();
   const [swiperInstance, setSwiperInstance] = useState<SwiperType | null>(null);
   const [activeSlide, setActiveSlide] = useState(0);
+
+  const isLoading = loading || tournamentsLoading;
 
   // Generate day keys for 7 days starting from today
   const { dayKeys, timeSlots, timeSlotGrid } = useMemo(() => {
@@ -192,7 +263,7 @@ export function WeeklyCalendar() {
     }
 
     const timeSet = new Set<string>();
-    const tsGrid: Record<string, Record<string, typeof matches>> = {};
+    const tsGrid: Record<string, Record<string, CalendarItem[]>> = {};
 
     for (const match of matches) {
       const timeKey = getLocalTimeStr(match.scheduledStart);
@@ -202,12 +273,23 @@ export function WeeklyCalendar() {
       timeSet.add(timeKey);
       if (!tsGrid[timeKey]) tsGrid[timeKey] = {};
       if (!tsGrid[timeKey][dateKey]) tsGrid[timeKey][dateKey] = [];
-      tsGrid[timeKey][dateKey].push(match);
+      tsGrid[timeKey][dateKey].push({ _type: 'match', data: match });
+    }
+
+    for (const tournament of tournaments) {
+      const timeKey = getLocalTimeStr(tournament.tournamentDate);
+      const d = new Date(tournament.tournamentDate);
+      const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+      timeSet.add(timeKey);
+      if (!tsGrid[timeKey]) tsGrid[timeKey] = {};
+      if (!tsGrid[timeKey][dateKey]) tsGrid[timeKey][dateKey] = [];
+      tsGrid[timeKey][dateKey].push({ _type: 'tournament', data: tournament });
     }
 
     const timeSlots = Array.from(timeSet).sort();
     return { dayKeys: keys, timeSlots, timeSlotGrid: tsGrid };
-  }, [matches, weekStartLocal]);
+  }, [matches, tournaments, weekStartLocal]);
 
   // Today is always at index 0 after rotation
 
@@ -224,7 +306,7 @@ export function WeeklyCalendar() {
   return (
     <section className="py-6 md:py-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
           </div>
@@ -301,16 +383,25 @@ export function WeeklyCalendar() {
                                     </span>
                                   </div>
                                   <div className="flex-1 flex flex-col gap-1.5 border-l border-white/10 pl-3 pr-1">
-                                    {cellMatches.map((match) => (
-                                      <MatchCard
-                                        key={match.id}
-                                        match={match}
-                                        joiningMatchId={joiningMatchId}
-                                        onJoinLeave={handleJoinLeave}
-                                        showTime={false}
-                                        layout="horizontal"
-                                      />
-                                    ))}
+                                    {cellMatches.map((item) =>
+                                      item._type === 'tournament' ? (
+                                        <TournamentCard
+                                          key={`t-${item.data.id}`}
+                                          tournament={item.data}
+                                          showTime={false}
+                                          layout="horizontal"
+                                        />
+                                      ) : (
+                                        <MatchCard
+                                          key={`m-${item.data.id}`}
+                                          match={item.data}
+                                          joiningMatchId={joiningMatchId}
+                                          onJoinLeave={handleJoinLeave}
+                                          showTime={false}
+                                          layout="horizontal"
+                                        />
+                                      ),
+                                    )}
                                   </div>
                                 </div>
                               );
@@ -376,15 +467,23 @@ export function WeeklyCalendar() {
                               style={{ minWidth: 138 }}
                             >
                               <div className="flex flex-col gap-1">
-                                {cellMatches?.map((match) => (
-                                  <MatchCard
-                                    key={match.id}
-                                    match={match}
-                                    joiningMatchId={joiningMatchId}
-                                    onJoinLeave={handleJoinLeave}
-                                    showTime={false}
-                                  />
-                                ))}
+                                {cellMatches?.map((item) =>
+                                  item._type === 'tournament' ? (
+                                    <TournamentCard
+                                      key={`t-${item.data.id}`}
+                                      tournament={item.data}
+                                      showTime={false}
+                                    />
+                                  ) : (
+                                    <MatchCard
+                                      key={`m-${item.data.id}`}
+                                      match={item.data}
+                                      joiningMatchId={joiningMatchId}
+                                      onJoinLeave={handleJoinLeave}
+                                      showTime={false}
+                                    />
+                                  ),
+                                )}
                               </div>
                             </td>
                           );

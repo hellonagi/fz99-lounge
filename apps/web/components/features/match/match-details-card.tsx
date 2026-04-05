@@ -1,3 +1,4 @@
+import { useFormatter } from 'next-intl';
 import {
   Card,
   CardHeader,
@@ -23,16 +24,17 @@ export function MatchDetailsCard({
   startedAt,
   completedAt,
 }: MatchDetailsCardProps) {
+  const format = useFormatter();
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('ja-JP', {
+    return format.dateTime(date, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-    }).format(date);
+    });
   };
 
   const getStatusColor = (status: string) => {

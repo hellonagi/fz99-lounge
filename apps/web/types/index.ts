@@ -235,6 +235,53 @@ export interface RecurringMatch {
   updatedAt: string;
 }
 
+// Tournament Types
+export type TournamentStatus =
+  | 'DRAFT'
+  | 'REGISTRATION_OPEN'
+  | 'REGISTRATION_CLOSED'
+  | 'IN_PROGRESS'
+  | 'RESULTS_PENDING'
+  | 'COMPLETED';
+
+export interface TournamentRoundConfig {
+  roundNumber: number;
+  inGameMode: InGameMode;
+  league?: League;
+  offsetMinutes?: number;
+}
+
+export interface LocalizedContent {
+  en: string;
+  ja: string;
+}
+
+export interface Tournament {
+  id: number;
+  seasonId: number;
+  name: string;
+  tournamentNumber: number;
+  status: TournamentStatus;
+  rounds: TournamentRoundConfig[];
+  totalRounds: number;
+  tournamentDate: string;
+  registrationStart: string;
+  registrationEnd: string;
+  minPlayers: number;
+  maxPlayers: number;
+  registrationCount: number;
+  content?: LocalizedContent | null;
+  season?: Season & { matches?: Match[] };
+}
+
+export interface TournamentRegistration {
+  id: number;
+  userId: number;
+  tournamentConfigId: number;
+  registeredAt: string;
+  user?: User;
+}
+
 // API Response Types
 export interface AuthResponse {
   accessToken: string;

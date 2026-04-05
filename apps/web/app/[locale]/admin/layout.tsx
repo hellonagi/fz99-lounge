@@ -63,6 +63,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { id: 'schedules', label: t('schedules'), href: `/${locale}/admin/schedules` },
     ...(user.role === 'ADMIN'
       ? [
+          { id: 'tournaments', label: t('tournaments'), href: `/${locale}/admin/tournaments` },
           { id: 'moderators', label: t('moderators'), href: `/${locale}/admin/moderators` },
           { id: 'users', label: t('users'), href: `/${locale}/admin/users` },
           { id: 'seasons', label: t('seasons'), href: `/${locale}/admin/seasons` },

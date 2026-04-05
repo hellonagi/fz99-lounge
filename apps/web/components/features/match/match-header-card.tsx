@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useFormatter } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -48,24 +49,23 @@ interface MatchHeaderCardProps {
 
 export function MatchHeaderCard(props: MatchHeaderCardProps) {
   const { gameMode, seasonNumber, gameNumber, leagueType, inGameMode, startedAt, status, totalPlayers } = props;
-  // Format time as HH:MM
+  const format = useFormatter();
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('ja-JP', {
+    return format.dateTime(date, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
-    }).format(date);
+    });
   };
 
-  // Format date as YYYY/MM/DD
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('ja-JP', {
+    return format.dateTime(date, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(date);
+    });
   };
 
   // Determine if match is live
