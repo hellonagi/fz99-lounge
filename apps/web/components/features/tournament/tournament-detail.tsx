@@ -73,13 +73,14 @@ function getStatusBadgeVariant(status: TournamentStatus): 'default' | 'success' 
   }
 }
 
-function formatDateTime(format: ReturnType<typeof useFormatter>, dateStr: string) {
+function formatDateTime(format: ReturnType<typeof useFormatter>, dateStr: string, timeZone: string) {
   return format.dateTime(new Date(dateStr), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone,
   });
 }
 
@@ -110,6 +111,7 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
   const t = useTranslations('tournament');
   const format = useFormatter();
   const locale = useLocale();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { user, isAuthenticated } = useAuthStore();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,7 +199,7 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
                 <Calendar className="h-4 w-4" />
                 <span className="text-sm font-medium">{t('date')}</span>
               </div>
-              <p className="text-white text-sm">{formatDateTime(format, tournament.tournamentDate)}</p>
+              <p className="text-white text-sm">{formatDateTime(format, tournament.tournamentDate, timeZone)}</p>
             </div>
             <div>
               <div className="flex items-center gap-2 text-gray-300 mb-1">
@@ -205,7 +207,7 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
                 <span className="text-sm font-medium">{t('registrationDeadline')}</span>
               </div>
               <p className="text-white text-sm">
-                {formatDateTime(format, tournament.registrationEnd)}
+                {formatDateTime(format, tournament.registrationEnd, timeZone)}
               </p>
             </div>
             <div>
@@ -246,6 +248,7 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
                     {format.dateTime(startTime, {
                       hour: '2-digit',
                       minute: '2-digit',
+                      timeZone,
                     })}
                   </span>
                   {icon && (
