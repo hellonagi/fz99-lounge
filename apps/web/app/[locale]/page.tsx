@@ -6,12 +6,14 @@ import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
 import { WeeklyCalendar } from '@/components/features/match/weekly-calendar';
+import { TournamentBanner } from '@/components/features/tournament/tournament-banner';
 import { HowToJoinSection, FeaturedPlayers } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
 import { useAuthStore } from '@/store/authStore';
 import { matchesApi, usersApi } from '@/lib/api';
+import { useWeeklyTournaments } from '@/hooks/useWeeklyTournaments';
 
 interface RecentMatch {
   id: number;
@@ -65,6 +67,8 @@ export default function Home() {
   );
 
   const { isAuthenticated } = useAuthStore();
+  const { tournaments } = useWeeklyTournaments();
+  const openTournaments = tournaments.filter(tr => tr.status === 'REGISTRATION_OPEN');
 
   // Fetch recent matches and featured players
   useEffect(() => {
@@ -139,6 +143,9 @@ export default function Home() {
           />
         )}
       </div>
+
+      {/* Tournament Banner */}
+      <TournamentBanner tournaments={openTournaments} />
 
       {/* Weekly Calendar Section */}
       <WeeklyCalendar />

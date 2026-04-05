@@ -21,6 +21,7 @@ import { TracksModule } from './tracks/tracks.module';
 import { DiscordBotModule } from './discord-bot/discord-bot.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RecurringMatchModule } from './recurring-matches/recurring-match.module';
+import { TournamentsModule } from './tournaments/tournaments.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { RecurringMatchModule } from './recurring-matches/recurring-match.module
     DiscordBotModule,
     PermissionsModule,
     RecurringMatchModule,
+    TournamentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -22,7 +22,10 @@ function generateToken(user: { id: number; discordId: string; username: string }
 async function joinMatch(count: number, delay: number) {
   // Find WAITING match
   const match = await prisma.match.findFirst({
-    where: { status: MatchStatus.WAITING },
+    where: {
+      status: MatchStatus.WAITING,
+      scheduledStart: { gte: new Date() },
+    },
     orderBy: { scheduledStart: 'asc' },
     include: { participants: true },
   });

@@ -28,24 +28,32 @@
     },
     "date": "Tournament Date",
     "registrationPeriod": "Registration Period",
+    "registrationDeadline": "Registration Deadline",
     "rounds": "Rounds",
+    "schedule": "Schedule",
     "roundLabel": "Round {number}",
     "participants": "Participants",
     "participantCount": "{count}/{max}",
     "playerLimit": "Player Limit",
-    "interval": "Interval",
-    "intervalMinutes": "{minutes} min",
     "register": "Register",
     "cancelRegistration": "Cancel Registration",
     "registered": "Registered",
     "registrationClosed": "Registration Closed",
     "tournamentFull": "Tournament Full",
     "agreeToRules": "I agree to the tournament rules",
-    "rulesText": "By registering, you agree to participate in all rounds. If you cannot attend, please cancel your registration beforehand.",
+    "agreeRequired": "You must agree to the rules to register",
+    "prizeEntryLabel": "Enter the participation prize lottery (optional)",
+    "prizeEntryNote": "One winner will be selected by lottery to receive a participation prize. If you win, you will need to provide your name and shipping address.",
+    "rulesText": "By registering, you agree to the tournament rules. If you cannot attend, please cancel your registration beforehand.",
+    "joinDiscord": "Please join the <link>Discord server</link> to receive match notifications and passcode announcements.",
     "noParticipants": "No participants yet",
     "loading": "Loading...",
     "notFound": "Tournament not found",
-    "error": "Failed to load tournament"
+    "error": "Failed to load tournament",
+    "banner": {
+      "entryOpen": "Entry Open",
+      "entry": "ENTRY"
+    }
   },
   "adminTournament": {
     "title": "Tournament Management",
@@ -59,18 +67,21 @@
     "registrationEnd": "Registration End",
     "minPlayers": "Min Players",
     "maxPlayers": "Max Players",
-    "intervalMinutes": "Interval (min)",
     "roundConfig": "Round Configuration",
     "roundNumber": "Round {number}",
     "inGameMode": "Mode",
     "league": "League",
+    "offsetMin": "Offset (min)",
     "create": "Create Tournament",
     "creating": "Creating...",
     "created": "Tournament created successfully",
     "update": "Update",
     "updateStatus": "Update Status",
     "noTournaments": "No tournaments yet",
-    "error": "An error occurred"
+    "error": "An error occurred",
+    "content": "Content (Markdown)",
+    "contentEn": "English",
+    "contentJa": "Japanese"
   },
   "userManagement": {
     "title": "User Management",
@@ -509,7 +520,9 @@
     "nextWeek": "Next week",
 "inProgress": "LIVE",
     "login": "Login",
-    "loginToJoin": "Log in to join"
+    "loginToJoin": "Log in to join",
+    "entry": "ENTRY",
+    "tournament": "TOURNAMENT"
   },
   "createMatch": {
     "title": "Create Match",

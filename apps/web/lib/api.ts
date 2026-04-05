@@ -289,6 +289,31 @@ export const screenshotsApi = {
   getProgress: (gameId: number) => api.get(`/screenshots/game/${gameId}/progress`),
 };
 
+// Tournaments API
+export const tournamentsApi = {
+  getAll: () => api.get('/tournaments'),
+  getById: (id: number) => api.get(`/tournaments/${id}`),
+  getWeek: (from: string, to: string) => {
+    const params = new URLSearchParams({ from, to });
+    return api.get(`/tournaments/week?${params.toString()}`);
+  },
+  create: (data: {
+    name: string;
+    totalRounds: number;
+    rounds: Array<{ roundNumber: number; inGameMode: string; league?: string }>;
+    tournamentDate: string;
+    registrationStart: string;
+    registrationEnd: string;
+    minPlayers?: number;
+    maxPlayers?: number;
+  }) => api.post('/tournaments', data),
+  update: (id: number, data: Record<string, unknown>) =>
+    api.patch(`/tournaments/${id}`, data),
+  register: (id: number, data?: { prizeEntry?: boolean }) => api.post(`/tournaments/${id}/register`, data),
+  cancelRegistration: (id: number) => api.delete(`/tournaments/${id}/register`),
+  getParticipants: (id: number) => api.get(`/tournaments/${id}/participants`),
+};
+
 // Permissions API (ADMIN only)
 export const permissionsApi = {
   getModerators: () => api.get('/permissions/moderators'),
