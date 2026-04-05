@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -35,64 +36,56 @@ import { toHalfWidth, validateDisplayName } from '@/lib/string';
 import { useAuthStore } from '@/store/authStore';
 import { countries } from '@/lib/countries';
 
-const setupSchema = z.object({
-  displayName: z
-    .string()
-    .min(1, 'Display name is required')
-    .max(10, 'Display name must be 10 characters or less')
-    .superRefine((val, ctx) => {
-      const result = validateDisplayName(val);
-      if (!result.valid) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: result.error || 'Invalid display name',
-        });
-      }
-    }),
-  country: z.string().min(1, 'Please select your country'),
-});
-
-type SetupFormData = z.infer<typeof setupSchema>;
-
 interface DisplayNameSetupModalProps {
   open: boolean;
 }
 
 export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
+  const t = useTranslations('setupProfile');
   const [isComposing, setIsComposing] = useState(false);
-  const [, setIsLoadingSuggestion] = useState(false);
   const { user, updateUser } = useAuthStore();
+
+  const setupSchema = z.object({
+    displayName: z
+      .string()
+      .min(1, t('displayNameRequired'))
+      .max(10, t('displayNameMaxLength'))
+      .superRefine((val, ctx) => {
+        const result = validateDisplayName(val);
+        if (!result.valid) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: result.error || t('displayNameInvalid'),
+          });
+        }
+      }),
+    country: z.string().min(1, t('countryRequired')),
+  });
+
+  type SetupFormData = z.infer<typeof setupSchema>;
 
   const form = useForm<SetupFormData>({
     resolver: zodResolver(setupSchema),
+    mode: 'onChange',
     defaultValues: {
       displayName: '',
       country: '',
     },
   });
 
-  const { isSubmitting } = form.formState;
-  const displayName = form.watch('displayName');
-  const country = form.watch('country');
+  const { isSubmitting, isValid } = form.formState;
 
-  // Fetch suggested country from IP geolocation when modal opens
   useEffect(() => {
-    if (open && !country) {
-      setIsLoadingSuggestion(true);
+    if (open) {
       usersApi.getSuggestedCountry()
         .then((res) => {
-          if (res.data.country) {
-            form.setValue('country', res.data.country);
+          if (res.data.country && !form.getValues('country')) {
+            form.setValue('country', res.data.country, { shouldValidate: true });
           }
         })
-        .catch(() => {
-          // Ignore errors - user can still select manually
-        })
-        .finally(() => {
-          setIsLoadingSuggestion(false);
-        });
+        .catch(() => {});
     }
-  }, [open, country, form]);
+  }, [open, form]);
 
   const handleCompositionStart = () => {
     setIsComposing(true);
@@ -100,7 +93,6 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
 
   const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement>) => {
     setIsComposing(false);
-    // 変換確定時に全角→半角変換を適用
     const value = (e.target as HTMLInputElement).value;
     const normalized = toHalfWidth(value);
     form.setValue('displayName', normalized, { shouldValidate: true });
@@ -108,12 +100,10 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
 
   const onSubmit = async (data: SetupFormData) => {
     try {
-      // Update display name and country together
       const response = await usersApi.updateProfile({
         displayName: data.displayName,
         country: data.country,
       });
-      // authStoreを更新
       if (user) {
         updateUser({
           ...user,
@@ -125,7 +115,7 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
       const axiosError = err as { response?: { data?: { message?: string } } };
       form.setError('displayName', {
         type: 'manual',
-        message: axiosError.response?.data?.message || 'Failed to save profile',
+        message: axiosError.response?.data?.message || t('saveFailed'),
       });
     }
   };
@@ -134,9 +124,9 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Set Up Your Profile</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>
-            Choose a display name and select your country. Display name can only be changed once every 60 days.
+            {t('description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -147,17 +137,17 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
               name="displayName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Display Name</FormLabel>
+                  <FormLabel>{t('displayName')}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Enter display name..."
+                      className="mt-1"
+                      placeholder={t('displayNamePlaceholder')}
                       maxLength={10}
                       autoFocus
                       disabled={isSubmitting}
                       {...field}
                       onChange={(e) => {
                         const value = e.target.value;
-                        // IME変換中は半角変換をスキップ
                         if (isComposing) {
                           field.onChange(value);
                         } else {
@@ -170,7 +160,7 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
                     />
                   </FormControl>
                   <FormDescription>
-                    {displayName.length}/10 characters
+                    {t('characters', { count: field.value.length })}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -182,15 +172,15 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
               name="country"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Country</FormLabel>
+                  <FormLabel>{t('country')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                     disabled={isSubmitting}
                   >
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your country">
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder={t('countryPlaceholder')}>
                           {field.value && (
                             <span className="flex items-center gap-2">
                               <span className={`fi fi-${field.value.toLowerCase()}`} />
@@ -217,8 +207,8 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
             />
 
             <DialogFooter>
-              <Button type="submit" disabled={isSubmitting || !displayName || !country}>
-                {isSubmitting ? 'Saving...' : 'Save Profile'}
+              <Button type="submit" disabled={isSubmitting || !isValid}>
+                {isSubmitting ? t('saving') : t('save')}
               </Button>
             </DialogFooter>
           </form>
