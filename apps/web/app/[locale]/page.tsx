@@ -12,8 +12,7 @@ import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
 import { useAuthStore } from '@/store/authStore';
-import { matchesApi, usersApi } from '@/lib/api';
-import { useWeeklyTournaments } from '@/hooks/useWeeklyTournaments';
+import { matchesApi, usersApi, tournamentsApi } from '@/lib/api';
 
 interface RecentMatch {
   id: number;
@@ -67,8 +66,7 @@ export default function Home() {
   );
 
   const { isAuthenticated } = useAuthStore();
-  const { tournaments } = useWeeklyTournaments();
-  const openTournaments = tournaments.filter(tr => tr.status === 'REGISTRATION_OPEN');
+  const [openTournaments, setOpenTournaments] = useState<any[]>([]);
 
   // Fetch recent matches and featured players
   useEffect(() => {
@@ -92,8 +90,19 @@ export default function Home() {
         setFeaturedAwardsLoading(false);
       }
     };
+    const fetchOpenTournaments = async () => {
+      try {
+        const response = await tournamentsApi.getAll();
+        setOpenTournaments(
+          response.data.filter((t: any) => t.status === 'REGISTRATION_OPEN')
+        );
+      } catch (err) {
+        console.error('Failed to fetch tournaments:', err);
+      }
+    };
     fetchRecentMatches();
     fetchFeaturedAwards();
+    fetchOpenTournaments();
   }, []);
 
   if (loading) {
