@@ -9,13 +9,15 @@ import Image from 'next/image';
 import { Calendar, Users, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Form, FormField, FormItem, FormControl } from '@/components/ui/form';
+import { cn } from '@/lib/utils';
 import { tournamentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import { SiDiscord } from 'react-icons/si';
 import { Tournament, TournamentStatus, LocalizedContent } from '@/types';
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
@@ -275,6 +277,22 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
       <TournamentContent content={tournament.content} locale={locale} />
 
       {/* Registration */}
+      {!isAuthenticated && tournament.status === 'REGISTRATION_OPEN' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('register')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <a
+              href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
+              className={cn(buttonVariants({ variant: 'discord', size: 'lg' }), 'gap-2')}
+            >
+              <SiDiscord className="w-4 h-4" />
+              {t('loginToRegister')}
+            </a>
+          </CardContent>
+        </Card>
+      )}
       {isAuthenticated && tournament.status === 'REGISTRATION_OPEN' && (
         <Card>
           <CardHeader>
