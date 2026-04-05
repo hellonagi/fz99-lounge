@@ -50,6 +50,7 @@
     "loading": "Loading...",
     "notFound": "Tournament not found",
     "error": "Failed to load tournament",
+    "loginToRegister": "Login to Register",
     "banner": {
       "entryOpen": "Entry Open",
       "entry": "ENTRY"
