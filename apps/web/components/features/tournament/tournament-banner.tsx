@@ -16,11 +16,13 @@ function TournamentBannerItem({ tournament }: { tournament: WeeklyTournament }) 
   const format = useFormatter();
   const locale = useLocale();
 
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const dateStr = format.dateTime(new Date(tournament.tournamentDate), {
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone,
   });
 
   return (
