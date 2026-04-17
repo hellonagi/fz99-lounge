@@ -520,7 +520,7 @@
     "nextWeek": "次の週",
 "inProgress": "LIVE",
     "login": "ログイン",
-    "loginToJoin": "ログインしてエントリー",
+    "loginToJoin": "エントリーするにはログインが必要です。右上のDiscordボタンからログインしてください。",
     "entry": "ENTRY",
     "tournament": "TOURNAMENT"
   },

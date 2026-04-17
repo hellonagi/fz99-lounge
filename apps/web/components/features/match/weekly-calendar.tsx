@@ -9,7 +9,6 @@ import { useWeeklyMatches } from '@/hooks/useWeeklyMatches';
 import { useWeeklyTournaments, type WeeklyTournament } from '@/hooks/useWeeklyTournaments';
 import { CategoryBadge } from '@/components/ui/category-badge';
 import { Loader2 } from 'lucide-react';
-import { SiDiscord } from 'react-icons/si';
 import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import type { Swiper as SwiperType } from 'swiper';
@@ -95,9 +94,9 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
           {tCal('ended')}
         </Link>
       )}
-      {isWaiting && isAuthenticated && (
+      {isWaiting && (
         <button
-          onClick={() => onJoinLeave(match.id)}
+          onClick={() => isAuthenticated ? onJoinLeave(match.id) : alert(tCal('loginToJoin'))}
           disabled={isJoiningThis}
           className={cn(
             buttonVariants({ size: 'xs' }),
@@ -239,7 +238,6 @@ type CalendarItem =
 
 export function WeeklyCalendar() {
   const t = useTranslations('weeklyCalendar');
-  const { isAuthenticated } = useAuthStore();
   const {
     matches,
     loading,
@@ -312,17 +310,6 @@ export function WeeklyCalendar() {
           </div>
         ) : (
           <div className="relative">
-            {!isAuthenticated && (
-              <div className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-center h-2/3 bg-gradient-to-t from-gray-950 via-gray-950/50 to-transparent rounded-b-lg">
-                <a
-                  href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
-                  className={cn(buttonVariants({ variant: 'discord', size: 'lg' }), 'gap-2')}
-                >
-                  <SiDiscord className="w-4 h-4" />
-                  {t('loginToJoin')}
-                </a>
-              </div>
-            )}
             {/* Mobile: Swiper day view */}
             <div className="md:hidden">
               {/* Day tab bar */}
