@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   Client,
@@ -102,6 +103,14 @@ const IN_GAME_MODE_DISPLAY: Record<string, string> = {
   CLASSIC: 'Classic',
   NINETY_NINE: 'Ninety Nine',
   TEAM_BATTLE: 'Team Battle',
+};
+
+const EVENT_CATEGORY_DISPLAY: Record<EventCategory, string> = {
+  GP: 'GP',
+  CLASSIC: 'Classic',
+  TEAM_CLASSIC: 'Team Classic',
+  TEAM_GP: 'Team GP',
+  TOURNAMENT: 'Tournament',
 };
 
 function formatGameModeDisplay(inGameMode: string): string {
@@ -1189,7 +1198,11 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         )
         .addFields({ name: 'Join', value: baseUrl });
 
-      await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+
+      if (channel.type === ChannelType.GuildAnnouncement) {
+        await message.crosspost();
+      }
 
       this.logger.log(
         `Announced match #${params.matchNumber} reminder to channel ${channelId}`,
@@ -1353,6 +1366,69 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         `Failed to announce match #${params.matchNumber} results:`,
         error,
       );
+      return false;
+    }
+  }
+
+  /**
+   * Announce today's lounge schedule to the match announce channel.
+   * Posts a single message listing each match's start time and category.
+   */
+  async announceDailyLoungeSchedule(
+    entries: Array<{ scheduledStart: Date; category: EventCategory }>,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping daily lounge announcement',
+      );
+      return false;
+    }
+
+    const channelId = this.getMatchAnnounceChannelId();
+    if (!channelId) {
+      this.logger.warn('Match announce channel not configured');
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Announce channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const baseUrl =
+        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+
+      const lines = entries.map((e) => {
+        const ts = Math.floor(e.scheduledStart.getTime() / 1000);
+        return `<t:${ts}:f>  ${EVENT_CATEGORY_DISPLAY[e.category]}`;
+      });
+
+      const embed = new EmbedBuilder()
+        .setTitle("Today's Lounge")
+        .setColor(0x3498db)
+        .setDescription(lines.join('\n'))
+        .addFields({ name: 'Join', value: `👉 ${baseUrl}` });
+
+      const message = await (channel as TextChannel).send({ embeds: [embed] });
+
+      // Auto-publish if the channel is an announcement channel
+      if (channel.type === ChannelType.GuildAnnouncement) {
+        await message.crosspost();
+        this.logger.log(
+          `Published daily lounge announcement to channel ${channelId}`,
+        );
+      }
+
+      this.logger.log(
+        `Announced today's lounge schedule (${entries.length} matches) to channel ${channelId}`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error("Failed to announce today's lounge schedule:", error);
       return false;
     }
   }
