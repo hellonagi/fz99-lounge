@@ -33,7 +33,7 @@ export class CreateRecurringMatchDto {
 
   @IsOptional()
   @IsEnum(League)
-  leagueType?: League;
+  leagueType?: League | null;
 
   @IsOptional()
   @IsInt()

@@ -142,7 +142,7 @@ export const recurringMatchesApi = {
   create: (data: {
     eventCategory: string;
     inGameMode: string;
-    leagueType?: string;
+    leagueType?: string | null;
     minPlayers?: number;
     maxPlayers?: number;
     rules: Array<{ daysOfWeek: number[]; timeOfDay: string }>;
