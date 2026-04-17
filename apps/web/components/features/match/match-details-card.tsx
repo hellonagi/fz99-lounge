@@ -7,6 +7,8 @@ import {
 } from '@/components/ui/card';
 import { StatBox, StatBoxValue } from '@/components/ui/stat-box';
 
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 interface MatchDetailsCardProps {
   gameMode: string;
   leagueType: string | null;
@@ -34,6 +36,7 @@ export function MatchDetailsCard({
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
+      timeZone,
     });
   };
 
