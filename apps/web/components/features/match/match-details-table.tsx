@@ -184,47 +184,58 @@ export function MatchDetailsTable({
     );
   }
 
-  // Sort: submitted players by score first, then unsubmitted by preGameRating
-  const sortedParticipants = [...activeMergedParticipants].sort((a, b) => {
-    // Submitted players come first
-    if (a.hasSubmitted && !b.hasSubmitted) return -1;
-    if (!a.hasSubmitted && b.hasSubmitted) return 1;
+  // A player is considered scored only when totalScore is set.
+  // Players without a score (NO_SHOW, unsubmitted, etc.) are ranked below all scored players.
+  const hasScore = (p: MergedParticipant) => p.totalScore !== null && p.totalScore !== undefined;
 
-    // Both submitted: sort by score
-    if (a.hasSubmitted && b.hasSubmitted) {
+  // Sort: scored players by score first, then unscored players by preGameRating
+  const sortedParticipants = [...activeMergedParticipants].sort((a, b) => {
+    const aScored = hasScore(a);
+    const bScored = hasScore(b);
+
+    // Scored players come first
+    if (aScored && !bScored) return -1;
+    if (!aScored && bScored) return 1;
+
+    // Both scored: sort by score
+    if (aScored && bScored) {
       return (b.totalScore ?? 0) - (a.totalScore ?? 0);
     }
 
-    // Both not submitted: sort by preGameRating
+    // Both unscored: sort by preGameRating
     return (b.preGameRating ?? 0) - (a.preGameRating ?? 0);
   });
 
-  // Calculate positions with tie handling (only for submitted players)
-  const participantsWithRank: (MergedParticipant & { rank: number | null })[] = [];
-  let currentRank = 0;
+  // Calculate positions with tie handling (matches backend sortAndRankParticipants logic)
+  // - Scored players are ranked by score (ties get same rank)
+  // - Unscored players are ranked below all scored players (all share the same rank)
+  const participantsWithRank: (MergedParticipant & { rank: number })[] = [];
+  let currentRank = 1;
+  let sameRankCount = 0;
 
-  for (let index = 0; index < sortedParticipants.length; index++) {
-    const p = sortedParticipants[index];
+  for (let i = 0; i < sortedParticipants.length; i++) {
+    const p = sortedParticipants[i];
+    const scored = hasScore(p);
+    const prevScored = i > 0 && hasScore(sortedParticipants[i - 1]);
 
-    if (!p.hasSubmitted) {
-      // No rank for unsubmitted players
-      participantsWithRank.push({ ...p, rank: null });
-      continue;
-    }
-
-    currentRank++;
-    let rank = currentRank;
-
-    // Check for ties with previous submitted player
-    const prevSubmitted = participantsWithRank.filter(pp => pp.hasSubmitted);
-    if (prevSubmitted.length > 0) {
-      const prev = prevSubmitted[prevSubmitted.length - 1];
-      if (p.totalScore === prev.totalScore && p.totalScore !== null) {
-        rank = prev.rank!;
+    let isTie = false;
+    if (i > 0) {
+      const prevScore = sortedParticipants[i - 1].totalScore ?? 0;
+      const curScore = p.totalScore ?? 0;
+      // Tie only when same score AND same scored/unscored group
+      if (curScore === prevScore && scored === prevScored) {
+        isTie = true;
       }
     }
 
-    participantsWithRank.push({ ...p, rank });
+    if (isTie) {
+      sameRankCount++;
+    } else {
+      currentRank += sameRankCount;
+      sameRankCount = 1;
+    }
+
+    participantsWithRank.push({ ...p, rank: currentRank });
   }
 
   // Helper to get race position display
@@ -245,7 +256,7 @@ export function MatchDetailsTable({
   };
 
   // Helper to render a participant row
-  const renderParticipantRow = (participant: MergedParticipant & { rank: number | null }, options?: { showTeamColumn?: boolean }) => {
+  const renderParticipantRow = (participant: MergedParticipant & { rank: number }, options?: { showTeamColumn?: boolean }) => {
     const { showTeamColumn } = options || {};
 
     return (
@@ -259,10 +270,9 @@ export function MatchDetailsTable({
       {/* Rank */}
       <td className={cn(
         'py-2 px-2 font-bold',
-        participant.rank === null ? 'text-gray-400' :
         participant.rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
       )}>
-        {participant.rank ?? '-'}
+        {participant.rank}
       </td>
 
       {/* Team */}

@@ -10,6 +10,7 @@ import { LoginTrackingService } from '../auth/login-tracking.service';
 import { ClassicRatingService } from '../rating/classic-rating.service';
 import { TeamClassicRatingService } from '../rating/team-classic-rating.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { DailyLoungeAnnouncementCron } from '../discord-bot/daily-lounge-announcement.cron';
 import { UserRole, EventCategory, ModeratorPermission } from '@prisma/client';
 
 @Controller('admin')
@@ -24,6 +25,7 @@ export class AdminController {
     private classicRatingService: ClassicRatingService,
     private teamClassicRatingService: TeamClassicRatingService,
     private prisma: PrismaService,
+    private dailyLoungeAnnouncementCron: DailyLoungeAnnouncementCron,
   ) {
     this.defaultAlertDays = this.configService.get<number>('SUSPICIOUS_LOGIN_ALERT_DAYS', 7);
   }
@@ -303,6 +305,17 @@ export class AdminController {
       });
     }
 
+    return { success: true };
+  }
+
+  /**
+   * Manually trigger the daily lounge announcement (for testing).
+   * POST /admin/daily-lounge-announcement/trigger
+   */
+  @Post('daily-lounge-announcement/trigger')
+  @Roles(UserRole.ADMIN)
+  async triggerDailyLoungeAnnouncement() {
+    await this.dailyLoungeAnnouncementCron.announceTodaysLounge();
     return { success: true };
   }
 }

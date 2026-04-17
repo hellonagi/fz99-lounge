@@ -31,6 +31,7 @@ export const CATEGORY_OPTIONS = [
 ];
 
 export const IN_GAME_MODE_OPTIONS_GP = [
+  { value: 'RANDOM', label: 'Random (Least Played)' },
   { value: 'GRAND_PRIX', label: 'Grand Prix' },
   { value: 'MIRROR_GRAND_PRIX', label: 'Mirror Grand Prix' },
 ];
@@ -157,8 +158,8 @@ export function RecurringMatchForm({ form, isEditMode }: RecurringMatchFormProps
         />
       )}
 
-      {/* League Type - GP only (optional - null means random) */}
-      {isGPMode && (
+      {/* League Type - GP only, hidden when Random */}
+      {isGPMode && inGameMode !== 'RANDOM' && (
         <FormField
           control={form.control}
           name="leagueType"

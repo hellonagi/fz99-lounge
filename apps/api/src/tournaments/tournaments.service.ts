@@ -323,6 +323,7 @@ export class TournamentsService {
             discordId: true,
             displayName: true,
             avatarHash: true,
+            profile: { select: { country: true } },
           },
         },
       },

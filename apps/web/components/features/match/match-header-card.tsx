@@ -1,9 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { useFormatter } from 'next-intl';
+import { useFormatter, useLocale } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const LEAGUE_IMAGE_MAP: Record<string, string> = {
   KNIGHT: '/leagues/knight.png',
@@ -50,21 +52,33 @@ interface MatchHeaderCardProps {
 export function MatchHeaderCard(props: MatchHeaderCardProps) {
   const { gameMode, seasonNumber, gameNumber, leagueType, inGameMode, startedAt, status, totalPlayers } = props;
   const format = useFormatter();
+  const locale = useLocale();
+
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     return format.dateTime(date, {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
+      timeZone,
     });
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    if (locale === 'en') {
+      return format.dateTime(date, {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone,
+      });
+    }
     return format.dateTime(date, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
+      timeZone,
     });
   };
 

@@ -134,9 +134,9 @@ export class RecurringMatchService {
       }
     });
 
-    // If rules changed, clean up old WAITING matches and regenerate
+    // If rules or leagueType changed, clean up old WAITING matches and regenerate
     const updated = await this.findById(id);
-    if (dto.rules) {
+    if (dto.rules || dto.leagueType !== undefined) {
       const savedParticipants = await this.collectParticipantsForSchedule(id);
       await this.deleteWaitingMatchesForSchedule(id);
       if (updated.isEnabled) {
@@ -443,11 +443,7 @@ export class RecurringMatchService {
           let leagueType = schedule.leagueType ?? undefined;
 
           if ((schedule.eventCategory === EventCategory.GP || schedule.eventCategory === EventCategory.TEAM_GP) && !schedule.leagueType) {
-            const allGpLeagues: League[] = [
-              League.KNIGHT, League.QUEEN, League.KING, League.ACE,
-              League.MIRROR_KNIGHT, League.MIRROR_QUEEN, League.MIRROR_KING, League.MIRROR_ACE,
-            ];
-            leagueType = allGpLeagues[Math.floor(Math.random() * allGpLeagues.length)];
+            leagueType = await this.pickLeastPlayedLeague(schedule.eventCategory, season.id);
             const isMirror = leagueType.startsWith('MIRROR_');
             inGameMode = isMirror ? InGameMode.MIRROR_GRAND_PRIX : InGameMode.GRAND_PRIX;
           }
@@ -486,5 +482,50 @@ export class RecurringMatchService {
         });
       }
     }
+  }
+
+  /**
+   * Pick the league with the fewest games in the current season.
+   * Counts existing Game records + already-picked leagues in this batch
+   * to ensure even distribution across generated matches.
+   */
+  private async pickLeastPlayedLeague(
+    category: EventCategory,
+    seasonId: number,
+  ): Promise<League> {
+    const allGpLeagues: League[] = [
+      League.KNIGHT, League.QUEEN, League.KING, League.ACE,
+      League.MIRROR_KNIGHT, League.MIRROR_QUEEN, League.MIRROR_KING, League.MIRROR_ACE,
+    ];
+
+    // Count games per league in this season (excluding cancelled matches)
+    const gameCounts = await this.prisma.game.groupBy({
+      by: ['leagueType'],
+      where: {
+        match: {
+          seasonId,
+          status: { not: 'CANCELLED' },
+        },
+        leagueType: { in: allGpLeagues },
+      },
+      _count: { id: true },
+    });
+
+    // Build count map (default 0 for unplayed leagues)
+    const countMap = new Map<League, number>();
+    for (const league of allGpLeagues) {
+      countMap.set(league, 0);
+    }
+    for (const row of gameCounts) {
+      if (row.leagueType) {
+        countMap.set(row.leagueType, row._count.id);
+      }
+    }
+
+    // Find minimum count and collect candidates
+    const minCount = Math.min(...countMap.values());
+    const candidates = allGpLeagues.filter((l) => countMap.get(l) === minCount);
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }
 }

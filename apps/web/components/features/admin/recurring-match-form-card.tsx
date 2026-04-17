@@ -56,8 +56,8 @@ export function RecurringMatchFormCard({
   useEffect(() => {
     if (isEditMode) return;
     if (category === 'GP' || category === 'TEAM_GP') {
-      form.setValue('leagueType', 'KNIGHT');
-      form.setValue('inGameMode', 'GRAND_PRIX');
+      form.setValue('inGameMode', 'RANDOM');
+      form.setValue('leagueType', undefined);
       form.setValue('minPlayers', '30');
       form.setValue('maxPlayers', '99');
     } else {
@@ -72,7 +72,9 @@ export function RecurringMatchFormCard({
   const inGameMode = form.watch('inGameMode');
   useEffect(() => {
     if (isEditMode) return;
-    if (inGameMode === 'MIRROR_GRAND_PRIX') {
+    if (inGameMode === 'RANDOM') {
+      form.setValue('leagueType', undefined);
+    } else if (inGameMode === 'MIRROR_GRAND_PRIX') {
       form.setValue('leagueType', 'MIRROR_KNIGHT');
     } else if (inGameMode === 'GRAND_PRIX') {
       form.setValue('leagueType', 'KNIGHT');
@@ -85,9 +87,11 @@ export function RecurringMatchFormCard({
     setSuccess(false);
 
     if (schedule) {
+      const isGP = schedule.eventCategory === 'GP' || schedule.eventCategory === 'TEAM_GP';
+      const showRandom = isGP && !schedule.leagueType;
       form.reset({
         eventCategory: schedule.eventCategory as RecurringMatchFormData['eventCategory'],
-        inGameMode: schedule.inGameMode,
+        inGameMode: showRandom ? 'RANDOM' : schedule.inGameMode,
         leagueType: schedule.leagueType || undefined,
         rules: schedule.rules.map((r) => ({
           daysOfWeek: r.daysOfWeek,
@@ -103,9 +107,12 @@ export function RecurringMatchFormCard({
 
   const onSubmit = async (data: RecurringMatchFormData) => {
     try {
+      const isRandom = data.inGameMode === 'RANDOM';
       const payload = {
-        inGameMode: data.inGameMode,
-        ...(data.leagueType && { leagueType: data.leagueType }),
+        inGameMode: isRandom ? 'GRAND_PRIX' : data.inGameMode,
+        ...(isRandom
+          ? (isEditMode ? { leagueType: null } : {})
+          : data.leagueType ? { leagueType: data.leagueType } : {}),
         rules: data.rules,
         minPlayers: parseInt(data.minPlayers),
         maxPlayers: parseInt(data.maxPlayers),

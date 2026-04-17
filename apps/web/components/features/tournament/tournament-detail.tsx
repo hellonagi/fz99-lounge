@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations, useFormatter, useLocale } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Calendar, Users, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import { Form, FormField, FormItem, FormControl } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { tournamentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { getCountryByCode } from '@/lib/countries';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { SiDiscord } from 'react-icons/si';
@@ -443,29 +445,117 @@ function ParticipantsList({ tournamentId }: { tournamentId: number }) {
         {participants.length === 0 ? (
           <p className="text-gray-400 text-sm">{t('noParticipants')}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {participants.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-2 rounded-lg border border-gray-700 p-2 bg-gray-800/50"
-              >
-                {p.user?.avatarHash ? (
-                  <img
-                    src={`https://cdn.discordapp.com/avatars/${p.user.discordId || p.userId}/${p.user.avatarHash}.png?size=32`}
-                    alt=""
-                    className="h-6 w-6 rounded-full"
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {participants.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-2 rounded-lg border border-gray-700 p-2 bg-gray-800/50"
+                >
+                  <span
+                    className={`fi fi-${p.user?.profile?.country?.toLowerCase() || 'un'} shrink-0`}
+                    title={p.user?.profile?.country || ''}
                   />
-                ) : (
-                  <div className="h-6 w-6 rounded-full bg-gray-600" />
-                )}
-                <span className="text-sm text-white truncate">
-                  {p.user?.displayName || `Player ${p.userId}`}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <span className="text-sm text-white truncate">
+                    {p.user?.displayName || `Player ${p.userId}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <CountryRepresentation participants={participants} />
+          </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function CountryRepresentation({ participants }: { participants: any[] }) {
+  const t = useTranslations('tournament');
+  const total = participants.length;
+
+  const countryRows = useMemo(() => {
+    const grouped: Record<string, { count: number; players: { displayName: string; profileNumber: string }[] }> = {};
+    for (const p of participants) {
+      const code = p.user?.profile?.country || 'UNKNOWN';
+      if (!grouped[code]) grouped[code] = { count: 0, players: [] };
+      grouped[code].count += 1;
+      grouped[code].players.push({
+        displayName: p.user?.displayName || `Player ${p.userId}`,
+        profileNumber: p.user?.profileNumber || '',
+      });
+    }
+
+    const sorted = Object.entries(grouped)
+      .sort((a, b) => b[1].count - a[1].count)
+      .map(([code, data]) => ({
+        code,
+        name: code === 'UNKNOWN' ? t('unknownCountry') : (getCountryByCode(code)?.name || code),
+        ...data,
+      }));
+
+    let rank = 1;
+    return sorted.map((row, i) => {
+      if (i > 0 && row.count < sorted[i - 1].count) rank = i + 1;
+      return { ...row, rank };
+    });
+  }, [participants, t]);
+
+  if (countryRows.length === 0) return null;
+
+  return (
+    <div className="mt-4">
+      <h4 className="text-sm font-medium text-gray-300 mb-2">
+        {t('countryRepresentation')}
+      </h4>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
+          <thead>
+            <tr className="border-b border-gray-700/50 text-left text-gray-400">
+              <th className="px-3 py-2 w-10">#</th>
+              <th className="px-3 py-2">{t('country')}</th>
+              <th className="px-3 py-2 text-right whitespace-nowrap">{t('participants')}</th>
+              <th className="px-3 py-2">{t('players')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {countryRows.map(({ code, name, count, rank, players }) => (
+              <tr
+                key={code}
+                className="border-b border-gray-700/50 hover:bg-gray-700/30"
+              >
+                <td className="px-3 py-2 text-gray-400">{rank}</td>
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center gap-2 text-gray-300">
+                    <span className={`fi fi-${code === 'UNKNOWN' ? 'un' : code.toLowerCase()} shrink-0`} />
+                    {name}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right text-gray-300 whitespace-nowrap">
+                  {count} / {total} ({Math.round((count / total) * 100)}%)
+                </td>
+                <td className="px-3 py-2 text-gray-300">
+                  {players.map((player, i) => (
+                    <span key={player.profileNumber || i}>
+                      {i > 0 && ', '}
+                      {player.profileNumber ? (
+                        <Link
+                          href={`/profile/${player.profileNumber}`}
+                          className="hover:text-white hover:underline"
+                        >
+                          {player.displayName}
+                        </Link>
+                      ) : (
+                        player.displayName
+                      )}
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
