@@ -78,6 +78,7 @@ export interface Match {
   // Relations
   season?: Season;
   participants?: MatchParticipant[];
+  games?: Game[];
 }
 
 export type MatchStatus =
@@ -94,6 +95,8 @@ export interface MatchParticipant {
   joinedAt: string;
   hasWithdrawn: boolean;
   withdrawnAt?: string | null;
+  totalPoints?: number;
+  finalRank?: number | null;
   // Relations
   user?: User;
   streams?: MatchStream[];
@@ -122,6 +125,9 @@ export interface GameParticipant {
   machine: string;
   assistEnabled: boolean;
   status: ResultStatus;
+  totalScore?: number | null;
+  eliminatedAtRace?: number | null;
+  submittedAt?: string | null;
   // Relations
   user?: User;
   raceResults?: RaceResult[];

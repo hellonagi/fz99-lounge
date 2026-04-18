@@ -58,6 +58,30 @@
     "banner": {
       "entryOpen": "エントリー受付中",
       "entry": "ENTRY"
+    },
+    "tabs": {
+      "overview": "概要",
+      "rounds": "ラウンド",
+      "standings": "順位表"
+    },
+    "round": {
+      "notStarted": "このラウンドはまだ開始されていません",
+      "passcode": "パスコード",
+      "results": "結果",
+      "noResults": "結果はまだありません",
+      "submitScore": "スコアを送信",
+      "alreadySubmitted": "スコア送信済み",
+      "generatePasscode": "パスコード生成",
+      "generatingPasscode": "生成中...",
+      "passcodeGenerated": "パスコードを生成しました",
+      "scheduled": "予定: {time}"
+    },
+    "standings": {
+      "rank": "#",
+      "player": "プレイヤー",
+      "roundPrefix": "R",
+      "total": "合計",
+      "noData": "順位データはまだありません"
     }
   },
   "adminTournament": {

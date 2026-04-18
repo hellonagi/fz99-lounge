@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Form, FormField, FormItem, FormControl } from '@/components/ui/form';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { tournamentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -21,6 +22,8 @@ import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { SiDiscord } from 'react-icons/si';
 import { Tournament, TournamentStatus, LocalizedContent } from '@/types';
+import { TournamentRoundsTab } from './tournament-rounds-tab';
+import { TournamentStandingsTab } from './tournament-standings-tab';
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
   KNIGHT: '/leagues/knight_64x64.png',
@@ -178,241 +181,261 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">
-              {tournament.name}{' '}
-              <span className="text-gray-400">
-                {t('number', { number: tournament.tournamentNumber })}
-              </span>
-            </CardTitle>
-            <Badge variant={getStatusBadgeVariant(tournament.status)}>
-              {t(`statusLabel.${tournament.status}`)}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-white">
+          {tournament.name}{' '}
+          <span className="text-gray-400">
+            {t('number', { number: tournament.tournamentNumber })}
+          </span>
+        </h1>
+        <Badge variant={getStatusBadgeVariant(tournament.status)}>
+          {t(`statusLabel.${tournament.status}`)}
+        </Badge>
+      </div>
 
-      {/* Info */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-gray-300 mb-1">
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm font-medium">{t('date')}</span>
-              </div>
-              <p className="text-white text-sm">{formatDateTime(format, tournament.tournamentDate, timeZone)}</p>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 text-gray-300 mb-1">
-                <Calendar className="h-4 w-4" />
-                <span className="text-sm font-medium">{t('registrationDeadline')}</span>
-              </div>
-              <p className="text-white text-sm">
-                {formatDateTime(format, tournament.registrationEnd, timeZone)}
-              </p>
-            </div>
-            <div>
-              <div className="flex items-center gap-2 text-gray-300 mb-1">
-                <Users className="h-4 w-4" />
-                <span className="text-sm font-medium">{t('playerLimit')}</span>
-              </div>
-              <p className="text-white text-sm">
-                {t('participantCount', {
-                  count: tournament.registrationCount,
-                  max: tournament.maxPlayers,
-                })}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs defaultValue="overview">
+        <TabsList>
+          <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+          <TabsTrigger value="rounds">{t('tabs.rounds')}</TabsTrigger>
+          <TabsTrigger value="standings">{t('tabs.standings')}</TabsTrigger>
+        </TabsList>
 
-      {/* Rounds / Schedule */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('schedule')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="divide-y divide-gray-700">
-            {tournament.rounds.map((round) => {
-              const icon = getRoundIcon(round.inGameMode, round.league);
-              const startTime = getRoundStartTime(
-                tournament.tournamentDate,
-                round.offsetMinutes,
-              );
-              return (
-                <div
-                  key={round.roundNumber}
-                  className="flex items-center gap-3 py-2"
-                >
-                  <span className="text-sm text-blue-400 shrink-0 whitespace-nowrap">
-                    {format.dateTime(startTime, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      timeZone,
-                    })}
-                  </span>
-                  {icon && (
-                    <Image
-                      src={icon}
-                      alt={round.league || round.inGameMode}
-                      width={24}
-                      height={24}
-                      className="shrink-0"
-                    />
-                  )}
-                  <span className="text-sm text-white">
-                    {round.inGameMode.replace(/_/g, ' ')}
-                    {round.league && ` / ${round.league.replace(/_/g, ' ')}`}
-                  </span>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="px-0 sm:px-0 pb-0 sm:pb-0">
+          <div className="space-y-6">
+            {/* Info */}
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-300 mb-1">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm font-medium">{t('date')}</span>
+                    </div>
+                    <p className="text-white text-sm">{formatDateTime(format, tournament.tournamentDate, timeZone)}</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-300 mb-1">
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-sm font-medium">{t('registrationDeadline')}</span>
+                    </div>
+                    <p className="text-white text-sm">
+                      {formatDateTime(format, tournament.registrationEnd, timeZone)}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 text-gray-300 mb-1">
+                      <Users className="h-4 w-4" />
+                      <span className="text-sm font-medium">{t('playerLimit')}</span>
+                    </div>
+                    <p className="text-white text-sm">
+                      {t('participantCount', {
+                        count: tournament.registrationCount,
+                        max: tournament.maxPlayers,
+                      })}
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
 
-      {/* Content */}
-      <TournamentContent content={tournament.content} locale={locale} />
-
-      {/* Registration */}
-      {!isAuthenticated && tournament.status === 'REGISTRATION_OPEN' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('register')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <a
-              href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
-              className={cn(buttonVariants({ variant: 'discord', size: 'lg' }), 'gap-2')}
-            >
-              <SiDiscord className="w-4 h-4" />
-              {t('loginToRegister')}
-            </a>
-          </CardContent>
-        </Card>
-      )}
-      {isAuthenticated && tournament.status === 'REGISTRATION_OPEN' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('register')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {success && (
-              <Alert className="mb-4 border-green-800 bg-green-900/20">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <AlertDescription className="text-green-400">{success}</AlertDescription>
-              </Alert>
-            )}
-
-            {registered ? (
-              <div className="space-y-4">
-                <p className="text-green-400 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  {t('registered')}
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={submitting}
-                >
-                  {t('cancelRegistration')}
-                </Button>
-              </div>
-            ) : canRegister ? (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleRegister)} className="space-y-4">
-                  <p className="text-sm text-gray-400">{t('rulesText')}</p>
-                  <p className="text-sm text-gray-400">
-                    {t.rich('joinDiscord', {
-                      link: (chunks) => (
-                        <a
-                          href="https://discord.gg/Pxdxp8kH6c"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 underline"
-                        >
-                          {chunks}
-                        </a>
-                      ),
-                    })}
-                  </p>
-                  <FormField
-                    control={form.control}
-                    name="agreedToRules"
-                    render={({ field, fieldState }) => (
-                      <FormItem>
-                        <div className="flex items-center gap-2">
-                          <FormControl>
-                            <input
-                              id="agreedToRules"
-                              type="checkbox"
-                              checked={field.value === true}
-                              onChange={(e) => field.onChange(e.target.checked ? true : undefined)}
-                              className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500"
-                            />
-                          </FormControl>
-                          <label htmlFor="agreedToRules" className="text-sm text-gray-300 cursor-pointer">
-                            {t('agreeToRules')}
-                          </label>
-                        </div>
-                        {fieldState.error && (
-                          <p className="text-sm text-red-500">{t('agreeRequired')}</p>
+            {/* Rounds / Schedule */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('schedule')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="divide-y divide-gray-700">
+                  {tournament.rounds.map((round) => {
+                    const icon = getRoundIcon(round.inGameMode, round.league);
+                    const startTime = getRoundStartTime(
+                      tournament.tournamentDate,
+                      round.offsetMinutes,
+                    );
+                    return (
+                      <div
+                        key={round.roundNumber}
+                        className="flex items-center gap-3 py-2"
+                      >
+                        <span className="text-sm text-blue-400 shrink-0 whitespace-nowrap">
+                          {format.dateTime(startTime, {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZone,
+                          })}
+                        </span>
+                        {icon && (
+                          <Image
+                            src={icon}
+                            alt={round.league || round.inGameMode}
+                            width={24}
+                            height={24}
+                            className="shrink-0"
+                          />
                         )}
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="prizeEntry"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="rounded-lg border border-gray-700 p-3 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <FormControl>
-                              <input
-                                id="prizeEntry"
-                                type="checkbox"
-                                checked={field.value === true}
-                                onChange={(e) => field.onChange(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500"
-                              />
-                            </FormControl>
-                            <label htmlFor="prizeEntry" className="text-sm text-gray-300 cursor-pointer">
-                              {t('prizeEntryLabel')}
-                            </label>
-                          </div>
-                          <p className="text-xs text-gray-500">{t('prizeEntryNote')}</p>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" disabled={submitting}>
-                    {submitting ? t('loading') : t('register')}
-                  </Button>
-                </form>
-              </Form>
-            ) : (
-              <p className="text-gray-400">
-                {tournament.registrationCount >= tournament.maxPlayers
-                  ? t('tournamentFull')
-                  : t('registrationClosed')}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                        <span className="text-sm text-white">
+                          {round.inGameMode.replace(/_/g, ' ')}
+                          {round.league && ` / ${round.league.replace(/_/g, ' ')}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Participants */}
-      <ParticipantsList tournamentId={tournament.id} />
+            {/* Content */}
+            <TournamentContent content={tournament.content} locale={locale} />
+
+            {/* Registration */}
+            {!isAuthenticated && tournament.status === 'REGISTRATION_OPEN' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('register')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/auth/discord`}
+                    className={cn(buttonVariants({ variant: 'discord', size: 'lg' }), 'gap-2')}
+                  >
+                    <SiDiscord className="w-4 h-4" />
+                    {t('loginToRegister')}
+                  </a>
+                </CardContent>
+              </Card>
+            )}
+            {isAuthenticated && tournament.status === 'REGISTRATION_OPEN' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('register')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {error && (
+                    <Alert variant="destructive" className="mb-4">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  {success && (
+                    <Alert className="mb-4 border-green-800 bg-green-900/20">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <AlertDescription className="text-green-400">{success}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  {registered ? (
+                    <div className="space-y-4">
+                      <p className="text-green-400 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        {t('registered')}
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={handleCancel}
+                        disabled={submitting}
+                      >
+                        {t('cancelRegistration')}
+                      </Button>
+                    </div>
+                  ) : canRegister ? (
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(handleRegister)} className="space-y-4">
+                        <p className="text-sm text-gray-400">{t('rulesText')}</p>
+                        <p className="text-sm text-gray-400">
+                          {t.rich('joinDiscord', {
+                            link: (chunks) => (
+                              <a
+                                href="https://discord.gg/Pxdxp8kH6c"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 underline"
+                              >
+                                {chunks}
+                              </a>
+                            ),
+                          })}
+                        </p>
+                        <FormField
+                          control={form.control}
+                          name="agreedToRules"
+                          render={({ field, fieldState }) => (
+                            <FormItem>
+                              <div className="flex items-center gap-2">
+                                <FormControl>
+                                  <input
+                                    id="agreedToRules"
+                                    type="checkbox"
+                                    checked={field.value === true}
+                                    onChange={(e) => field.onChange(e.target.checked ? true : undefined)}
+                                    className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500"
+                                  />
+                                </FormControl>
+                                <label htmlFor="agreedToRules" className="text-sm text-gray-300 cursor-pointer">
+                                  {t('agreeToRules')}
+                                </label>
+                              </div>
+                              {fieldState.error && (
+                                <p className="text-sm text-red-500">{t('agreeRequired')}</p>
+                              )}
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="prizeEntry"
+                          render={({ field }) => (
+                            <FormItem>
+                              <div className="rounded-lg border border-gray-700 p-3 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <FormControl>
+                                    <input
+                                      id="prizeEntry"
+                                      type="checkbox"
+                                      checked={field.value === true}
+                                      onChange={(e) => field.onChange(e.target.checked)}
+                                      className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500 focus:ring-blue-500"
+                                    />
+                                  </FormControl>
+                                  <label htmlFor="prizeEntry" className="text-sm text-gray-300 cursor-pointer">
+                                    {t('prizeEntryLabel')}
+                                  </label>
+                                </div>
+                                <p className="text-xs text-gray-500">{t('prizeEntryNote')}</p>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                        <Button type="submit" disabled={submitting}>
+                          {submitting ? t('loading') : t('register')}
+                        </Button>
+                      </form>
+                    </Form>
+                  ) : (
+                    <p className="text-gray-400">
+                      {tournament.registrationCount >= tournament.maxPlayers
+                        ? t('tournamentFull')
+                        : t('registrationClosed')}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Participants */}
+            <ParticipantsList tournamentId={tournament.id} />
+          </div>
+        </TabsContent>
+
+        {/* Rounds Tab */}
+        <TabsContent value="rounds" className="px-0 sm:px-0 pb-0 sm:pb-0">
+          <TournamentRoundsTab tournament={tournament} onUpdate={onUpdate} />
+        </TabsContent>
+
+        {/* Standings Tab */}
+        <TabsContent value="standings" className="px-0 sm:px-0 pb-0 sm:pb-0">
+          <TournamentStandingsTab tournament={tournament} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
-import { EventCategory, TournamentStatus } from '@prisma/client';
+import { EventCategory, MatchStatus, TournamentStatus } from '@prisma/client';
 
 const STATUS_ORDER: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -149,7 +149,19 @@ export class TournamentsService {
             matches: {
               orderBy: { matchNumber: 'asc' },
               include: {
-                games: true,
+                games: {
+                  orderBy: { gameNumber: 'asc' },
+                  include: {
+                    participants: {
+                      include: {
+                        user: {
+                          select: { id: true, profileNumber: true, displayName: true, avatarHash: true },
+                        },
+                        raceResults: { orderBy: { raceNumber: 'asc' } },
+                      },
+                    },
+                  },
+                },
                 participants: {
                   include: {
                     user: {
@@ -184,6 +196,7 @@ export class TournamentsService {
   async update(id: number, dto: UpdateTournamentDto) {
     const existing = await this.prisma.tournamentConfig.findUnique({
       where: { id },
+      include: { season: true },
     });
     if (!existing) {
       throw new NotFoundException('Tournament not found');
@@ -200,29 +213,119 @@ export class TournamentsService {
       }
     }
 
-    await this.prisma.tournamentConfig.update({
-      where: { id },
-      data: {
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.totalRounds !== undefined && { totalRounds: dto.totalRounds }),
-        ...(dto.rounds !== undefined && { rounds: dto.rounds as any }),
-        ...(dto.tournamentDate !== undefined && {
-          tournamentDate: new Date(dto.tournamentDate),
-        }),
-        ...(dto.registrationStart !== undefined && {
-          registrationStart: new Date(dto.registrationStart),
-        }),
-        ...(dto.registrationEnd !== undefined && {
-          registrationEnd: new Date(dto.registrationEnd),
-        }),
-        ...(dto.minPlayers !== undefined && { minPlayers: dto.minPlayers }),
-        ...(dto.maxPlayers !== undefined && { maxPlayers: dto.maxPlayers }),
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.content !== undefined && { content: dto.content as any }),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.tournamentConfig.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.totalRounds !== undefined && { totalRounds: dto.totalRounds }),
+          ...(dto.rounds !== undefined && { rounds: dto.rounds as any }),
+          ...(dto.tournamentDate !== undefined && {
+            tournamentDate: new Date(dto.tournamentDate),
+          }),
+          ...(dto.registrationStart !== undefined && {
+            registrationStart: new Date(dto.registrationStart),
+          }),
+          ...(dto.registrationEnd !== undefined && {
+            registrationEnd: new Date(dto.registrationEnd),
+          }),
+          ...(dto.minPlayers !== undefined && { minPlayers: dto.minPlayers }),
+          ...(dto.maxPlayers !== undefined && { maxPlayers: dto.maxPlayers }),
+          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.content !== undefined && { content: dto.content as any }),
+        },
+      });
+
+      // REGISTRATION_CLOSED: create matches + games for each round
+      if (dto.status === TournamentStatus.REGISTRATION_CLOSED) {
+        await this.createMatchesForTournament(existing, tx);
+      }
+
+      // IN_PROGRESS: advance all WAITING matches to IN_PROGRESS
+      if (dto.status === TournamentStatus.IN_PROGRESS) {
+        await tx.match.updateMany({
+          where: {
+            seasonId: existing.seasonId,
+            status: MatchStatus.WAITING,
+          },
+          data: { status: MatchStatus.IN_PROGRESS },
+        });
+      }
     });
 
     return this.findOne(id);
+  }
+
+  private generatePasscode(): string {
+    return Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  }
+
+  private async createMatchesForTournament(
+    config: {
+      id: number;
+      seasonId: number;
+      rounds: any;
+      tournamentDate: Date;
+      minPlayers: number;
+      maxPlayers: number;
+    },
+    tx: any,
+  ) {
+    const rounds = config.rounds as Array<{
+      roundNumber: number;
+      inGameMode: string;
+      league?: string;
+      offsetMinutes?: number;
+    }>;
+
+    // Get all registered participants
+    const registrations = await tx.tournamentRegistration.findMany({
+      where: { tournamentConfigId: config.id },
+      select: { userId: true },
+    });
+    const userIds = registrations.map((r: { userId: number }) => r.userId);
+
+    for (const round of rounds) {
+      const scheduledStart = new Date(config.tournamentDate);
+      if (round.offsetMinutes) {
+        scheduledStart.setMinutes(scheduledStart.getMinutes() + round.offsetMinutes);
+      }
+      // Deadline: 15 minutes after scheduled start
+      const deadline = new Date(scheduledStart);
+      deadline.setMinutes(deadline.getMinutes() + 15);
+
+      // Create match
+      const match = await tx.match.create({
+        data: {
+          seasonId: config.seasonId,
+          matchNumber: round.roundNumber,
+          status: MatchStatus.WAITING,
+          minPlayers: config.minPlayers,
+          maxPlayers: config.maxPlayers,
+          scheduledStart,
+          deadline,
+        },
+      });
+
+      // Add all registered users as match participants
+      await tx.matchParticipant.createMany({
+        data: userIds.map((userId: number) => ({
+          matchId: match.id,
+          userId,
+        })),
+      });
+
+      // Create game for this round
+      await tx.game.create({
+        data: {
+          matchId: match.id,
+          gameNumber: 1,
+          inGameMode: round.inGameMode as any,
+          leagueType: (round.league as any) || null,
+          passcode: this.generatePasscode(),
+        },
+      });
+    }
   }
 
   async register(tournamentConfigId: number, userId: number, prizeEntry?: boolean) {

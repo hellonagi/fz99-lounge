@@ -115,6 +115,7 @@ interface ScoreSubmissionFormProps {
   onScoreSubmitted?: () => void;
   participants?: Participant[];
   title?: string;
+  apiCategory?: string;
 }
 
 export function ScoreSubmissionForm({
@@ -125,6 +126,7 @@ export function ScoreSubmissionForm({
   onScoreSubmitted,
   participants,
   title,
+  apiCategory,
 }: ScoreSubmissionFormProps) {
   const t = useTranslations('scoreSubmission');
   const [success, setSuccess] = useState(false);
@@ -278,7 +280,7 @@ export function ScoreSubmissionForm({
         }
       }
 
-      await gamesApi.submitScore(mode, season, game, {
+      await gamesApi.submitScore(apiCategory || mode, season, game, {
         machine: (data.machine as string) || undefined,
         assistEnabled: false,
         raceResults,

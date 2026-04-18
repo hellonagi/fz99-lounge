@@ -304,7 +304,7 @@ export class GamesService {
     }
 
     const eventCategory = game.match.season.event.category;
-    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
+    const isGpMode = this.isGpModeForGame(eventCategory, game.inGameMode);
 
     // Check match status - allow score submission during IN_PROGRESS
     // Moderator proxy submission is also allowed during COMPLETED
@@ -596,7 +596,7 @@ export class GamesService {
       throw new NotFoundException('Participant not found in this game');
     }
 
-    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
+    const isGpMode = this.isGpModeForGame(eventCategory, game.inGameMode);
     const maxRaces = isGpMode ? 5 : 3;
 
     // Per-race max positions and elimination thresholds
@@ -750,6 +750,17 @@ export class GamesService {
     });
 
     return updatedParticipant;
+  }
+
+  /**
+   * Determine GP mode based on event category and in-game mode.
+   * For TOURNAMENT category, derive from game's actual inGameMode.
+   */
+  private isGpModeForGame(eventCategory: EventCategory, inGameMode: string): boolean {
+    if (eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP) return true;
+    if (eventCategory === EventCategory.CLASSIC || eventCategory === EventCategory.TEAM_CLASSIC) return false;
+    // TOURNAMENT: derive from game's actual mode
+    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(inGameMode);
   }
 
   /**

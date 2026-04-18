@@ -58,6 +58,30 @@
     "banner": {
       "entryOpen": "Entry Open",
       "entry": "ENTRY"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "rounds": "Rounds",
+      "standings": "Standings"
+    },
+    "round": {
+      "notStarted": "This round has not started yet",
+      "passcode": "Passcode",
+      "results": "Results",
+      "noResults": "No results yet",
+      "submitScore": "Submit Score",
+      "alreadySubmitted": "Score already submitted",
+      "generatePasscode": "Generate Passcode",
+      "generatingPasscode": "Generating...",
+      "passcodeGenerated": "Passcode generated",
+      "scheduled": "Scheduled: {time}"
+    },
+    "standings": {
+      "rank": "#",
+      "player": "Player",
+      "roundPrefix": "R",
+      "total": "Total",
+      "noData": "No standings data available"
     }
   },
   "adminTournament": {
