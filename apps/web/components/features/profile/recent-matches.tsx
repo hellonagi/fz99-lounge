@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { usersApi } from '@/lib/api';
 import { UserMatchHistoryEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,7 @@ interface RecentMatchesProps {
 }
 
 export function RecentMatches({ userId, category, initialLimit = 10, seasonNumber }: RecentMatchesProps) {
+  const locale = useLocale();
   const [matches, setMatches] = useState<UserMatchHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -146,7 +148,7 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
           {matches.map((match) => (
             <Link
               key={`${match.matchId}-${match.completedAt}`}
-              href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
+              href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
               className="flex items-center gap-3 px-4 py-3 hover:bg-gray-700/30 transition-colors"
             >
               {/* Position */}

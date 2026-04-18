@@ -66,7 +66,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
         {validMatches.map((match) => (
           <Link
             key={match.id}
-            href={`/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
+            href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
             className="block"
           >
             <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 transition-colors">

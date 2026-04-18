@@ -55,6 +55,7 @@ interface MatchCardProps {
 function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout = 'stacked' }: MatchCardProps) {
   const tHero = useTranslations('matchHero');
   const tCal = useTranslations('weeklyCalendar');
+  const locale = useLocale();
   const { isAuthenticated, user } = useAuthStore();
   const category = match.season?.event?.category;
   const isInMatch =
@@ -76,7 +77,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
     <>
       {isInProgress && match.matchNumber && (
         <Link
-          href={`/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
+          href={`/${locale}/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
           className={cn(buttonVariants({ size: 'xs' }), 'gap-1 bg-red-500/20 text-red-300 hover:bg-red-500/30')}
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -88,7 +89,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
       )}
       {isFinished && match.matchNumber && (
         <Link
-          href={`/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
+          href={`/${locale}/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
           className={cn(buttonVariants({ size: 'xs' }), 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30')}
         >
           {tCal('ended')}
