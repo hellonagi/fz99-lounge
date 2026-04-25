@@ -55,6 +55,18 @@ export class TournamentsController {
     return this.tournamentsService.update(parseInt(id, 10), dto);
   }
 
+  @Post(':id/start-countdown')
+  @Roles(UserRole.ADMIN)
+  async startCountdown(@Param('id') id: string) {
+    return this.tournamentsService.startCountdown(parseInt(id, 10));
+  }
+
+  @Post(':id/hide-passcode')
+  @Roles(UserRole.ADMIN)
+  async hidePasscode(@Param('id') id: string) {
+    return this.tournamentsService.hidePasscode(parseInt(id, 10));
+  }
+
   @Post(':id/advance-round')
   @Roles(UserRole.ADMIN)
   async advanceRound(@Param('id') id: string) {

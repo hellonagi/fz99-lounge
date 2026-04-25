@@ -502,6 +502,165 @@ export class TournamentsService {
     return { message: 'Registration cancelled' };
   }
 
+  async startCountdown(tournamentConfigId: number, countdownSeconds = 30) {
+    const config = await this.prisma.tournamentConfig.findUnique({
+      where: { id: tournamentConfigId },
+      include: { season: true },
+    });
+
+    if (!config) throw new NotFoundException('Tournament not found');
+
+    if (
+      config.status !== TournamentStatus.REGISTRATION_CLOSED &&
+      config.status !== TournamentStatus.IN_PROGRESS
+    ) {
+      throw new BadRequestException(
+        'Tournament must be REGISTRATION_CLOSED or IN_PROGRESS',
+      );
+    }
+
+    const wasRegistrationClosed =
+      config.status === TournamentStatus.REGISTRATION_CLOSED;
+
+    let didAdvance = false;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // REGISTRATION_CLOSED → IN_PROGRESS transition + first match to IN_PROGRESS
+      if (wasRegistrationClosed) {
+        await tx.tournamentConfig.update({
+          where: { id: tournamentConfigId },
+          data: { status: TournamentStatus.IN_PROGRESS },
+        });
+        await tx.match.updateMany({
+          where: {
+            seasonId: config.seasonId,
+            status: MatchStatus.WAITING,
+            matchNumber: 1,
+          },
+          data: { status: MatchStatus.IN_PROGRESS },
+        });
+      }
+
+      // Get the current IN_PROGRESS match's game
+      let currentMatch = await tx.match.findFirst({
+        where: {
+          seasonId: config.seasonId,
+          status: MatchStatus.IN_PROGRESS,
+        },
+        include: { games: { take: 1 } },
+        orderBy: { matchNumber: 'asc' },
+      });
+
+      // If current match's passcode was hidden (epoch sentinel), auto-advance to next round
+      if (
+        currentMatch?.games[0]?.passcodeRevealTime &&
+        new Date(currentMatch.games[0].passcodeRevealTime).getTime() <= 0
+      ) {
+        await tx.match.update({
+          where: { id: currentMatch.id },
+          data: { status: MatchStatus.COMPLETED },
+        });
+
+        const nextMatch = await tx.match.findFirst({
+          where: {
+            seasonId: config.seasonId,
+            status: MatchStatus.WAITING,
+          },
+          orderBy: { matchNumber: 'asc' },
+        });
+
+        if (!nextMatch) {
+          throw new BadRequestException('No next round available');
+        }
+
+        await tx.match.update({
+          where: { id: nextMatch.id },
+          data: { status: MatchStatus.IN_PROGRESS },
+        });
+
+        didAdvance = true;
+
+        // Re-fetch the now-current IN_PROGRESS match
+        currentMatch = await tx.match.findFirst({
+          where: {
+            seasonId: config.seasonId,
+            status: MatchStatus.IN_PROGRESS,
+          },
+          include: { games: { take: 1 } },
+          orderBy: { matchNumber: 'asc' },
+        });
+      }
+
+      if (!currentMatch?.games[0]) {
+        throw new BadRequestException('No active game found');
+      }
+
+      const game = currentMatch.games[0];
+      const revealAt = new Date(Date.now() + countdownSeconds * 1000);
+
+      await tx.game.update({
+        where: { id: game.id },
+        data: { passcodeRevealTime: revealAt },
+      });
+
+      return {
+        gameId: game.id,
+        passcodeRevealTime: revealAt.toISOString(),
+        tournament: await this.findOne(tournamentConfigId, tx),
+      };
+    });
+
+    this.eventEmitter.emit('game.passcodeCountdownStarted', {
+      gameId: result.gameId,
+      passcodeRevealTime: result.passcodeRevealTime,
+    });
+
+    if (wasRegistrationClosed || didAdvance) {
+      this.eventEmitter.emit('game.statusChanged', {
+        gameId: result.gameId,
+        status: MatchStatus.IN_PROGRESS,
+      });
+    }
+
+    return result.tournament;
+  }
+
+  async hidePasscode(tournamentConfigId: number) {
+    const config = await this.prisma.tournamentConfig.findUnique({
+      where: { id: tournamentConfigId },
+    });
+
+    if (!config) throw new NotFoundException('Tournament not found');
+
+    if (config.status !== TournamentStatus.IN_PROGRESS) {
+      throw new BadRequestException('Tournament is not in progress');
+    }
+
+    const currentMatch = await this.prisma.match.findFirst({
+      where: {
+        seasonId: config.seasonId,
+        status: MatchStatus.IN_PROGRESS,
+      },
+      include: { games: { take: 1 } },
+      orderBy: { matchNumber: 'asc' },
+    });
+
+    if (!currentMatch?.games[0]) {
+      throw new BadRequestException('No active game found');
+    }
+
+    const game = currentMatch.games[0];
+
+    await this.prisma.game.update({
+      where: { id: game.id },
+      data: { passcodeRevealTime: new Date(0) },
+    });
+
+    this.eventEmitter.emit('game.passcodeHidden', { gameId: game.id });
+
+    return this.findOne(tournamentConfigId);
+  }
+
   async getStreams(tournamentConfigId: number) {
     return this.prisma.tournamentStream.findMany({
       where: { tournamentConfigId },

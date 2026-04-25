@@ -111,6 +111,7 @@ export interface Game {
   leagueType?: League | null;
   passcode: string;
   passcodePublishedAt?: string | null;
+  passcodeRevealTime?: string | null;
   startedAt?: string | null;
   tracks?: number[] | null; // CLASSIC用: 各レースのコースID [R1, R2, R3]
   // Relations

@@ -82,6 +82,14 @@
       "confirmFinish": "End the last round and finish the tournament?",
       "noInProgress": "No round is currently in progress."
     },
+    "countdown": {
+      "revealIn": "Passcode reveals in",
+      "next": "Next",
+      "passcodeNotice": "The passcode will appear here when it's time.",
+      "startCountdown": "Start Countdown",
+      "startGP": "Start GP{round} Countdown",
+      "hidePasscode": "Hide Passcode"
+    },
     "standings": {
       "rank": "#",
       "player": "Player",

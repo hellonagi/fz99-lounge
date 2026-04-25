@@ -318,6 +318,8 @@ export const tournamentsApi = {
   removeStream: (id: number, streamId: number) => api.delete(`/tournaments/${id}/streams/${streamId}`),
   setFeaturedStream: (id: number, streamId: number) => api.patch(`/tournaments/${id}/streams/${streamId}/featured`),
   advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
+  startCountdown: (id: number) => api.post(`/tournaments/${id}/start-countdown`),
+  hidePasscode: (id: number) => api.post(`/tournaments/${id}/hide-passcode`),
 };
 
 // Permissions API (ADMIN only)

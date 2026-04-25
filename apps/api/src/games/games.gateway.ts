@@ -126,6 +126,27 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server.to(`game:${payload.gameId}`).emit('participantNoShow', payload.participant);
   }
 
+  @OnEvent('game.passcodeCountdownStarted')
+  handlePasscodeCountdownStarted(payload: {
+    gameId: number;
+    passcodeRevealTime: string;
+  }) {
+    this.server.to(`game:${payload.gameId}`).emit('passcodeCountdownStarted', {
+      passcodeRevealTime: payload.passcodeRevealTime,
+    });
+    console.log(
+      `Passcode countdown started emitted to game room: ${payload.gameId}`,
+    );
+  }
+
+  @OnEvent('game.passcodeHidden')
+  handlePasscodeHidden(payload: { gameId: number }) {
+    this.server.to(`game:${payload.gameId}`).emit('passcodeHidden', {});
+    console.log(
+      `Passcode hidden emitted to game room: ${payload.gameId}`,
+    );
+  }
+
   @OnEvent('game.screenshotUpdated')
   handleScreenshotUpdated(payload: {
     gameId: number;

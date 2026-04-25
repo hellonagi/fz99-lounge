@@ -544,7 +544,7 @@ class ScoreSimulator {
           await this.simulateGradual(2000);
           break;
         case 'fast':
-          await this.simulateGradual(500);
+          await this.simulateGradual(200);
           break;
         case 'burst':
           await this.simulateBurst();

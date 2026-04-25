@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { KeyRound, Loader2, ChevronRight } from 'lucide-react';
+import { KeyRound, Loader2, ChevronRight, Play, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -86,26 +86,135 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
     ? tournament.rounds.find((r) => r.roundNumber === inProgressMatch.matchNumber)
     : null;
   const inProgressGame = inProgressMatch?.games?.[0];
-  const isParticipant = inProgressMatch?.participants?.some((p) => p.userId === user?.id);
+
+  // Participant check across all matches (REGISTRATION_CLOSED has no IN_PROGRESS match)
+  const isParticipant = matches.some(m => m.participants?.some(p => p.userId === user?.id));
+
+  // Countdown timer
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const passcodeRevealTime = inProgressGame?.passcodeRevealTime;
+
+  // Epoch sentinel means "hidden after reveal" — treat as no countdown
+  const isPasscodeHidden = !!passcodeRevealTime && new Date(passcodeRevealTime).getTime() <= 0;
+
+  useEffect(() => {
+    if (!passcodeRevealTime || new Date(passcodeRevealTime).getTime() <= 0) {
+      setRemainingMs(null);
+      return;
+    }
+    const revealTime = new Date(passcodeRevealTime).getTime();
+    const update = () => {
+      const diff = revealTime - Date.now();
+      setRemainingMs(diff > 0 ? diff : 0);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [passcodeRevealTime]);
+
+  const formatCountdown = (ms: number): string => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // "Next" banner target: REGISTRATION_CLOSED → round 1, IN_PROGRESS + no reveal → next WAITING round
+  const nextWaitingMatch = useMemo(() =>
+    matches.filter(m => m.status === 'WAITING').sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0],
+    [matches],
+  );
+  const nextBannerRound = useMemo(() => {
+    if (tournament.status === 'REGISTRATION_CLOSED') return tournament.rounds[0] ?? null;
+    if (tournament.status === 'IN_PROGRESS') {
+      if (!passcodeRevealTime && inProgressRound) {
+        // Countdown never started → show current round info
+        return inProgressRound;
+      }
+      if (isPasscodeHidden && nextWaitingMatch) {
+        // Passcode hidden → show next waiting round info
+        return tournament.rounds.find(r => r.roundNumber === nextWaitingMatch.matchNumber) ?? null;
+      }
+    }
+    return null;
+  }, [tournament.status, tournament.rounds, passcodeRevealTime, isPasscodeHidden, inProgressRound, nextWaitingMatch]);
+
+  const nextBannerTime = useMemo(() => {
+    if (!nextBannerRound) return null;
+    const time = new Date(tournament.tournamentDate);
+    if (nextBannerRound.offsetMinutes) {
+      time.setMinutes(time.getMinutes() + nextBannerRound.offsetMinutes);
+    }
+    return time;
+  }, [nextBannerRound, tournament.tournamentDate]);
+
+  // WebSocket at TournamentRoundsTab level — always mounted regardless of active tab
+  const allGameIds = useMemo(() =>
+    matches.map(m => m.games?.[0]?.id).filter((id): id is number => !!id),
+    [matches],
+  );
+
+  useGameSocket({
+    gameId: allGameIds,
+    onPasscodeCountdownStarted: () => onUpdate(),
+    onPasscodeHidden: () => onUpdate(),
+    onStatusChanged: () => onUpdate(),
+  });
+
+  const showNextBanner = isParticipant && !!nextBannerRound;
+  const showCountdownBanner = isParticipant && remainingMs !== null && remainingMs > 0 && inProgressRound;
+  const showPasscodeBanner = isParticipant && remainingMs !== null && remainingMs === 0 && inProgressGame?.passcode && inProgressRound;
+
+  // Resolve round icon for countdown/revealed banners
+  const bannerRoundIcon = inProgressRound
+    ? getRoundIcon(inProgressRound.inGameMode, inProgressRound.league)
+    : null;
 
   return (
     <div className="space-y-4">
-      {/* Passcode banner — visible to participants only */}
-      {isParticipant && inProgressGame?.passcode && inProgressRound && (
-        <div className="rounded-lg border text-gray-100 relative bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-pink-900/10 pointer-events-none" />
-          <div className="relative">
-            <div className="p-3 sm:p-6 pt-0 text-center">
-              <p className="text-sm text-gray-400 mb-1">
-                {inProgressRound.inGameMode.replace(/_/g, ' ')}
-                {inProgressRound.league && ` - ${inProgressRound.league.replace(/_/g, ' ')}`}
+      {/* Banner — fixed height, 3 states: next / countdown / passcode */}
+      {(showNextBanner || showCountdownBanner || showPasscodeBanner) && (() => {
+        // Determine which round to show in banner header
+        const bannerRound = showNextBanner ? nextBannerRound : inProgressRound;
+        return (
+          <div className="rounded-lg border text-gray-100 relative bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-pink-900/10 pointer-events-none" />
+            <div className="relative py-5 flex flex-col items-center justify-center text-center">
+              {/* Line 1: Mode / League — Time */}
+              <p className="text-sm text-gray-400">
+                {bannerRound!.inGameMode.replace(/_/g, ' ')}
+                {bannerRound!.league && ` — ${bannerRound!.league.replace(/_/g, ' ')}`}
+                {(() => {
+                  const roundForTime = showNextBanner ? nextBannerRound : inProgressRound;
+                  if (!roundForTime) return null;
+                  const t = new Date(tournament.tournamentDate);
+                  if (roundForTime.offsetMinutes) t.setMinutes(t.getMinutes() + roundForTime.offsetMinutes);
+                  return ` — ${format.dateTime(t, { hour: '2-digit', minute: '2-digit', timeZone })}`;
+                })()}
               </p>
-              <p className="text-sm text-gray-400 mb-2">{t('round.passcode')}</p>
-              <p className="text-5xl font-black text-white tracking-wider font-mono">{inProgressGame.passcode}</p>
+
+              {/* Line 2: Label */}
+              <p className="text-sm text-gray-400 mt-1">
+                {showNextBanner && t('countdown.passcodeNotice')}
+                {showCountdownBanner && `${t('countdown.revealIn')} ${formatCountdown(remainingMs!)}`}
+                {showPasscodeBanner && t('round.passcode')}
+              </p>
+
+              {/* Line 3: XXXX placeholder or revealed passcode */}
+              {(showNextBanner || showCountdownBanner) && (
+                <p className="text-5xl font-black text-gray-500 tracking-wider font-mono mt-1">
+                  XXXX
+                </p>
+              )}
+              {showPasscodeBanner && (
+                <p className="text-5xl font-black text-white tracking-wider font-mono mt-1">
+                  {inProgressGame!.passcode}
+                </p>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <Tabs value={currentRound} onValueChange={handleTabChange}>
         <TabsList className="flex-wrap">
@@ -338,10 +447,14 @@ interface AdminContentProps {
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
   const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [countdownLoading, setCountdownLoading] = useState(false);
+  const [hideLoading, setHideLoading] = useState(false);
 
   const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
+  const inProgressGame = inProgressMatch?.games?.[0];
 
-  if (!inProgressMatch) {
+  // Show admin panel for REGISTRATION_CLOSED or when IN_PROGRESS match exists
+  if (tournament.status !== 'REGISTRATION_CLOSED' && !inProgressMatch) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -351,15 +464,43 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     );
   }
 
-  const inProgressRound = tournament.rounds.find(
-    (r) => r.roundNumber === inProgressMatch.matchNumber,
-  );
-  const game = inProgressMatch.games?.[0];
+  const inProgressRound = inProgressMatch
+    ? tournament.rounds.find((r) => r.roundNumber === inProgressMatch.matchNumber)
+    : null;
 
   const nextWaiting = matches
     .filter((m) => m.status === 'WAITING')
     .sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0];
-  const isLastRound = !nextWaiting;
+  const isLastRound = inProgressMatch && !nextWaiting;
+
+  const isPasscodeHidden = inProgressGame?.passcodeRevealTime &&
+    new Date(inProgressGame.passcodeRevealTime).getTime() <= 0;
+
+  const passcodeRevealed = inProgressGame?.passcodeRevealTime &&
+    !isPasscodeHidden &&
+    new Date(inProgressGame.passcodeRevealTime) <= new Date();
+
+  const handleStartCountdown = async () => {
+    setCountdownLoading(true);
+    try {
+      await tournamentsApi.startCountdown(tournament.id);
+      // WebSocket (passcodeCountdownStarted / statusChanged) triggers onUpdate
+    } catch {
+    } finally {
+      setCountdownLoading(false);
+    }
+  };
+
+  const handleHidePasscode = async () => {
+    setHideLoading(true);
+    try {
+      await tournamentsApi.hidePasscode(tournament.id);
+      // WebSocket (passcodeHidden) triggers onUpdate
+    } catch {
+    } finally {
+      setHideLoading(false);
+    }
+  };
 
   const handleAdvance = async () => {
     const message = isLastRound ? t('admin.confirmFinish') : t('admin.confirmAdvance');
@@ -374,6 +515,41 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     }
   };
 
+  // REGISTRATION_CLOSED: show Start GP1 Countdown
+  if (tournament.status === 'REGISTRATION_CLOSED') {
+    const firstRound = tournament.rounds[0];
+    return (
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          {firstRound && (
+            <div>
+              <h3 className="text-white font-medium">
+                {t('roundLabel', { number: firstRound.roundNumber })}
+              </h3>
+              <p className="text-sm text-gray-400">
+                {firstRound.inGameMode.replace(/_/g, ' ')}
+                {firstRound.league && ` / ${firstRound.league.replace(/_/g, ' ')}`}
+              </p>
+            </div>
+          )}
+          <Button
+            size="sm"
+            onClick={handleStartCountdown}
+            disabled={countdownLoading}
+          >
+            {countdownLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <Play className="h-3 w-3 mr-1" />
+            )}
+            {t('countdown.startGP', { round: firstRound?.roundNumber || 1 })}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // IN_PROGRESS state
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
@@ -391,26 +567,62 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
         )}
 
         <div className="space-y-3">
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={handleAdvance}
-            disabled={advanceLoading}
-          >
-            {advanceLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <ChevronRight className="h-3 w-3 mr-1" />
-            )}
-            {isLastRound
-              ? t('admin.finishLast', { current: inProgressMatch.matchNumber! })
-              : t('admin.advanceRound', { current: inProgressMatch.matchNumber!, next: nextWaiting.matchNumber! })}
-          </Button>
+          {/* Start Countdown — never started (null) or hidden with next round (auto-advance) */}
+          {(!inProgressGame?.passcodeRevealTime || (isPasscodeHidden && nextWaiting)) && (
+            <Button
+              size="sm"
+              onClick={handleStartCountdown}
+              disabled={countdownLoading}
+            >
+              {countdownLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <Play className="h-3 w-3 mr-1" />
+              )}
+              {isPasscodeHidden && nextWaiting
+                ? t('countdown.startGP', { round: nextWaiting.matchNumber! })
+                : t('countdown.startCountdown')}
+            </Button>
+          )}
+
+          {/* Hide Passcode — when passcode has been revealed */}
+          {passcodeRevealed && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleHidePasscode}
+              disabled={hideLoading}
+            >
+              {hideLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <EyeOff className="h-3 w-3 mr-1" />
+              )}
+              {t('countdown.hidePasscode')}
+            </Button>
+          )}
+
+          {/* Finish tournament — last round after passcode hidden */}
+          {isLastRound && isPasscodeHidden && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleAdvance}
+              disabled={advanceLoading}
+            >
+              {advanceLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <ChevronRight className="h-3 w-3 mr-1" />
+              )}
+              {t('admin.finishLast', { current: inProgressMatch!.matchNumber! })}
+            </Button>
+          )}
 
           <PasscodeSection
             tournament={tournament}
-            match={inProgressMatch}
-            game={game}
+            match={inProgressMatch!}
+            game={inProgressGame}
           />
         </div>
       </CardContent>
@@ -556,6 +768,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
       profileNumber?: number;
       country?: string | null;
       roundScores: Record<number, number | null>;
+      roundFinished: Record<number, boolean>;
       total: number;
     }>();
 
@@ -570,6 +783,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             profileNumber: mp.user?.profileNumber,
             country: (mp.user as any)?.profile?.country ?? null,
             roundScores: {},
+            roundFinished: {},
             total: 0,
           });
         }
@@ -595,6 +809,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             profileNumber: p.user?.profileNumber,
             country: (p.user as any)?.profile?.country ?? null,
             roundScores: {},
+            roundFinished: {},
             total: 0,
           };
           playerMap.set(p.userId, standing);
@@ -602,6 +817,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
 
         const score = p.totalScore ?? 0;
         standing.roundScores[roundNumber] = score;
+        standing.roundFinished[roundNumber] = p.eliminatedAtRace == null;
         standing.total += score;
       }
     }
@@ -618,6 +834,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
           profileNumber: p.user.profileNumber,
           country: null,
           roundScores: {},
+          roundFinished: {},
           total: 0,
         };
         playerMap.set(userId, standing);
@@ -625,6 +842,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
       const oldScore = standing.roundScores[roundNumber] ?? 0;
       const newScore = p.totalScore ?? 0;
       standing.roundScores[roundNumber] = newScore;
+      standing.roundFinished[roundNumber] = p.eliminatedAtRace == null;
       standing.total = standing.total - oldScore + newScore;
     }
 
@@ -689,17 +907,14 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
                       return (
                         <td
                           key={r.roundNumber}
-                          className={cn(
-                            'py-2 px-1 text-gray-100',
-                            score != null ? 'text-right' : 'text-center',
-                          )}
+                          className="py-2 px-1 text-gray-100 text-center"
                         >
                           {score != null ? score : '-'}
                         </td>
                       );
                     })}
                     <td className="py-2 px-1 text-center text-gray-100">
-                      {Object.values(s.roundScores).filter((v) => v != null).length}
+                      {Object.values(s.roundFinished).filter(Boolean).length}
                     </td>
                     <td className="py-2 px-2 text-right font-medium text-white">
                       {s.total}

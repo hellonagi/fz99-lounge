@@ -7,6 +7,10 @@ export interface SplitVoteUpdate {
   votedBy: number;
 }
 
+export interface PasscodeCountdownStartedUpdate {
+  passcodeRevealTime: string;
+}
+
 export interface PasscodeRegeneratedUpdate {
   passcode: string;
   passcodeVersion: number;
@@ -94,6 +98,8 @@ interface UseGameSocketProps {
   onParticipantRejected?: (participant: ParticipantUpdate) => void;
   onScreenshotRequested?: (participant: ParticipantUpdate) => void;
   onParticipantNoShow?: (participant: ParticipantUpdate) => void;
+  onPasscodeCountdownStarted?: (data: PasscodeCountdownStartedUpdate) => void;
+  onPasscodeHidden?: () => void;
 }
 
 export function useGameSocket({
@@ -109,6 +115,8 @@ export function useGameSocket({
   onParticipantRejected,
   onScreenshotRequested,
   onParticipantNoShow,
+  onPasscodeCountdownStarted,
+  onPasscodeHidden,
 }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
@@ -125,6 +133,8 @@ export function useGameSocket({
     onParticipantRejected,
     onScreenshotRequested,
     onParticipantNoShow,
+    onPasscodeCountdownStarted,
+    onPasscodeHidden,
   });
   callbacksRef.current = {
     onScoreUpdated,
@@ -138,6 +148,8 @@ export function useGameSocket({
     onParticipantRejected,
     onScreenshotRequested,
     onParticipantNoShow,
+    onPasscodeCountdownStarted,
+    onPasscodeHidden,
   };
 
   // Normalize to array and create stable key for deps
@@ -209,6 +221,14 @@ export function useGameSocket({
 
     socket.on('participantNoShow', (participant: ParticipantUpdate) => {
       callbacksRef.current.onParticipantNoShow?.(participant);
+    });
+
+    socket.on('passcodeCountdownStarted', (data: PasscodeCountdownStartedUpdate) => {
+      callbacksRef.current.onPasscodeCountdownStarted?.(data);
+    });
+
+    socket.on('passcodeHidden', () => {
+      callbacksRef.current.onPasscodeHidden?.();
     });
 
     return () => {

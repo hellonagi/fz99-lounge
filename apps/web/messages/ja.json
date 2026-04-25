@@ -82,6 +82,14 @@
       "confirmFinish": "最終ラウンドを終了して大会を終了しますか？",
       "noInProgress": "現在進行中のラウンドはありません。"
     },
+    "countdown": {
+      "revealIn": "パスコード公開まで",
+      "next": "次",
+      "passcodeNotice": "時間になるとパスコードがこちらに表示されます",
+      "startCountdown": "カウントダウン開始",
+      "startGP": "GP{round} カウントダウン開始",
+      "hidePasscode": "パスコード非表示"
+    },
     "standings": {
       "rank": "#",
       "player": "プレイヤー",
