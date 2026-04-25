@@ -70,8 +70,9 @@
       "noResults": "結果はまだありません",
       "submitScore": "スコアを送信",
       "alreadySubmitted": "スコア送信済み",
-      "generatePasscode": "パスコード生成",
-      "generatingPasscode": "生成中...",
+      "splitNewPasscodeRevealed": "スプリット — 新パスコード",
+      "generatePasscode": "パスコード再生成",
+      "generatingPasscode": "再生成中...",
       "passcodeGenerated": "パスコードを生成しました",
       "scheduled": "予定: {time}"
     },
@@ -83,12 +84,15 @@
       "noInProgress": "現在進行中のラウンドはありません。"
     },
     "countdown": {
+      "splitNewPasscode": "スプリット — 新パスコード公開まで",
       "revealIn": "パスコード公開まで",
       "next": "次",
       "passcodeNotice": "時間になるとパスコードがこちらに表示されます",
       "startCountdown": "カウントダウン開始",
       "startGP": "GP{round} カウントダウン開始",
-      "hidePasscode": "パスコード非表示"
+      "hidePasscode": "パスコード非表示",
+      "notifySplit": "スプリット通知",
+      "notifyingSplit": "送信中..."
     },
     "standings": {
       "rank": "#",
@@ -584,6 +588,14 @@
     "loginToJoin": "エントリーするにはログインが必要です。右上のDiscordボタンからログインしてください。",
     "entry": "ENTRY",
     "tournament": "TOURNAMENT"
+  },
+  "discord": {
+    "assignRoles": "Discordロール付与",
+    "assigningRoles": "ロール付与中...",
+    "assigned": "{count}人に付与",
+    "alreadyHad": "{count}人は付与済み",
+    "notInServer": "Discordサーバー未参加",
+    "notInServerCount": "{count}人がDiscordサーバー未参加"
   },
   "createMatch": {
     "title": "マッチ作成",

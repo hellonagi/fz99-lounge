@@ -320,6 +320,9 @@ export const tournamentsApi = {
   advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
   startCountdown: (id: number) => api.post(`/tournaments/${id}/start-countdown`),
   hidePasscode: (id: number) => api.post(`/tournaments/${id}/hide-passcode`),
+  assignDiscordRoles: (id: number) => api.post(`/tournaments/${id}/assign-discord-roles`),
+  notifySplit: (id: number) => api.post(`/tournaments/${id}/notify-split`),
+  regeneratePasscode: (id: number) => api.post(`/tournaments/${id}/regenerate-passcode`),
 };
 
 // Permissions API (ADMIN only)

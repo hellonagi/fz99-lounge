@@ -116,6 +116,7 @@ interface ScoreSubmissionFormProps {
   participants?: Participant[];
   title?: string;
   apiCategory?: string;
+  hideDescription?: boolean;
 }
 
 export function ScoreSubmissionForm({
@@ -127,6 +128,7 @@ export function ScoreSubmissionForm({
   participants,
   title,
   apiCategory,
+  hideDescription,
 }: ScoreSubmissionFormProps) {
   const t = useTranslations('scoreSubmission');
   const [success, setSuccess] = useState(false);
@@ -307,11 +309,13 @@ export function ScoreSubmissionForm({
       <h3 className="text-lg font-bold text-white mb-1">
         {title || (isModeratorMode ? t('moderatorTitle') : t('title'))}
       </h3>
-      <p className="text-sm text-gray-400 mb-4">
-        {isModeratorMode
-          ? t('moderatorDescription')
-          : t('description', { deadline: formattedDeadline })}
-      </p>
+      {!hideDescription && (
+        <p className="text-sm text-gray-400 mb-4">
+          {isModeratorMode
+            ? t('moderatorDescription')
+            : t('description', { deadline: formattedDeadline })}
+        </p>
+      )}
 
       {isModeratorMode && (
         <div className="mb-4">

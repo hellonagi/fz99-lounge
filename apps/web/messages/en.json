@@ -70,8 +70,9 @@
       "noResults": "No results yet",
       "submitScore": "Submit Score",
       "alreadySubmitted": "Score already submitted",
-      "generatePasscode": "Generate Passcode",
-      "generatingPasscode": "Generating...",
+      "splitNewPasscodeRevealed": "Split — New Passcode",
+      "generatePasscode": "Regenerate Passcode",
+      "generatingPasscode": "Regenerating...",
       "passcodeGenerated": "Passcode generated",
       "scheduled": "Scheduled: {time}"
     },
@@ -83,12 +84,15 @@
       "noInProgress": "No round is currently in progress."
     },
     "countdown": {
+      "splitNewPasscode": "Split — New passcode reveals in",
       "revealIn": "Passcode reveals in",
       "next": "Next",
       "passcodeNotice": "The passcode will appear here when it's time.",
       "startCountdown": "Start Countdown",
       "startGP": "Start GP{round} Countdown",
-      "hidePasscode": "Hide Passcode"
+      "hidePasscode": "Hide Passcode",
+      "notifySplit": "Notify Split",
+      "notifyingSplit": "Sending..."
     },
     "standings": {
       "rank": "#",
@@ -585,6 +589,14 @@
     "loginToJoin": "Please log in to join. Use the Discord button in the top right corner.",
     "entry": "ENTRY",
     "tournament": "TOURNAMENT"
+  },
+  "discord": {
+    "assignRoles": "Assign Discord Roles",
+    "assigningRoles": "Assigning roles...",
+    "assigned": "{count} assigned",
+    "alreadyHad": "{count} already had role",
+    "notInServer": "Not in Discord server",
+    "notInServerCount": "{count} participants not in Discord server"
   },
   "createMatch": {
     "title": "Create Match",

@@ -67,10 +67,28 @@ export class TournamentsController {
     return this.tournamentsService.hidePasscode(parseInt(id, 10));
   }
 
+  @Post(':id/notify-split')
+  @Roles(UserRole.ADMIN)
+  async notifySplit(@Param('id') id: string) {
+    return this.tournamentsService.notifySplit(parseInt(id, 10));
+  }
+
+  @Post(':id/regenerate-passcode')
+  @Roles(UserRole.ADMIN)
+  async regeneratePasscode(@Param('id') id: string) {
+    return this.tournamentsService.regeneratePasscode(parseInt(id, 10));
+  }
+
   @Post(':id/advance-round')
   @Roles(UserRole.ADMIN)
   async advanceRound(@Param('id') id: string) {
     return this.tournamentsService.advanceRound(parseInt(id, 10));
+  }
+
+  @Post(':id/assign-discord-roles')
+  @Roles(UserRole.ADMIN)
+  async assignDiscordRoles(@Param('id') id: string) {
+    return this.tournamentsService.assignDiscordRoles(parseInt(id, 10));
   }
 
   @Post(':id/register')

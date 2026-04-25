@@ -100,7 +100,7 @@ export default function Home() {
         setOpenTournaments(
           response.data.filter((t: any) => t.status === 'REGISTRATION_OPEN')
         );
-        const inProgress = response.data.find((t: any) => t.status === 'IN_PROGRESS');
+        const inProgress = response.data.find((t: any) => t.status === 'REGISTRATION_CLOSED' || t.status === 'IN_PROGRESS');
         if (inProgress) {
           setInProgressTournament(inProgress);
           try {

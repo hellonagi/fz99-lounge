@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { KeyRound, Loader2, ChevronRight, Play, EyeOff } from 'lucide-react';
+import { KeyRound, Loader2, ChevronRight, Play, EyeOff, Shield, AlertTriangle, MessageSquareWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -164,6 +164,7 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
   const showNextBanner = isParticipant && !!nextBannerRound;
   const showCountdownBanner = isParticipant && remainingMs !== null && remainingMs > 0 && inProgressRound;
   const showPasscodeBanner = isParticipant && remainingMs !== null && remainingMs === 0 && inProgressGame?.passcode && inProgressRound;
+  const isSplit = (inProgressGame?.passcodeVersion ?? 1) > 1;
 
   // Resolve round icon for countdown/revealed banners
   const bannerRoundIcon = inProgressRound
@@ -196,14 +197,19 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
               {/* Line 2: Label */}
               <p className="text-sm text-gray-400 mt-1">
                 {showNextBanner && t('countdown.passcodeNotice')}
-                {showCountdownBanner && `${t('countdown.revealIn')} ${formatCountdown(remainingMs!)}`}
-                {showPasscodeBanner && t('round.passcode')}
+                {showCountdownBanner && (isSplit ? t('countdown.splitNewPasscode') : t('countdown.revealIn'))}
+                {showPasscodeBanner && (isSplit ? t('round.splitNewPasscodeRevealed') : t('round.passcode'))}
               </p>
 
-              {/* Line 3: XXXX placeholder or revealed passcode */}
-              {(showNextBanner || showCountdownBanner) && (
+              {/* Line 3: XXXX / countdown / passcode */}
+              {showNextBanner && (
                 <p className="text-5xl font-black text-gray-500 tracking-wider font-mono mt-1">
                   XXXX
+                </p>
+              )}
+              {showCountdownBanner && (
+                <p className="text-5xl font-black text-white tracking-wider font-mono mt-1">
+                  {formatCountdown(remainingMs!)}
                 </p>
               )}
               {showPasscodeBanner && (
@@ -446,9 +452,17 @@ interface AdminContentProps {
 
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
+  const td = useTranslations('discord');
   const [advanceLoading, setAdvanceLoading] = useState(false);
   const [countdownLoading, setCountdownLoading] = useState(false);
   const [hideLoading, setHideLoading] = useState(false);
+  const [splitLoading, setSplitLoading] = useState(false);
+  const [discordRoleLoading, setDiscordRoleLoading] = useState(false);
+  const [discordRoleResult, setDiscordRoleResult] = useState<{
+    assigned: number;
+    alreadyHad: number;
+    notInServer: Array<{ displayName: string; discordId: string }>;
+  } | null>(null);
 
   const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
   const inProgressGame = inProgressMatch?.games?.[0];
@@ -515,6 +529,27 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     }
   };
 
+  const handleAssignDiscordRoles = async () => {
+    setDiscordRoleLoading(true);
+    try {
+      const res = await tournamentsApi.assignDiscordRoles(tournament.id);
+      setDiscordRoleResult(res.data);
+    } catch {
+    } finally {
+      setDiscordRoleLoading(false);
+    }
+  };
+
+  const handleNotifySplit = async () => {
+    setSplitLoading(true);
+    try {
+      await tournamentsApi.notifySplit(tournament.id);
+    } catch {
+    } finally {
+      setSplitLoading(false);
+    }
+  };
+
   // REGISTRATION_CLOSED: show Start GP1 Countdown
   if (tournament.status === 'REGISTRATION_CLOSED') {
     const firstRound = tournament.rounds[0];
@@ -544,6 +579,12 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             )}
             {t('countdown.startGP', { round: firstRound?.roundNumber || 1 })}
           </Button>
+
+          <DiscordRoleSection
+            loading={discordRoleLoading}
+            result={discordRoleResult}
+            onAssign={handleAssignDiscordRoles}
+          />
         </CardContent>
       </Card>
     );
@@ -602,6 +643,23 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             </Button>
           )}
 
+          {/* Notify Split — when passcode has been revealed */}
+          {passcodeRevealed && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleNotifySplit}
+              disabled={splitLoading}
+            >
+              {splitLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <MessageSquareWarning className="h-3 w-3 mr-1" />
+              )}
+              {splitLoading ? t('countdown.notifyingSplit') : t('countdown.notifySplit')}
+            </Button>
+          )}
+
           {/* Finish tournament — last round after passcode hidden */}
           {isLastRound && isPasscodeHidden && (
             <Button
@@ -624,6 +682,12 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             match={inProgressMatch!}
             game={inProgressGame}
           />
+
+          <DiscordRoleSection
+            loading={discordRoleLoading}
+            result={discordRoleResult}
+            onAssign={handleAssignDiscordRoles}
+          />
         </div>
       </CardContent>
     </Card>
@@ -639,22 +703,19 @@ interface PasscodeSectionProps {
 function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
   const t = useTranslations('tournament');
   const [generating, setGenerating] = useState(false);
-  const [passcode, setPasscode] = useState<string | null>(game?.passcode || null);
   const [error, setError] = useState<string | null>(null);
 
+  const isPasscodeHidden = !!game?.passcodeRevealTime &&
+    new Date(game.passcodeRevealTime).getTime() <= 0;
+
   const handleGenerate = async () => {
-    if (!tournament.season) return;
     setGenerating(true);
     setError(null);
     try {
-      const res = await gamesApi.regeneratePasscode(
-        'tournament',
-        tournament.season.seasonNumber,
-        match.matchNumber!,
-      );
-      setPasscode(res.data.passcode);
+      await tournamentsApi.regeneratePasscode(tournament.id);
+      // WebSocket event triggers parent refetch, no need to update local state
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to generate passcode');
+      setError(err.response?.data?.message || 'Failed to regenerate passcode');
     } finally {
       setGenerating(false);
     }
@@ -662,18 +723,18 @@ function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
 
   return (
     <div className="space-y-2">
-      {passcode && (
+      {game?.passcode && !isPasscodeHidden && (
         <div className="flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-yellow-400" />
           <span className="text-sm text-gray-300">{t('round.passcode')}:</span>
-          <span className="font-mono text-lg text-yellow-400 font-bold">{passcode}</span>
+          <span className="font-mono text-lg text-yellow-400 font-bold">{game.passcode}</span>
         </div>
       )}
       <Button
         variant="outline"
         size="sm"
         onClick={handleGenerate}
-        disabled={generating}
+        disabled={generating || isPasscodeHidden}
       >
         {generating ? (
           <>
@@ -688,6 +749,62 @@ function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+      )}
+    </div>
+  );
+}
+
+interface DiscordRoleSectionProps {
+  loading: boolean;
+  result: {
+    assigned: number;
+    alreadyHad: number;
+    notInServer: Array<{ displayName: string; discordId: string }>;
+  } | null;
+  onAssign: () => void;
+}
+
+function DiscordRoleSection({ loading, result, onAssign }: DiscordRoleSectionProps) {
+  const t = useTranslations('discord');
+
+  return (
+    <div className="border-t border-gray-700 pt-3 mt-3 space-y-2">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={onAssign}
+        disabled={loading}
+      >
+        {loading ? (
+          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+        ) : (
+          <Shield className="h-3 w-3 mr-1" />
+        )}
+        {loading ? t('assigningRoles') : t('assignRoles')}
+      </Button>
+
+      {result && (
+        <div className="space-y-2">
+          <p className="text-sm text-gray-300">
+            {t('assigned', { count: result.assigned })}
+            {' / '}
+            {t('alreadyHad', { count: result.alreadyHad })}
+          </p>
+
+          {result.notInServer.length > 0 && (
+            <div className="rounded-md border border-yellow-600/40 bg-yellow-900/20 p-3">
+              <div className="flex items-center gap-1.5 text-yellow-400 text-sm font-medium mb-1">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {t('notInServerCount', { count: result.notInServer.length })}
+              </div>
+              <ul className="text-sm text-gray-300 space-y-0.5">
+                {result.notInServer.map((u) => (
+                  <li key={u.discordId}>{u.displayName}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -710,6 +827,7 @@ function ParticipantSection({ tournament, match, round }: ParticipantSectionProp
           season={tournament.season.seasonNumber}
           game={match.matchNumber!}
           deadline={match.deadline}
+          hideDescription
         />
       )}
     </div>
