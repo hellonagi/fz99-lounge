@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
-import { EventCategory, MatchStatus, TournamentStatus } from '@prisma/client';
+import { EventCategory, MatchStatus, StreamPlatform, TournamentStatus } from '@prisma/client';
 
 const STATUS_ORDER: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -155,7 +155,13 @@ export class TournamentsService {
                     participants: {
                       include: {
                         user: {
-                          select: { id: true, profileNumber: true, displayName: true, avatarHash: true },
+                          select: {
+                            id: true,
+                            profileNumber: true,
+                            displayName: true,
+                            avatarHash: true,
+                            profile: { select: { country: true } },
+                          },
                         },
                         raceResults: { orderBy: { raceNumber: 'asc' } },
                       },
@@ -170,6 +176,7 @@ export class TournamentsService {
                         profileNumber: true,
                         displayName: true,
                         avatarHash: true,
+                        profile: { select: { country: true } },
                       },
                     },
                   },
@@ -241,12 +248,13 @@ export class TournamentsService {
         await this.createMatchesForTournament(existing, tx);
       }
 
-      // IN_PROGRESS: advance all WAITING matches to IN_PROGRESS
+      // IN_PROGRESS: advance only the first round (matchNumber: 1) to IN_PROGRESS
       if (dto.status === TournamentStatus.IN_PROGRESS) {
         await tx.match.updateMany({
           where: {
             seasonId: existing.seasonId,
             status: MatchStatus.WAITING,
+            matchNumber: 1,
           },
           data: { status: MatchStatus.IN_PROGRESS },
         });
@@ -328,6 +336,67 @@ export class TournamentsService {
     }
   }
 
+  async advanceRound(tournamentConfigId: number) {
+    const config = await this.prisma.tournamentConfig.findUnique({
+      where: { id: tournamentConfigId },
+      include: { season: true },
+    });
+
+    if (!config) {
+      throw new NotFoundException('Tournament not found');
+    }
+
+    if (config.status !== TournamentStatus.IN_PROGRESS) {
+      throw new BadRequestException('Tournament is not in progress');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Find the current IN_PROGRESS match
+      const currentMatch = await tx.match.findFirst({
+        where: {
+          seasonId: config.seasonId,
+          status: MatchStatus.IN_PROGRESS,
+        },
+        orderBy: { matchNumber: 'asc' },
+      });
+
+      if (!currentMatch) {
+        throw new BadRequestException('No in-progress round found');
+      }
+
+      // Complete the current match
+      await tx.match.update({
+        where: { id: currentMatch.id },
+        data: { status: MatchStatus.COMPLETED },
+      });
+
+      // Find the next WAITING match
+      const nextMatch = await tx.match.findFirst({
+        where: {
+          seasonId: config.seasonId,
+          status: MatchStatus.WAITING,
+        },
+        orderBy: { matchNumber: 'asc' },
+      });
+
+      if (nextMatch) {
+        // Advance next match to IN_PROGRESS
+        await tx.match.update({
+          where: { id: nextMatch.id },
+          data: { status: MatchStatus.IN_PROGRESS },
+        });
+      } else {
+        // No more rounds — transition tournament to RESULTS_PENDING
+        await tx.tournamentConfig.update({
+          where: { id: tournamentConfigId },
+          data: { status: TournamentStatus.RESULTS_PENDING },
+        });
+      }
+
+      return this.findOne(tournamentConfigId, tx);
+    });
+  }
+
   async register(tournamentConfigId: number, userId: number, prizeEntry?: boolean) {
     const config = await this.prisma.tournamentConfig.findUnique({
       where: { id: tournamentConfigId },
@@ -405,6 +474,69 @@ export class TournamentsService {
     });
 
     return { message: 'Registration cancelled' };
+  }
+
+  async getStreams(tournamentConfigId: number) {
+    return this.prisma.tournamentStream.findMany({
+      where: { tournamentConfigId },
+      orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async addStream(
+    tournamentConfigId: number,
+    dto: { platform: 'YOUTUBE' | 'TWITCH'; channelIdentifier: string; label: string },
+  ) {
+    const config = await this.prisma.tournamentConfig.findUnique({
+      where: { id: tournamentConfigId },
+    });
+    if (!config) {
+      throw new NotFoundException('Tournament not found');
+    }
+
+    const maxSort = await this.prisma.tournamentStream.aggregate({
+      where: { tournamentConfigId },
+      _max: { sortOrder: true },
+    });
+
+    return this.prisma.tournamentStream.create({
+      data: {
+        tournamentConfigId,
+        platform: dto.platform as StreamPlatform,
+        channelIdentifier: dto.channelIdentifier,
+        label: dto.label,
+        sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+      },
+    });
+  }
+
+  async removeStream(streamId: number) {
+    const stream = await this.prisma.tournamentStream.findUnique({
+      where: { id: streamId },
+    });
+    if (!stream) {
+      throw new NotFoundException('Stream not found');
+    }
+
+    await this.prisma.tournamentStream.delete({ where: { id: streamId } });
+    return { message: 'Stream removed' };
+  }
+
+  async setFeaturedStream(tournamentConfigId: number, streamId: number) {
+    await this.prisma.$transaction([
+      this.prisma.tournamentStream.updateMany({
+        where: { tournamentConfigId },
+        data: { isFeatured: false },
+      }),
+      this.prisma.tournamentStream.update({
+        where: { id: streamId },
+        data: { isFeatured: true },
+      }),
+    ]);
+    return this.prisma.tournamentStream.findMany({
+      where: { tournamentConfigId },
+      orderBy: { sortOrder: 'asc' },
+    });
   }
 
   async getParticipants(tournamentConfigId: number) {

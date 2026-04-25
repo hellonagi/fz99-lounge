@@ -312,6 +312,12 @@ export const tournamentsApi = {
   register: (id: number, data?: { prizeEntry?: boolean }) => api.post(`/tournaments/${id}/register`, data),
   cancelRegistration: (id: number) => api.delete(`/tournaments/${id}/register`),
   getParticipants: (id: number) => api.get(`/tournaments/${id}/participants`),
+  getStreams: (id: number) => api.get(`/tournaments/${id}/streams`),
+  addStream: (id: number, data: { platform: 'YOUTUBE' | 'TWITCH'; channelIdentifier: string; label: string }) =>
+    api.post(`/tournaments/${id}/streams`, data),
+  removeStream: (id: number, streamId: number) => api.delete(`/tournaments/${id}/streams/${streamId}`),
+  setFeaturedStream: (id: number, streamId: number) => api.patch(`/tournaments/${id}/streams/${streamId}/featured`),
+  advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
 };
 
 // Permissions API (ADMIN only)

@@ -7,12 +7,14 @@ import { MatchHero } from '@/components/features/match/match-hero';
 import { RecentMatches } from '@/components/features/match/recent-matches';
 import { WeeklyCalendar } from '@/components/features/match/weekly-calendar';
 import { TournamentBanner } from '@/components/features/tournament/tournament-banner';
+import { TournamentHero } from '@/components/features/tournament/tournament-hero';
 import { HowToJoinSection, FeaturedPlayers } from '@/components/features/home';
 import { useMatch } from '@/hooks/useMatch';
 import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
 import { useAuthStore } from '@/store/authStore';
 import { matchesApi, usersApi, tournamentsApi } from '@/lib/api';
+import { Tournament, TournamentStream } from '@/types';
 
 interface RecentMatch {
   id: number;
@@ -67,6 +69,8 @@ export default function Home() {
 
   const { isAuthenticated } = useAuthStore();
   const [openTournaments, setOpenTournaments] = useState<any[]>([]);
+  const [inProgressTournament, setInProgressTournament] = useState<Tournament | null>(null);
+  const [inProgressStreams, setInProgressStreams] = useState<TournamentStream[]>([]);
 
   // Fetch recent matches and featured players
   useEffect(() => {
@@ -96,6 +100,16 @@ export default function Home() {
         setOpenTournaments(
           response.data.filter((t: any) => t.status === 'REGISTRATION_OPEN')
         );
+        const inProgress = response.data.find((t: any) => t.status === 'IN_PROGRESS');
+        if (inProgress) {
+          setInProgressTournament(inProgress);
+          try {
+            const streamsRes = await tournamentsApi.getStreams(inProgress.id);
+            setInProgressStreams(streamsRes.data);
+          } catch {
+            // streams are optional
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch tournaments:', err);
       }
@@ -128,9 +142,15 @@ export default function Home() {
 
   return (
     <>
-      {/* Next Match Section */}
+      {/* Hero Section: Tournament mode or Match mode */}
       <div>
-        {error || !nextMatch ? (
+        {inProgressTournament ? (
+          <TournamentHero
+            tournament={inProgressTournament}
+            streams={inProgressStreams}
+            locale={locale}
+          />
+        ) : error || !nextMatch ? (
           <MatchHero errorMessage={getErrorMessage() ?? undefined} />
         ) : (
           <MatchHero

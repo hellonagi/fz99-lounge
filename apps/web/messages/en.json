@@ -76,12 +76,34 @@
       "passcodeGenerated": "Passcode generated",
       "scheduled": "Scheduled: {time}"
     },
+    "admin": {
+      "advanceRound": "End R{current} / Start R{next}",
+      "finishLast": "End R{current} / Finish Tournament",
+      "confirmAdvance": "End current round and start the next?",
+      "confirmFinish": "End the last round and finish the tournament?"
+    },
     "standings": {
       "rank": "#",
       "player": "Player",
       "roundPrefix": "R",
       "total": "Total",
       "noData": "No standings data available"
+    },
+    "hero": {
+      "live": "LIVE",
+      "goToTournament": "Go to Tournament",
+      "watch": "Watch",
+      "noStreams": "Tournament in progress"
+    },
+    "streams": {
+      "title": "Stream Management",
+      "platform": "Platform",
+      "channelId": "Channel Identifier",
+      "channelIdHelp": "Twitch: username / YouTube: video ID",
+      "label": "Display Name",
+      "add": "Add Stream",
+      "noStreams": "No streams registered",
+      "delete": "Delete"
     }
   },
   "adminTournament": {

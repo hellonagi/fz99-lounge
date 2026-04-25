@@ -76,12 +76,34 @@
       "passcodeGenerated": "パスコードを生成しました",
       "scheduled": "予定: {time}"
     },
+    "admin": {
+      "advanceRound": "R{current}終了 / R{next}開始",
+      "finishLast": "R{current}終了 / 大会終了",
+      "confirmAdvance": "現在のラウンドを終了して次を開始しますか？",
+      "confirmFinish": "最終ラウンドを終了して大会を終了しますか？"
+    },
     "standings": {
       "rank": "#",
       "player": "プレイヤー",
       "roundPrefix": "R",
       "total": "合計",
       "noData": "順位データはまだありません"
+    },
+    "hero": {
+      "live": "LIVE",
+      "goToTournament": "大会ページへ",
+      "watch": "視聴",
+      "noStreams": "大会開催中"
+    },
+    "streams": {
+      "title": "配信管理",
+      "platform": "プラットフォーム",
+      "channelId": "チャンネル識別子",
+      "channelIdHelp": "Twitch: ユーザー名 / YouTube: 動画ID",
+      "label": "表示名",
+      "add": "配信を追加",
+      "noStreams": "配信が登録されていません",
+      "delete": "削除"
     }
   },
   "adminTournament": {

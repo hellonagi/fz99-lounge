@@ -280,6 +280,16 @@ export interface Tournament {
   season?: Season & { matches?: Match[] };
 }
 
+export interface TournamentStream {
+  id: number;
+  tournamentConfigId: number;
+  platform: 'YOUTUBE' | 'TWITCH';
+  channelIdentifier: string;
+  label: string;
+  sortOrder: number;
+  isFeatured: boolean;
+}
+
 export interface TournamentRegistration {
   id: number;
   userId: number;
