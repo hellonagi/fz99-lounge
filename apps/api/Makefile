@@ -33,11 +33,14 @@ help:
 	@echo "  make sim-leave-all           - 全フェイクユーザー退出"
 	@echo "  make sim-score MODE=gradual  - スコア送信 (gradual|fast|burst)"
 	@echo "  make sim-score-latest        - 最新試合にスコア送信"
+	@echo "  make sim-score-tournament ROUND=1 - トーナメントラウンド指定スコア送信"
 	@echo "  make sim-score-classic       - CLASSIC専用 (スコア+スクショ提出)"
 	@echo "  make sim-score-team-classic  - TEAM_CLASSIC専用 (チーム戦)"
 	@echo "  make sim-split-classic       - CLASSIC専用 Split投票 (10人)"
 	@echo "  make sim-clean-scores-latest  - 最新試合のスコア・スクショをクリア"
 	@echo "  make sim-clean-scores        - 全試合のスコア・スクショをクリア"
+	@echo "  make sim-clean-tournament ROUND=1 - トーナメント指定ラウンドのスコアクリア"
+	@echo "  make sim-reset-tournament SEASON=1 - トーナメントを募集前の状態にリセット"
 	@echo ""
 	@echo "=== Load Tests (Artillery負荷テスト) ==="
 	@echo "  make load-lobby     - ロビー操作の負荷テスト"
@@ -118,6 +121,8 @@ test-all:
 MODE ?= gradual
 COUNT ?= 40
 DELAY ?= 500
+ROUND ?= 1
+SEASON ?= 1
 
 # フェイクユーザー作成
 # Usage: make sim-fake-users COUNT=50
@@ -136,6 +141,11 @@ sim-score:
 # 最新試合にスコア送信 (ショートカット)
 sim-score-latest:
 	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-scores.ts $(MODE) --latest
+
+# トーナメント用スコア送信 (ラウンド指定)
+# Usage: make sim-score-tournament ROUND=1 MODE=fast
+sim-score-tournament:
+	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-scores.ts $(MODE) --round $(ROUND)
 
 # CLASSICモード専用スコア送信 (16人、各レース4人脱落、順位重複なし、スクショ提出含む)
 sim-score-classic:
@@ -171,6 +181,16 @@ sim-clean-scores-latest:
 # 全試合のスコア・スクショをクリア
 sim-clean-scores:
 	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge < test/sql/clean-scores-all.sql
+
+# トーナメント指定ラウンドのスコア・スクショをクリア
+# Usage: make sim-clean-tournament ROUND=1
+sim-clean-tournament:
+	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge -v round=$(ROUND) < test/sql/clean-scores-tournament.sql
+
+# トーナメントを募集前の状態にリセット (全ラウンド・参加者・登録を削除、statusをDRAFTに戻す)
+# Usage: make sim-reset-tournament SEASON=1
+sim-reset-tournament:
+	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge -v season=$(SEASON) < test/sql/reset-tournament.sql
 
 # =============================================================================
 # Load Tests

@@ -130,6 +130,83 @@ class ScoreSimulator {
     return game;
   }
 
+  async findTournamentGameByRound(round: number) {
+    console.log(`Finding TOURNAMENT game for round ${round}...`);
+
+    const game = await prisma.game.findFirst({
+      where: {
+        match: {
+          matchNumber: round,
+          season: { event: { category: 'TOURNAMENT' } },
+        },
+      },
+      orderBy: { match: { season: { seasonNumber: 'desc' } } },
+      include: {
+        match: {
+          include: {
+            participants: {
+              include: {
+                user: true,
+              },
+            },
+            season: {
+              include: {
+                event: true,
+              },
+            },
+          },
+        },
+        participants: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new Error(`No TOURNAMENT game found for round ${round}`);
+    }
+
+    this.game = game;
+
+    const submittedUserIds = new Set(
+      game.participants
+        .filter((p: any) => p.status !== 'UNSUBMITTED')
+        .map((p: any) => p.userId),
+    );
+    const excludedUserIds = new Set(
+      game.participants
+        .filter((p: any) => p.isExcluded)
+        .map((p: any) => p.userId),
+    );
+    this.users = game.match.participants
+      .filter((p: any) => !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId))
+      .map((p: any) => ({
+        ...p.user,
+        token: jwt.sign(
+          {
+            sub: p.user.id,
+            discordId: p.user.discordId,
+            role: 'PLAYER',
+          },
+          JWT_SECRET,
+          { expiresIn: '1h' }
+        ),
+      }));
+
+    const seasonNumber = game.match.season?.seasonNumber || 'Unknown';
+    const submittedCount = game.participants.filter((p: any) => p.status !== 'UNSUBMITTED').length;
+    const fakeCount = this.users.filter((u: any) => u.isFake).length;
+    const realCount = this.users.length - fakeCount;
+
+    console.log(`Found TOURNAMENT game: Season ${seasonNumber}, Round ${round}`);
+    console.log(`   Game ID: ${game.id}`);
+    console.log(`   ${submittedCount} scores submitted, ${this.users.length} users waiting (${realCount} real, ${fakeCount} fake)`);
+
+    return game;
+  }
+
   async findGameByCategorySeasonMatch(category: string, season: number, match: number) {
     console.log(`Finding game for ${category} Season ${season}, Match ${match}...`);
 
@@ -211,7 +288,11 @@ class ScoreSimulator {
 
   private get isGpMode(): boolean {
     const category = this.game?.match?.season?.event?.category;
-    return category === 'GP' || category === 'TEAM_GP';
+    if (category === 'GP' || category === 'TEAM_GP') return true;
+    if (category === 'CLASSIC' || category === 'TEAM_CLASSIC') return false;
+    // TOURNAMENT: derive from game's inGameMode
+    const inGameMode = this.game?.inGameMode || '';
+    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(inGameMode);
   }
 
   private get raceCount(): number {
@@ -452,6 +533,8 @@ class ScoreSimulator {
     try {
       if (useLatest) {
         await this.findLatestInProgressGame();
+      } else if (category === 'TOURNAMENT' && match) {
+        await this.findTournamentGameByRound(match);
       } else {
         await this.findGameByCategorySeasonMatch(category, season, match);
       }
@@ -565,8 +648,16 @@ if (require.main === module) {
   const useLatest = args.includes('--latest');
   const mode = (args.find(arg => ['gradual', 'fast', 'burst'].includes(arg)) as 'gradual' | 'fast' | 'burst') || 'gradual';
 
+  // --round N: tournament round shortcut
+  const roundIdx = args.indexOf('--round');
+  const round = roundIdx >= 0 ? parseInt(args[roundIdx + 1], 10) : undefined;
+
   const simulator = new ScoreSimulator();
-  simulator.run({ mode, useLatest }).catch(console.error);
+  if (round) {
+    simulator.run({ mode, category: 'TOURNAMENT', match: round }).catch(console.error);
+  } else {
+    simulator.run({ mode, useLatest }).catch(console.error);
+  }
 }
 
 export { ScoreSimulator };

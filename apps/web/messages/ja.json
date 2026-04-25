@@ -61,8 +61,7 @@
     },
     "tabs": {
       "overview": "概要",
-      "rounds": "ラウンド",
-      "standings": "順位表"
+      "rounds": "スコア"
     },
     "round": {
       "notStarted": "このラウンドはまだ開始されていません",
@@ -80,14 +79,18 @@
       "advanceRound": "R{current}終了 / R{next}開始",
       "finishLast": "R{current}終了 / 大会終了",
       "confirmAdvance": "現在のラウンドを終了して次を開始しますか？",
-      "confirmFinish": "最終ラウンドを終了して大会を終了しますか？"
+      "confirmFinish": "最終ラウンドを終了して大会を終了しますか？",
+      "noInProgress": "現在進行中のラウンドはありません。"
     },
     "standings": {
       "rank": "#",
       "player": "プレイヤー",
       "roundPrefix": "R",
       "total": "合計",
-      "noData": "順位データはまだありません"
+      "noData": "順位データはまだありません",
+      "overall": "総合順位",
+      "playerCount": "{count}名参加",
+      "finished": "Finish"
     },
     "hero": {
       "live": "LIVE",

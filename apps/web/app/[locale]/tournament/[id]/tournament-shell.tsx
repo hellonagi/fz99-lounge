@@ -1,27 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { tournamentsApi } from '@/lib/api';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import type { Tournament, TournamentStatus } from '@/types';
+import type { Tournament } from '@/types';
 import { TournamentProvider } from './tournament-context';
-
-function getStatusBadgeVariant(status: TournamentStatus): 'default' | 'success' | 'destructive' | 'secondary' | 'outline' {
-  switch (status) {
-    case 'REGISTRATION_OPEN':
-      return 'success';
-    case 'IN_PROGRESS':
-      return 'destructive';
-    case 'COMPLETED':
-      return 'secondary';
-    default:
-      return 'default';
-  }
-}
 
 export default function TournamentShell({ children }: { children: React.ReactNode }) {
   const params = useParams();
@@ -33,21 +19,21 @@ export default function TournamentShell({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTournament = async () => {
+  const fetchTournament = useCallback(async () => {
     try {
-      setLoading(true);
       const res = await tournamentsApi.getById(id);
       setTournament(res.data);
     } catch {
-      setError(t('error'));
-    } finally {
-      setLoading(false);
+      if (!tournament) setError(t('error'));
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    if (id) fetchTournament();
-  }, [id]);
+    if (id) {
+      setLoading(true);
+      fetchTournament().finally(() => setLoading(false));
+    }
+  }, [id, fetchTournament]);
 
   if (loading) {
     return <div className="text-gray-400">{t('loading')}</div>;
@@ -61,30 +47,28 @@ export default function TournamentShell({ children }: { children: React.ReactNod
 
   const activeTab = pathname.startsWith(`${basePath}/rounds`)
     ? 'rounds'
-    : pathname.startsWith(`${basePath}/standings`)
-      ? 'standings'
-      : 'overview';
+    : 'overview';
+
+  const showRounds = tournament.status !== 'DRAFT' && tournament.status !== 'REGISTRATION_OPEN';
 
   const tabs = [
     { key: 'overview', href: basePath, label: t('tabs.overview') },
-    { key: 'rounds', href: `${basePath}/rounds`, label: t('tabs.rounds') },
-    { key: 'standings', href: `${basePath}/standings`, label: t('tabs.standings') },
+    ...(showRounds
+      ? [{ key: 'rounds', href: `${basePath}/rounds`, label: t('tabs.rounds') }]
+      : []),
   ];
 
   return (
     <TournamentProvider tournament={tournament} onUpdate={fetchTournament}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div>
           <h1 className="text-2xl font-bold text-white">
             {tournament.name}{' '}
             <span className="text-gray-400">
               {t('number', { number: tournament.tournamentNumber })}
             </span>
           </h1>
-          <Badge variant={getStatusBadgeVariant(tournament.status)}>
-            {t(`statusLabel.${tournament.status}`)}
-          </Badge>
         </div>
 
         {/* Tab Navigation */}

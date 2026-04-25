@@ -61,8 +61,7 @@
     },
     "tabs": {
       "overview": "Overview",
-      "rounds": "Rounds",
-      "standings": "Standings"
+      "rounds": "Scores"
     },
     "round": {
       "notStarted": "This round has not started yet",
@@ -80,14 +79,18 @@
       "advanceRound": "End R{current} / Start R{next}",
       "finishLast": "End R{current} / Finish Tournament",
       "confirmAdvance": "End current round and start the next?",
-      "confirmFinish": "End the last round and finish the tournament?"
+      "confirmFinish": "End the last round and finish the tournament?",
+      "noInProgress": "No round is currently in progress."
     },
     "standings": {
       "rank": "#",
       "player": "Player",
       "roundPrefix": "R",
       "total": "Total",
-      "noData": "No standings data available"
+      "noData": "No standings data available",
+      "overall": "Overall Standings",
+      "playerCount": "{count} players",
+      "finished": "Finish"
     },
     "hero": {
       "live": "LIVE",

@@ -62,7 +62,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('game.scoreUpdated')
   handleScoreUpdated(payload: { gameId: number; participant: any }) {
     // Emit to all clients in the game room
-    this.server.to(`game:${payload.gameId}`).emit('scoreUpdated', payload.participant);
+    this.server.to(`game:${payload.gameId}`).emit('scoreUpdated', { ...payload.participant, gameId: payload.gameId });
     console.log(`Score update emitted to game room: ${payload.gameId}`);
   }
 

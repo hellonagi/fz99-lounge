@@ -52,6 +52,7 @@ export interface PasscodeRevealedUpdate {
 }
 
 export interface ParticipantUpdate {
+  gameId?: number;
   id: number;
   userId: number;
   position: number | null;
@@ -81,7 +82,7 @@ export interface ParticipantUpdate {
 }
 
 interface UseGameSocketProps {
-  gameId: number;
+  gameId: number | number[];
   onScoreUpdated?: (participant: ParticipantUpdate) => void;
   onStatusChanged?: (status: string) => void;
   onSplitVoteUpdated?: (data: SplitVoteUpdate) => void;
@@ -111,8 +112,40 @@ export function useGameSocket({
 }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
+  // Store callbacks in refs so socket doesn't reconnect when they change
+  const callbacksRef = useRef({
+    onScoreUpdated,
+    onStatusChanged,
+    onSplitVoteUpdated,
+    onPasscodeRegenerated,
+    onScreenshotUpdated,
+    onTeamAssigned,
+    onPasscodeRevealed,
+    onParticipantVerified,
+    onParticipantRejected,
+    onScreenshotRequested,
+    onParticipantNoShow,
+  });
+  callbacksRef.current = {
+    onScoreUpdated,
+    onStatusChanged,
+    onSplitVoteUpdated,
+    onPasscodeRegenerated,
+    onScreenshotUpdated,
+    onTeamAssigned,
+    onPasscodeRevealed,
+    onParticipantVerified,
+    onParticipantRejected,
+    onScreenshotRequested,
+    onParticipantNoShow,
+  };
+
+  // Normalize to array and create stable key for deps
+  const gameIds = (Array.isArray(gameId) ? gameId : [gameId]).filter(Boolean);
+  const gameIdsKey = gameIds.join(',');
+
   useEffect(() => {
-    if (!gameId) return;
+    if (gameIds.length === 0) return;
 
     // Connect to the games namespace
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
@@ -124,8 +157,10 @@ export function useGameSocket({
 
     socket.on('connect', () => {
       console.log('Connected to game socket');
-      // Join the specific game room
-      socket.emit('joinGame', gameId);
+      // Join all game rooms
+      for (const id of gameIds) {
+        socket.emit('joinGame', id);
+      }
     });
 
     socket.on('disconnect', () => {
@@ -133,86 +168,59 @@ export function useGameSocket({
     });
 
     socket.on('scoreUpdated', (participant) => {
-      console.log('Score updated:', participant);
-      if (onScoreUpdated) {
-        onScoreUpdated(participant);
-      }
+      callbacksRef.current.onScoreUpdated?.(participant);
     });
 
     socket.on('statusChanged', (status) => {
-      console.log('Status changed:', status);
-      if (onStatusChanged) {
-        onStatusChanged(status);
-      }
+      callbacksRef.current.onStatusChanged?.(status);
     });
 
     socket.on('splitVoteUpdated', (data: SplitVoteUpdate) => {
-      console.log('Split vote updated:', data);
-      if (onSplitVoteUpdated) {
-        onSplitVoteUpdated(data);
-      }
+      callbacksRef.current.onSplitVoteUpdated?.(data);
     });
 
     socket.on('passcodeRegenerated', (data: PasscodeRegeneratedUpdate) => {
-      console.log('Passcode regenerated:', data);
-      if (onPasscodeRegenerated) {
-        onPasscodeRegenerated(data);
-      }
+      callbacksRef.current.onPasscodeRegenerated?.(data);
     });
 
     socket.on('screenshotUpdated', (data: ScreenshotUpdate) => {
-      console.log('Screenshot updated:', data);
-      if (onScreenshotUpdated) {
-        onScreenshotUpdated(data);
-      }
+      callbacksRef.current.onScreenshotUpdated?.(data);
     });
 
     socket.on('teamAssigned', (data: TeamAssignedUpdate) => {
-      console.log('Team assigned:', data);
-      if (onTeamAssigned) {
-        onTeamAssigned(data);
-      }
+      callbacksRef.current.onTeamAssigned?.(data);
     });
 
     socket.on('passcodeRevealed', (data: PasscodeRevealedUpdate) => {
-      console.log('Passcode revealed:', data);
-      if (onPasscodeRevealed) {
-        onPasscodeRevealed(data);
-      }
+      callbacksRef.current.onPasscodeRevealed?.(data);
     });
 
     socket.on('participantVerified', (participant: ParticipantUpdate) => {
-      if (onParticipantVerified) {
-        onParticipantVerified(participant);
-      }
+      callbacksRef.current.onParticipantVerified?.(participant);
     });
 
     socket.on('participantRejected', (participant: ParticipantUpdate) => {
-      if (onParticipantRejected) {
-        onParticipantRejected(participant);
-      }
+      callbacksRef.current.onParticipantRejected?.(participant);
     });
 
     socket.on('screenshotRequested', (participant: ParticipantUpdate) => {
-      if (onScreenshotRequested) {
-        onScreenshotRequested(participant);
-      }
+      callbacksRef.current.onScreenshotRequested?.(participant);
     });
 
     socket.on('participantNoShow', (participant: ParticipantUpdate) => {
-      if (onParticipantNoShow) {
-        onParticipantNoShow(participant);
-      }
+      callbacksRef.current.onParticipantNoShow?.(participant);
     });
 
     return () => {
       if (socketRef.current) {
-        socketRef.current.emit('leaveGame', gameId);
+        for (const id of gameIds) {
+          socketRef.current.emit('leaveGame', id);
+        }
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, [gameId, onScoreUpdated, onStatusChanged, onSplitVoteUpdated, onPasscodeRegenerated, onScreenshotUpdated, onTeamAssigned, onPasscodeRevealed, onParticipantVerified, onParticipantRejected, onScreenshotRequested, onParticipantNoShow]);
+  }, [gameIdsKey]);
 
   return socketRef.current;
 }

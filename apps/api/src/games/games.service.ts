@@ -308,8 +308,11 @@ export class GamesService {
 
     // Check match status - allow score submission during IN_PROGRESS
     // Moderator proxy submission is also allowed during COMPLETED
+    // Tournament matches allow submission during COMPLETED (players submit at their own pace)
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
-      if (!(isModeratorAction && game.match.status === MatchStatus.COMPLETED)) {
+      const isTournament = eventCategory === EventCategory.TOURNAMENT;
+      const allowCompleted = isModeratorAction || isTournament;
+      if (!(allowCompleted && game.match.status === MatchStatus.COMPLETED)) {
         throw new BadRequestException('Cannot submit score - match is not in progress');
       }
     }

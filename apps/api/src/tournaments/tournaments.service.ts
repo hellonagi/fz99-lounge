@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
@@ -19,7 +20,10 @@ const STATUS_ORDER: TournamentStatus[] = [
 
 @Injectable()
 export class TournamentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
   async create(dto: CreateTournamentDto) {
     const {
@@ -350,13 +354,14 @@ export class TournamentsService {
       throw new BadRequestException('Tournament is not in progress');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       // Find the current IN_PROGRESS match
       const currentMatch = await tx.match.findFirst({
         where: {
           seasonId: config.seasonId,
           status: MatchStatus.IN_PROGRESS,
         },
+        include: { games: { select: { id: true }, take: 1 } },
         orderBy: { matchNumber: 'asc' },
       });
 
@@ -376,6 +381,7 @@ export class TournamentsService {
           seasonId: config.seasonId,
           status: MatchStatus.WAITING,
         },
+        include: { games: { select: { id: true }, take: 1 } },
         orderBy: { matchNumber: 'asc' },
       });
 
@@ -393,8 +399,28 @@ export class TournamentsService {
         });
       }
 
-      return this.findOne(tournamentConfigId, tx);
+      return {
+        tournament: await this.findOne(tournamentConfigId, tx),
+        completedGameId: currentMatch.games[0]?.id,
+        startedGameId: nextMatch?.games[0]?.id,
+      };
     });
+
+    // Emit status change events after transaction commits
+    if (result.completedGameId) {
+      this.eventEmitter.emit('game.statusChanged', {
+        gameId: result.completedGameId,
+        status: MatchStatus.COMPLETED,
+      });
+    }
+    if (result.startedGameId) {
+      this.eventEmitter.emit('game.statusChanged', {
+        gameId: result.startedGameId,
+        status: MatchStatus.IN_PROGRESS,
+      });
+    }
+
+    return result.tournament;
   }
 
   async register(tournamentConfigId: number, userId: number, prizeEntry?: boolean) {
