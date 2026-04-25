@@ -1,24 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTranslations, useFormatter } from 'next-intl';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
-import Link from 'next/link';
-import { KeyRound, Loader2 } from 'lucide-react';
+import { KeyRound, Loader2, ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { gamesApi } from '@/lib/api';
+import { gamesApi, tournamentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
+import { MatchDetailsTable } from '@/components/features/match/match-details-table';
 import type {
   Tournament,
   TournamentRoundConfig,
   Match,
   Game,
-  GameParticipant,
 } from '@/types';
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
@@ -58,53 +58,85 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
   const t = useTranslations('tournament');
   const format = useFormatter();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN';
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const matches = tournament.season?.matches || [];
-  const defaultRound = tournament.rounds[0]?.roundNumber?.toString() || '1';
+
+  // Priority: URL param > IN_PROGRESS round > first round
+  const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
+  const fallbackRound = inProgressMatch
+    ? inProgressMatch.matchNumber!.toString()
+    : tournament.rounds[0]?.roundNumber?.toString() || '1';
+  const currentRound = searchParams.get('round') || fallbackRound;
+
+  const handleTabChange = useCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('round', value);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, router, pathname]);
 
   return (
-    <Tabs defaultValue={defaultRound}>
-      <TabsList className="flex-wrap">
-        {tournament.rounds.map((round) => (
-          <TabsTrigger key={round.roundNumber} value={round.roundNumber.toString()}>
-            R{round.roundNumber}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+    <div className="space-y-4">
+      <Tabs value={currentRound} onValueChange={handleTabChange}>
+        <TabsList className="flex-wrap">
+          {tournament.rounds.map((round) => {
+            const roundMatch = matches.find((m) => m.matchNumber === round.roundNumber);
+            const status = roundMatch?.status;
+            return (
+              <TabsTrigger key={round.roundNumber} value={round.roundNumber.toString()} className="gap-1.5">
+                {status === 'IN_PROGRESS' && (
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                )}
+                {status === 'COMPLETED' && (
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                )}
+                R{round.roundNumber}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-      {tournament.rounds.map((round) => {
-        const match = matches.find(
-          (m) => m.matchNumber === round.roundNumber,
-        );
-        return (
-          <TabsContent key={round.roundNumber} value={round.roundNumber.toString()} className="px-0 sm:px-0 pb-0 sm:pb-0">
-            <RoundContent
-              round={round}
-              match={match}
-              tournament={tournament}
-              format={format}
-              timeZone={timeZone}
-              onUpdate={onUpdate}
-            />
-          </TabsContent>
-        );
-      })}
-    </Tabs>
+        {tournament.rounds.map((round) => {
+          const match = matches.find(
+            (m) => m.matchNumber === round.roundNumber,
+          );
+          return (
+            <TabsContent key={round.roundNumber} value={round.roundNumber.toString()} className="px-0 sm:px-0 pb-0 sm:pb-0">
+              <RoundContent
+                round={round}
+                match={match}
+                matches={matches}
+                tournament={tournament}
+                format={format}
+                timeZone={timeZone}
+                onUpdate={onUpdate}
+              />
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+    </div>
   );
 }
 
 interface RoundContentProps {
   round: TournamentRoundConfig;
   match: Match | undefined;
+  matches: Match[];
   tournament: Tournament;
   format: ReturnType<typeof useFormatter>;
   timeZone: string;
   onUpdate: () => void;
 }
 
-function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: RoundContentProps) {
+function RoundContent({ round, match, matches, tournament, format, timeZone, onUpdate }: RoundContentProps) {
   const t = useTranslations('tournament');
   const { user } = useAuthStore();
+  const [advanceLoading, setAdvanceLoading] = useState(false);
   const icon = getRoundIcon(round.inGameMode, round.league);
 
   const startTime = new Date(tournament.tournamentDate);
@@ -165,6 +197,9 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
   const isParticipant = match.participants?.some((p) => p.userId === user?.id);
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
 
+  const isGpMode = ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(round.inGameMode);
+  const isClassicMode = ['CLASSIC', 'MIRROR_CLASSIC', 'CLASSIC_MINI_PRIX'].includes(round.inGameMode);
+
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
@@ -182,6 +217,45 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
           >
             {match.status}
           </Badge>
+
+          {/* Admin: advance round button */}
+          {isAdmin && match.status === 'IN_PROGRESS' && (() => {
+            const nextWaiting = matches
+              .filter((m) => m.status === 'WAITING')
+              .sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0];
+            const isLastRound = !nextWaiting;
+
+            const handleAdvance = async () => {
+              const message = isLastRound ? t('admin.confirmFinish') : t('admin.confirmAdvance');
+              if (!window.confirm(message)) return;
+              setAdvanceLoading(true);
+              try {
+                await tournamentsApi.advanceRound(tournament.id);
+                onUpdate();
+              } catch {
+              } finally {
+                setAdvanceLoading(false);
+              }
+            };
+
+            return (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleAdvance}
+                disabled={advanceLoading}
+              >
+                {advanceLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 mr-1" />
+                )}
+                {isLastRound
+                  ? t('admin.finishLast', { current: match.matchNumber! })
+                  : t('admin.advanceRound', { current: match.matchNumber!, next: nextWaiting.matchNumber! })}
+              </Button>
+            );
+          })()}
         </div>
 
         {/* Admin: passcode generation */}
@@ -193,26 +267,33 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
           />
         )}
 
-        {/* Participant: passcode display + score form */}
+        {/* Non-admin participant: passcode display */}
+        {!isAdmin && isParticipant && match.status === 'IN_PROGRESS' && game?.passcode && (
+          <div className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-yellow-400" />
+            <span className="text-sm text-gray-300">{t('round.passcode')}:</span>
+            <span className="font-mono text-lg text-yellow-400 font-bold">{game.passcode}</span>
+          </div>
+        )}
+
+        {/* Results table — show for all statuses with match participants */}
+        {match.status !== 'WAITING' && (
+          <MatchDetailsTable
+            gameParticipants={game?.participants as any}
+            matchParticipants={match.participants as any}
+            isGpMode={isGpMode}
+            isClassicMode={isClassicMode}
+          />
+        )}
+
+        {/* Participant: passcode display + score form (below table) */}
         {isParticipant && match.status === 'IN_PROGRESS' && (
           <ParticipantSection
             tournament={tournament}
             match={match}
-            game={game}
             round={round}
-            userId={user!.id}
             onUpdate={onUpdate}
           />
-        )}
-
-        {/* Results table for completed matches */}
-        {(match.status === 'COMPLETED' || match.status === 'FINALIZED') && game && (
-          <ResultsTable game={game} />
-        )}
-
-        {/* Show results even if IN_PROGRESS (live results) */}
-        {match.status === 'IN_PROGRESS' && game && game.participants && game.participants.length > 0 && (
-          <ResultsTable game={game} />
         )}
       </CardContent>
     </Card>
@@ -285,111 +366,25 @@ function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
 interface ParticipantSectionProps {
   tournament: Tournament;
   match: Match;
-  game: Game | undefined;
   round: TournamentRoundConfig;
-  userId: number;
   onUpdate: () => void;
 }
 
-function ParticipantSection({ tournament, match, game, round, userId, onUpdate }: ParticipantSectionProps) {
-  const t = useTranslations('tournament');
-
-  // Check if user already submitted
-  const alreadySubmitted = game?.participants?.some(
-    (p) => p.userId === userId && p.status !== 'UNSUBMITTED',
-  );
-
+function ParticipantSection({ tournament, match, round, onUpdate }: ParticipantSectionProps) {
   return (
     <div className="space-y-3">
-      {/* Passcode display */}
-      {game?.passcode && (
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-yellow-400" />
-          <span className="text-sm text-gray-300">{t('round.passcode')}:</span>
-          <span className="font-mono text-lg text-yellow-400 font-bold">{game.passcode}</span>
-        </div>
-      )}
-
-      {/* Score submission form */}
-      {alreadySubmitted ? (
-        <p className="text-sm text-green-400">{t('round.alreadySubmitted')}</p>
-      ) : (
-        tournament.season && (
-          <ScoreSubmissionForm
-            mode={getFormMode(round.inGameMode)}
-            apiCategory="tournament"
-            season={tournament.season.seasonNumber}
-            game={match.matchNumber!}
-            deadline={match.deadline}
-            onScoreSubmitted={onUpdate}
-          />
-        )
+      {/* Score submission form — always shown during IN_PROGRESS (re-submission allowed) */}
+      {tournament.season && (
+        <ScoreSubmissionForm
+          mode={getFormMode(round.inGameMode)}
+          apiCategory="tournament"
+          season={tournament.season.seasonNumber}
+          game={match.matchNumber!}
+          deadline={match.deadline}
+          onScoreSubmitted={onUpdate}
+        />
       )}
     </div>
   );
 }
 
-interface ResultsTableProps {
-  game: Game;
-}
-
-function ResultsTable({ game }: ResultsTableProps) {
-  const t = useTranslations('tournament');
-
-  const participants = game.participants || [];
-
-  // Sort by totalScore descending
-  const sorted = [...participants]
-    .filter((p) => p.status !== 'UNSUBMITTED')
-    .sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
-
-  if (sorted.length === 0) {
-    return (
-      <p className="text-sm text-gray-400">{t('round.noResults')}</p>
-    );
-  }
-
-  return (
-    <div>
-      <h4 className="text-sm font-medium text-gray-300 mb-2">{t('round.results')}</h4>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-700/50 text-left text-gray-400">
-              <th className="px-2 py-1.5 w-8">#</th>
-              <th className="px-2 py-1.5">{t('standings.player')}</th>
-              <th className="px-2 py-1.5 text-right">{t('standings.total')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((p, i) => (
-              <tr
-                key={p.id}
-                className="border-b border-gray-700/50 hover:bg-gray-700/30"
-              >
-                <td className="px-2 py-1.5 text-gray-400">{i + 1}</td>
-                <td className="px-2 py-1.5">
-                  {p.user?.profileNumber ? (
-                    <Link
-                      href={`/profile/${p.user.profileNumber}`}
-                      className="text-gray-300 hover:text-white hover:underline"
-                    >
-                      {p.user.displayName || `Player ${p.userId}`}
-                    </Link>
-                  ) : (
-                    <span className="text-gray-300">
-                      {p.user?.displayName || `Player ${p.userId}`}
-                    </span>
-                  )}
-                </td>
-                <td className="px-2 py-1.5 text-right text-white font-mono">
-                  {p.totalScore ?? '-'}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
