@@ -7,6 +7,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { KeyRound, Loader2, ChevronRight, Play, EyeOff, Shield, AlertTriangle, MessageSquareWarning, Split } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  detectAllPositionConflicts,
+  type ConflictResult,
+} from '@/lib/position-conflict-detector';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -80,7 +84,8 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
     const params = new URLSearchParams(searchParams.toString());
     params.set('round', value);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, router, pathname]);
+    onUpdate();
+  }, [searchParams, router, pathname, onUpdate]);
 
   const inProgressRound = inProgressMatch
     ? tournament.rounds.find((r) => r.roundNumber === inProgressMatch.matchNumber)
@@ -786,8 +791,110 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             onAssign={handleAssignDiscordRoles}
           />
         </div>
+
+        {/* Position Conflict Check per round */}
+        <PositionConflictSection
+          tournament={tournament}
+          matches={matches}
+        />
       </CardContent>
     </Card>
+  );
+}
+
+interface PositionConflictSectionProps {
+  tournament: Tournament;
+  matches: Match[];
+}
+
+function PositionConflictSection({ tournament, matches }: PositionConflictSectionProps) {
+  const t = useTranslations('tournament');
+  const tConflict = useTranslations('positionConflict');
+
+  const roundsWithConflicts = useMemo(() => {
+    return matches
+      .filter(m => m.status === 'COMPLETED' || m.status === 'IN_PROGRESS' || m.status === 'FINALIZED')
+      .map(match => {
+        const game = match.games?.[0];
+        if (!game?.participants) return null;
+        const round = tournament.rounds.find(r => r.roundNumber === match.matchNumber);
+        const isGpMode = round
+          ? ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(round.inGameMode)
+          : true;
+        const allSubmitted = game.participants.every(
+          (p: any) => p.status !== 'UNSUBMITTED',
+        );
+        const conflicts: ConflictResult[] = allSubmitted
+          ? detectAllPositionConflicts(game.participants as any, isGpMode)
+          : [];
+        return { match, allSubmitted, conflicts };
+      })
+      .filter(Boolean) as Array<{
+        match: Match;
+        allSubmitted: boolean;
+        conflicts: ConflictResult[];
+      }>;
+  }, [matches, tournament.rounds]);
+
+  if (roundsWithConflicts.length === 0) return null;
+
+  return (
+    <div className="space-y-3 border-t border-gray-700 pt-3 mt-3">
+      <span className="text-gray-400 text-sm font-medium">
+        {tConflict('title')}
+      </span>
+      {roundsWithConflicts.map(({ match, allSubmitted, conflicts }) => (
+        <div
+          key={match.id}
+          className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
+        >
+          <span className="text-gray-400 text-sm">
+            {t('roundLabel', { number: match.matchNumber })}
+          </span>
+
+          {!allSubmitted ? (
+            <p className="text-gray-400 text-xs mt-1">
+              {tConflict('waitingForSubmissions')}
+            </p>
+          ) : conflicts.length === 0 ? (
+            <p className="text-green-400 text-sm mt-1">
+              {tConflict('noConflicts')}
+            </p>
+          ) : (
+            <div className="space-y-2 mt-2">
+              <div className="flex items-center gap-2 text-yellow-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="font-medium text-sm">
+                  {tConflict('conflictFound')}
+                </span>
+              </div>
+              {conflicts.map((conflict, idx) => (
+                <div
+                  key={`${conflict.raceNumber}-${conflict.invalidPosition}-${idx}`}
+                  className="p-2 bg-yellow-900/20 border border-yellow-700/50 rounded text-sm"
+                >
+                  <p className="text-yellow-300 font-medium">
+                    {tConflict('race', {
+                      raceNumber: conflict.raceNumber,
+                    })}
+                  </p>
+                  <ul className="ml-4 text-yellow-100">
+                    {conflict.allInvolvedUsers.map(user => (
+                      <li key={user.userId}>
+                        - {user.userName}{' '}
+                        {tConflict('positionLabel', {
+                          position: user.position,
+                        })}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
