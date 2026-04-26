@@ -58,6 +58,74 @@
     "banner": {
       "entryOpen": "Entry Open",
       "entry": "ENTRY"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "rounds": "Rounds"
+    },
+    "round": {
+      "notStarted": "This round has not started yet",
+      "passcode": "Passcode",
+      "results": "Results",
+      "noResults": "No results yet",
+      "submitScore": "Submit Score",
+      "alreadySubmitted": "Score already submitted",
+      "splitNewPasscodeRevealed": "Split — New Passcode",
+      "generatePasscode": "Regenerate Passcode",
+      "generatingPasscode": "Regenerating...",
+      "passcodeGenerated": "Passcode generated",
+      "scheduled": "Scheduled: {time}"
+    },
+    "admin": {
+      "advanceRound": "End R{current} / Start R{next}",
+      "finishLast": "End R{current} / Finish Tournament",
+      "confirmAdvance": "End current round and start the next?",
+      "confirmFinish": "End the last round and finish the tournament?",
+      "noInProgress": "No round is currently in progress."
+    },
+    "countdown": {
+      "splitNewPasscode": "Split — New passcode reveals in",
+      "revealIn": "Passcode reveals in",
+      "next": "Next",
+      "passcodeNotice": "The passcode will appear here when it's time.",
+      "startCountdown": "Start Countdown",
+      "startGP": "Start GP{round} Countdown",
+      "hidePasscode": "Hide Passcode",
+      "notifySplit": "Notify Split",
+      "notifyingSplit": "Sending..."
+    },
+    "splitVote": {
+      "description": "If the room split, please vote below. The passcode will be regenerated once 1/3 of players vote.",
+      "button": "Vote to Split",
+      "voted": "Voted",
+      "thresholdReached": "Split vote threshold reached",
+      "splitOccurred": "A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes."
+    },
+    "standings": {
+      "rank": "#",
+      "player": "Player",
+      "roundPrefix": "R",
+      "total": "Total",
+      "noData": "No standings data available",
+      "overall": "Overall Standings",
+      "playerCount": "{count} players",
+      "finished": "Finish"
+    },
+    "hero": {
+      "live": "LIVE",
+      "goToTournament": "Go to Tournament",
+      "watch": "Watch",
+      "noStreams": "Tournament in progress"
+    },
+    "streams": {
+      "title": "Stream Management",
+      "platform": "Platform",
+      "channelId": "Channel Identifier",
+      "channelIdHelp": "Twitch: username / YouTube: video ID",
+      "label": "Display Name",
+      "add": "Add Stream",
+      "noStreams": "No streams registered",
+      "delete": "Delete"
     }
   },
   "adminTournament": {
@@ -528,6 +596,14 @@
     "loginToJoin": "Please log in to join. Use the Discord button in the top right corner.",
     "entry": "ENTRY",
     "tournament": "TOURNAMENT"
+  },
+  "discord": {
+    "assignRoles": "Assign Discord Roles",
+    "assigningRoles": "Assigning roles...",
+    "assigned": "{count} assigned",
+    "alreadyHad": "{count} already had role",
+    "notInServer": "Not in Discord server",
+    "notInServerCount": "{count} participants not in Discord server"
   },
   "createMatch": {
     "title": "Create Match",

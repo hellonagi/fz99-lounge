@@ -425,9 +425,25 @@ model TournamentConfig {
   updatedAt DateTime @updatedAt
 
   registrations TournamentRegistration[]
+  streams       TournamentStream[]
 
   @@index([status])
   @@map("tournament_configs")
+}
+
+model TournamentStream {
+  id                 Int              @id @default(autoincrement())
+  tournamentConfigId Int
+  tournamentConfig   TournamentConfig @relation(fields: [tournamentConfigId], references: [id], onDelete: Cascade)
+  platform           StreamPlatform
+  channelIdentifier  String
+  label              String
+  sortOrder          Int              @default(0)
+  isFeatured         Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@map("tournament_streams")
 }
 
 model TournamentRegistration {
@@ -544,6 +560,7 @@ model Game {
   passcode            String    @db.VarChar(4)
   passcodePublishedAt DateTime?
   passcodeVersion     Int       @default(1)
+  splitNotified       Boolean   @default(false)
 
   // Discord Bot 連携
   discordChannelId String? @db.VarChar(20)

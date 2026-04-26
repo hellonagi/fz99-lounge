@@ -62,7 +62,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('game.scoreUpdated')
   handleScoreUpdated(payload: { gameId: number; participant: any }) {
     // Emit to all clients in the game room
-    this.server.to(`game:${payload.gameId}`).emit('scoreUpdated', payload.participant);
+    this.server.to(`game:${payload.gameId}`).emit('scoreUpdated', { ...payload.participant, gameId: payload.gameId });
     console.log(`Score update emitted to game room: ${payload.gameId}`);
   }
 
@@ -87,6 +87,19 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       votedBy: payload.votedBy,
     });
     console.log(`Split vote update emitted to game room: ${payload.gameId}`);
+  }
+
+  @OnEvent('game.splitVoteThresholdReached')
+  handleSplitVoteThresholdReached(payload: {
+    gameId: number;
+    currentVotes: number;
+    requiredVotes: number;
+  }) {
+    this.server.to(`game:${payload.gameId}`).emit('splitVoteThresholdReached', {
+      currentVotes: payload.currentVotes,
+      requiredVotes: payload.requiredVotes,
+    });
+    console.log(`Split vote threshold reached emitted to game room: ${payload.gameId}`);
   }
 
   @OnEvent('game.passcodeRegenerated')
@@ -124,6 +137,27 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('game.participantNoShow')
   handleParticipantNoShow(payload: { gameId: number; participant: any }) {
     this.server.to(`game:${payload.gameId}`).emit('participantNoShow', payload.participant);
+  }
+
+  @OnEvent('game.passcodeCountdownStarted')
+  handlePasscodeCountdownStarted(payload: {
+    gameId: number;
+    passcodeRevealTime: string;
+  }) {
+    this.server.to(`game:${payload.gameId}`).emit('passcodeCountdownStarted', {
+      passcodeRevealTime: payload.passcodeRevealTime,
+    });
+    console.log(
+      `Passcode countdown started emitted to game room: ${payload.gameId}`,
+    );
+  }
+
+  @OnEvent('game.passcodeHidden')
+  handlePasscodeHidden(payload: { gameId: number }) {
+    this.server.to(`game:${payload.gameId}`).emit('passcodeHidden', {});
+    console.log(
+      `Passcode hidden emitted to game room: ${payload.gameId}`,
+    );
   }
 
   @OnEvent('game.screenshotUpdated')

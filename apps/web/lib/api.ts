@@ -219,6 +219,7 @@ export const gamesApi = {
       currentVotes: number;
       requiredVotes: number;
       hasVoted: boolean;
+      splitNotified: boolean;
       passcode: string;
       passcodeVersion: number;
     }>(`/games/${category}/${season}/${match}/split-vote`),
@@ -312,6 +313,17 @@ export const tournamentsApi = {
   register: (id: number, data?: { prizeEntry?: boolean }) => api.post(`/tournaments/${id}/register`, data),
   cancelRegistration: (id: number) => api.delete(`/tournaments/${id}/register`),
   getParticipants: (id: number) => api.get(`/tournaments/${id}/participants`),
+  getStreams: (id: number) => api.get(`/tournaments/${id}/streams`),
+  addStream: (id: number, data: { platform: 'YOUTUBE' | 'TWITCH'; channelIdentifier: string; label: string }) =>
+    api.post(`/tournaments/${id}/streams`, data),
+  removeStream: (id: number, streamId: number) => api.delete(`/tournaments/${id}/streams/${streamId}`),
+  setFeaturedStream: (id: number, streamId: number) => api.patch(`/tournaments/${id}/streams/${streamId}/featured`),
+  advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
+  startCountdown: (id: number) => api.post(`/tournaments/${id}/start-countdown`),
+  hidePasscode: (id: number) => api.post(`/tournaments/${id}/hide-passcode`),
+  assignDiscordRoles: (id: number) => api.post(`/tournaments/${id}/assign-discord-roles`),
+  notifySplit: (id: number) => api.post(`/tournaments/${id}/notify-split`),
+  regeneratePasscode: (id: number) => api.post(`/tournaments/${id}/regenerate-passcode`),
 };
 
 // Permissions API (ADMIN only)

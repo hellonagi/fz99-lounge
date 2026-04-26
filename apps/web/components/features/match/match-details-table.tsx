@@ -102,6 +102,7 @@ interface MatchDetailsTableProps {
   teamScores?: TeamScore[];
   teamColors?: Record<number, string>; // teamIndex -> colorHex
   mvpUserIds?: Set<number>;
+  hideStatus?: boolean;
 }
 
 export function MatchDetailsTable({
@@ -114,6 +115,7 @@ export function MatchDetailsTable({
   teamScores = [],
   teamColors = {},
   mvpUserIds = new Set(),
+  hideStatus = false,
 }: MatchDetailsTableProps) {
   const t = useTranslations('screenshotStatus');
 
@@ -270,9 +272,10 @@ export function MatchDetailsTable({
       {/* Rank */}
       <td className={cn(
         'py-2 px-2 font-bold',
+        !participant.hasSubmitted ? 'text-gray-500' :
         participant.rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
       )}>
-        {participant.rank}
+        {participant.hasSubmitted ? participant.rank : '-'}
       </td>
 
       {/* Team */}
@@ -329,6 +332,7 @@ export function MatchDetailsTable({
       </td>
 
       {/* Status - Based on score verification */}
+      {!hideStatus && (
       <td className="py-2 px-2 text-center whitespace-nowrap">
         {participant.status === 'NO_SHOW' ? (
           <span className="text-xs font-medium text-orange-400">
@@ -353,6 +357,7 @@ export function MatchDetailsTable({
           <span className="text-gray-500">-</span>
         )}
       </td>
+      )}
 
       {/* Rating After - hidden for GP */}
       {!isGpMode && (
@@ -393,7 +398,7 @@ export function MatchDetailsTable({
           <th key={`rh${i + 1}`} className="text-center py-2 px-1 font-medium w-10">R{i + 1}</th>
         ))}
         <th className="text-right py-2 px-2 font-medium">Pts</th>
-        <th className="text-center py-2 px-2 font-medium">Status</th>
+        {!hideStatus && <th className="text-center py-2 px-2 font-medium">Status</th>}
         {!isGpMode && <th className="text-right py-2 px-2 font-medium">Rating</th>}
         {!isGpMode && <th className="text-right py-2 px-2 font-medium">+/-</th>}
       </tr>

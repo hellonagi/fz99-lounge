@@ -213,6 +213,14 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     return this.configService.get<string>('DISCORD_MATCH_NOTIFY_ROLE_ID');
   }
 
+  private getTournamentPasscodeChannelId(): string | undefined {
+    return this.configService.get<string>('DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID');
+  }
+
+  private getTournamentRoleId(): string | undefined {
+    return this.configService.get<string>('DISCORD_TOURNAMENT_ROLE_ID');
+  }
+
   private getReactionRoleChannelId(): string | undefined {
     return this.configService.get<string>('DISCORD_REACTION_ROLE_CHANNEL_ID');
   }
@@ -1430,6 +1438,290 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error("Failed to announce today's lounge schedule:", error);
       return false;
+    }
+  }
+
+  /**
+   * Announce tournament countdown started to tournament channel.
+   * Returns the message ID so it can be deleted when passcode is revealed.
+   */
+  async announceTournamentCountdownStarted(params: {
+    tournamentName: string;
+    roundLabel: string;
+    inGameMode: string;
+    league?: string;
+    passcodeRevealTime: Date;
+    description?: string;
+  }): Promise<string | null> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping tournament countdown announcement',
+      );
+      return null;
+    }
+
+    const channelId = this.getTournamentPasscodeChannelId();
+    if (!channelId) {
+      this.logger.debug('Tournament passcode channel not configured');
+      return null;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Tournament passcode channel ${channelId} not found or not text-based`,
+        );
+        return null;
+      }
+
+      const revealTs = Math.floor(params.passcodeRevealTime.getTime() / 1000);
+
+      const roleId = this.getTournamentRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : undefined;
+
+      const fields = [
+        { name: 'Game Mode', value: params.inGameMode.replace(/_/g, ' '), inline: true },
+      ];
+      if (params.league) {
+        fields.push({ name: 'League', value: params.league.replace(/_/g, ' '), inline: true });
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
+        .setColor(0x9b59b6)
+        .setDescription(params.description || `Passcode reveals <t:${revealTs}:R>`)
+        .addFields(fields);
+
+      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+
+      this.logger.log(
+        `Announced tournament countdown for ${params.roundLabel} to channel ${channelId}`,
+      );
+      return message.id;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce tournament countdown for ${params.roundLabel}:`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Announce tournament passcode revealed to tournament channel.
+   * Deletes the countdown message if provided.
+   */
+  async announceTournamentPasscodeRevealed(params: {
+    tournamentName: string;
+    roundLabel: string;
+    inGameMode: string;
+    league?: string;
+    passcode: string;
+    scoreUrl: string;
+    countdownMessageId?: string;
+  }): Promise<string | null> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping tournament passcode announcement',
+      );
+      return null;
+    }
+
+    const channelId = this.getTournamentPasscodeChannelId();
+    if (!channelId) {
+      this.logger.debug('Tournament passcode channel not configured');
+      return null;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Tournament passcode channel ${channelId} not found or not text-based`,
+        );
+        return null;
+      }
+
+      // Delete countdown message
+      if (params.countdownMessageId) {
+        try {
+          const msg = await (channel as TextChannel).messages.fetch(params.countdownMessageId);
+          await msg.delete();
+        } catch {
+          this.logger.debug('Could not delete countdown message, may already be deleted');
+        }
+      }
+
+      const roleId = this.getTournamentRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : undefined;
+
+      const fields = [
+        { name: 'Game Mode', value: params.inGameMode.replace(/_/g, ' '), inline: true },
+      ];
+      if (params.league) {
+        fields.push({ name: 'League', value: params.league.replace(/_/g, ' '), inline: true });
+      }
+      fields.push({ name: 'Passcode', value: `**${params.passcode}**`, inline: false });
+      fields.push({ name: 'Score Submission', value: params.scoreUrl, inline: false });
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${params.roundLabel} Started`)
+        .setColor(0x2ecc71)
+        .setDescription(
+          'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
+        )
+        .addFields(fields);
+
+      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+
+      this.logger.log(
+        `Announced tournament passcode for ${params.roundLabel} to channel ${channelId}`,
+      );
+      return message.id;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce tournament passcode for ${params.roundLabel}:`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  async announceTournamentSplit(params: {
+    tournamentName: string;
+    roundLabel: string;
+  }): Promise<string | null> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping tournament split announcement',
+      );
+      return null;
+    }
+
+    const channelId = this.getTournamentPasscodeChannelId();
+    if (!channelId) {
+      this.logger.debug('Tournament passcode channel not configured');
+      return null;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Tournament passcode channel ${channelId} not found or not text-based`,
+        );
+        return null;
+      }
+
+      const roleId = this.getTournamentRoleId();
+      const roleMention = roleId ? `<@&${roleId}>` : undefined;
+
+      const embed = new EmbedBuilder()
+        .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
+        .setColor(0xe74c3c)
+        .setDescription(
+          'A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes.\n\n部屋が分かれました。ロビーから退出してください。\n2分以内にパスコードを再生成します。',
+        );
+
+      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+
+      this.logger.log(
+        `Announced tournament split for ${params.roundLabel} to channel ${channelId}`,
+      );
+      return message.id;
+    } catch (error) {
+      this.logger.error(
+        `Failed to announce tournament split for ${params.roundLabel}:`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Delete a message from the tournament passcode channel
+   */
+  async deleteTournamentMessage(messageId: string): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) return false;
+
+    const channelId = this.getTournamentPasscodeChannelId();
+    if (!channelId) return false;
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) return false;
+      const msg = await (channel as TextChannel).messages.fetch(messageId);
+      await msg.delete();
+      this.logger.log(`Deleted tournament message ${messageId}`);
+      return true;
+    } catch {
+      this.logger.debug(`Could not delete tournament message ${messageId}`);
+      return false;
+    }
+  }
+
+  /**
+   * Assign tournament role to a list of Discord users
+   */
+  async assignTournamentRole(
+    discordIds: string[],
+  ): Promise<{ assigned: number; alreadyHad: number; notInServer: string[] }> {
+    const result = { assigned: 0, alreadyHad: 0, notInServer: [] as string[] };
+
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping tournament role assignment',
+      );
+      return result;
+    }
+
+    const roleId = this.getTournamentRoleId();
+    if (!roleId) {
+      this.logger.debug('Tournament role ID not configured');
+      return result;
+    }
+
+    const guildId = this.getGuildId();
+    if (!guildId) {
+      this.logger.debug('Guild ID not configured');
+      return result;
+    }
+
+    try {
+      const guild = await this.client.guilds.fetch(guildId);
+
+      for (const discordId of discordIds) {
+        try {
+          const member = await guild.members.fetch(discordId);
+          if (member.roles.cache.has(roleId)) {
+            result.alreadyHad++;
+          } else {
+            await member.roles.add(roleId);
+            result.assigned++;
+          }
+        } catch (error: any) {
+          // Unknown Member — user not in the server
+          if (error.code === 10007 || error.code === 10013) {
+            result.notInServer.push(discordId);
+          } else {
+            this.logger.warn(
+              `Failed to assign role to ${discordId}: ${error.message}`,
+            );
+            result.notInServer.push(discordId);
+          }
+        }
+        // Rate limit protection
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      this.logger.log(
+        `Tournament role assignment: assigned=${result.assigned}, alreadyHad=${result.alreadyHad}, notInServer=${result.notInServer.length}`,
+      );
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to assign tournament roles:', error);
+      return result;
     }
   }
 }

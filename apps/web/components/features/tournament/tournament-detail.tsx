@@ -9,7 +9,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Calendar, Users, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Form, FormField, FormItem, FormControl } from '@/components/ui/form';
@@ -20,7 +19,7 @@ import { getCountryByCode } from '@/lib/countries';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { SiDiscord } from 'react-icons/si';
-import { Tournament, TournamentStatus, LocalizedContent } from '@/types';
+import { Tournament, LocalizedContent } from '@/types';
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
   KNIGHT: '/leagues/knight_64x64.png',
@@ -52,7 +51,7 @@ function getRoundStartTime(tournamentDate: string, offsetMinutes?: number): Date
   return base;
 }
 
-interface TournamentDetailProps {
+interface TournamentOverviewProps {
   tournament: Tournament;
   onUpdate: () => void;
 }
@@ -63,19 +62,6 @@ const registrationSchema = z.object({
 });
 
 type RegistrationForm = z.infer<typeof registrationSchema>;
-
-function getStatusBadgeVariant(status: TournamentStatus): 'default' | 'success' | 'destructive' | 'secondary' | 'outline' {
-  switch (status) {
-    case 'REGISTRATION_OPEN':
-      return 'success';
-    case 'IN_PROGRESS':
-      return 'destructive';
-    case 'COMPLETED':
-      return 'secondary';
-    default:
-      return 'default';
-  }
-}
 
 function formatDateTime(format: ReturnType<typeof useFormatter>, dateStr: string, timeZone: string) {
   return format.dateTime(new Date(dateStr), {
@@ -111,7 +97,7 @@ function TournamentContent({ content, locale }: { content?: LocalizedContent | n
   );
 }
 
-export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps) {
+export function TournamentOverview({ tournament, onUpdate }: TournamentOverviewProps) {
   const t = useTranslations('tournament');
   const format = useFormatter();
   const locale = useLocale();
@@ -177,23 +163,6 @@ export function TournamentDetail({ tournament, onUpdate }: TournamentDetailProps
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">
-              {tournament.name}{' '}
-              <span className="text-gray-400">
-                {t('number', { number: tournament.tournamentNumber })}
-              </span>
-            </CardTitle>
-            <Badge variant={getStatusBadgeVariant(tournament.status)}>
-              {t(`statusLabel.${tournament.status}`)}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Info */}
       <Card>
         <CardContent className="pt-6">

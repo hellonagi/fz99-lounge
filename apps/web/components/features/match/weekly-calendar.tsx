@@ -55,6 +55,7 @@ interface MatchCardProps {
 function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout = 'stacked' }: MatchCardProps) {
   const tHero = useTranslations('matchHero');
   const tCal = useTranslations('weeklyCalendar');
+  const locale = useLocale();
   const { isAuthenticated, user } = useAuthStore();
   const category = match.season?.event?.category;
   const isInMatch =
@@ -76,7 +77,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
     <>
       {isInProgress && match.matchNumber && (
         <Link
-          href={`/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
+          href={`/${locale}/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
           className={cn(buttonVariants({ size: 'xs' }), 'gap-1 bg-red-500/20 text-red-300 hover:bg-red-500/30')}
         >
           <span className="relative flex h-1.5 w-1.5">
@@ -88,7 +89,7 @@ function MatchCard({ match, joiningMatchId, onJoinLeave, showTime = true, layout
       )}
       {isFinished && match.matchNumber && (
         <Link
-          href={`/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
+          href={`/${locale}/matches/${category.toLowerCase()}/${match.season.seasonNumber}/${match.matchNumber}`}
           className={cn(buttonVariants({ size: 'xs' }), 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30')}
         >
           {tCal('ended')}
@@ -159,6 +160,7 @@ interface TournamentCardProps {
 function TournamentCard({ tournament, showTime = true, layout = 'stacked' }: TournamentCardProps) {
   const tCal = useTranslations('weeklyCalendar');
   const locale = useLocale();
+  const isLive = tournament.status === 'IN_PROGRESS';
   const colors = CATEGORY_CARD_COLORS.TOURNAMENT;
   const cardColors = `border-l-2 ${colors.accent} ${colors.bg}`;
   const scheduledDate = new Date(tournament.tournamentDate);
@@ -168,7 +170,18 @@ function TournamentCard({ tournament, showTime = true, layout = 'stacked' }: Tou
     hour12: false,
   });
 
-  const entryButton = (
+  const actionButton = isLive ? (
+    <Link
+      href={`/${locale}/tournament/${tournament.id}`}
+      className={cn(buttonVariants({ size: 'xs' }), 'gap-1 bg-red-500/20 text-red-300 hover:bg-red-500/30')}
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-400" />
+      </span>
+      LIVE
+    </Link>
+  ) : (
     <Link
       href={`/${locale}/tournament/${tournament.id}`}
       className={cn(buttonVariants({ size: 'xs' }), 'bg-amber-600/60 text-amber-100 hover:bg-amber-600/80')}
@@ -192,7 +205,7 @@ function TournamentCard({ tournament, showTime = true, layout = 'stacked' }: Tou
               {tournament.registrationCount}/{tournament.maxPlayers}
             </span>
           </div>
-          <div className="shrink-0">{entryButton}</div>
+          <div className="shrink-0">{actionButton}</div>
         </div>
       </div>
     );
@@ -208,7 +221,7 @@ function TournamentCard({ tournament, showTime = true, layout = 'stacked' }: Tou
           {tournament.registrationCount}/{tournament.maxPlayers}
         </span>
       </div>
-      <div className="[&>a]:w-full">{entryButton}</div>
+      <div className="[&>a]:w-full">{actionButton}</div>
     </div>
   );
 }

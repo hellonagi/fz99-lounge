@@ -78,6 +78,7 @@ export interface Match {
   // Relations
   season?: Season;
   participants?: MatchParticipant[];
+  games?: Game[];
 }
 
 export type MatchStatus =
@@ -94,6 +95,8 @@ export interface MatchParticipant {
   joinedAt: string;
   hasWithdrawn: boolean;
   withdrawnAt?: string | null;
+  totalPoints?: number;
+  finalRank?: number | null;
   // Relations
   user?: User;
   streams?: MatchStream[];
@@ -108,6 +111,8 @@ export interface Game {
   leagueType?: League | null;
   passcode: string;
   passcodePublishedAt?: string | null;
+  passcodeVersion?: number;
+  passcodeRevealTime?: string | null;
   startedAt?: string | null;
   tracks?: number[] | null; // CLASSIC用: 各レースのコースID [R1, R2, R3]
   // Relations
@@ -122,6 +127,9 @@ export interface GameParticipant {
   machine: string;
   assistEnabled: boolean;
   status: ResultStatus;
+  totalScore?: number | null;
+  eliminatedAtRace?: number | null;
+  submittedAt?: string | null;
   // Relations
   user?: User;
   raceResults?: RaceResult[];
@@ -272,6 +280,16 @@ export interface Tournament {
   registrationCount: number;
   content?: LocalizedContent | null;
   season?: Season & { matches?: Match[] };
+}
+
+export interface TournamentStream {
+  id: number;
+  tournamentConfigId: number;
+  platform: 'YOUTUBE' | 'TWITCH';
+  channelIdentifier: string;
+  label: string;
+  sortOrder: number;
+  isFeatured: boolean;
 }
 
 export interface TournamentRegistration {

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Star, Trash2, Tv } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { tournamentsApi } from '@/lib/api';
-import { Tournament, TournamentStatus, TournamentRoundConfig } from '@/types';
+import { Tournament, TournamentStatus, TournamentRoundConfig, TournamentStream } from '@/types';
 
 const STATUS_OPTIONS: TournamentStatus[] = [
   'DRAFT',
@@ -64,6 +64,151 @@ function getLeagueOptions(mode: string) {
   if (mode === 'GRAND_PRIX') return GP_LEAGUES;
   if (mode === 'MIRROR_GRAND_PRIX') return MIRROR_GP_LEAGUES;
   return null;
+}
+
+function StreamManager({ tournamentId }: { tournamentId: number }) {
+  const tStream = useTranslations('tournament.streams');
+  const [streams, setStreams] = useState<TournamentStream[]>([]);
+  const [platform, setPlatform] = useState<'TWITCH' | 'YOUTUBE'>('TWITCH');
+  const [channelId, setChannelId] = useState('');
+  const [label, setLabel] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fetchStreams = async () => {
+    try {
+      const res = await tournamentsApi.getStreams(tournamentId);
+      setStreams(res.data);
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchStreams();
+  }, [tournamentId]);
+
+  const extractChannelIdentifier = (input: string, plat: 'TWITCH' | 'YOUTUBE'): string => {
+    const trimmed = input.trim();
+    if (plat === 'YOUTUBE') {
+      const m = trimmed.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/live\/)([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+      return trimmed;
+    }
+    // Twitch: extract username from URL like https://www.twitch.tv/username
+    const m = trimmed.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
+    if (m) return m[1];
+    return trimmed.replace(/^@/, '');
+  };
+
+  const handleAdd = async () => {
+    if (!channelId.trim() || !label.trim()) return;
+    setLoading(true);
+    try {
+      const identifier = extractChannelIdentifier(channelId.trim(), platform);
+      await tournamentsApi.addStream(tournamentId, { platform, channelIdentifier: identifier, label: label.trim() });
+      setChannelId('');
+      setLabel('');
+      fetchStreams();
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (streamId: number) => {
+    try {
+      await tournamentsApi.removeStream(tournamentId, streamId);
+      fetchStreams();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleSetFeatured = async (streamId: number) => {
+    try {
+      const res = await tournamentsApi.setFeaturedStream(tournamentId, streamId);
+      setStreams(res.data);
+    } catch {
+      // ignore
+    }
+  };
+
+  return (
+    <div>
+      <h4 className="text-sm font-medium text-gray-300 mb-2 flex items-center gap-1.5">
+        <Tv className="h-3.5 w-3.5" />
+        {tStream('title')}
+      </h4>
+
+      {streams.length > 0 && (
+        <div className="space-y-1 mb-3">
+          {streams.map((s) => (
+            <div key={s.id} className="flex items-center gap-2 text-sm">
+              <button
+                type="button"
+                onClick={() => handleSetFeatured(s.id)}
+                className={s.isFeatured ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-400'}
+                title="Center"
+              >
+                <Star className={`h-3.5 w-3.5 ${s.isFeatured ? 'fill-current' : ''}`} />
+              </button>
+              <Badge variant="secondary" className="text-xs">{s.platform}</Badge>
+              <span className="text-gray-300">{s.label}</span>
+              <span className="text-gray-500 text-xs">({s.channelIdentifier})</span>
+              <button
+                type="button"
+                onClick={() => handleDelete(s.id)}
+                className="text-gray-500 hover:text-red-400 ml-auto"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {streams.length === 0 && (
+        <p className="text-xs text-gray-500 mb-2">{tStream('noStreams')}</p>
+      )}
+
+      <div className="grid grid-cols-[100px_1fr_1fr_auto] gap-2 items-end">
+        <div>
+          <label className="text-xs text-gray-500">{tStream('platform')}</label>
+          <select
+            className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value as 'TWITCH' | 'YOUTUBE')}
+          >
+            <option value="TWITCH">Twitch</option>
+            <option value="YOUTUBE">YouTube</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">{tStream('channelId')}</label>
+          <Input
+            className="h-8"
+            value={channelId}
+            onChange={(e) => setChannelId(e.target.value)}
+            placeholder={platform === 'TWITCH' ? 'username' : 'URL or video ID'}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-gray-500">{tStream('label')}</label>
+          <Input
+            className="h-8"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="Display name"
+          />
+        </div>
+        <Button size="sm" onClick={handleAdd} disabled={loading || !channelId.trim() || !label.trim()}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> {tStream('add')}
+        </Button>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">{tStream('channelIdHelp')}</p>
+    </div>
+  );
 }
 
 function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onSaved: () => void }) {
@@ -210,6 +355,9 @@ function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onS
           </div>
         </div>
       </div>
+
+      {/* Streams */}
+      <StreamManager tournamentId={tournament.id} />
 
       <Button size="sm" onClick={handleSave} disabled={saving}>
         {saving ? '...' : t('update')}

@@ -1,19 +1,9 @@
-import type { Metadata } from 'next';
-import { getAlternates } from '@/lib/metadata';
-import TournamentPage from './tournament-page';
+'use client';
 
-type Props = {
-  params: Promise<{ locale: string; id: string }>;
-};
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { locale, id } = await params;
-
-  return {
-    alternates: getAlternates(locale, `/tournament/${id}`),
-  };
-}
+import { TournamentOverview } from '@/components/features/tournament/tournament-detail';
+import { useTournament } from './tournament-context';
 
 export default function Page() {
-  return <TournamentPage />;
+  const { tournament, onUpdate } = useTournament();
+  return <TournamentOverview tournament={tournament} onUpdate={onUpdate} />;
 }

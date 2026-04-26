@@ -21,6 +21,7 @@ export interface SplitVoteStatus {
   currentVotes: number;
   requiredVotes: number;
   hasVoted: boolean;
+  splitNotified: boolean;
   passcode: string;
   passcodeVersion: number;
 }
@@ -304,12 +305,15 @@ export class GamesService {
     }
 
     const eventCategory = game.match.season.event.category;
-    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
+    const isGpMode = this.isGpModeForGame(eventCategory, game.inGameMode);
 
     // Check match status - allow score submission during IN_PROGRESS
     // Moderator proxy submission is also allowed during COMPLETED
+    // Tournament matches allow submission during COMPLETED (players submit at their own pace)
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
-      if (!(isModeratorAction && game.match.status === MatchStatus.COMPLETED)) {
+      const isTournament = eventCategory === EventCategory.TOURNAMENT;
+      const allowCompleted = isModeratorAction || isTournament;
+      if (!(allowCompleted && game.match.status === MatchStatus.COMPLETED)) {
         throw new BadRequestException('Cannot submit score - match is not in progress');
       }
     }
@@ -596,7 +600,7 @@ export class GamesService {
       throw new NotFoundException('Participant not found in this game');
     }
 
-    const isGpMode = eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP;
+    const isGpMode = this.isGpModeForGame(eventCategory, game.inGameMode);
     const maxRaces = isGpMode ? 5 : 3;
 
     // Per-race max positions and elimination thresholds
@@ -750,6 +754,17 @@ export class GamesService {
     });
 
     return updatedParticipant;
+  }
+
+  /**
+   * Determine GP mode based on event category and in-game mode.
+   * For TOURNAMENT category, derive from game's actual inGameMode.
+   */
+  private isGpModeForGame(eventCategory: EventCategory, inGameMode: string): boolean {
+    if (eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP) return true;
+    if (eventCategory === EventCategory.CLASSIC || eventCategory === EventCategory.TEAM_CLASSIC) return false;
+    // TOURNAMENT: derive from game's actual mode
+    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(inGameMode);
   }
 
   /**
@@ -1254,6 +1269,7 @@ export class GamesService {
       currentVotes,
       requiredVotes,
       hasVoted,
+      splitNotified: game.splitNotified,
       passcode: game.passcode,
       passcodeVersion: game.passcodeVersion,
     };
@@ -1269,6 +1285,7 @@ export class GamesService {
         match: {
           include: {
             participants: true,
+            season: { select: { event: { select: { category: true } } } },
           },
         },
       },
@@ -1332,8 +1349,29 @@ export class GamesService {
       votedBy: userId,
     });
 
-    // Check if threshold reached
-    if (voteCount >= requiredVotes) {
+    // Check if threshold reached (=== to fire exactly once)
+    if (voteCount === requiredVotes) {
+      if (game.match.season?.event?.category === EventCategory.TOURNAMENT) {
+        // Tournament: notify only, no auto-regenerate
+        await this.prisma.game.update({
+          where: { id: gameId },
+          data: { splitNotified: true },
+        });
+        this.eventEmitter.emit('game.splitVoteThresholdReached', {
+          gameId,
+          currentVotes: voteCount,
+          requiredVotes,
+          seasonId: game.match.seasonId,
+          matchNumber: game.match.matchNumber,
+        });
+        return {
+          regenerated: false,
+          currentVotes: voteCount,
+          requiredVotes,
+          passcode: game.passcode,
+          passcodeVersion: game.passcodeVersion,
+        };
+      }
       return this.regeneratePasscode(gameId);
     }
 
