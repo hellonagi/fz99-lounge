@@ -560,6 +560,7 @@ model Game {
   passcode            String    @db.VarChar(4)
   passcodePublishedAt DateTime?
   passcodeVersion     Int       @default(1)
+  splitNotified       Boolean   @default(false)
 
   // Discord Bot 連携
   discordChannelId String? @db.VarChar(20)

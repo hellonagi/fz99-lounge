@@ -100,6 +100,7 @@ interface UseGameSocketProps {
   onParticipantNoShow?: (participant: ParticipantUpdate) => void;
   onPasscodeCountdownStarted?: (data: PasscodeCountdownStartedUpdate) => void;
   onPasscodeHidden?: () => void;
+  onSplitVoteThresholdReached?: (data: { currentVotes: number; requiredVotes: number }) => void;
 }
 
 export function useGameSocket({
@@ -117,6 +118,7 @@ export function useGameSocket({
   onParticipantNoShow,
   onPasscodeCountdownStarted,
   onPasscodeHidden,
+  onSplitVoteThresholdReached,
 }: UseGameSocketProps) {
   const socketRef = useRef<Socket | null>(null);
 
@@ -135,6 +137,7 @@ export function useGameSocket({
     onParticipantNoShow,
     onPasscodeCountdownStarted,
     onPasscodeHidden,
+    onSplitVoteThresholdReached,
   });
   callbacksRef.current = {
     onScoreUpdated,
@@ -150,6 +153,7 @@ export function useGameSocket({
     onParticipantNoShow,
     onPasscodeCountdownStarted,
     onPasscodeHidden,
+    onSplitVoteThresholdReached,
   };
 
   // Normalize to array and create stable key for deps
@@ -229,6 +233,10 @@ export function useGameSocket({
 
     socket.on('passcodeHidden', () => {
       callbacksRef.current.onPasscodeHidden?.();
+    });
+
+    socket.on('splitVoteThresholdReached', (data: { currentVotes: number; requiredVotes: number }) => {
+      callbacksRef.current.onSplitVoteThresholdReached?.(data);
     });
 
     return () => {

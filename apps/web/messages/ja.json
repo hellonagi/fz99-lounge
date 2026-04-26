@@ -61,7 +61,7 @@
     },
     "tabs": {
       "overview": "概要",
-      "rounds": "スコア"
+      "rounds": "ラウンド"
     },
     "round": {
       "notStarted": "このラウンドはまだ開始されていません",
@@ -93,6 +93,13 @@
       "hidePasscode": "パスコード非表示",
       "notifySplit": "スプリット通知",
       "notifyingSplit": "送信中..."
+    },
+    "splitVote": {
+      "description": "部屋が分かれた場合は下のボタンで投票してください。1/3のプレイヤーが投票するとパスコードが再生成されます",
+      "button": "スプリット投票",
+      "voted": "投票済み",
+      "thresholdReached": "スプリット投票が閾値に達しました",
+      "splitOccurred": "部屋が分かれました。ロビーから退出してください。\n2分以内にパスコードを再生成します。"
     },
     "standings": {
       "rank": "#",

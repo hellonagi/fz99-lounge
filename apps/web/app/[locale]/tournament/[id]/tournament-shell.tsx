@@ -49,7 +49,7 @@ export default function TournamentShell({ children }: { children: React.ReactNod
     ? 'rounds'
     : 'overview';
 
-  const showRounds = tournament.status !== 'DRAFT' && tournament.status !== 'REGISTRATION_OPEN';
+  const showRounds = tournament.status !== 'DRAFT';
 
   const tabs = [
     { key: 'overview', href: basePath, label: t('tabs.overview') },

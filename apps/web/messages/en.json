@@ -61,7 +61,7 @@
     },
     "tabs": {
       "overview": "Overview",
-      "rounds": "Scores"
+      "rounds": "Rounds"
     },
     "round": {
       "notStarted": "This round has not started yet",
@@ -93,6 +93,13 @@
       "hidePasscode": "Hide Passcode",
       "notifySplit": "Notify Split",
       "notifyingSplit": "Sending..."
+    },
+    "splitVote": {
+      "description": "If the room split, please vote below. The passcode will be regenerated once 1/3 of players vote.",
+      "button": "Vote to Split",
+      "voted": "Voted",
+      "thresholdReached": "Split vote threshold reached",
+      "splitOccurred": "A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes."
     },
     "standings": {
       "rank": "#",

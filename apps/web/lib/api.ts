@@ -219,6 +219,7 @@ export const gamesApi = {
       currentVotes: number;
       requiredVotes: number;
       hasVoted: boolean;
+      splitNotified: boolean;
       passcode: string;
       passcodeVersion: number;
     }>(`/games/${category}/${season}/${match}/split-vote`),

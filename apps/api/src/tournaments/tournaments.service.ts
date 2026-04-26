@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
@@ -767,6 +767,7 @@ export class TournamentsService {
         seasonId: config.seasonId,
         status: MatchStatus.IN_PROGRESS,
       },
+      include: { games: { take: 1 } },
       orderBy: { matchNumber: 'asc' },
     });
 
@@ -780,7 +781,47 @@ export class TournamentsService {
       roundLabel,
     });
 
+    // Set DB flag + notify all clients via WebSocket (skipDiscord: already sent above)
+    const gameId = currentMatch.games[0]?.id;
+    if (gameId) {
+      await this.prisma.game.update({
+        where: { id: gameId },
+        data: { splitNotified: true },
+      });
+      this.eventEmitter.emit('game.splitVoteThresholdReached', {
+        gameId,
+        currentVotes: 0,
+        requiredVotes: 0,
+        seasonId: config.seasonId,
+        matchNumber: currentMatch.matchNumber,
+        skipDiscord: true,
+      });
+    }
+
     return { message: 'Split notification sent' };
+  }
+
+  @OnEvent('game.splitVoteThresholdReached')
+  async handleSplitVoteThresholdReached(payload: {
+    gameId: number;
+    seasonId: number;
+    matchNumber: number;
+    skipDiscord?: boolean;
+  }) {
+    if (payload.skipDiscord) return;
+
+    const config = await this.prisma.tournamentConfig.findFirst({
+      where: { seasonId: payload.seasonId },
+    });
+    if (!config) return;
+
+    const { tournamentName, roundLabel } = this.getRoundMeta(config, payload.matchNumber);
+    await this.discordBotService.announceTournamentSplit({
+      tournamentName,
+      roundLabel,
+    });
+
+    this.logger.log(`Auto split notification sent for ${roundLabel} (gameId: ${payload.gameId})`);
   }
 
   async regeneratePasscode(tournamentConfigId: number, countdownSeconds = 30) {
@@ -818,6 +859,7 @@ export class TournamentsService {
         passcode: newPasscode,
         passcodeVersion: { increment: 1 },
         passcodeRevealTime: revealAt,
+        splitNotified: false,
       },
     });
 

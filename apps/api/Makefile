@@ -37,10 +37,12 @@ help:
 	@echo "  make sim-score-classic       - CLASSIC専用 (スコア+スクショ提出)"
 	@echo "  make sim-score-team-classic  - TEAM_CLASSIC専用 (チーム戦)"
 	@echo "  make sim-split-classic       - CLASSIC専用 Split投票 (10人)"
+	@echo "  make sim-split-tournament COUNT=5 - トーナメント Split投票"
 	@echo "  make sim-clean-scores-latest  - 最新試合のスコア・スクショをクリア"
 	@echo "  make sim-clean-scores        - 全試合のスコア・スクショをクリア"
-	@echo "  make sim-clean-tournament ROUND=1 - トーナメント指定ラウンドのスコアクリア"
-	@echo "  make sim-reset-tournament SEASON=1 - トーナメントを募集前の状態にリセット"
+	@echo "  make sim-clean-tournament SEASON=1 ROUND=1 - トーナメント指定ラウンドのスコアクリア"
+	@echo "  make sim-clean-tournament SEASON=1       - トーナメント全リセット (REGISTRATION_OPENに戻す)"
+	@echo "  make sim-reset-tournament SEASON=1       - (sim-clean-tournament SEASON=のエイリアス)"
 	@echo ""
 	@echo "=== Load Tests (Artillery負荷テスト) ==="
 	@echo "  make load-lobby     - ロビー操作の負荷テスト"
@@ -159,6 +161,11 @@ sim-score-team-classic:
 sim-split-classic:
 	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-split-votes.ts
 
+# トーナメント Split投票シミュレーター
+# Usage: make sim-split-tournament COUNT=5 DELAY=500
+sim-split-tournament:
+	npx dotenv -e ../../.env -- ts-node test/simulators/simulate-split-votes-tournament.ts --count $(COUNT) --delay $(DELAY)
+
 # ロビー参加シミュレータ (既存フェイクユーザーを使用、API経由)
 # Usage: make sim-join COUNT=20 DELAY=500
 # Note: Run 'make sim-fake-users' first to create fake users
@@ -183,9 +190,15 @@ sim-clean-scores:
 	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge < test/sql/clean-scores-all.sql
 
 # トーナメント指定ラウンドのスコア・スクショをクリア
-# Usage: make sim-clean-tournament ROUND=1
+# Usage: make sim-clean-tournament SEASON=1 [ROUND=1]
+# ROUND指定: そのラウンドのスコアのみクリア
+# ROUND未指定: 全ラウンドのmatches削除 + statusをREGISTRATION_OPENに戻す
 sim-clean-tournament:
+ifdef ROUND
 	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge -v round=$(ROUND) < test/sql/clean-scores-tournament.sql
+else
+	docker exec -i fz99-lounge-db psql -U dbuser -d fz99_lounge -v season=$(SEASON) < test/sql/reset-tournament.sql
+endif
 
 # トーナメントを募集前の状態にリセット (全ラウンド・参加者・登録を削除、statusをDRAFTに戻す)
 # Usage: make sim-reset-tournament SEASON=1

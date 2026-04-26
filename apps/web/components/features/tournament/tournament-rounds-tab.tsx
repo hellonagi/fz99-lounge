@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { KeyRound, Loader2, ChevronRight, Play, EyeOff, Shield, AlertTriangle, MessageSquareWarning } from 'lucide-react';
+import { KeyRound, Loader2, ChevronRight, Play, EyeOff, Shield, AlertTriangle, MessageSquareWarning, Split } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -154,17 +154,57 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
     [matches],
   );
 
+  // Split vote state
+  const [splitVoteStatus, setSplitVoteStatus] = useState<{
+    currentVotes: number;
+    requiredVotes: number;
+    hasVoted: boolean;
+  } | null>(null);
+  const [voting, setVoting] = useState(false);
+  const [splitThresholdReached, setSplitThresholdReached] = useState(false);
+
   useGameSocket({
     gameId: allGameIds,
-    onPasscodeCountdownStarted: () => onUpdate(),
+    onPasscodeCountdownStarted: () => { setSplitThresholdReached(false); onUpdate(); },
     onPasscodeHidden: () => onUpdate(),
     onStatusChanged: () => onUpdate(),
+    onSplitVoteUpdated: (data) => {
+      setSplitVoteStatus((prev) => prev ? { ...prev, currentVotes: data.currentVotes, requiredVotes: data.requiredVotes } : prev);
+    },
+    onSplitVoteThresholdReached: () => setSplitThresholdReached(true),
+    onPasscodeRegenerated: () => setSplitThresholdReached(false),
   });
 
   const showNextBanner = isParticipant && !!nextBannerRound;
   const showCountdownBanner = isParticipant && remainingMs !== null && remainingMs > 0 && inProgressRound;
   const showPasscodeBanner = isParticipant && remainingMs !== null && remainingMs === 0 && inProgressGame?.passcode && inProgressRound;
   const isSplit = (inProgressGame?.passcodeVersion ?? 1) > 1;
+
+  useEffect(() => {
+    if (!showPasscodeBanner || !tournament.season) return;
+    gamesApi
+      .getSplitVoteStatus('tournament', tournament.season.seasonNumber, inProgressMatch!.matchNumber!)
+      .then((res) => {
+        setSplitVoteStatus(res.data);
+        if (res.data.splitNotified) {
+          setSplitThresholdReached(true);
+        }
+      })
+      .catch(() => {});
+  }, [showPasscodeBanner, tournament.season?.seasonNumber, inProgressMatch?.matchNumber, inProgressGame?.passcodeVersion]);
+
+  const handleSplitVote = async () => {
+    if (!tournament.season || !inProgressMatch?.matchNumber) return;
+    setVoting(true);
+    try {
+      await gamesApi.castSplitVote('tournament', tournament.season.seasonNumber, inProgressMatch.matchNumber);
+      setSplitVoteStatus((prev) => prev ? { ...prev, hasVoted: true } : prev);
+    } catch (e) {
+      console.error('Split vote failed', e);
+    } finally {
+      setVoting(false);
+    }
+  };
 
   // Resolve round icon for countdown/revealed banners
   const bannerRoundIcon = inProgressRound
@@ -212,10 +252,46 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
                   {formatCountdown(remainingMs!)}
                 </p>
               )}
-              {showPasscodeBanner && (
+              {showPasscodeBanner && !splitThresholdReached && (
                 <p className="text-5xl font-black text-white tracking-wider font-mono mt-1">
                   {inProgressGame!.passcode}
                 </p>
+              )}
+              {showPasscodeBanner && splitThresholdReached && (
+                <p className="text-5xl font-black text-gray-500 tracking-wider font-mono mt-1">
+                  XXXX
+                </p>
+              )}
+
+              {/* Split threshold reached message */}
+              {showPasscodeBanner && splitThresholdReached && (
+                <p className="text-sm text-red-400 mt-2 whitespace-pre-line">
+                  {t('splitVote.splitOccurred')}
+                </p>
+              )}
+
+              {/* Split vote button + gauge */}
+              {showPasscodeBanner && !splitThresholdReached && (
+                <div className="mt-3 flex flex-col items-center gap-2">
+                  <p className="text-xs text-gray-400">{t('splitVote.description')}</p>
+                  <Button
+                    variant={splitVoteStatus?.hasVoted ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={handleSplitVote}
+                    disabled={voting || splitVoteStatus?.hasVoted}
+                  >
+                    <Split className="w-4 h-4" />
+                    {splitVoteStatus?.hasVoted ? t('splitVote.voted') : t('splitVote.button')}
+                  </Button>
+                  {splitVoteStatus && splitVoteStatus.currentVotes > 0 && (
+                    <div className="w-32 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-500 transition-all"
+                        style={{ width: `${(splitVoteStatus.currentVotes / splitVoteStatus.requiredVotes) * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -457,6 +533,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const [countdownLoading, setCountdownLoading] = useState(false);
   const [hideLoading, setHideLoading] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
+  const [splitThresholdReached, setSplitThresholdReached] = useState(false);
   const [discordRoleLoading, setDiscordRoleLoading] = useState(false);
   const [discordRoleResult, setDiscordRoleResult] = useState<{
     assigned: number;
@@ -467,12 +544,36 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
   const inProgressGame = inProgressMatch?.games?.[0];
 
+  useGameSocket({
+    gameId: inProgressGame?.id ?? 0,
+    onSplitVoteThresholdReached: () => setSplitThresholdReached(true),
+    onPasscodeRegenerated: () => setSplitThresholdReached(false),
+    onPasscodeCountdownStarted: () => setSplitThresholdReached(false),
+  });
+
+  const handleAssignDiscordRoles = async () => {
+    setDiscordRoleLoading(true);
+    try {
+      const res = await tournamentsApi.assignDiscordRoles(tournament.id);
+      setDiscordRoleResult(res.data);
+    } catch {
+    } finally {
+      setDiscordRoleLoading(false);
+    }
+  };
+
   // Show admin panel for REGISTRATION_CLOSED or when IN_PROGRESS match exists
+  // For other states (e.g. REGISTRATION_OPEN), show only Discord role assignment
   if (tournament.status !== 'REGISTRATION_CLOSED' && !inProgressMatch) {
     return (
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
           <p className="text-gray-400 text-sm">{t('admin.noInProgress')}</p>
+          <DiscordRoleSection
+            loading={discordRoleLoading}
+            result={discordRoleResult}
+            onAssign={handleAssignDiscordRoles}
+          />
         </CardContent>
       </Card>
     );
@@ -526,17 +627,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     } catch {
     } finally {
       setAdvanceLoading(false);
-    }
-  };
-
-  const handleAssignDiscordRoles = async () => {
-    setDiscordRoleLoading(true);
-    try {
-      const res = await tournamentsApi.assignDiscordRoles(tournament.id);
-      setDiscordRoleResult(res.data);
-    } catch {
-    } finally {
-      setDiscordRoleLoading(false);
     }
   };
 
@@ -605,6 +695,13 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
               {inProgressRound.league && ` / ${inProgressRound.league.replace(/_/g, ' ')}`}
             </p>
           </div>
+        )}
+
+        {splitThresholdReached && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{t('splitVote.thresholdReached')}</AlertDescription>
+          </Alert>
         )}
 
         <div className="space-y-3">
@@ -708,6 +805,10 @@ function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
   const isPasscodeHidden = !!game?.passcodeRevealTime &&
     new Date(game.passcodeRevealTime).getTime() <= 0;
 
+  const isCountingDown = !!game?.passcodeRevealTime &&
+    !isPasscodeHidden &&
+    new Date(game.passcodeRevealTime) > new Date();
+
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
@@ -734,7 +835,7 @@ function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
         variant="outline"
         size="sm"
         onClick={handleGenerate}
-        disabled={generating || isPasscodeHidden}
+        disabled={generating || isPasscodeHidden || isCountingDown}
       >
         {generating ? (
           <>

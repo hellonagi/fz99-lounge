@@ -89,6 +89,19 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`Split vote update emitted to game room: ${payload.gameId}`);
   }
 
+  @OnEvent('game.splitVoteThresholdReached')
+  handleSplitVoteThresholdReached(payload: {
+    gameId: number;
+    currentVotes: number;
+    requiredVotes: number;
+  }) {
+    this.server.to(`game:${payload.gameId}`).emit('splitVoteThresholdReached', {
+      currentVotes: payload.currentVotes,
+      requiredVotes: payload.requiredVotes,
+    });
+    console.log(`Split vote threshold reached emitted to game room: ${payload.gameId}`);
+  }
+
   @OnEvent('game.passcodeRegenerated')
   handlePasscodeRegenerated(payload: {
     gameId: number;

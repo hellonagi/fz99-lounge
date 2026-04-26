@@ -21,6 +21,7 @@ export interface SplitVoteStatus {
   currentVotes: number;
   requiredVotes: number;
   hasVoted: boolean;
+  splitNotified: boolean;
   passcode: string;
   passcodeVersion: number;
 }
@@ -1268,6 +1269,7 @@ export class GamesService {
       currentVotes,
       requiredVotes,
       hasVoted,
+      splitNotified: game.splitNotified,
       passcode: game.passcode,
       passcodeVersion: game.passcodeVersion,
     };
@@ -1283,6 +1285,7 @@ export class GamesService {
         match: {
           include: {
             participants: true,
+            season: { select: { event: { select: { category: true } } } },
           },
         },
       },
@@ -1346,8 +1349,29 @@ export class GamesService {
       votedBy: userId,
     });
 
-    // Check if threshold reached
-    if (voteCount >= requiredVotes) {
+    // Check if threshold reached (=== to fire exactly once)
+    if (voteCount === requiredVotes) {
+      if (game.match.season?.event?.category === EventCategory.TOURNAMENT) {
+        // Tournament: notify only, no auto-regenerate
+        await this.prisma.game.update({
+          where: { id: gameId },
+          data: { splitNotified: true },
+        });
+        this.eventEmitter.emit('game.splitVoteThresholdReached', {
+          gameId,
+          currentVotes: voteCount,
+          requiredVotes,
+          seasonId: game.match.seasonId,
+          matchNumber: game.match.matchNumber,
+        });
+        return {
+          regenerated: false,
+          currentVotes: voteCount,
+          requiredVotes,
+          passcode: game.passcode,
+          passcodeVersion: game.passcodeVersion,
+        };
+      }
       return this.regeneratePasscode(gameId);
     }
 
