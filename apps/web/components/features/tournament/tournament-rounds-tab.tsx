@@ -567,9 +567,13 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     }
   };
 
-  // Show admin panel for REGISTRATION_CLOSED or when IN_PROGRESS match exists
-  // For other states (e.g. REGISTRATION_OPEN), show only Discord role assignment
-  if (tournament.status !== 'REGISTRATION_CLOSED' && !inProgressMatch) {
+  const nextWaiting = matches
+    .filter((m) => m.status === 'WAITING')
+    .sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0];
+
+  // Show admin panel for REGISTRATION_CLOSED, when IN_PROGRESS match exists,
+  // or when there are WAITING matches that need to be advanced
+  if (tournament.status !== 'REGISTRATION_CLOSED' && !inProgressMatch && !nextWaiting) {
     return (
       <Card>
         <CardContent className="pt-6 space-y-4">
@@ -588,9 +592,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     ? tournament.rounds.find((r) => r.roundNumber === inProgressMatch.matchNumber)
     : null;
 
-  const nextWaiting = matches
-    .filter((m) => m.status === 'WAITING')
-    .sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0];
   const isLastRound = inProgressMatch && !nextWaiting;
 
   const isPasscodeHidden = inProgressGame?.passcodeRevealTime &&
@@ -702,6 +703,25 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           </div>
         )}
 
+        {/* Between GPs: no IN_PROGRESS match but WAITING matches exist */}
+        {!inProgressMatch && nextWaiting && (
+          <div>
+            <p className="text-sm text-gray-400 mb-3">{t('admin.betweenRounds')}</p>
+            <Button
+              size="sm"
+              onClick={handleStartCountdown}
+              disabled={countdownLoading}
+            >
+              {countdownLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <Play className="h-3 w-3 mr-1" />
+              )}
+              {t('countdown.startGP', { round: nextWaiting.matchNumber! })}
+            </Button>
+          </div>
+        )}
+
         {splitThresholdReached && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -709,7 +729,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           </Alert>
         )}
 
-        <div className="space-y-3">
+        {inProgressMatch && <div className="space-y-3">
           {/* Start Countdown — never started (null) or hidden with next round (auto-advance) */}
           {(!inProgressGame?.passcodeRevealTime || (isPasscodeHidden && nextWaiting)) && (
             <Button
@@ -784,13 +804,13 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             match={inProgressMatch!}
             game={inProgressGame}
           />
+        </div>}
 
-          <DiscordRoleSection
-            loading={discordRoleLoading}
-            result={discordRoleResult}
-            onAssign={handleAssignDiscordRoles}
-          />
-        </div>
+        <DiscordRoleSection
+          loading={discordRoleLoading}
+          result={discordRoleResult}
+          onAssign={handleAssignDiscordRoles}
+        />
 
         {/* Position Conflict Check per round */}
         <PositionConflictSection
