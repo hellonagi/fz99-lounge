@@ -1064,8 +1064,11 @@ function ParticipantSection({ tournament, match, round }: ParticipantSectionProp
 
 function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; onUpdate: () => void }) {
   const t = useTranslations('tournament');
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
   const matches = tournament.season?.matches || [];
   const rounds = tournament.rounds;
+  const [scoreEditRound, setScoreEditRound] = useState<string>('');
 
   // WebSocket: live score updates + status changes for all games
   const allGameIds = useMemo(() =>
@@ -1163,7 +1166,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
 
         const score = p.totalScore ?? 0;
         standing.roundScores[roundNumber] = score;
-        standing.roundFinished[roundNumber] = p.eliminatedAtRace == null;
+        standing.roundFinished[roundNumber] = p.totalScore != null && p.eliminatedAtRace == null;
         standing.total += score;
       }
     }
@@ -1196,6 +1199,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
   }, [matches, liveScores]);
 
   return (
+    <div className="space-y-4">
     <Card>
       <CardContent className="pt-6 space-y-4">
         <h3 className="text-white font-medium">{t('standings.overall')}</h3>
@@ -1273,6 +1277,50 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
         </div>
       </CardContent>
     </Card>
+
+    {isAdmin && tournament.season && (
+      <div className="p-4 bg-orange-950/10 border border-orange-900/50 rounded-lg space-y-4">
+        <h3 className="text-orange-400 font-medium text-sm">{t('admin.scoreEdit')}</h3>
+        <div>
+          <label className="text-gray-300 text-sm mb-2 block">{t('admin.selectRound')}</label>
+          <select
+            value={scoreEditRound}
+            onChange={(e) => setScoreEditRound(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">{t('admin.noRoundSelected')}</option>
+            {rounds.map((round) => {
+              const match = matches.find((m) => m.matchNumber === round.roundNumber);
+              return (
+                <option key={round.roundNumber} value={round.roundNumber.toString()} disabled={!match}>
+                  {t('admin.roundOption', { number: round.roundNumber })}
+                  {!match ? ` (${t('admin.noMatchYet')})` : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+        {(() => {
+          const selectedRound = rounds.find((r) => r.roundNumber.toString() === scoreEditRound);
+          const selectedMatch = matches.find((m) => m.matchNumber?.toString() === scoreEditRound);
+          if (!selectedRound || !selectedMatch) return null;
+          const participants = selectedMatch.participants?.map((p) => ({
+            user: { id: p.userId, displayName: p.user?.displayName ?? null },
+          })) ?? [];
+          return (
+            <ScoreSubmissionForm
+              mode={getFormMode(selectedRound.inGameMode)}
+              apiCategory="tournament"
+              season={tournament.season!.seasonNumber}
+              game={selectedMatch.matchNumber!}
+              deadline={selectedMatch.deadline}
+              participants={participants}
+            />
+          );
+        })()}
+      </div>
+    )}
+    </div>
   );
 }
 

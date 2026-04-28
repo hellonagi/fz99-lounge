@@ -82,7 +82,12 @@
       "confirmAdvance": "現在のラウンドを終了して次を開始しますか？",
       "confirmFinish": "最終ラウンドを終了して大会を終了しますか？",
       "noInProgress": "現在進行中のラウンドはありません。",
-      "betweenRounds": "前のGPが終了しました。次のGPを開始してください。"
+      "betweenRounds": "前のGPが終了しました。次のGPを開始してください。",
+      "scoreEdit": "プレイヤースコア編集",
+      "selectRound": "ラウンドを選択",
+      "roundOption": "ラウンド {number}",
+      "noRoundSelected": "スコアを編集するラウンドを選択してください",
+      "noMatchYet": "このラウンドはまだ開始されていません"
     },
     "countdown": {
       "splitNewPasscode": "スプリット — 新パスコード公開まで",

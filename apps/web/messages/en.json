@@ -82,7 +82,12 @@
       "confirmAdvance": "End current round and start the next?",
       "confirmFinish": "End the last round and finish the tournament?",
       "noInProgress": "No round is currently in progress.",
-      "betweenRounds": "Previous GP has ended. Start the next GP."
+      "betweenRounds": "Previous GP has ended. Start the next GP.",
+      "scoreEdit": "Edit Player Score",
+      "selectRound": "Select Round",
+      "roundOption": "Round {number}",
+      "noRoundSelected": "Select a round to edit scores",
+      "noMatchYet": "This round has not started yet"
     },
     "countdown": {
       "splitNewPasscode": "Split — New passcode reveals in",
