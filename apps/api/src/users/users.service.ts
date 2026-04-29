@@ -647,7 +647,7 @@ export class UsersService {
     eventCategory: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
     seasonNumber?: number,
     page = 1,
-    limit = 20,
+    limit = 50,
   ) {
     // シーズンを特定
     let targetSeasonId: number | undefined;
