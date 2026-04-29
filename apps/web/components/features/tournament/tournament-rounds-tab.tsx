@@ -583,6 +583,10 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             result={discordRoleResult}
             onAssign={handleAssignDiscordRoles}
           />
+          <PositionConflictSection
+            tournament={tournament}
+            matches={matches}
+          />
         </CardContent>
       </Card>
     );
