@@ -24,6 +24,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
+import { OverrideScoreDto } from './dto/override-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Controller('games')
@@ -141,6 +142,44 @@ export class GamesController {
       matchNumber,
       targetId,
       updateScoreDto,
+    );
+  }
+
+  @Patch(':category/:season/:match/participants/:userId/disqualify')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  async disqualifyParticipant(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+  ) {
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    return this.gamesService.disqualifyParticipant(
+      eventCategory,
+      parseInt(season, 10),
+      parseInt(match, 10),
+      parseInt(targetUserId, 10),
+    );
+  }
+
+  @Patch(':category/:season/:match/participants/:userId/override-score')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  async overrideScore(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+    @Body() dto: OverrideScoreDto,
+  ) {
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    return this.gamesService.overrideScore(
+      eventCategory,
+      parseInt(season, 10),
+      parseInt(match, 10),
+      parseInt(targetUserId, 10),
+      dto.totalScore,
     );
   }
 

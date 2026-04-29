@@ -1068,7 +1068,6 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
   const matches = tournament.season?.matches || [];
   const rounds = tournament.rounds;
-  const [scoreEditRound, setScoreEditRound] = useState<string>('');
 
   // WebSocket: live score updates + status changes for all games
   const allGameIds = useMemo(() =>
@@ -1110,6 +1109,13 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
     onStatusChanged: onUpdate,
   });
 
+  const MACHINE_STYLE: Record<string, { abbr: string; className: string }> = {
+    'Blue Falcon':   { abbr: 'BF', className: 'text-blue-400' },
+    'Golden Fox':    { abbr: 'GF', className: 'text-yellow-400' },
+    'Wild Goose':    { abbr: 'WG', className: 'text-green-400' },
+    'Fire Stingray': { abbr: 'FS', className: 'text-pink-400' },
+  };
+
   const standings = useMemo(() => {
     const playerMap = new Map<number, {
       userId: number;
@@ -1117,7 +1123,10 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
       profileNumber?: number;
       country?: string | null;
       roundScores: Record<number, number | null>;
-      roundFinished: Record<number, boolean>;
+      roundSurvived: Record<number, boolean>;
+      roundCompensated: Record<number, boolean>;
+      roundDisqualified: Record<number, boolean>;
+      roundMachines: Record<number, string | null>;
       total: number;
     }>();
 
@@ -1132,7 +1141,10 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             profileNumber: mp.user?.profileNumber,
             country: (mp.user as any)?.profile?.country ?? null,
             roundScores: {},
-            roundFinished: {},
+            roundSurvived: {},
+            roundCompensated: {},
+            roundDisqualified: {},
+            roundMachines: {},
             total: 0,
           });
         }
@@ -1158,15 +1170,21 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             profileNumber: p.user?.profileNumber,
             country: (p.user as any)?.profile?.country ?? null,
             roundScores: {},
-            roundFinished: {},
+            roundSurvived: {},
+            roundCompensated: {},
+            roundDisqualified: {},
+            roundMachines: {},
             total: 0,
           };
           playerMap.set(p.userId, standing);
         }
 
         const score = p.totalScore ?? 0;
-        standing.roundScores[roundNumber] = score;
-        standing.roundFinished[roundNumber] = p.totalScore != null && p.eliminatedAtRace == null;
+        standing.roundScores[roundNumber] = p.totalScore ?? null;
+        standing.roundSurvived[roundNumber] = p.totalScore != null && p.eliminatedAtRace == null && !p.isCompensated && !(p as any).isDisqualified;
+        standing.roundCompensated[roundNumber] = p.isCompensated ?? false;
+        standing.roundDisqualified[roundNumber] = (p as any).isDisqualified ?? false;
+        standing.roundMachines[roundNumber] = (p as any).machine ?? null;
         standing.total += score;
       }
     }
@@ -1183,20 +1201,43 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
           profileNumber: p.user.profileNumber,
           country: null,
           roundScores: {},
-          roundFinished: {},
+          roundSurvived: {},
+          roundCompensated: {},
+          roundDisqualified: {},
+          roundMachines: {},
           total: 0,
         };
         playerMap.set(userId, standing);
       }
       const oldScore = standing.roundScores[roundNumber] ?? 0;
       const newScore = p.totalScore ?? 0;
-      standing.roundScores[roundNumber] = newScore;
-      standing.roundFinished[roundNumber] = p.eliminatedAtRace == null;
+      standing.roundScores[roundNumber] = p.totalScore ?? null;
+      standing.roundSurvived[roundNumber] = p.totalScore != null && p.eliminatedAtRace == null && !p.isCompensated && !p.isDisqualified;
+      standing.roundCompensated[roundNumber] = p.isCompensated ?? false;
+      standing.roundDisqualified[roundNumber] = p.isDisqualified ?? false;
+      standing.roundMachines[roundNumber] = p.machine ?? null;
       standing.total = standing.total - oldScore + newScore;
     }
 
-    return Array.from(playerMap.values()).sort((a, b) => b.total - a.total);
+    return Array.from(playerMap.values()).sort((a, b) => {
+      const aHas = Object.values(a.roundScores).some(v => v != null);
+      const bHas = Object.values(b.roundScores).some(v => v != null);
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      return b.total - a.total;
+    });
   }, [matches, liveScores]);
+
+  const rankedStandings = useMemo(() => {
+    let groupRank = 1;
+    return standings.map((s, i) => {
+      if (i === 0 || s.total < standings[i - 1].total) groupRank = i + 1;
+      return {
+        ...s,
+        rank: groupRank,
+        hasAnyScore: Object.values(s.roundScores).some(v => v != null),
+      };
+    });
+  }, [standings]);
 
   return (
     <div className="space-y-4">
@@ -1219,9 +1260,8 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
               </tr>
             </thead>
             <tbody>
-              {standings.map((s, i) => {
-                const rank = i === 0 || s.total < standings[i - 1].total ? i + 1 : i;
-                const hasAnyScore = Object.keys(s.roundScores).length > 0;
+              {rankedStandings.map((s) => {
+                const { rank, hasAnyScore } = s;
                 return (
                   <tr
                     key={s.userId}
@@ -1254,17 +1294,37 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
                     </td>
                     {rounds.map((r) => {
                       const score = s.roundScores[r.roundNumber];
+                      const machine = s.roundMachines[r.roundNumber];
+                      const survived = s.roundSurvived[r.roundNumber];
+                      const compensated = s.roundCompensated[r.roundNumber];
+                      const disqualified = s.roundDisqualified[r.roundNumber];
+                      const machineStyle = machine ? MACHINE_STYLE[machine] : null;
                       return (
                         <td
                           key={r.roundNumber}
                           className="py-2 px-1 text-gray-100 text-center"
                         >
-                          {score != null ? score : '-'}
+                          {score != null ? (
+                            <span className="flex flex-col items-center leading-tight">
+                              <span className={survived ? 'text-white font-medium' : 'text-gray-500'}>
+                                {score}
+                              </span>
+                              {compensated ? (
+                                <span className="text-xs font-medium text-orange-400">C</span>
+                              ) : disqualified ? (
+                                <span className="text-xs font-medium text-red-400">DQ</span>
+                              ) : machineStyle && (
+                                <span className={`text-xs font-medium ${machineStyle.className}`}>
+                                  {machineStyle.abbr}
+                                </span>
+                              )}
+                            </span>
+                          ) : '-'}
                         </td>
                       );
                     })}
                     <td className="py-2 px-1 text-center text-gray-100">
-                      {Object.values(s.roundFinished).filter(Boolean).length}
+                      {Object.values(s.roundSurvived).filter(Boolean).length}
                     </td>
                     <td className="py-2 px-2 text-right font-medium text-white">
                       {s.total}
@@ -1275,52 +1335,233 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             </tbody>
           </table>
         </div>
+        {standings.some(s => Object.values(s.roundCompensated).some(Boolean)) && (
+          <p className="text-xs text-gray-400">
+            <span className="text-orange-400 font-medium">C</span>
+            {' '}{t('standings.compensatedNote')}
+          </p>
+        )}
+        {standings.some(s => Object.values(s.roundDisqualified).some(Boolean)) && (
+          <p className="text-xs text-gray-400">
+            <span className="text-red-400 font-medium">DQ</span>
+            {' '}{t('standings.disqualifiedNote')}
+          </p>
+        )}
       </CardContent>
     </Card>
 
     {isAdmin && tournament.season && (
-      <div className="p-4 bg-orange-950/10 border border-orange-900/50 rounded-lg space-y-4">
-        <h3 className="text-orange-400 font-medium text-sm">{t('admin.scoreEdit')}</h3>
-        <div>
-          <label className="text-gray-300 text-sm mb-2 block">{t('admin.selectRound')}</label>
-          <select
-            value={scoreEditRound}
-            onChange={(e) => setScoreEditRound(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">{t('admin.noRoundSelected')}</option>
-            {rounds.map((round) => {
-              const match = matches.find((m) => m.matchNumber === round.roundNumber);
-              return (
-                <option key={round.roundNumber} value={round.roundNumber.toString()} disabled={!match}>
-                  {t('admin.roundOption', { number: round.roundNumber })}
-                  {!match ? ` (${t('admin.noMatchYet')})` : ''}
-                </option>
-              );
-            })}
-          </select>
-        </div>
-        {(() => {
-          const selectedRound = rounds.find((r) => r.roundNumber.toString() === scoreEditRound);
-          const selectedMatch = matches.find((m) => m.matchNumber?.toString() === scoreEditRound);
-          if (!selectedRound || !selectedMatch) return null;
-          const participants = selectedMatch.participants?.map((p) => ({
-            user: { id: p.userId, displayName: p.user?.displayName ?? null },
-          })) ?? [];
-          return (
-            <ScoreSubmissionForm
-              mode={getFormMode(selectedRound.inGameMode)}
-              apiCategory="tournament"
-              season={tournament.season!.seasonNumber}
-              game={selectedMatch.matchNumber!}
-              deadline={selectedMatch.deadline}
-              participants={participants}
-            />
-          );
-        })()}
-      </div>
+      <AdminScoreOverride tournament={tournament} matches={matches} onUpdate={onUpdate} />
     )}
     </div>
   );
 }
 
+
+function AdminScoreOverride({
+  tournament,
+  matches,
+  onUpdate,
+}: {
+  tournament: Tournament;
+  matches: Match[];
+  onUpdate: () => void;
+}) {
+  const t = useTranslations('tournament');
+  const [selectedRound, setSelectedRound] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [totalScore, setTotalScore] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // DQ state
+  const [dqUserId, setDqUserId] = useState('');
+  const [dqSubmitting, setDqSubmitting] = useState(false);
+  const [dqError, setDqError] = useState<string | null>(null);
+  const [dqSuccess, setDqSuccess] = useState(false);
+
+  const selectedMatch = matches.find((m) => m.matchNumber?.toString() === selectedRound);
+  const selectedRoundConfig = tournament.rounds.find((r) => r.roundNumber.toString() === selectedRound);
+  const participants = selectedMatch?.participants ?? [];
+  const formParticipants = participants.map((p) => ({
+    user: { id: p.userId, displayName: p.user?.displayName ?? null },
+  }));
+
+  const handleOverrideSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tournament.season || !selectedMatch || !selectedUserId || totalScore === '') return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      await gamesApi.overrideScore(
+        'tournament',
+        tournament.season.seasonNumber,
+        selectedMatch.matchNumber!,
+        parseInt(selectedUserId, 10),
+        parseInt(totalScore, 10),
+      );
+      setSuccess(true);
+      setTotalScore('');
+      setSelectedUserId('');
+      onUpdate();
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to override score');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDisqualifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tournament.season || !selectedMatch || !dqUserId) return;
+    setDqSubmitting(true);
+    setDqError(null);
+    try {
+      await gamesApi.disqualify(
+        'tournament',
+        tournament.season.seasonNumber,
+        selectedMatch.matchNumber!,
+        parseInt(dqUserId, 10),
+      );
+      setDqSuccess(true);
+      setDqUserId('');
+      onUpdate();
+      setTimeout(() => setDqSuccess(false), 3000);
+    } catch (err: any) {
+      setDqError(err.response?.data?.message || 'Failed to disqualify player');
+    } finally {
+      setDqSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="p-4 bg-orange-950/10 border border-orange-900/50 rounded-lg space-y-4">
+      <h3 className="text-orange-400 font-medium text-sm">{t('admin.scoreEdit')}</h3>
+
+      {/* Round selector */}
+      <div>
+        <label className="text-gray-300 text-sm mb-1 block">{t('admin.selectRound')}</label>
+        <select
+          value={selectedRound}
+          onChange={(e) => { setSelectedRound(e.target.value); setSelectedUserId(''); }}
+          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">{t('admin.noRoundSelected')}</option>
+          {tournament.rounds.map((round) => {
+            const match = matches.find((m) => m.matchNumber === round.roundNumber);
+            return (
+              <option key={round.roundNumber} value={round.roundNumber.toString()} disabled={!match}>
+                {t('admin.roundOption', { number: round.roundNumber })}
+                {!match ? ` (${t('admin.noMatchYet')})` : ''}
+              </option>
+            );
+          })}
+        </select>
+      </div>
+
+      {selectedMatch && selectedRoundConfig && tournament.season && (
+        <div className="space-y-6">
+          {/* Race-by-race score edit */}
+          <div className="p-3 bg-gray-800/50 rounded-lg">
+            <p className="text-gray-400 text-xs mb-3">{t('admin.scoreEditByRace')}</p>
+            <ScoreSubmissionForm
+              mode={getFormMode(selectedRoundConfig.inGameMode)}
+              apiCategory="tournament"
+              season={tournament.season.seasonNumber}
+              game={selectedMatch.matchNumber!}
+              deadline={selectedMatch.deadline}
+              participants={formParticipants}
+              onScoreSubmitted={onUpdate}
+              hideDescription
+            />
+          </div>
+
+          {/* Direct total score override */}
+          <div className="p-3 bg-gray-800/50 rounded-lg">
+            <p className="text-gray-400 text-xs mb-3">{t('admin.scoreEditDirect')}</p>
+            <form onSubmit={handleOverrideSubmit} className="space-y-3">
+              <div>
+                <label className="text-gray-300 text-sm mb-1 block">{t('admin.selectPlayer')}</label>
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">{t('admin.selectPlayer')}</option>
+                  {[...participants].sort((a, b) =>
+                    (a.user?.displayName || `User#${a.userId}`).localeCompare(
+                      b.user?.displayName || `User#${b.userId}`,
+                      'ja',
+                    )
+                  ).map((p) => (
+                    <option key={p.userId} value={p.userId.toString()}>
+                      {p.user?.displayName || `User#${p.userId}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-gray-300 text-sm mb-1 block">{t('admin.totalScore')}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={totalScore}
+                  onChange={(e) => setTotalScore(e.target.value)}
+                  placeholder="0"
+                  className="w-32 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              {error && <p className="text-sm text-red-400">{error}</p>}
+              {success && <p className="text-sm text-green-400">{t('admin.scoreOverrideSuccess')}</p>}
+              <button
+                type="submit"
+                disabled={submitting || !selectedUserId || totalScore === ''}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg"
+              >
+                {submitting ? '...' : t('admin.applyScore')}
+              </button>
+            </form>
+          </div>
+
+          {/* Disqualify player */}
+          <div className="p-3 bg-gray-800/50 rounded-lg">
+            <p className="text-gray-400 text-xs mb-3">{t('admin.disqualifySection')}</p>
+            <form onSubmit={handleDisqualifySubmit} className="space-y-3">
+              <div>
+                <label className="text-gray-300 text-sm mb-1 block">{t('admin.selectPlayer')}</label>
+                <select
+                  value={dqUserId}
+                  onChange={(e) => setDqUserId(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">{t('admin.selectPlayer')}</option>
+                  {[...participants].sort((a, b) =>
+                    (a.user?.displayName || `User#${a.userId}`).localeCompare(
+                      b.user?.displayName || `User#${b.userId}`,
+                      'ja',
+                    )
+                  ).map((p) => (
+                    <option key={p.userId} value={p.userId.toString()}>
+                      {p.user?.displayName || `User#${p.userId}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {dqError && <p className="text-sm text-red-400">{dqError}</p>}
+              {dqSuccess && <p className="text-sm text-green-400">{t('admin.disqualifySuccess')}</p>}
+              <button
+                type="submit"
+                disabled={dqSubmitting || !dqUserId}
+                className="px-4 py-2 bg-red-700 hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg"
+              >
+                {dqSubmitting ? '...' : t('admin.disqualify')}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

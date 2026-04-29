@@ -328,7 +328,12 @@ export function ScoreSubmissionForm({
             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">{t('selectPlayer')}</option>
-            {participants!.map((p) => (
+            {[...participants!].sort((a, b) =>
+              (a.user.displayName || `User#${a.user.id}`).localeCompare(
+                b.user.displayName || `User#${b.user.id}`,
+                'ja',
+              )
+            ).map((p) => (
               <option key={p.user.id} value={p.user.id}>
                 {p.user.displayName || `User#${p.user.id}`}
               </option>

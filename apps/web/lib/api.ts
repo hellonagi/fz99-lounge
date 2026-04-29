@@ -209,6 +209,10 @@ export const gamesApi = {
       isEliminated: boolean;
     }>;
   }) => api.patch(`/games/${category}/${season}/${match}/score/${userId}`, data),
+  overrideScore: (category: string, season: number, match: number, userId: number, totalScore: number) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/override-score`, { totalScore }),
+  disqualify: (category: string, season: number, match: number, userId: number) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/disqualify`),
   endMatch: (category: string, season: number, match: number) =>
     api.post(`/games/${category}/${season}/${match}/end`),
   updateTracks: (category: string, season: number, match: number, tracks: (number | null)[]) =>

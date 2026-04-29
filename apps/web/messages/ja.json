@@ -83,11 +83,20 @@
       "confirmFinish": "最終ラウンドを終了して大会を終了しますか？",
       "noInProgress": "現在進行中のラウンドはありません。",
       "betweenRounds": "前のGPが終了しました。次のGPを開始してください。",
-      "scoreEdit": "プレイヤースコア編集",
+      "scoreEdit": "スコア補正（救済）",
       "selectRound": "ラウンドを選択",
       "roundOption": "ラウンド {number}",
-      "noRoundSelected": "スコアを編集するラウンドを選択してください",
-      "noMatchYet": "このラウンドはまだ開始されていません"
+      "noRoundSelected": "ラウンドを選択",
+      "noMatchYet": "未開始",
+      "scoreEditByRace": "レース順位から編集",
+      "scoreEditDirect": "合計点直接入力（救済補正 — 順位列にCと表示）",
+      "selectPlayer": "プレイヤーを選択",
+      "totalScore": "合計スコア",
+      "applyScore": "スコアを適用",
+      "scoreOverrideSuccess": "スコアを適用しました",
+      "disqualifySection": "プレイヤーを失格にする",
+      "disqualify": "失格にする（0点）",
+      "disqualifySuccess": "失格処理しました"
     },
     "countdown": {
       "splitNewPasscode": "スプリット — 新パスコード公開まで",
@@ -115,7 +124,9 @@
       "noData": "順位データはまだありません",
       "overall": "総合順位",
       "playerCount": "{count}名参加",
-      "finished": "Finish"
+      "finished": "完走",
+      "compensatedNote": "— システムの不備によりGPに参加できなかったプレイヤーには、他GPの平均点を付与しています。ただし点数は偶数になるよう調整しています。",
+      "disqualifiedNote": "— ルール違反により失格となったGPは0点扱いです。"
     },
     "hero": {
       "live": "LIVE",

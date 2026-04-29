@@ -77,6 +77,7 @@ enum MatchStatus {
 enum ResultStatus {
   UNSUBMITTED // 未提出（初期状態）
   PENDING     // 提出済・検証待ち
+  SUBMITTED   // 提出済（旧ステータス）
   VERIFIED    // 検証済み
   REJECTED    // 却下
   NO_SHOW     // 未提出確定（モデレーター/締切による）
@@ -615,7 +616,7 @@ model GameParticipant {
   assistEnabled Boolean @default(false)
 
   // 結果ステータス（UNSUBMITTED→PENDING→VERIFIED/REJECTED）
-  status ResultStatus @default(UNSUBMITTED)
+  status ResultStatus @default(PENDING)
 
   // スコア提出
   submittedAt DateTime?
@@ -627,6 +628,10 @@ model GameParticipant {
   // TEAM_CLASSIC用: チーム情報
   teamIndex  Int?              // 0, 1, 2, ... (チーム番号)
   isExcluded Boolean @default(false) // 端数で除外されたか
+
+  // 管理者による補正スコア（raceResultsなしでtotalScoreを直接設定）
+  isCompensated    Boolean @default(false)
+  isDisqualified   Boolean @default(false)
 
   // 検証/却下の監査用（statusで管理、メタデータとして保持）
   verifiedBy Int?

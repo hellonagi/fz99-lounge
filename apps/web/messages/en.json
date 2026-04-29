@@ -83,11 +83,20 @@
       "confirmFinish": "End the last round and finish the tournament?",
       "noInProgress": "No round is currently in progress.",
       "betweenRounds": "Previous GP has ended. Start the next GP.",
-      "scoreEdit": "Edit Player Score",
+      "scoreEdit": "Score Override (Compensation)",
       "selectRound": "Select Round",
       "roundOption": "Round {number}",
-      "noRoundSelected": "Select a round to edit scores",
-      "noMatchYet": "This round has not started yet"
+      "noRoundSelected": "Select a round",
+      "noMatchYet": "Not started",
+      "scoreEditByRace": "Edit by race positions",
+      "scoreEditDirect": "Direct total score (compensation — shows C in race columns)",
+      "selectPlayer": "Select Player",
+      "totalScore": "Total Score",
+      "applyScore": "Apply Score",
+      "scoreOverrideSuccess": "Score applied",
+      "disqualifySection": "Disqualify player",
+      "disqualify": "Disqualify (0 pts)",
+      "disqualifySuccess": "Player disqualified"
     },
     "countdown": {
       "splitNewPasscode": "Split — New passcode reveals in",
@@ -115,7 +124,9 @@
       "noData": "No standings data available",
       "overall": "Overall Standings",
       "playerCount": "{count} players",
-      "finished": "Finish"
+      "finished": "Survived",
+      "compensatedNote": "— Compensated score: awarded to players unable to participate in a GP due to a system issue. Score is the average of their other GPs, rounded to the nearest even number.",
+      "disqualifiedNote": "— Disqualified: player received 0 points for this GP due to a rule violation."
     },
     "hero": {
       "live": "LIVE",
