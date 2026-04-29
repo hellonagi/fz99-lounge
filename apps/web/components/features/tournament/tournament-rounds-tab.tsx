@@ -1306,7 +1306,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
                         >
                           {score != null ? (
                             <span className="flex flex-col items-center leading-tight">
-                              <span className={survived ? 'text-white font-medium' : 'text-gray-500'}>
+                              <span className={survived ? 'text-white font-medium' : 'text-gray-400'}>
                                 {score}
                               </span>
                               {compensated ? (

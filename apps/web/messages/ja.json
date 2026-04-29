@@ -61,7 +61,7 @@
     },
     "tabs": {
       "overview": "概要",
-      "rounds": "ラウンド",
+      "match": "マッチ",
       "stats": "統計"
     },
     "stats": {
@@ -71,7 +71,7 @@
       "date": "開催日",
       "winner": "優勝者",
       "scoreDistribution": "最終ポイント分布",
-      "scoreRange": "ポイント範囲",
+      "scoreRange": "ポイント振れ幅",
       "playerCount": "人数",
       "roundScores": "ラウンド別ポイント",
       "round": "ラウンド",
@@ -98,6 +98,7 @@
       "rankingGpHigh": "GP最高",
       "rankingGpWins": "GP優勝",
       "rankingRaceWins": "レース1位",
+      "machineHighestScore": "マシン別最高ポイント",
       "machineAvgScore": "マシン別平均ポイント",
       "machineMedianScore": "マシン別中央値ポイント",
       "machineSurvivedRate": "マシン別生存数",

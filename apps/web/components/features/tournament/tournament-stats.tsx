@@ -521,6 +521,15 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     return row;
   });
 
+  const machineHighestByRound: Record<string, any>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
+    const row: Record<string, any> = { round: roundLabel };
+    for (const m of F99_MACHINES) {
+      const scores = machineScores.get(m.value);
+      row[m.value] = scores && scores.length > 0 ? Math.max(...scores) : null;
+    }
+    return row;
+  });
+
   const machineMedianByRound: Record<string, any>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
     const row: Record<string, any> = { round: roundLabel };
     for (const m of F99_MACHINES) {
@@ -601,6 +610,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     scoreVsSurvived,
     rankings,
     machineScoreByRound,
+    machineHighestByRound,
     machineMedianByRound,
     machineSurvivedByRound,
     mostConsistent,
@@ -865,6 +875,55 @@ export function TournamentStats({ tournament }: TournamentStatsProps) {
                   <Bar key={m.value} dataKey={m.value} stackId="machine" fill={MACHINE_HEX[m.value]} />
                 ))}
               </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Machine Highest Score by Round */}
+      {stats.machineHighestByRound.length > 0 && (
+        <Card className="bg-gray-800/50 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {t('machineHighestScore')}
+              <span className="ml-3 inline-flex gap-3 text-xs font-normal">
+                {F99_MACHINES.map((m) => (
+                  <span key={m.value} className="flex items-center gap-1">
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: MACHINE_HEX[m.value] }} />
+                    {m.abbr}
+                  </span>
+                ))}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={250} minWidth={0}>
+              <LineChart data={stats.machineHighestByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} domain={[200, 'auto']} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  labelStyle={{ color: '#9ca3af' }}
+                  itemStyle={{ color: '#fff' }}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  formatter={(value: any, name: any) => {
+                    const machine = F99_MACHINES.find((m) => m.value === name);
+                    return [value, machine?.name ?? name];
+                  }}
+                />
+                {F99_MACHINES.map((m) => (
+                  <Line
+                    key={m.value}
+                    type="linear"
+                    dataKey={m.value}
+                    stroke={MACHINE_HEX[m.value]}
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: MACHINE_HEX[m.value] }}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
