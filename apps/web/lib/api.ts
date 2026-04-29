@@ -61,7 +61,7 @@ export const usersApi = {
     const params = category ? `?category=${category}` : '';
     return api.get(`/users/${userId}/seasons${params}`);
   },
-  getLeaderboard: (mode: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' = 'GP', seasonNumber?: number, page = 1, limit = 20) => {
+  getLeaderboard: (mode: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' = 'GP', seasonNumber?: number, page = 1, limit = 50) => {
     const params = new URLSearchParams({ mode, page: String(page), limit: String(limit) });
     if (seasonNumber !== undefined) params.append('seasonNumber', String(seasonNumber));
     return api.get(`/users/leaderboard?${params.toString()}`);
@@ -209,6 +209,10 @@ export const gamesApi = {
       isEliminated: boolean;
     }>;
   }) => api.patch(`/games/${category}/${season}/${match}/score/${userId}`, data),
+  overrideScore: (category: string, season: number, match: number, userId: number, totalScore: number) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/override-score`, { totalScore }),
+  disqualify: (category: string, season: number, match: number, userId: number) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/disqualify`),
   endMatch: (category: string, season: number, match: number) =>
     api.post(`/games/${category}/${season}/${match}/end`),
   updateTracks: (category: string, season: number, match: number, tracks: (number | null)[]) =>

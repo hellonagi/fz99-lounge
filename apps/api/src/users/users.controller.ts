@@ -48,7 +48,7 @@ export class UsersController {
     @Query('mode') mode: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP' = 'GP',
     @Query('seasonNumber') seasonNumber?: string,
     @Query('page') page: string = '1',
-    @Query('limit') limit: string = '20',
+    @Query('limit') limit: string = '50',
   ) {
     const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getLeaderboard(

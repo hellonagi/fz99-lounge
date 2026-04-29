@@ -757,6 +757,166 @@ export class GamesService {
   }
 
   /**
+   * Override total score directly (admin compensation for missed GPs)
+   * Sets totalScore without raceResults, marks isCompensated = true
+   */
+  async overrideScore(
+    eventCategory: EventCategory,
+    seasonNumber: number,
+    matchNumber: number,
+    userId: number,
+    totalScore: number,
+    gameNumber: number = 1,
+  ) {
+    const game = await this.prisma.game.findFirst({
+      where: {
+        gameNumber,
+        match: {
+          matchNumber,
+          season: {
+            seasonNumber,
+            event: { category: eventCategory },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId: game.id, userId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found in this game');
+    }
+
+    // Clear any existing race results
+    await this.prisma.raceResult.deleteMany({
+      where: { gameParticipantId: participant.id },
+    });
+
+    await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        totalScore,
+        eliminatedAtRace: null,
+        machine: null,
+        isCompensated: true,
+        status: ResultStatus.PENDING,
+        submittedAt: new Date(),
+        rejectedBy: null,
+        rejectedAt: null,
+      },
+    });
+
+    const updatedParticipant = await this.prisma.gameParticipant.findUnique({
+      where: { id: participant.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            profileNumber: true,
+            discordId: true,
+            displayName: true,
+            avatarHash: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    this.eventEmitter.emit('game.scoreUpdated', {
+      gameId: game.id,
+      participant: updatedParticipant,
+    });
+
+    return updatedParticipant;
+  }
+
+  /**
+   * Disqualify participant: sets totalScore=0, marks isDisqualified=true
+   */
+  async disqualifyParticipant(
+    eventCategory: EventCategory,
+    seasonNumber: number,
+    matchNumber: number,
+    userId: number,
+    gameNumber: number = 1,
+  ) {
+    const game = await this.prisma.game.findFirst({
+      where: {
+        gameNumber,
+        match: {
+          matchNumber,
+          season: {
+            seasonNumber,
+            event: { category: eventCategory },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    const participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId: game.id, userId },
+    });
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found in this game');
+    }
+
+    await this.prisma.raceResult.deleteMany({
+      where: { gameParticipantId: participant.id },
+    });
+
+    await this.prisma.gameParticipant.update({
+      where: { id: participant.id },
+      data: {
+        totalScore: 0,
+        eliminatedAtRace: null,
+        machine: null,
+        isDisqualified: true,
+        isCompensated: false,
+        status: ResultStatus.PENDING,
+        submittedAt: new Date(),
+        rejectedBy: null,
+        rejectedAt: null,
+      },
+    });
+
+    const updatedParticipant = await this.prisma.gameParticipant.findUnique({
+      where: { id: participant.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            profileNumber: true,
+            discordId: true,
+            displayName: true,
+            avatarHash: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
+      },
+    });
+
+    this.eventEmitter.emit('game.scoreUpdated', {
+      gameId: game.id,
+      participant: updatedParticipant,
+    });
+
+    return updatedParticipant;
+  }
+
+  /**
    * Determine GP mode based on event category and in-game mode.
    * For TOURNAMENT category, derive from game's actual inGameMode.
    */

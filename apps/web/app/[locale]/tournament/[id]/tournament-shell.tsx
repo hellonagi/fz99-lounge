@@ -45,16 +45,22 @@ export default function TournamentShell({ children }: { children: React.ReactNod
 
   const basePath = `/${params.locale}/tournament/${id}`;
 
-  const activeTab = pathname.startsWith(`${basePath}/rounds`)
-    ? 'rounds'
-    : 'overview';
+  const activeTab = pathname.startsWith(`${basePath}/stats`)
+    ? 'stats'
+    : pathname.startsWith(`${basePath}/match`)
+      ? 'match'
+      : 'overview';
 
-  const showRounds = tournament.status !== 'DRAFT';
+  const showMatch = tournament.status !== 'DRAFT';
+  const showStats = tournament.status === 'COMPLETED';
 
   const tabs = [
     { key: 'overview', href: basePath, label: t('tabs.overview') },
-    ...(showRounds
-      ? [{ key: 'rounds', href: `${basePath}/rounds`, label: t('tabs.rounds') }]
+    ...(showMatch
+      ? [{ key: 'match', href: `${basePath}/match`, label: t('tabs.match') }]
+      : []),
+    ...(showStats
+      ? [{ key: 'stats', href: `${basePath}/stats`, label: t('tabs.stats') }]
       : []),
   ];
 

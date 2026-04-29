@@ -68,6 +68,8 @@ export interface ParticipantUpdate {
   eliminatedAtRace: number | null;
   ratingAfter: number | null;
   ratingChange: number | null;
+  isCompensated?: boolean;
+  isDisqualified?: boolean;
   status?: string;
   screenshotRequested?: boolean;
   raceResults?: Array<{

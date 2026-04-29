@@ -129,6 +129,8 @@ export interface GameParticipant {
   status: ResultStatus;
   totalScore?: number | null;
   eliminatedAtRace?: number | null;
+  isCompensated?: boolean;
+  isDisqualified?: boolean;
   submittedAt?: string | null;
   // Relations
   user?: User;

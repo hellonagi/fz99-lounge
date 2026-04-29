@@ -29,6 +29,8 @@ interface GameParticipant {
   ratingChange?: number | null;
   // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
+  isCompensated?: boolean;
+  isDisqualified?: boolean;
   // TEAM_CLASSIC fields
   teamIndex?: number | null;
   isExcluded?: boolean;
@@ -81,6 +83,8 @@ interface MergedParticipant {
   screenshot?: Screenshot;
   // Score verification status (UNSUBMITTED | PENDING | VERIFIED | REJECTED)
   status?: string;
+  isCompensated?: boolean;
+  isDisqualified?: boolean;
   // TEAM_CLASSIC fields
   teamIndex?: number | null;
   isExcluded?: boolean;
@@ -149,6 +153,8 @@ export function MatchDetailsTable({
       screenshot: userScreenshot,
       // Score verification status
       status: gameData?.status,
+      isCompensated: gameData?.isCompensated ?? false,
+      isDisqualified: gameData?.isDisqualified ?? false,
       // TEAM_CLASSIC fields
       teamIndex: gameData?.teamIndex ?? null,
       isExcluded: gameData?.isExcluded ?? false,
@@ -243,6 +249,8 @@ export function MatchDetailsTable({
   // Helper to get race position display
   const getRaceDisplay = (participant: MergedParticipant, raceNum: number) => {
     if (!participant.hasSubmitted) return '-';
+    if (participant.isCompensated) return <span className="text-orange-400 font-medium">C</span>;
+    if (participant.isDisqualified) return <span className="text-red-400 font-medium">DQ</span>;
     const result = participant.raceResults?.find(r => r.raceNumber === raceNum);
     if (!result) return '-';
     // Disconnected: show "D" in blue
