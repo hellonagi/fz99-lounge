@@ -450,21 +450,28 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   );
 
   // 7) Machine-specific Top 10: aggregate scores only from GPs where the player used that machine
-  const playerMachineScores = new Map<number, Map<string, { total: number; count: number }>>();
-  for (const p of allParticipants) {
-    if (!p.machine || p.totalScore == null || p.totalScore === 0) continue;
-    if (!playerMachineScores.has(p.userId)) playerMachineScores.set(p.userId, new Map());
-    const mMap = playerMachineScores.get(p.userId)!;
-    const prev = mMap.get(p.machine) ?? { total: 0, count: 0 };
-    mMap.set(p.machine, { total: prev.total + p.totalScore, count: prev.count + 1 });
+  const playerMachineScores = new Map<number, Map<string, { total: number; count: number; survived: number }>>();
+  for (const match of sortedMatches) {
+    for (const game of match.games ?? []) {
+      for (const p of game.participants ?? []) {
+        if (!p.machine || p.isDisqualified || p.totalScore == null || p.totalScore === 0) continue;
+        if (!playerMachineScores.has(p.userId)) playerMachineScores.set(p.userId, new Map());
+        const mMap = playerMachineScores.get(p.userId)!;
+        const prev = mMap.get(p.machine) ?? { total: 0, count: 0, survived: 0 };
+        const survived = p.eliminatedAtRace == null && !p.isCompensated ? 1 : 0;
+        mMap.set(p.machine, { total: prev.total + p.totalScore, count: prev.count + 1, survived: prev.survived + survived });
+      }
+    }
   }
 
   const machineRankings: RankingCategory[] = F99_MACHINES.map((m) => {
     const players: [number, number][] = [];
+    const machineSurvived = new Map<number, number>();
     for (const [userId, mMap] of playerMachineScores) {
       const data = mMap.get(m.value);
       if (data && data.total > 0) {
         players.push([userId, data.total]);
+        machineSurvived.set(userId, data.survived);
       }
     }
     return {
@@ -474,7 +481,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
       players: buildRanking(players, (uid) => {
         const data = playerMachineScores.get(uid)?.get(m.value);
         return `${data?.count ?? 0} GPs`;
-      }, { showSurvived: true }),
+      }).map((p) => ({ ...p, survived: machineSurvived.get(p.userId) ?? 0 })),
     };
   }).filter((r) => r.players.length > 0);
 
