@@ -332,6 +332,7 @@
   },
   "home": {
     "recentMatches": "最近の試合",
+    "pastTournaments": "過去の大会",
     "noRecentMatches": "最近の試合はありません",
     "upcomingMatches": "開催予定",
     "startsInTime": "あと {time} で開始",
@@ -383,7 +384,11 @@
     "teamClassic": "チームクラシック",
     "teamGp": "チームGP",
     "failedToLoadSeasons": "シーズンの読み込みに失敗しました",
-    "failedToLoadResults": "結果の読み込みに失敗しました"
+    "failedToLoadResults": "結果の読み込みに失敗しました",
+    "tournament": "大会",
+    "tournamentsFound": "{count}件の大会",
+    "noTournaments": "大会結果はありません",
+    "failedToLoadTournaments": "大会の読み込みに失敗しました"
   },
   "rules": {
     "title": "FZ99 Lounge ルール",

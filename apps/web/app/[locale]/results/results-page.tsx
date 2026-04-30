@@ -3,11 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { matchesApi, seasonsApi } from '@/lib/api';
+import { matchesApi, seasonsApi, tournamentsApi } from '@/lib/api';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
 import { MatchList } from '@/components/features/results/match-list';
+import { TournamentResultList } from '@/components/features/results/tournament-result-list';
 import { ResultsPagination } from '@/components/features/results/results-pagination';
+import { RecentTournament } from '@/types';
 
 interface Season {
   id: number;
@@ -39,6 +41,7 @@ interface PaginationMeta {
   hasPrev: boolean;
 }
 
+type TabMode = 'gp' | 'team_gp' | 'classic' | 'team_classic' | 'tournament';
 type Category = 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP';
 
 const MODE_TO_CATEGORY: Record<string, Category> = {
@@ -55,9 +58,16 @@ const CATEGORY_TO_MODE: Record<Category, string> = {
   TEAM_CLASSIC: 'team-classic',
 };
 
-function getCategoryFromMode(mode: string | null): Category {
-  if (mode && MODE_TO_CATEGORY[mode]) return MODE_TO_CATEGORY[mode];
-  return 'GP';
+function getInitialTab(mode: string | null): TabMode {
+  if (mode === 'tournament') return 'tournament';
+  if (mode && MODE_TO_CATEGORY[mode]) return mode as TabMode;
+  return 'gp';
+}
+
+function getCategoryFromTab(tab: TabMode): Category | null {
+  if (tab === 'tournament') return null;
+  const key = tab.replace('_', '-');
+  return MODE_TO_CATEGORY[key] ?? (tab.toUpperCase() as Category);
 }
 
 export default function ResultsPage() {
@@ -66,7 +76,7 @@ export default function ResultsPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<Category>(() => getCategoryFromMode(searchParams.get('mode')));
+  const [activeTab, setActiveTab] = useState<TabMode>(() => getInitialTab(searchParams.get('mode')));
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number | undefined>();
   const [page, setPage] = useState(1);
@@ -75,21 +85,30 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Tournament-specific state
+  const [tournaments, setTournaments] = useState<RecentTournament[]>([]);
+  const [tournamentsLoading, setTournamentsLoading] = useState(false);
+  const [tournamentsError, setTournamentsError] = useState<string | null>(null);
+
+  const isTournamentTab = activeTab === 'tournament';
+  const activeCategory = getCategoryFromTab(activeTab);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Fetch seasons when category changes
+  // Fetch seasons when category changes (not for tournament tab)
   useEffect(() => {
+    if (isTournamentTab) return;
+
     const fetchSeasons = async () => {
       try {
-        const response = await seasonsApi.getAll(activeCategory);
+        const response = await seasonsApi.getAll(activeCategory!);
         const seasonList = response.data as Season[];
         setSeasons(seasonList);
         setSelectedSeasonNumber(undefined);
         setPage(1);
 
-        // Find active season and set as default
         const activeSeason = seasonList.find((s: Season) => s.isActive);
         if (activeSeason) {
           setSelectedSeasonNumber(activeSeason.seasonNumber);
@@ -106,11 +125,11 @@ export default function ResultsPage() {
     };
 
     fetchSeasons();
-  }, [activeCategory, t]);
+  }, [activeCategory, isTournamentTab, t]);
 
-  // Fetch matches when season or page changes
+  // Fetch matches when season or page changes (not for tournament tab)
   useEffect(() => {
-    if (selectedSeasonNumber === undefined) return;
+    if (isTournamentTab || selectedSeasonNumber === undefined || !activeCategory) return;
 
     const fetchResults = async () => {
       setLoading(true);
@@ -134,18 +153,43 @@ export default function ResultsPage() {
     };
 
     fetchResults();
-  }, [activeCategory, selectedSeasonNumber, page, t]);
+  }, [activeCategory, selectedSeasonNumber, page, isTournamentTab, t]);
+
+  // Fetch tournaments when tournament tab is active
+  useEffect(() => {
+    if (!isTournamentTab) return;
+
+    const fetchTournaments = async () => {
+      setTournamentsLoading(true);
+      setTournamentsError(null);
+      try {
+        const response = await tournamentsApi.getRecent(100);
+        setTournaments(response.data);
+      } catch {
+        setTournamentsError(t('failedToLoadTournaments'));
+        setTournaments([]);
+      } finally {
+        setTournamentsLoading(false);
+      }
+    };
+
+    fetchTournaments();
+  }, [isTournamentTab, t]);
 
   const handleSeasonChange = (seasonNumber: number) => {
     setSelectedSeasonNumber(seasonNumber);
     setPage(1);
   };
 
-  const handleCategoryChange = useCallback((value: string) => {
-    const category = value.toUpperCase() as Category;
-    setActiveCategory(category);
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value as TabMode);
     const params = new URLSearchParams(searchParams.toString());
-    params.set('mode', CATEGORY_TO_MODE[category] || value);
+    if (value === 'tournament') {
+      params.set('mode', 'tournament');
+    } else {
+      const category = value.toUpperCase() as Category;
+      params.set('mode', CATEGORY_TO_MODE[category] || value);
+    }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [searchParams, router, pathname]);
 
@@ -153,7 +197,7 @@ export default function ResultsPage() {
     setPage(newPage);
   };
 
-  const renderContent = () => (
+  const renderMatchContent = () => (
     <>
       {error ? (
         <div className="text-center text-red-400 py-8">{error}</div>
@@ -178,12 +222,32 @@ export default function ResultsPage() {
     </>
   );
 
+  const renderTournamentContent = () => (
+    <>
+      {tournamentsError ? (
+        <div className="text-center text-red-400 py-8">{tournamentsError}</div>
+      ) : (
+        <>
+          {!tournamentsLoading && tournaments.length > 0 && (
+            <div className="text-sm text-gray-400 mb-4">
+              {t('tournamentsFound', { count: tournaments.length })}
+            </div>
+          )}
+          <TournamentResultList
+            tournaments={tournaments}
+            loading={tournamentsLoading}
+          />
+        </>
+      )}
+    </>
+  );
+
   return (
     <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
-        {seasons.length > 0 && selectedSeasonNumber !== undefined && (
+        {!isTournamentTab && seasons.length > 0 && selectedSeasonNumber !== undefined && (
           <SeasonSelect
             seasons={seasons}
             selectedSeasonNumber={selectedSeasonNumber}
@@ -196,30 +260,35 @@ export default function ResultsPage() {
       <div className="bg-gray-800 rounded-lg">
         {mounted ? (
           <Tabs
-            value={activeCategory.toLowerCase()}
-            onValueChange={handleCategoryChange}
+            value={activeTab}
+            onValueChange={handleTabChange}
           >
             <TabsList>
               <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
               <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
               <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
+              <TabsTrigger value="tournament">{t('tournament')}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="gp" className="p-4">
-              {renderContent()}
+              {renderMatchContent()}
             </TabsContent>
 
             <TabsContent value="team_gp" className="p-4">
-              {renderContent()}
+              {renderMatchContent()}
             </TabsContent>
 
             <TabsContent value="classic" className="p-4">
-              {renderContent()}
+              {renderMatchContent()}
             </TabsContent>
 
             <TabsContent value="team_classic" className="p-4">
-              {renderContent()}
+              {renderMatchContent()}
+            </TabsContent>
+
+            <TabsContent value="tournament" className="p-4">
+              {renderTournamentContent()}
             </TabsContent>
           </Tabs>
         ) : (

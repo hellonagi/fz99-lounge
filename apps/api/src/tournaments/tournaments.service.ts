@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
-import { EventCategory, MatchStatus, StreamPlatform, TournamentStatus } from '@prisma/client';
+import { EventCategory, MatchStatus, Prisma, StreamPlatform, TournamentStatus } from '@prisma/client';
 
 const STATUS_ORDER: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -1026,6 +1026,81 @@ export class TournamentsService {
     return this.prisma.tournamentStream.findMany({
       where: { tournamentConfigId },
       orderBy: { sortOrder: 'asc' },
+    });
+  }
+
+  async getRecentCompleted(limit: number = 5) {
+    const configs = await this.prisma.tournamentConfig.findMany({
+      where: {
+        status: {
+          in: [TournamentStatus.COMPLETED, TournamentStatus.RESULTS_PENDING],
+        },
+      },
+      orderBy: { tournamentDate: 'desc' },
+      take: limit,
+      include: {
+        _count: { select: { registrations: true } },
+      },
+    });
+
+    const seasonIds = configs.map((c) => c.seasonId);
+
+    // Get the top scorer per season (sum of totalScore across all games)
+    const winners = seasonIds.length
+      ? await this.prisma.$queryRaw<
+          Array<{
+            seasonId: number;
+            userId: number;
+            displayName: string | null;
+            totalScore: bigint;
+          }>
+        >`
+          SELECT m."seasonId" AS "seasonId", gp."userId" AS "userId", u."displayName" AS "displayName",
+                 SUM(gp."totalScore") AS "totalScore"
+          FROM game_participants gp
+          JOIN games g ON g.id = gp."gameId"
+          JOIN matches m ON m.id = g."matchId"
+          JOIN users u ON u.id = gp."userId"
+          WHERE m."seasonId" IN (${Prisma.join(seasonIds)})
+            AND gp."totalScore" IS NOT NULL
+          GROUP BY m."seasonId", gp."userId", u."displayName"
+          ORDER BY m."seasonId", SUM(gp."totalScore") DESC
+        `
+      : [];
+
+    // Build a map: seasonId → top 3 scorers
+    const topScorersMap = new Map<
+      number,
+      Array<{ rank: number; id: number; displayName: string | null; totalScore: number }>
+    >();
+    for (const w of winners) {
+      const list = topScorersMap.get(w.seasonId) ?? [];
+      if (list.length < 3) {
+        list.push({
+          rank: list.length + 1,
+          id: w.userId,
+          displayName: w.displayName,
+          totalScore: Number(w.totalScore),
+        });
+        topScorersMap.set(w.seasonId, list);
+      }
+    }
+
+    return configs.map((c) => {
+      const topScorers = topScorersMap.get(c.seasonId) ?? [];
+      return {
+        id: c.id,
+        name: c.name,
+        tournamentNumber: c.tournamentNumber,
+        status: c.status,
+        tournamentDate: c.tournamentDate,
+        totalRounds: c.totalRounds,
+        participantCount: c._count.registrations,
+        winner: topScorers[0]
+          ? { id: topScorers[0].id, displayName: topScorers[0].displayName, totalScore: topScorers[0].totalScore }
+          : null,
+        topScorers,
+      };
     });
   }
 
