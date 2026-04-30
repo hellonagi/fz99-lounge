@@ -449,39 +449,31 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     (uid) => raceWinTracks.get(uid)?.join(', ') ?? '',
   );
 
-  // 7) Machine-specific Top 10: group by most-used machine, rank by total points
-  const playerMachineUsage = new Map<number, Map<string, number>>();
+  // 7) Machine-specific Top 10: aggregate scores only from GPs where the player used that machine
+  const playerMachineScores = new Map<number, Map<string, { total: number; count: number }>>();
   for (const p of allParticipants) {
     if (!p.machine || p.totalScore == null || p.totalScore === 0) continue;
-    if (!playerMachineUsage.has(p.userId)) playerMachineUsage.set(p.userId, new Map());
-    const mMap = playerMachineUsage.get(p.userId)!;
-    mMap.set(p.machine, (mMap.get(p.machine) ?? 0) + 1);
-  }
-
-  // Determine each player's main machine (most used)
-  const playerMainMachine = new Map<number, string>();
-  for (const [userId, mMap] of playerMachineUsage) {
-    let maxMachine = '';
-    let maxCount = 0;
-    for (const [machine, count] of mMap) {
-      if (count > maxCount) { maxCount = count; maxMachine = machine; }
-    }
-    if (maxMachine) playerMainMachine.set(userId, maxMachine);
+    if (!playerMachineScores.has(p.userId)) playerMachineScores.set(p.userId, new Map());
+    const mMap = playerMachineScores.get(p.userId)!;
+    const prev = mMap.get(p.machine) ?? { total: 0, count: 0 };
+    mMap.set(p.machine, { total: prev.total + p.totalScore, count: prev.count + 1 });
   }
 
   const machineRankings: RankingCategory[] = F99_MACHINES.map((m) => {
-    const players = [...playerMainMachine.entries()]
-      .filter(([, machine]) => machine === m.value)
-      .map(([userId]) => [userId, playerScores.get(userId) ?? 0] as [number, number])
-      .filter(([, score]) => score > 0);
+    const players: [number, number][] = [];
+    for (const [userId, mMap] of playerMachineScores) {
+      const data = mMap.get(m.value);
+      if (data && data.total > 0) {
+        players.push([userId, data.total]);
+      }
+    }
     return {
       key: m.value,
       label: m.abbr,
       valueLabel: 'points',
       players: buildRanking(players, (uid) => {
-        const usage = playerMachineUsage.get(uid);
-        const count = usage?.get(m.value) ?? 0;
-        return `${count} GPs`;
+        const data = playerMachineScores.get(uid)?.get(m.value);
+        return `${data?.count ?? 0} GPs`;
       }, { showSurvived: true }),
     };
   }).filter((r) => r.players.length > 0);
