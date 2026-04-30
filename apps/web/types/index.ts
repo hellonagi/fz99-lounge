@@ -294,6 +294,27 @@ export interface TournamentStream {
   isFeatured: boolean;
 }
 
+export interface RecentTournament {
+  id: number;
+  name: string;
+  tournamentNumber: number;
+  status: TournamentStatus;
+  tournamentDate: string;
+  totalRounds: number;
+  participantCount: number;
+  winner: {
+    id: number;
+    displayName: string | null;
+    totalScore: number;
+  } | null;
+  topScorers?: Array<{
+    rank: number;
+    id: number;
+    displayName: string | null;
+    totalScore: number;
+  }>;
+}
+
 export interface TournamentRegistration {
   id: number;
   userId: number;

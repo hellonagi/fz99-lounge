@@ -332,6 +332,7 @@
   },
   "home": {
     "recentMatches": "Recent Matches",
+    "pastTournaments": "Past Tournaments",
     "noRecentMatches": "No recent matches",
     "upcomingMatches": "Upcoming Matches",
     "startsInTime": "Starts in {time}",
@@ -384,7 +385,11 @@
     "teamClassic": "Team Classic",
     "teamGp": "Team GP",
     "failedToLoadSeasons": "Failed to load seasons",
-    "failedToLoadResults": "Failed to load results"
+    "failedToLoadResults": "Failed to load results",
+    "tournament": "Tournament",
+    "tournamentsFound": "{count} tournaments found",
+    "noTournaments": "No tournament results",
+    "failedToLoadTournaments": "Failed to load tournaments"
   },
   "rules": {
     "title": "FZ99 Lounge Ruleset",

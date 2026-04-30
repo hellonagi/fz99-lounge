@@ -297,6 +297,8 @@ export const screenshotsApi = {
 // Tournaments API
 export const tournamentsApi = {
   getAll: () => api.get('/tournaments'),
+  getRecent: (limit: number = 5) =>
+    api.get(`/tournaments/recent?limit=${limit}`),
   getById: (id: number) => api.get(`/tournaments/${id}`),
   getWeek: (from: string, to: string) => {
     const params = new URLSearchParams({ from, to });

@@ -43,6 +43,14 @@ export class TournamentsController {
     return this.tournamentsService.findByDateRange(new Date(from), new Date(to));
   }
 
+  @Get('recent')
+  @Public()
+  async getRecentCompleted(@Query('limit') limit?: string) {
+    return this.tournamentsService.getRecentCompleted(
+      limit ? parseInt(limit, 10) : 5,
+    );
+  }
+
   @Get(':id')
   @Public()
   async findOne(@Param('id') id: string) {

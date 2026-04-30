@@ -14,7 +14,8 @@ import { useMatchWebSocket } from '@/hooks/useMatchWebSocket';
 import { useMatchActions } from '@/hooks/useMatchActions';
 import { useAuthStore } from '@/store/authStore';
 import { matchesApi, usersApi, tournamentsApi } from '@/lib/api';
-import { Tournament, TournamentStream } from '@/types';
+import { PastTournamentResults } from '@/components/features/tournament/past-tournament-results';
+import { Tournament, TournamentStream, RecentTournament } from '@/types';
 
 interface RecentMatch {
   id: number;
@@ -40,6 +41,8 @@ export default function Home() {
   const [recentMatchesLoading, setRecentMatchesLoading] = useState(true);
   const [featuredAwards, setFeaturedAwards] = useState<any[]>([]);
   const [featuredAwardsLoading, setFeaturedAwardsLoading] = useState(true);
+  const [recentTournaments, setRecentTournaments] = useState<RecentTournament[]>([]);
+  const [recentTournamentsLoading, setRecentTournamentsLoading] = useState(true);
 
   // Custom hooks
   const {
@@ -114,9 +117,20 @@ export default function Home() {
         console.error('Failed to fetch tournaments:', err);
       }
     };
+    const fetchRecentTournaments = async () => {
+      try {
+        const response = await tournamentsApi.getRecent(5);
+        setRecentTournaments(response.data);
+      } catch (err) {
+        console.error('Failed to fetch recent tournaments:', err);
+      } finally {
+        setRecentTournamentsLoading(false);
+      }
+    };
     fetchRecentMatches();
     fetchFeaturedAwards();
     fetchOpenTournaments();
+    fetchRecentTournaments();
   }, []);
 
   if (loading) {
@@ -186,9 +200,16 @@ export default function Home() {
       <FeaturedPlayers awards={featuredAwards} loading={featuredAwardsLoading} />
 
       {/* Recent Matches Section */}
-      <section className="pt-4 pb-16">
+      <section className="pt-4 pb-4">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
+        </div>
+      </section>
+
+      {/* Past Tournament Results */}
+      <section className="pt-4 pb-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <PastTournamentResults tournaments={recentTournaments} loading={recentTournamentsLoading} />
         </div>
       </section>
     </>
