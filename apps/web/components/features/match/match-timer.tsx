@@ -22,19 +22,26 @@ export function MatchTimer({ scheduledStart, timeOffset }: MatchTimerProps) {
   }, [calculateTimeLeft]);
 
   useEffect(() => {
-    // Decrement every second
-    const timer = setInterval(() => {
+    let tickId: ReturnType<typeof setTimeout>;
+    let syncId: ReturnType<typeof setTimeout>;
+
+    // Decrement every second, aligned to the second boundary
+    const tick = () => {
       setTimeLeft((prev) => Math.max(0, prev - 1));
-    }, 1000);
+      tickId = setTimeout(tick, 1000 - (Date.now() % 1000));
+    };
+    tickId = setTimeout(tick, 1000 - (Date.now() % 1000));
 
     // Re-sync every 10 seconds
-    const syncTimer = setInterval(() => {
+    const sync = () => {
       setTimeLeft(calculateTimeLeft());
-    }, 10000);
+      syncId = setTimeout(sync, 10000);
+    };
+    syncId = setTimeout(sync, 10000);
 
     return () => {
-      clearInterval(timer);
-      clearInterval(syncTimer);
+      clearTimeout(tickId);
+      clearTimeout(syncId);
     };
   }, [calculateTimeLeft]);
 
