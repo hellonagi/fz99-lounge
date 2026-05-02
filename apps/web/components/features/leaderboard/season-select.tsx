@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import {
   Select,
   SelectContent,
@@ -25,8 +26,13 @@ export function SeasonSelect({
   selectedSeasonNumber,
   onSeasonChange,
 }: SeasonSelectProps) {
-  // Sort by seasonNumber descending (newest first)
-  const sortedSeasons = [...seasons].sort((a, b) => b.seasonNumber - a.seasonNumber);
+  const tCommon = useTranslations('common');
+
+  // Separate Unrated (seasonNumber=0) and regular seasons
+  const regularSeasons = seasons
+    .filter((s) => s.seasonNumber !== -1)
+    .sort((a, b) => b.seasonNumber - a.seasonNumber);
+  const unratedSeason = seasons.find((s) => s.seasonNumber === -1);
 
   return (
     <Select
@@ -37,7 +43,7 @@ export function SeasonSelect({
         <SelectValue placeholder="Select Season" />
       </SelectTrigger>
       <SelectContent>
-        {sortedSeasons.map((season) => (
+        {regularSeasons.map((season) => (
           <SelectItem key={season.id} value={season.seasonNumber.toString()}>
             Season {season.seasonNumber}
             {season.isActive && (
@@ -45,6 +51,11 @@ export function SeasonSelect({
             )}
           </SelectItem>
         ))}
+        {unratedSeason && (
+          <SelectItem key={unratedSeason.id} value="-1">
+            {tCommon('unrated')}
+          </SelectItem>
+        )}
       </SelectContent>
     </Select>
   );

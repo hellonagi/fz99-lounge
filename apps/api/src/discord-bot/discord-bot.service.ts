@@ -92,6 +92,7 @@ export interface AnnounceMatchResultsParams {
   seasonName: string;
   topParticipants: MatchResultParticipant[];
   topTeams?: { teamLabel: string; score: number; rank: number; members: string[] }[];
+  isRated?: boolean;
 }
 
 const IN_GAME_MODE_DISPLAY: Record<string, string> = {
@@ -451,7 +452,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const guild = await this.client.guilds.fetch(guildId);
-      const channelName = `${params.category}-s${params.seasonNumber}-game${params.matchNumber}`;
+      const seasonLabel = params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
+      const channelName = `${params.category}-${seasonLabel}-game${params.matchNumber}`;
 
       // Build permission overwrites
       const permissionOverwrites: Array<{
@@ -568,7 +570,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const guild = await this.client.guilds.fetch(guildId);
-      const channelName = `${params.category}-s${params.seasonNumber}-game${params.matchNumber}`;
+      const seasonLabel = params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
+      const channelName = `${params.category}-${seasonLabel}-game${params.matchNumber}`;
 
       // Build permission overwrites
       const permissionOverwrites: Array<{
@@ -951,6 +954,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       totalScore: number;
     }>;
     allTeams?: Array<{ label: string; score: number; rank: number; members: string[] }>;
+    isRated?: boolean;
   }): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug('Discord bot not ready or disabled, skipping match results to channel');
@@ -1011,9 +1015,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
           .join('\n');
       }
 
+      const unratedLabel = params.isRated === false ? ' [Unrated]' : '';
       const embed = new EmbedBuilder()
-        .setTitle('Match Results')
-        .setColor(0xf39c12)
+        .setTitle(`Match Results${unratedLabel}`)
+        .setColor(params.isRated === false ? 0x808080 : 0xf39c12)
         .setDescription(description)
         .setFooter({
           text:
@@ -1354,9 +1359,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Build embed
+      const unratedLabel = params.isRated === false ? ' [Unrated]' : '';
       const embed = new EmbedBuilder()
-        .setTitle('Match Results')
-        .setColor(0xf39c12)
+        .setTitle(`Match Results${unratedLabel}`)
+        .setColor(params.isRated === false ? 0x808080 : 0xf39c12)
         .setDescription(
           `${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!\n\n${resultLines}`,
         )

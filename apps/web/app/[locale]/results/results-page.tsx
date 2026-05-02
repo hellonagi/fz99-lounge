@@ -109,14 +109,20 @@ export default function ResultsPage() {
         setSelectedSeasonNumber(undefined);
         setPage(1);
 
-        const activeSeason = seasonList.find((s: Season) => s.isActive);
+        // Auto-select active season (skip Unrated seasonNumber=0)
+        const activeSeason = seasonList.find((s: Season) => s.isActive && s.seasonNumber !== -1);
         if (activeSeason) {
           setSelectedSeasonNumber(activeSeason.seasonNumber);
-        } else if (seasonList.length > 0) {
-          const latestSeason = seasonList.reduce((prev: Season, curr: Season) =>
-            curr.seasonNumber > prev.seasonNumber ? curr : prev
-          );
-          setSelectedSeasonNumber(latestSeason.seasonNumber);
+        } else {
+          const regularSeasons = seasonList.filter((s: Season) => s.seasonNumber !== -1);
+          if (regularSeasons.length > 0) {
+            const latestSeason = regularSeasons.reduce((prev: Season, curr: Season) =>
+              curr.seasonNumber > prev.seasonNumber ? curr : prev
+            );
+            setSelectedSeasonNumber(latestSeason.seasonNumber);
+          } else if (seasonList.length > 0) {
+            setSelectedSeasonNumber(seasonList[0].seasonNumber);
+          }
         }
       } catch {
         setError(t('failedToLoadSeasons'));

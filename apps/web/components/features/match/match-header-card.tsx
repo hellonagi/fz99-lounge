@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useFormatter, useLocale } from 'next-intl';
+import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
@@ -53,6 +53,7 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
   const { gameMode, seasonNumber, gameNumber, leagueType, inGameMode, startedAt, status, totalPlayers } = props;
   const format = useFormatter();
   const locale = useLocale();
+  const tCommon = useTranslations('common');
 
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -117,7 +118,10 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
         <div className="relative">
           {/* Category - Season Game */}
           <div className="text-3xl md:text-4xl font-bold text-white mb-1">
-            {formatWords(gameMode)} - Season {seasonNumber} #{gameNumber}
+            {seasonNumber === -1
+              ? `${formatWords(gameMode)} - ${tCommon('unrated')}`
+              : `${formatWords(gameMode)} - Season ${seasonNumber} #${gameNumber}`
+            }
           </div>
 
           {/* League */}

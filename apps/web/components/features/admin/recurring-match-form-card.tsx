@@ -30,7 +30,7 @@ const CREATE_DEFAULTS: RecurringMatchFormData = {
   inGameMode: 'CLASSIC_MINI_PRIX',
   leagueType: undefined,
   rules: [{ daysOfWeek: [], timeOfDay: '21:00' }],
-  minPlayers: '12',
+  minPlayers: '4',
   maxPlayers: '20',
 };
 
@@ -63,7 +63,7 @@ export function RecurringMatchFormCard({
     } else {
       form.setValue('leagueType', undefined);
       form.setValue('inGameMode', 'CLASSIC_MINI_PRIX');
-      form.setValue('minPlayers', '12');
+      form.setValue('minPlayers', '4');
       form.setValue('maxPlayers', '20');
     }
   }, [category, form, isEditMode]);

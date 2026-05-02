@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { usersApi } from '@/lib/api';
 import { UserMatchHistoryEntry } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ interface RecentMatchesProps {
 
 export function RecentMatches({ userId, category, initialLimit = 10, seasonNumber }: RecentMatchesProps) {
   const locale = useLocale();
+  const tCommon = useTranslations('common');
   const [matches, setMatches] = useState<UserMatchHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -148,7 +149,7 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
           {matches.map((match) => (
             <Link
               key={`${match.matchId}-${match.completedAt}`}
-              href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
+              href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber === -1 ? 'unrated' : match.seasonNumber}/${match.matchNumber}`}
               className="flex items-center gap-3 px-4 py-3 hover:bg-gray-700/30 transition-colors"
             >
               {/* Position */}
@@ -175,7 +176,10 @@ export function RecentMatches({ userId, category, initialLimit = 10, seasonNumbe
                     {match.category === 'TEAM_CLASSIC' ? 'TEAM CLASSIC' : match.category}
                   </span>
                   <span className="text-gray-300 text-sm">
-                    S{match.seasonNumber} #{match.matchNumber}
+                    {match.seasonNumber === -1
+                      ? tCommon('unrated')
+                      : `S${match.seasonNumber} #${match.matchNumber}`
+                    }
                   </span>
                 </div>
                 <div className="text-gray-500 text-xs mt-0.5">

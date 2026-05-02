@@ -103,6 +103,7 @@ interface MatchDetailsTableProps {
   isClassicMode?: boolean;
   isGpMode?: boolean;
   isTeamClassic?: boolean;
+  isRated?: boolean;
   teamScores?: TeamScore[];
   teamColors?: Record<number, string>; // teamIndex -> colorHex
   mvpUserIds?: Set<number>;
@@ -116,6 +117,7 @@ export function MatchDetailsTable({
   isClassicMode = false,
   isGpMode = false,
   isTeamClassic = false,
+  isRated = true,
   teamScores = [],
   teamColors = {},
   mvpUserIds = new Set(),
@@ -367,15 +369,15 @@ export function MatchDetailsTable({
       </td>
       )}
 
-      {/* Rating After - hidden for GP */}
-      {!isGpMode && (
+      {/* Rating After - hidden for GP and Unrated */}
+      {!isGpMode && isRated && (
         <td className="py-2 px-2 text-right text-gray-100">
           {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
         </td>
       )}
 
-      {/* Rating Change - hidden for GP */}
-      {!isGpMode && (
+      {/* Rating Change - hidden for GP and Unrated */}
+      {!isGpMode && isRated && (
         <td className={cn(
           'py-2 px-2 text-right font-medium',
           participant.ratingChange == null ? 'text-gray-400' :
@@ -407,8 +409,12 @@ export function MatchDetailsTable({
         ))}
         <th className="text-right py-2 px-2 font-medium">Pts</th>
         {!hideStatus && <th className="text-center py-2 px-2 font-medium">Status</th>}
-        {!isGpMode && <th className="text-right py-2 px-2 font-medium">Rating</th>}
-        {!isGpMode && <th className="text-right py-2 px-2 font-medium">+/-</th>}
+        {!isGpMode && isRated && (
+          <th className="text-right py-2 px-2 font-medium">Rating</th>
+        )}
+        {!isGpMode && isRated && (
+          <th className="text-right py-2 px-2 font-medium">+/-</th>
+        )}
       </tr>
     </thead>
   );

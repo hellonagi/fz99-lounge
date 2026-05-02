@@ -17,13 +17,6 @@ import { CreateMatchDto } from './dto/create-match.dto';
 import { UpdateGameLeagueDto } from './dto/update-game-league.dto';
 import { EventCategory, InGameMode, League, MatchStatus, UserStatus } from '@prisma/client';
 
-/** カテゴリごとのマッチ占有時間（分）。ここに定義されたカテゴリ同士でスパン重複チェックを行う */
-export const CATEGORY_SPAN_MINUTES: Partial<Record<EventCategory, number>> = {
-  GP: 30,
-  CLASSIC: 15,
-  TEAM_CLASSIC: 15,
-  TEAM_GP: 30,
-};
 
 @Injectable()
 export class MatchesService implements OnModuleInit, OnModuleDestroy {
@@ -262,41 +255,6 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     if (!season.isActive) {
       throw new BadRequestException(`Season ${seasonId} is not active`);
-    }
-
-    // スパンベースの重複チェック
-    const newSpan = CATEGORY_SPAN_MINUTES[season.event.category];
-    if (newSpan) {
-      const newStartMs = scheduledDate.getTime();
-      const newEndMs = newStartMs + newSpan * 60 * 1000;
-      const maxSpan = Math.max(...Object.values(CATEGORY_SPAN_MINUTES).filter((v): v is number => v != null));
-      const windowStart = new Date(newStartMs - maxSpan * 60 * 1000 + 1);
-      const windowEnd = new Date(newEndMs - 1);
-
-      const candidates = await this.prisma.match.findMany({
-        where: {
-          status: { not: MatchStatus.CANCELLED },
-          scheduledStart: { gte: windowStart, lte: windowEnd },
-          season: {
-            event: {
-              category: { in: Object.keys(CATEGORY_SPAN_MINUTES) as EventCategory[] },
-            },
-          },
-        },
-        include: { season: { include: { event: true } } },
-      });
-
-      for (const existing of candidates) {
-        const existSpan = CATEGORY_SPAN_MINUTES[existing.season.event.category];
-        if (!existSpan) continue;
-        const existStartMs = existing.scheduledStart.getTime();
-        const existEndMs = existStartMs + existSpan * 60 * 1000;
-        if (newStartMs < existEndMs && existStartMs < newEndMs) {
-          throw new BadRequestException(
-            `Match time overlaps with an existing match (${newSpan}-minute window required)`,
-          );
-        }
-      }
     }
 
     // CLASSIC_MINI_PRIXモードの場合、トラックセットを自動計算
@@ -615,6 +573,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           playerCount: game ? game.participants.length : match.participants.length,
           status: match.status,
           startedAt: match.actualStart,
+          isRated: match.isRated,
         };
 
         // Individual top scorer (participants are ordered by totalScore desc)
@@ -744,6 +703,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         playerCount: game ? game._count.participants : match.participants.length,
         status: match.status,
         startedAt: match.actualStart,
+        isRated: match.isRated,
       };
 
       // Individual top scorer (participants are ordered by totalScore desc)

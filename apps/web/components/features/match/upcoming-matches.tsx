@@ -88,6 +88,7 @@ function CompactCountdown({ scheduledStart, label }: { scheduledStart: string; l
 export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave }: UpcomingMatchesProps) {
   const t = useTranslations('home');
   const tHero = useTranslations('matchHero');
+  const tCommon = useTranslations('common');
   const { isAuthenticated, user } = useAuthStore();
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
 
@@ -115,7 +116,10 @@ export function UpcomingMatches({ matches, loading, joiningMatchId, onJoinLeave 
                 <div className="flex items-center gap-2">
                   <CategoryBadge category={category} />
                   <span className="text-gray-400 text-sm font-medium">
-                    Season{match.season?.seasonNumber} #{match.matchNumber}
+                    {match.season?.seasonNumber === -1
+                      ? tCommon('unrated')
+                      : `Season${match.season?.seasonNumber} #${match.matchNumber}`
+                    }
                   </span>
                 </div>
 

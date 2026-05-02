@@ -6,7 +6,7 @@ import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { Prisma, EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
-import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS, TEAM_GP_GRID_NUMBERS } from './team-config.service';
+import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS, TEAM_GP_GRID_NUMBERS, isPrime } from './team-config.service';
 import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
 import { TracksService } from '../tracks/tracks.service';
 import { MatchesService } from './matches.service';
@@ -163,6 +163,56 @@ export class MatchesProcessor {
         });
       }
 
+      // Re-read category from match (may have changed due to fallback)
+      const eventCategory = match.season.event.category;
+
+      // Detect if team mode fell back to individual (prime player count)
+      const isFallbackToIndividual = isTeamMode && !updatedGame.teamConfig;
+      const fallbackNote = isFallbackToIndividual
+        ? `PRIME_FALLBACK:${currentPlayers}`
+        : undefined;
+
+      // Determine if match is rated (CLASSIC/TEAM_CLASSIC: need 12+ players)
+      const isRated = (eventCategory === EventCategory.CLASSIC || eventCategory === EventCategory.TEAM_CLASSIC)
+        ? currentPlayers >= 12
+        : true;
+
+      // Move unrated matches to the Unrated season (seasonNumber=0)
+      if (!isRated) {
+        const unratedSeason = await this.prisma.season.findFirst({
+          where: {
+            event: { category: eventCategory },
+            seasonNumber: -1,
+          },
+          include: { event: true },
+        });
+
+        if (unratedSeason && unratedSeason.id !== match.seasonId) {
+          const originalSeasonId = match.seasonId;
+          await this.prisma.$transaction(async (tx) => {
+            await tx.match.update({
+              where: { id: match.id },
+              data: { seasonId: unratedSeason.id, matchNumber: null },
+            });
+            await this.matchesService.reassignWaitingMatchNumbers(tx, originalSeasonId);
+            await this.matchesService.reassignWaitingMatchNumbers(tx, unratedSeason.id);
+          });
+
+          // Update match object for downstream use
+          match.seasonId = unratedSeason.id;
+          match.season = unratedSeason;
+          const updatedMatch = await this.prisma.match.findUnique({
+            where: { id: match.id },
+            select: { matchNumber: true },
+          });
+          match.matchNumber = updatedMatch?.matchNumber ?? match.matchNumber;
+
+          this.logger.log(
+            `Unrated match ${match.id} moved to Unrated season ${unratedSeason.id} (#${match.matchNumber})`,
+          );
+        }
+      }
+
       // Update match status and reset fakeCount (safety net)
       await this.prisma.match.update({
         where: { id: matchId },
@@ -170,6 +220,8 @@ export class MatchesProcessor {
           status: MatchStatus.IN_PROGRESS,
           actualStart: new Date(),
           fakeCount: 0,
+          isRated,
+          ...(fallbackNote && { notes: fallbackNote }),
         },
       });
 
@@ -177,9 +229,10 @@ export class MatchesProcessor {
         `Started match ${matchId} with game ${updatedGame.id} and passcode ${passcode}`,
       );
 
-      // Format category for URL (GP -> "gp", CLASSIC -> "classic", TOURNAMENT -> "tournament")
-      const categoryStr = match.season.event.category.toLowerCase();
+      // Format category for URL (may have changed due to fallback)
+      const categoryStr = eventCategory.toLowerCase();
       const seasonNumber = match.season.seasonNumber;
+      const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
       const matchNumber = match.matchNumber;
 
       // Guard: matchNumber should never be null for a valid WAITING match
@@ -189,7 +242,7 @@ export class MatchesProcessor {
       }
 
       // For team modes, hide passcode in the initial event (will be revealed later)
-      const emitPasscode = isTeamMode ? '' : updatedGame.passcode;
+      const emitPasscode = (isTeamMode && !isFallbackToIndividual) ? '' : updatedGame.passcode;
 
       // Emit WebSocket event to all clients
       this.eventsGateway.emitMatchStarted({
@@ -204,7 +257,8 @@ export class MatchesProcessor {
         category: categoryStr,
         season: seasonNumber,
         match: matchNumber,
-        url: `/matches/${categoryStr}/${seasonNumber}/${matchNumber}`,
+        url: `/matches/${categoryStr}/${seasonSlug}/${matchNumber}`,
+        message: fallbackNote,
       });
 
       // Send Push notifications to all participants
@@ -214,7 +268,7 @@ export class MatchesProcessor {
           passcode: emitPasscode, // Hide passcode for TEAM_CLASSIC
           leagueType: updatedGame.leagueType,
           totalPlayers: currentPlayers,
-          url: `/matches/${categoryStr}/${seasonNumber}/${matchNumber}`,
+          url: `/matches/${categoryStr}/${seasonSlug}/${matchNumber}`,
           match: {
             participants: match.participants.map((p) => ({
               userId: p.userId,
@@ -226,7 +280,8 @@ export class MatchesProcessor {
         // Continue even if push notifications fail
       }
 
-      // Create Discord passcode channel for participants (skip for team modes - done at reveal)
+      // Create Discord passcode channel for participants
+      // Skip for team modes (done at reveal) and fallback (already created in handleTeamModeStart)
       if (!isTeamMode) {
         try {
           const participantDiscordIds = match.participants
@@ -292,14 +347,96 @@ export class MatchesProcessor {
     currentPlayers: number,
     isTeamGp: boolean = false,
   ) {
-    // Validate player count
+    // Check for prime player count in TEAM_CLASSIC → fallback to individual CLASSIC
     const modeLabel = isTeamGp ? 'TEAM_GP' : 'TEAM_CLASSIC';
+    if (!isTeamGp && isPrime(currentPlayers)) {
+      this.logger.log(
+        `TEAM_CLASSIC match ${match.id}: ${currentPlayers} players (prime) → fallback to individual CLASSIC`,
+      );
+
+      // Move match to CLASSIC season
+      const classicSeason = await this.prisma.season.findFirst({
+        where: {
+          event: { category: EventCategory.CLASSIC },
+          isActive: true,
+        },
+        include: { event: true },
+      });
+
+      if (classicSeason) {
+        await this.prisma.$transaction(async (tx) => {
+          // Clear matchNumber from TEAM_CLASSIC season
+          await tx.match.update({
+            where: { id: match.id },
+            data: { seasonId: classicSeason.id, matchNumber: null },
+          });
+
+          // Reassign matchNumbers in both seasons
+          await this.matchesService.reassignWaitingMatchNumbers(tx, match.seasonId);
+          await this.matchesService.reassignWaitingMatchNumbers(tx, classicSeason.id);
+        });
+
+        // Update match object for downstream use
+        match.seasonId = classicSeason.id;
+        match.season = classicSeason;
+        // Fetch the newly assigned matchNumber
+        const updatedMatch = await this.prisma.match.findUnique({
+          where: { id: match.id },
+          select: { matchNumber: true },
+        });
+        match.matchNumber = updatedMatch?.matchNumber ?? match.matchNumber;
+
+        this.logger.log(
+          `Match ${match.id} moved to CLASSIC season ${classicSeason.id} (S${classicSeason.seasonNumber} #${match.matchNumber})`,
+        );
+      } else {
+        this.logger.warn('No active CLASSIC season found, keeping TEAM_CLASSIC season');
+      }
+
+      // Reveal passcode immediately (same as CLASSIC flow)
+      const updatedGame = await this.prisma.game.update({
+        where: { id: game.id },
+        data: {
+          passcode,
+          passcodePublishedAt: new Date(),
+          startedAt: new Date(),
+          teamConfig: null,
+          ...(!game.showTracks && { tracks: Prisma.DbNull }),
+        },
+      });
+
+      // Create Discord passcode channel (same as CLASSIC flow)
+      try {
+        const participantDiscordIds = match.participants
+          .map((p: any) => p.user?.discordId)
+          .filter((id: string | undefined): id is string => !!id);
+
+        const categoryStr = match.season.event.category.toLowerCase();
+
+        await this.discordBotService.createPasscodeChannel({
+          gameId: updatedGame.id,
+          category: categoryStr,
+          seasonNumber: match.season.seasonNumber,
+          matchNumber: match.matchNumber,
+          passcode,
+          inGameMode: updatedGame.inGameMode,
+          leagueType: updatedGame.leagueType,
+          participantDiscordIds,
+        });
+      } catch (error) {
+        this.logger.error('Failed to create Discord channel for fallback match:', error);
+      }
+
+      return updatedGame;
+    }
+
+    // Validate player count
     const isValid = isTeamGp
       ? this.teamConfigService.isValidTeamGpPlayerCount(currentPlayers)
       : this.teamConfigService.isValidPlayerCount(currentPlayers);
 
     if (!isValid) {
-      const range = isTeamGp ? '30-99' : '12-20';
+      const range = isTeamGp ? '30-99' : '4-20';
       this.logger.error(
         `Invalid player count for ${modeLabel}: ${currentPlayers} (need ${range})`,
       );
@@ -489,7 +626,8 @@ export class MatchesProcessor {
 
       const categoryStr = match.season.event.category.toLowerCase();
       const baseUrl = process.env.CORS_ORIGIN || 'https://fz99lounge.com';
-      const matchUrl = `${baseUrl}/matches/${categoryStr}/${match.season.seasonNumber}/${match.matchNumber}`;
+      const seasonSlugForTeam = match.season.seasonNumber === -1 ? 'unrated' : String(match.season.seasonNumber);
+      const matchUrl = `${baseUrl}/matches/${categoryStr}/${seasonSlugForTeam}/${match.matchNumber}`;
 
       // Build userId -> displayName map
       const userNameMap = new Map<number, string>();
@@ -812,7 +950,8 @@ export class MatchesProcessor {
 
       const categoryStr = match.season.event.category.toLowerCase();
       const baseUrl = process.env.CORS_ORIGIN || 'https://fz99lounge.com';
-      const matchUrl = `${baseUrl}/matches/${categoryStr}/${match.season.seasonNumber}/${match.matchNumber}`;
+      const seasonSlugForReminder = match.season.seasonNumber === -1 ? 'unrated' : String(match.season.seasonNumber);
+      const matchUrl = `${baseUrl}/matches/${categoryStr}/${seasonSlugForReminder}/${match.matchNumber}`;
 
       await this.discordBotService.postScoreSubmissionReminder(
         game.discordChannelId,

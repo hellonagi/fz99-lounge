@@ -46,11 +46,12 @@ export class SeasonsService {
       );
     }
 
-    // Deactivate other active seasons for the same category
+    // Deactivate other active seasons for the same category (except Unrated season)
     await this.prisma.season.updateMany({
       where: {
         event: { category },
         isActive: true,
+        seasonNumber: { not: -1 },
       },
       data: {
         isActive: false,
@@ -83,6 +84,7 @@ export class SeasonsService {
       where: {
         event: { category },
         isActive: true,
+        seasonNumber: { not: -1 },
       },
       include: {
         event: true,
@@ -187,13 +189,14 @@ export class SeasonsService {
   async toggleStatus(id: number, isActive: boolean) {
     const season = await this.getById(id);
 
-    // If activating, deactivate other seasons of the same category
+    // If activating, deactivate other seasons of the same category (except Unrated season)
     if (isActive) {
       await this.prisma.season.updateMany({
         where: {
           event: { category: season.event.category },
           isActive: true,
           id: { not: id },
+          seasonNumber: { not: -1 },
         },
         data: {
           isActive: false,

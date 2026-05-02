@@ -304,10 +304,14 @@
       }
     }
   },
+  "matchNotes": {
+    "primeFallback": "With {count} players, teams couldn't be split evenly. This match was switched to individual mode."
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
-    "noUpcomingMatch": "No Upcoming Match"
+    "noUpcomingMatch": "No Upcoming Match",
+    "unrated": "Unrated"
   },
   "splitVote": {
     "description": "If the room split, the passcode will be regenerated once 1/3 of players vote",
@@ -442,7 +446,7 @@
       "joiningTitle": "Joining a Match",
       "beforeMatch": "Before the Match",
       "beforeMatch1": "Log in with Discord and join from the home page (first come, first served)",
-      "beforeMatch2": "Minimum players required for a match: Classic Mode = 12, GP Mode = 30. The match will be cancelled if not met.",
+      "beforeMatch2": "Minimum players required for a match: Classic Mode = 4, GP Mode = 30. Matches with fewer than 12 players in Classic/Team Classic will be Unrated.",
       "beforeMatch3": "You can cancel freely before the match starts",
       "whenStarts": "When the Match Starts",
       "whenStarts1": "You will be redirected to the match page (you will receive a Discord mention if you are in the <discordLink>Discord server</discordLink>)",
@@ -704,7 +708,7 @@
       "startRequired": "Start time is required",
       "startTooSoon": "Start time must be at least 1 minute from now",
       "minPlayersRequired": "Min players is required",
-      "minPlayersMin": "Min players must be at least 12",
+      "minPlayersMin": "Min players must be at least 4",
       "maxPlayersRequired": "Max players is required",
       "maxPlayersMin": "Max players must be at least 1",
       "maxPlayersGreater": "Max players must be greater than or equal to min players"

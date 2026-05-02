@@ -93,9 +93,11 @@ class ScoreSimulator {
     this.game = game;
 
     // Get fake users who are match participants but haven't submitted game scores yet
+    // For TEAM_CLASSIC, GameParticipants are created as PENDING at team assignment,
+    // so check totalScore instead of status to determine if actually submitted
     const submittedUserIds = new Set(
       game.participants
-        .filter((p: any) => p.status !== 'UNSUBMITTED')
+        .filter((p: any) => p.totalScore !== null)
         .map((p: any) => p.userId),
     );
     const excludedUserIds = new Set(
@@ -121,7 +123,7 @@ class ScoreSimulator {
     const category = game.match.season?.event?.category || 'Unknown';
     const seasonNumber = game.match.season?.seasonNumber || 'Unknown';
     const matchNumber = game.match.matchNumber || 'Unknown';
-    const submittedCount = game.participants.filter((p: any) => p.status !== 'UNSUBMITTED').length;
+    const submittedCount = game.participants.filter((p: any) => p.totalScore !== null).length;
 
     console.log(`Found IN_PROGRESS game: ${category} Season ${seasonNumber}, Match ${matchNumber}`);
     console.log(`   Game ID: ${game.id}`);
@@ -254,9 +256,11 @@ class ScoreSimulator {
     this.game = game;
 
     // Get fake users who are match participants but haven't submitted game scores yet
+    // For TEAM_CLASSIC, GameParticipants are created as PENDING at team assignment,
+    // so check totalScore instead of status to determine if actually submitted
     const submittedUserIds = new Set(
       game.participants
-        .filter((p: any) => p.status !== 'UNSUBMITTED')
+        .filter((p: any) => p.totalScore !== null)
         .map((p: any) => p.userId),
     );
     const excludedUserIds = new Set(
@@ -279,7 +283,7 @@ class ScoreSimulator {
         ),
       }));
 
-    const submittedCount = game.participants.filter((p: any) => p.status !== 'UNSUBMITTED').length;
+    const submittedCount = game.participants.filter((p: any) => p.totalScore !== null).length;
     console.log(`Found game with ${submittedCount} scores submitted`);
     console.log(`   ${this.users.length} fake users waiting to submit scores`);
 
@@ -561,7 +565,8 @@ class ScoreSimulator {
       const matchNum = this.game.match.matchNumber || match;
 
       console.log(`\nSimulation complete!`);
-      console.log(`View at: http://localhost:3001/matches/${cat}/${seasonNum}/${matchNum}`);
+      const seasonSlug = seasonNum === -1 ? 'unrated' : String(seasonNum);
+      console.log(`View at: http://localhost:3001/matches/${cat}/${seasonSlug}/${matchNum}`);
     } catch (error) {
       console.error('Error:', error);
     } finally {

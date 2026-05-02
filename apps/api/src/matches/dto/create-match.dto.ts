@@ -17,7 +17,7 @@ export class CreateMatchDto {
 
   @IsOptional()
   @IsInt()
-  @Min(12)
+  @Min(4)
   minPlayers?: number;
 
   @IsOptional()

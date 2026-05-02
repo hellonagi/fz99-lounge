@@ -92,7 +92,7 @@ export default function LeaderboardPage() {
     const fetchSeasons = async () => {
       try {
         const response = await seasonsApi.getAll(activeCategory);
-        const seasonList = response.data as Season[];
+        const seasonList = (response.data as Season[]).filter(s => s.seasonNumber !== -1);
         setSeasons(seasonList);
         setSelectedSeasonNumber(undefined); // Reset season selection
         setPage(1); // Reset page

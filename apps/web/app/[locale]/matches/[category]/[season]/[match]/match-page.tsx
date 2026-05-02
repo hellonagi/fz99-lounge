@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, redirect, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { useAuthStore } from '@/store/authStore';
 import { MatchHeaderCard } from '@/components/features/match/match-header-card';
@@ -12,6 +12,7 @@ import { ScoreSubmissionForm } from '@/components/features/match/score-submissio
 import { ScreenshotGallery } from '@/components/features/match/screenshot-gallery';
 import { TrackBanners } from '@/components/features/match/track-banners';
 import { TeamAnnouncementPhase } from '@/components/features/match/team-announcement-phase';
+import { Alert } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { gamesApi, screenshotsApi } from '@/lib/api';
@@ -42,6 +43,8 @@ interface Game {
     currentPlayers: number;
     scheduledStart: string;
     deadline: string;
+    isRated?: boolean;
+    notes?: string | null;
     season: {
       seasonNumber: number;
     } | null;
@@ -94,12 +97,21 @@ interface Game {
 
 export default function GamePage() {
   const params = useParams();
+  const pathname = usePathname();
   const category = params.category as string;
-  const season = parseInt(params.season as string, 10);
+  const seasonParam = params.season as string;
   const match = parseInt(params.match as string, 10);
+
+  // Block numeric -1 in URL — only "unrated" slug is allowed
+  if (seasonParam === '-1') {
+    redirect(pathname.replace('/-1/', '/unrated/'));
+  }
+
+  const season = seasonParam === 'unrated' ? -1 : parseInt(seasonParam, 10);
   const { user } = useAuthStore();
   const t = useTranslations('splitVote');
   const tScreenshotReminder = useTranslations('screenshotReminder');
+  const tMatch = useTranslations('matchNotes');
 
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
@@ -508,6 +520,18 @@ export default function GamePage() {
             }
           />
 
+          {/* Fallback/notes alert */}
+          {game.match.notes && (() => {
+            const notes = game.match.notes!;
+            // New format: PRIME_FALLBACK:11
+            const newMatch = notes.match(/^PRIME_FALLBACK:(\d+)$/);
+            if (newMatch) return <Alert variant="warning">{tMatch('primeFallback', { count: parseInt(newMatch[1], 10) })}</Alert>;
+            // Legacy format: ��加人数がN人（素数）...
+            const legacyMatch = notes.match(/参加人数が(\d+)人/);
+            if (legacyMatch) return <Alert variant="warning">{tMatch('primeFallback', { count: parseInt(legacyMatch[1], 10) })}</Alert>;
+            return <Alert variant="warning">{notes}</Alert>;
+          })()}
+
           {/* Track Banners (CLASSIC, TEAM_CLASSIC only) */}
           {(category.toUpperCase() === 'CLASSIC' || isTeamClassic) && (
             <TrackBanners tracks={game.tracks} />
@@ -627,6 +651,7 @@ export default function GamePage() {
                   isClassicMode={category.toLowerCase() === 'classic' || isTeamClassic}
                   isGpMode={category.toLowerCase() === 'gp' || isTeamGp}
                   isTeamClassic={isTeamMode}
+                  isRated={game.match.isRated ?? true}
                   teamScores={game.teamScores ?? undefined}
                   teamColors={teamData?.teams.reduce((acc, team) => {
                     acc[team.teamIndex] = team.colorHex;
