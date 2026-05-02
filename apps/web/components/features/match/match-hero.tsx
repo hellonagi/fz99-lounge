@@ -142,17 +142,17 @@ export function MatchHero({
 
               {matchUrl ? (
                 <>
-                  <div className="mb-4">
-                    <span className="text-lg text-green-400 font-semibold">{t('matchInProgress')}</span>
+                  <div className="mt-3 mb-5">
+                    <span className="text-sm font-bold tracking-[.12em] text-red-400">
+                      ● {t('matchInProgress')}
+                    </span>
                   </div>
                   {isParticipant && (
-                    <div className="mb-6">
-                      <p className="text-gray-300">{t('goToMatchPage')}</p>
-                    </div>
+                    <p className="text-sm text-gray-200 mb-4">{t('goToMatchPage')}</p>
                   )}
                   <Link
                     href={matchUrl}
-                    className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full transition-colors text-lg"
+                    className="inline-block w-[160px] py-2.5 rounded-[5px] text-xs font-extrabold tracking-[.12em] text-center bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 transition-colors"
                   >
                     {t('goToMatchButton')}
                   </Link>
@@ -229,18 +229,20 @@ export function MatchHero({
                 </>
               )}
 
-              {/* Rules link */}
-              <div className="mt-1">
-                <p className="text-sm text-gray-400">
-                  {t.rich('reviewRules', {
-                    matchRules: (chunks) => (
-                      <Link href="/rules" className="text-blue-400 underline">
-                        {chunks}
-                      </Link>
-                    ),
-                  })}
-                </p>
-              </div>
+              {/* Rules link - hide during match */}
+              {!matchUrl && (
+                <div className="mt-1">
+                  <p className="text-sm text-gray-400">
+                    {t.rich('reviewRules', {
+                      matchRules: (chunks) => (
+                        <Link href="/rules" className="text-blue-400 underline">
+                          {chunks}
+                        </Link>
+                      ),
+                    })}
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
