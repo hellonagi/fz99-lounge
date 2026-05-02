@@ -365,12 +365,16 @@
     "goToMatchPage": "Please go to the match page to check the passcode.",
     "goToMatchButton": "Go to Match Page",
     "startsIn": "Starts in",
-    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining",
+    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining.",
     "join": "JOIN",
+    "joined": "JOINED",
     "loginToJoin": "Login to Join",
     "leave": "LEAVE",
     "joining": "Loading...",
-    "passcodeNotice": "The passcode will be available when the match starts."
+    "passcodeNotice": "When the countdown reaches zero, the passcode will be revealed.",
+    "needMore": "{count} more to start",
+    "matchConfirmed": "Match Ready",
+    "ratedMatch": "Rated"
   },
   "leaderboard": {
     "title": "Leaderboard",

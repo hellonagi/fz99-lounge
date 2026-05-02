@@ -11,40 +11,15 @@ import {
 } from '@/hooks/useWeeklyTournaments';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-
-// ── Constants ──────────────────────────────────────────────
-
-const RATED_THRESHOLDS: Record<string, number> = {
-  CLASSIC: 12,
-  TEAM_CLASSIC: 12,
-  GP: 30,
-  TEAM_GP: 30,
-  TOURNAMENT: 8,
-};
-
-const START_THRESHOLDS: Record<string, number> = {
-  CLASSIC: 4,
-  TEAM_CLASSIC: 4,
-  GP: 10,
-  TEAM_GP: 10,
-  TOURNAMENT: 8,
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  GP: 'GP',
-  CLASSIC: 'Classic',
-  TEAM_GP: 'Team GP',
-  TEAM_CLASSIC: 'Team Classic',
-  TOURNAMENT: 'Tournament',
-};
-
-const CATEGORY_BADGE_CLASS: Record<string, string> = {
-  GP: 'text-amber-400 border-amber-500/50',
-  CLASSIC: 'text-purple-400 border-purple-500/50',
-  TEAM_CLASSIC: 'text-rose-400 border-rose-500/50',
-  TEAM_GP: 'text-cyan-400 border-cyan-500/50',
-  TOURNAMENT: 'text-amber-400 border-amber-500/50',
-};
+import {
+  RATED_THRESHOLDS,
+  START_THRESHOLDS,
+  CATEGORY_LABEL,
+  CATEGORY_BADGE_CLASS,
+  getMatchStatus,
+} from './match-constants';
+import { ThresholdBar } from './threshold-bar';
+import { ParticipantAvatars } from './participant-avatars';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -62,8 +37,6 @@ interface DayGroup {
   items: ScheduleItem[];
 }
 
-type MatchStatus = 'pending' | 'matchOn' | 'rated' | 'full';
-
 // ── Helpers ────────────────────────────────────────────────
 
 function getDateKey(date: Date): string {
@@ -73,18 +46,6 @@ function getDateKey(date: Date): string {
 function getTimeStr(isoStr: string): string {
   const d = new Date(isoStr);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function getMatchStatus(
-  current: number,
-  min: number,
-  rated: number,
-  max: number,
-): MatchStatus {
-  if (current >= max) return 'full';
-  if (current >= rated) return 'rated';
-  if (current >= min) return 'matchOn';
-  return 'pending';
 }
 
 function getRelativeTimeLabel(isoStr: string, matchStatus: string): string {
@@ -101,169 +62,6 @@ function getRelativeTimeLabel(isoStr: string, matchStatus: string): string {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return m === 0 ? `IN ${h}H` : `IN ${h}H ${m}M`;
-}
-
-// ── ThresholdBar ───────────────────────────────────────────
-
-function ThresholdBar({
-  current,
-  startThreshold,
-  rated,
-  max,
-  status,
-}: {
-  current: number;
-  startThreshold: number;
-  rated: number;
-  max: number;
-  status: MatchStatus;
-}) {
-  const pct = (n: number) => (n / max) * 100;
-  const fillPct = Math.min(pct(current), 100);
-  const startPct = pct(startThreshold);
-  const ratedPct = pct(rated);
-
-  const fillColor =
-    status === 'rated' || status === 'full'
-      ? '#34d399'
-      : status === 'matchOn'
-        ? '#fbbf24'
-        : '#7a8093';
-
-  const startReached = current >= startThreshold;
-  const ratedReached = current >= rated;
-
-  return (
-    <div className="relative mb-3.5">
-      {/* Bar */}
-      <div className="relative h-2 rounded-[3px]" style={{ background: 'rgba(255,255,255,.05)' }}>
-        {/* Background segments */}
-        <div className="absolute inset-0 rounded-[3px] overflow-hidden flex">
-          <div
-            style={{
-              width: `${startPct}%`,
-              background: startReached ? 'rgba(251,191,36,.45)' : 'rgba(255,255,255,.04)',
-            }}
-          />
-          <div
-            style={{
-              width: `${ratedPct - startPct}%`,
-              background: ratedReached
-                ? 'rgba(52,211,153,.5)'
-                : startReached
-                  ? 'rgba(251,191,36,.22)'
-                  : 'rgba(255,255,255,.04)',
-            }}
-          />
-          <div
-            style={{
-              flex: 1,
-              background: ratedReached ? 'rgba(52,211,153,.28)' : 'rgba(255,255,255,.04)',
-            }}
-          />
-        </div>
-        {/* Fill overlay */}
-        <div
-          className="absolute left-0 top-0 bottom-0 rounded-l-[3px] transition-all duration-500"
-          style={{
-            width: `${fillPct}%`,
-            background: fillColor,
-            boxShadow: `0 0 8px ${fillColor}aa`,
-          }}
-        />
-        {/* Gate markers */}
-        {[
-          { at: startThreshold, color: startReached ? '#fbbf24' : 'rgba(255,255,255,.25)' },
-          { at: rated, color: ratedReached ? '#34d399' : 'rgba(255,255,255,.25)' },
-          { at: max, color: current >= max ? '#7a8093' : 'rgba(255,255,255,.25)' },
-        ].map((g) => (
-          <div
-            key={g.at}
-            className="absolute"
-            style={{
-              left: `${pct(g.at)}%`,
-              top: -2,
-              bottom: -2,
-              transform: 'translateX(-50%)',
-            }}
-          >
-            <div style={{ width: 2, height: '100%', background: g.color }} />
-          </div>
-        ))}
-      </div>
-      {/* Gate labels */}
-      <div className="relative">
-        {[
-          { at: startThreshold, label: 'Min', reached: startReached, color: '#fbbf24' },
-          { at: rated, label: 'Rated', reached: ratedReached, color: '#34d399' },
-          { at: max, label: 'Limit', reached: current >= max, color: '#7a8093' },
-        ].map((g) => (
-          <span
-            key={g.at}
-            className="absolute text-[9px] font-bold tracking-[.05em]"
-            style={{
-              left: `${pct(g.at)}%`,
-              transform: 'translateX(-50%)',
-              top: 4,
-              color: g.reached ? g.color : '#7a8093',
-              opacity: g.reached ? 1 : 0.7,
-            }}
-          >
-            {g.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── ParticipantAvatars ─────────────────────────────────────
-
-function getDiscordAvatarUrl(discordId: string, avatarHash: string | null, size = 32): string {
-  if (avatarHash) {
-    return `https://cdn.discordapp.com/avatars/${discordId}/${avatarHash}.png?size=${size}`;
-  }
-  // Default Discord avatar
-  const index = ((Number(discordId) >>> 22) % 6 + 6) % 6;
-  return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
-}
-
-function ParticipantAvatars({
-  participants,
-  max = 8,
-}: {
-  participants: Array<{
-    userId: number;
-    user: { discordId: string; displayName: string | null; avatarHash: string | null };
-  }>;
-  max?: number;
-}) {
-  if (participants.length === 0) return null;
-  const shown = participants.slice(0, max);
-  const remaining = participants.length - max;
-
-  return (
-    <div className="flex items-center">
-      {shown.map((p, i) => (
-        <img
-          key={p.userId}
-          src={getDiscordAvatarUrl(p.user.discordId, p.user.avatarHash)}
-          alt={p.user.displayName || ''}
-          title={p.user.displayName || undefined}
-          className={cn(
-            'h-[22px] w-[22px] rounded-full border-2 border-gray-700 object-cover',
-            i > 0 && '-ml-[5px]',
-          )}
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = getDiscordAvatarUrl(p.user.discordId, null);
-          }}
-        />
-      ))}
-      {remaining > 0 && (
-        <span className="text-[10px] text-gray-600 pl-1.5">+{remaining}</span>
-      )}
-    </div>
-  );
 }
 
 // ── LiveDot ────────────────────────────────────────────────
@@ -341,10 +139,10 @@ function ScheduleRow({
   );
 
   const ctaStyle = isInMatch
-    ? 'bg-emerald-500/[.18] border border-emerald-500/40 text-emerald-400 hover:bg-red-500/20 hover:border-red-500/40'
+    ? 'bg-blue-500/30 border border-blue-500/50 text-blue-300 hover:bg-red-500/25 hover:border-red-500/50 hover:text-red-300'
     : status === 'full'
       ? 'bg-transparent border border-white/[.07] text-gray-500 cursor-not-allowed'
-      : 'bg-blue-500/20 border border-blue-500/40 text-blue-400 hover:bg-blue-500/30';
+      : 'bg-emerald-500/[.25] border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/35';
 
   // Row highlight
   const isJoinedWaiting = isInMatch && isWaiting;

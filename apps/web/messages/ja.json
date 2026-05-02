@@ -364,12 +364,16 @@
     "goToMatchPage": "参加者は試合ページに移動してパスコードを確認してください。",
     "goToMatchButton": "試合ページへ",
     "startsIn": "あと",
-    "reviewRules": "エントリー前に<matchRules>ルール</matchRules>をご確認ください",
+    "reviewRules": "エントリー前に<matchRules>ルール</matchRules>をご確認ください。",
     "join": "エントリー",
+    "joined": "エントリー済",
     "loginToJoin": "ログインしてエントリー",
     "leave": "キャンセル",
     "joining": "読み込み中...",
-    "passcodeNotice": "試合時間になるとパスコードが公開されます。"
+    "passcodeNotice": "カウントダウンが0になるとパスコードが表示されます。",
+    "needMore": "開催まであと{count}人",
+    "matchConfirmed": "開催決定",
+    "ratedMatch": "レート戦"
   },
   "leaderboard": {
     "title": "リーダーボード",

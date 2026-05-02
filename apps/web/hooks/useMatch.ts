@@ -23,6 +23,7 @@ interface Match {
     userId: number;
     user: {
       id: number;
+      discordId: string;
       displayName: string;
       avatarHash: string | null;
     };
