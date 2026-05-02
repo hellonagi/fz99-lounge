@@ -2073,6 +2073,70 @@ export class GamesService {
   }
 
   /**
+   * Notify position conflict via Discord channel
+   */
+  async notifyPositionConflict(
+    gameId: number,
+    conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }>,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            season: {
+              include: { event: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    if (!game.discordChannelId) {
+      return { success: false, message: 'No Discord channel linked to this game' };
+    }
+
+    // Collect all unique user IDs from conflicts
+    const userIds = [...new Set(conflicts.flatMap((c) => c.users.map((u) => u.userId)))];
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, discordId: true, displayName: true },
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const enrichedConflicts = conflicts.map((c) => ({
+      raceNumber: c.raceNumber,
+      users: c.users.map((u) => {
+        const user = userMap.get(u.userId);
+        return {
+          userName: user?.displayName || `User#${u.userId}`,
+          discordId: user?.discordId || null,
+          position: u.position,
+        };
+      }),
+    }));
+
+    const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
+    const seasonNumber = game.match.season?.seasonNumber ?? 1;
+    const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
+    const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonSlug}/${game.match.matchNumber}`;
+
+    const success = await this.discordBotService.postPositionConflictNotification(
+      game.discordChannelId,
+      enrichedConflicts,
+      matchUrl,
+    );
+
+    return { success };
+  }
+
+  /**
    * Calculate and save team scores for a TEAM_CLASSIC / TEAM_GP game
    * Called before rating calculation
    */

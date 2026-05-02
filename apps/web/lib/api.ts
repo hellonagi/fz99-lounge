@@ -250,6 +250,8 @@ export const gamesApi = {
     api.post(`/games/${category}/${season}/${match}/participants/${userId}/reject`),
   markNoShow: (category: string, season: number, match: number, userId: number) =>
     api.post(`/games/${category}/${season}/${match}/participants/${userId}/no-show`),
+  notifyPositionConflict: (category: string, season: number, match: number, conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }>) =>
+    api.post(`/games/${category}/${season}/${match}/notify-position-conflict`, { conflicts }),
 };
 
 // Tracks API

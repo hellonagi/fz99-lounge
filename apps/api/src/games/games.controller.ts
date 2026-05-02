@@ -400,6 +400,25 @@ export class GamesController {
     return this.gamesService.markNoShow(game.id, targetId);
   }
 
+  @Post(':category/:season/:match/notify-position-conflict')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.REJECT_SCORE)
+  @HttpCode(HttpStatus.OK)
+  async notifyPositionConflict(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Body() body: { conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }> },
+  ) {
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.notifyPositionConflict(game.id, body.conflicts);
+  }
+
   // ========================================
   // Helper Methods
   // ========================================

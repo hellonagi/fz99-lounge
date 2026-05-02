@@ -559,7 +559,11 @@
     "race": "レース {raceNumber}",
     "conflictFound": "矛盾あり",
     "requireScreenshot": "要スクショ確認:",
-    "positionLabel": "({position}位)"
+    "positionLabel": "({position}位)",
+    "notifyDiscord": "Discordに通知",
+    "notifying": "送信中...",
+    "notified": "通知済み",
+    "notifyFailed": "通知の送信に失敗しました"
   },
   "moderatorPanel": {
     "waitingForAllSubmissions": "あと{count}名の提出を待っています。全員提出後にVerify/Rejectが有効になります。",
