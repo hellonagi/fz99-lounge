@@ -446,7 +446,7 @@
       "joiningTitle": "Joining a Match",
       "beforeMatch": "Before the Match",
       "beforeMatch1": "Log in with Discord and join from the home page (first come, first served)",
-      "beforeMatch2": "Minimum players required for a match: Classic Mode = 4, GP Mode = 30. Matches with fewer than 12 players in Classic/Team Classic will be Unrated.",
+      "beforeMatch2": "Minimum players required for a match: Classic Mode = 4, GP Mode = 10. Matches with fewer than 12 (Classic/Team Classic) or 30 (GP/Team GP) players will be Unrated.",
       "beforeMatch3": "You can cancel freely before the match starts",
       "whenStarts": "When the Match Starts",
       "whenStarts1": "You will be redirected to the match page (you will receive a Discord mention if you are in the <discordLink>Discord server</discordLink>)",

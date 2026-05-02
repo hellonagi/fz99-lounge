@@ -50,7 +50,7 @@ export class RecurringMatchService {
         eventCategory: dto.eventCategory,
         inGameMode: dto.inGameMode,
         leagueType: dto.leagueType,
-        minPlayers: dto.minPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 30 : 4),
+        minPlayers: dto.minPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 10 : 4),
         maxPlayers: dto.maxPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 99 : 20),
         name: dto.name,
         notes: dto.notes,

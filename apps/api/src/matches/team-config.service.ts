@@ -191,10 +191,10 @@ export class TeamConfigService {
   // ===== TEAM_GP methods =====
 
   /**
-   * Check if a player count is valid for TEAM_GP (30-99)
+   * Check if a player count is valid for TEAM_GP (10-99)
    */
   isValidTeamGpPlayerCount(playerCount: number): boolean {
-    return playerCount >= 30 && playerCount <= 99;
+    return playerCount >= 10 && playerCount <= 99;
   }
 
   /**

@@ -58,7 +58,7 @@ export function RecurringMatchFormCard({
     if (category === 'GP' || category === 'TEAM_GP') {
       form.setValue('inGameMode', 'RANDOM');
       form.setValue('leagueType', undefined);
-      form.setValue('minPlayers', '30');
+      form.setValue('minPlayers', '10');
       form.setValue('maxPlayers', '99');
     } else {
       form.setValue('leagueType', undefined);

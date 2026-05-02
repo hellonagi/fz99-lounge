@@ -149,12 +149,12 @@ export function CreateMatchCard() {
     if (category === 'GP') {
       form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('leagueType', 'KNIGHT');
-      form.setValue('minPlayers', '30');
+      form.setValue('minPlayers', '10');
       form.setValue('maxPlayers', '99');
     } else if (category === 'TEAM_GP') {
       form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('leagueType', 'KNIGHT');
-      form.setValue('minPlayers', '30');
+      form.setValue('minPlayers', '10');
       form.setValue('maxPlayers', '99');
     } else if (category === 'TEAM_CLASSIC') {
       form.setValue('leagueType', undefined);
