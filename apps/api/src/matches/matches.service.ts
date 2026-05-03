@@ -811,9 +811,10 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       if (nearMinPlayers || participantCount % 2 === 0) {
         const remainingMs = new Date(updatedMatchRaw.scheduledStart).getTime() - Date.now();
         if (remainingMs > 0) {
-          const fakeDecDelay = nearMinPlayers
-            ? Math.max(3000 + Math.round(Math.random() * 5000), 3000)
-            : Math.max(Math.round(remainingMs * (0.03 + Math.random() * 0.05)), 3000);
+          const fakeDecDelay = Math.max(
+            Math.round(remainingMs * (0.03 + Math.random() * 0.05)),
+            3000,
+          );
           await this.matchQueue.add(
             'fake-count-decrease',
             { matchId },

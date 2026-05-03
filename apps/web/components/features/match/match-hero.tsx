@@ -184,11 +184,19 @@ export function MatchHero({
                   {/* Bottom: avatars + CTA */}
                   <div className="max-w-lg mx-auto mt-3 pt-3 border-t border-white/[.07]">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                      {participants && participants.length > 0 ? (
-                        <ParticipantAvatars participants={participants} max={12} />
-                      ) : (
-                        <div />
-                      )}
+                      {(() => {
+                        const realCount = participants?.length ?? 0;
+                        const minReached = minPlayers !== undefined && realCount >= minPlayers;
+                        if (current === 0) return <div />;
+                        return (
+                          <ParticipantAvatars
+                            participants={participants ?? []}
+                            max={12}
+                            anonymous={!minReached}
+                            count={current}
+                          />
+                        );
+                      })()}
 
                       {!isAuthenticated ? (
                         <a

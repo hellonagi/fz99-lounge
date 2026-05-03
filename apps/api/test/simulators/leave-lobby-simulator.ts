@@ -57,9 +57,8 @@ async function leaveMatch(count: number, delay: number, all: boolean) {
 
     try {
       const token = generateToken(user);
-      await axios.post(
+      await axios.delete(
         `${API_URL}/matches/${match.id}/leave`,
-        {},
         {
           headers: { Authorization: `Bearer ${token}` },
         }
