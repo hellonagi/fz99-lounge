@@ -71,7 +71,7 @@ const matchSchema = z.object({
   minPlayers: z
     .string()
     .min(1, 'Min players is required')
-    .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 12, 'Min players must be at least 12'),
+    .refine((val) => !isNaN(parseInt(val)) && parseInt(val) >= 4, 'Min players must be at least 4'),
   maxPlayers: z
     .string()
     .min(1, 'Max players is required')
@@ -106,7 +106,7 @@ export function CreateMatchCard() {
       inGameMode: 'CLASSIC_MINI_PRIX',
       leagueType: undefined,
       scheduledStart: '',
-      minPlayers: '12',
+      minPlayers: '4',
       maxPlayers: '20',
     },
   });
@@ -149,22 +149,22 @@ export function CreateMatchCard() {
     if (category === 'GP') {
       form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('leagueType', 'KNIGHT');
-      form.setValue('minPlayers', '30');
+      form.setValue('minPlayers', '10');
       form.setValue('maxPlayers', '99');
     } else if (category === 'TEAM_GP') {
       form.setValue('inGameMode', 'GRAND_PRIX');
       form.setValue('leagueType', 'KNIGHT');
-      form.setValue('minPlayers', '30');
+      form.setValue('minPlayers', '10');
       form.setValue('maxPlayers', '99');
     } else if (category === 'TEAM_CLASSIC') {
       form.setValue('leagueType', undefined);
       form.setValue('inGameMode', 'CLASSIC_MINI_PRIX');
-      form.setValue('minPlayers', '12');
+      form.setValue('minPlayers', '4');
       form.setValue('maxPlayers', '20');
     } else {
       form.setValue('leagueType', undefined); // CLASSICモードはリーグなし
       form.setValue('inGameMode', 'CLASSIC_MINI_PRIX');
-      form.setValue('minPlayers', '12');
+      form.setValue('minPlayers', '4');
       form.setValue('maxPlayers', '20');
     }
     // seasonId is set by the active season fetch effect
@@ -341,7 +341,7 @@ export function CreateMatchCard() {
                   <FormItem>
                     <FormLabel>{t('minPlayers')}</FormLabel>
                     <FormControl>
-                      <Input type="number" min="12" {...field} />
+                      <Input type="number" min="4" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

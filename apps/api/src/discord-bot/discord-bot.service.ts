@@ -92,6 +92,7 @@ export interface AnnounceMatchResultsParams {
   seasonName: string;
   topParticipants: MatchResultParticipant[];
   topTeams?: { teamLabel: string; score: number; rank: number; members: string[] }[];
+  isRated?: boolean;
 }
 
 const IN_GAME_MODE_DISPLAY: Record<string, string> = {
@@ -451,7 +452,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const guild = await this.client.guilds.fetch(guildId);
-      const channelName = `${params.category}-s${params.seasonNumber}-game${params.matchNumber}`;
+      const seasonLabel = params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
+      const channelName = `${params.category}-${seasonLabel}-game${params.matchNumber}`;
 
       // Build permission overwrites
       const permissionOverwrites: Array<{
@@ -568,7 +570,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const guild = await this.client.guilds.fetch(guildId);
-      const channelName = `${params.category}-s${params.seasonNumber}-game${params.matchNumber}`;
+      const seasonLabel = params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
+      const channelName = `${params.category}-${seasonLabel}-game${params.matchNumber}`;
 
       // Build permission overwrites
       const permissionOverwrites: Array<{
@@ -831,6 +834,80 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Post position conflict notification to match channel
+   */
+  async postPositionConflictNotification(
+    channelId: string,
+    conflicts: Array<{
+      raceNumber: number;
+      users: Array<{ userName: string; discordId: string | null; position: number }>;
+    }>,
+    matchUrl: string,
+  ): Promise<boolean> {
+    if (!this.isReady || !this.isEnabled()) {
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping position conflict notification',
+      );
+      return false;
+    }
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) {
+        this.logger.warn(
+          `Channel ${channelId} not found or not text-based`,
+        );
+        return false;
+      }
+
+      const conflictLines = conflicts.map((c) => {
+        const userLines = c.users
+          .map((u) => `${u.userName} (${u.position})`)
+          .join('\n');
+        return `**Race ${c.raceNumber}**\n${userLines}`;
+      }).join('\n\n');
+
+      const embed = new EmbedBuilder()
+        .setTitle('Position Conflict / 順位の不整合')
+        .setColor(0xf1c40f)
+        .setDescription(
+          conflictLines +
+          '\n\n' +
+          'A position conflict was detected. One or more players above may have submitted an incorrect position. ' +
+          'Please check your results and resubmit if needed.\n\n' +
+          '上記プレイヤー間で順位の不整合が検出されました。' +
+          '誤った順位で提出していないか確認し、必要であれば再提出してください。',
+        )
+        .addFields({ name: 'Match Page', value: matchUrl });
+
+      // Mention all involved users with Discord IDs
+      const mentions = conflicts
+        .flatMap((c) => c.users)
+        .filter((u) => u.discordId)
+        .map((u) => `<@${u.discordId}>`)
+        .filter((v, i, a) => a.indexOf(v) === i) // dedupe
+        .join(' ');
+
+      await (channel as TextChannel).send({
+        content: mentions || undefined,
+        embeds: [embed],
+      });
+
+      this.logger.log(
+        `Posted position conflict notification to channel ${channelId}`,
+      );
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Failed to post position conflict notification to channel ${channelId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Post score submission reminder to match channel, mentioning unsubmitted players
    */
   async postScoreSubmissionReminder(
@@ -951,6 +1028,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       totalScore: number;
     }>;
     allTeams?: Array<{ label: string; score: number; rank: number; members: string[] }>;
+    isRated?: boolean;
   }): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug('Discord bot not ready or disabled, skipping match results to channel');
@@ -1011,9 +1089,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
           .join('\n');
       }
 
+      const unratedLabel = params.isRated === false ? ' [Unrated]' : '';
       const embed = new EmbedBuilder()
-        .setTitle('Match Results')
-        .setColor(0xf39c12)
+        .setTitle(`Match Results${unratedLabel}`)
+        .setColor(params.isRated === false ? 0x808080 : 0xf39c12)
         .setDescription(description)
         .setFooter({
           text:
@@ -1354,9 +1433,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Build embed
+      const unratedLabel = params.isRated === false ? ' [Unrated]' : '';
       const embed = new EmbedBuilder()
-        .setTitle('Match Results')
-        .setColor(0xf39c12)
+        .setTitle(`Match Results${unratedLabel}`)
+        .setColor(params.isRated === false ? 0x808080 : 0xf39c12)
         .setDescription(
           `${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!\n\n${resultLines}`,
         )

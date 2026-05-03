@@ -24,6 +24,7 @@ interface WeeklyMatch {
     userId: number;
     user: {
       id: number;
+      discordId: string;
       displayName: string | null;
       avatarHash: string | null;
     };

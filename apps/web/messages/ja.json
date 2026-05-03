@@ -304,10 +304,14 @@
       }
     }
   },
+  "matchNotes": {
+    "primeFallback": "参加人数が{count}人のためチーム分けができず、個人戦に変更されました。"
+  },
   "common": {
     "loading": "読み込み中...",
     "error": "エラーが発生しました",
-    "noUpcomingMatch": "予定されている試合はありません"
+    "noUpcomingMatch": "予定されている試合はありません",
+    "unrated": "Unrated"
   },
   "splitVote": {
     "description": "部屋が分かれてしまった場合、1/3のプレイヤーが投票するとパスコードが再生成されます",
@@ -360,12 +364,16 @@
     "goToMatchPage": "参加者は試合ページに移動してパスコードを確認してください。",
     "goToMatchButton": "試合ページへ",
     "startsIn": "あと",
-    "reviewRules": "エントリー前に<matchRules>ルール</matchRules>をご確認ください",
+    "reviewRules": "エントリー前に<matchRules>ルール</matchRules>をご確認ください。",
     "join": "エントリー",
+    "joined": "エントリー済",
     "loginToJoin": "ログインしてエントリー",
     "leave": "キャンセル",
     "joining": "読み込み中...",
-    "passcodeNotice": "試合時間になるとパスコードが公開されます。"
+    "passcodeNotice": "カウントダウンが0になるとパスコードが表示されます。",
+    "needMore": "開催まであと{count}人",
+    "matchConfirmed": "開催決定",
+    "ratedMatch": "レート戦"
   },
   "leaderboard": {
     "title": "リーダーボード",
@@ -441,7 +449,7 @@
       "joiningTitle": "試合への参加",
       "beforeMatch": "試合前",
       "beforeMatch1": "Discordでログインし、トップページから参加してください（先着順）。",
-      "beforeMatch2": "試合が成立するための最少参加人数はクラシックモード12人、GPモード30人です。人数に満たない場合、試合はキャンセルされます。",
+      "beforeMatch2": "試合が成立するための最少参加人数はクラシックモード4人、GPモード10人です。クラシック/チームクラシック12人未満、GP/チームGP30人未満はレートなしになります。",
       "beforeMatch3": "試合開始前は自由にキャンセルできます。",
       "whenStarts": "試合開始時",
       "whenStarts1": "試合開始時、試合ページへ自動的にリダイレクトされます（<discordLink>Discordサーバー</discordLink>参加者にはメンション通知が届きます）。",
@@ -555,7 +563,11 @@
     "race": "レース {raceNumber}",
     "conflictFound": "矛盾あり",
     "requireScreenshot": "要スクショ確認:",
-    "positionLabel": "({position}位)"
+    "positionLabel": "({position}位)",
+    "notifyDiscord": "Discordに通知",
+    "notifying": "送信中...",
+    "notified": "通知済み",
+    "notifyFailed": "通知の送信に失敗しました"
   },
   "moderatorPanel": {
     "waitingForAllSubmissions": "あと{count}名の提出を待っています。全員提出後にVerify/Rejectが有効になります。",
@@ -662,11 +674,27 @@
     "ended": "終了",
     "prevWeek": "前の週",
     "nextWeek": "次の週",
-"inProgress": "LIVE",
+    "inProgress": "LIVE",
     "login": "ログイン",
     "loginToJoin": "エントリーするにはログインが必要です。右上のDiscordボタンからログインしてください。",
     "entry": "ENTRY",
-    "tournament": "TOURNAMENT"
+    "tournament": "TOURNAMENT",
+    "races": "レース",
+    "tomorrow": "明日",
+    "matchOn": "UNRATED",
+    "rated": "RATED",
+    "pending": "PENDING",
+    "full": "満員",
+    "joinRated": "JOIN · RATED",
+    "joinUnrated": "JOIN · UNRATED",
+    "joinToStart": "JOIN · あと{count}人",
+    "result": "結果",
+    "join": "エントリー",
+    "joined": "エントリー済",
+    "cancel": "キャンセル",
+    "beTheSpark": "参戦せよ",
+    "filters": "FILTERS",
+    "density": "マッチ密度"
   },
   "discord": {
     "assignRoles": "Discordロール付与",
@@ -703,7 +731,7 @@
       "startRequired": "開始時刻を入力してください",
       "startTooSoon": "開始時刻は現在より1分以上後にしてください",
       "minPlayersRequired": "最少人数を入力してください",
-      "minPlayersMin": "最少人数は12人以上にしてください",
+      "minPlayersMin": "最少人数は4人以上にしてください",
       "maxPlayersRequired": "最大人数を入力してください",
       "maxPlayersMin": "最大人数は1人以上にしてください",
       "maxPlayersGreater": "最大人数は最少人数以上にしてください"

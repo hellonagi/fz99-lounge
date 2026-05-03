@@ -117,6 +117,8 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const [markingNoShowUserId, setMarkingNoShowUserId] = useState<number | null>(null);
   const [uploadingFinalScore1, setUploadingFinalScore1] = useState(false);
   const [uploadingFinalScore2, setUploadingFinalScore2] = useState(false);
+  const [notifyingConflict, setNotifyingConflict] = useState(false);
+  const [conflictNotified, setConflictNotified] = useState(false);
 
   const isGpMode = category.toUpperCase() === 'GP' || category.toUpperCase() === 'TEAM_GP';
   const raceCount = isGpMode ? 5 : 3;
@@ -547,6 +549,52 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
                       </ul>
                     </div>
                   ))}
+                  {hasPermission(user, 'REJECT_SCORE') && (
+                    <Button
+                      size="sm"
+                      variant={conflictNotified ? 'outline' : 'default'}
+                      disabled={notifyingConflict || conflictNotified}
+                      className={cn(
+                        'mt-2',
+                        conflictNotified
+                          ? 'border-green-600 text-green-400'
+                          : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                      )}
+                      onClick={async () => {
+                        setNotifyingConflict(true);
+                        try {
+                          // Group conflicts by race, collecting all involved users
+                          const conflictsByRace = new Map<number, Array<{ userId: number; position: number }>>();
+                          for (const c of positionConflicts) {
+                            if (!conflictsByRace.has(c.raceNumber)) {
+                              conflictsByRace.set(c.raceNumber, []);
+                            }
+                            const existing = conflictsByRace.get(c.raceNumber)!;
+                            for (const u of c.allInvolvedUsers) {
+                              if (!existing.some((e) => e.userId === u.userId)) {
+                                existing.push({ userId: u.userId, position: u.position });
+                              }
+                            }
+                          }
+                          const conflicts = Array.from(conflictsByRace.entries()).map(
+                            ([raceNumber, users]) => ({ raceNumber, users })
+                          );
+                          await gamesApi.notifyPositionConflict(category, season, match, conflicts);
+                          setConflictNotified(true);
+                        } catch {
+                          alert(tConflict('notifyFailed'));
+                        } finally {
+                          setNotifyingConflict(false);
+                        }
+                      }}
+                    >
+                      {conflictNotified
+                        ? tConflict('notified')
+                        : notifyingConflict
+                          ? tConflict('notifying')
+                          : tConflict('notifyDiscord')}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

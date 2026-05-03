@@ -1,7 +1,15 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { EventCategory, InGameMode, League } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { MatchesService, CATEGORY_SPAN_MINUTES } from '../matches/matches.service';
+import { MatchesService } from '../matches/matches.service';
+
+/** カテゴリごとのマッチ占有時間（分）。定期スケジュールのスパン重複チェックに使用 */
+const CATEGORY_SPAN_MINUTES: Partial<Record<EventCategory, number>> = {
+  GP: 30,
+  CLASSIC: 15,
+  TEAM_CLASSIC: 15,
+  TEAM_GP: 30,
+};
 import { SeasonsService } from '../seasons/seasons.service';
 import { CreateRecurringMatchDto } from './dto/create-recurring-match.dto';
 import { UpdateRecurringMatchDto } from './dto/update-recurring-match.dto';
@@ -42,7 +50,7 @@ export class RecurringMatchService {
         eventCategory: dto.eventCategory,
         inGameMode: dto.inGameMode,
         leagueType: dto.leagueType,
-        minPlayers: dto.minPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 30 : 12),
+        minPlayers: dto.minPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 10 : 4),
         maxPlayers: dto.maxPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 99 : 20),
         name: dto.name,
         notes: dto.notes,

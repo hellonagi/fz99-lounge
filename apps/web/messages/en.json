@@ -304,10 +304,14 @@
       }
     }
   },
+  "matchNotes": {
+    "primeFallback": "With {count} players, teams couldn't be split evenly. This match was switched to individual mode."
+  },
   "common": {
     "loading": "Loading...",
     "error": "An error occurred",
-    "noUpcomingMatch": "No Upcoming Match"
+    "noUpcomingMatch": "No Upcoming Match",
+    "unrated": "Unrated"
   },
   "splitVote": {
     "description": "If the room split, the passcode will be regenerated once 1/3 of players vote",
@@ -361,12 +365,16 @@
     "goToMatchPage": "Please go to the match page to check the passcode.",
     "goToMatchButton": "Go to Match Page",
     "startsIn": "Starts in",
-    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining",
+    "reviewRules": "Please review the <matchRules>match rules</matchRules> before joining.",
     "join": "JOIN",
+    "joined": "JOINED",
     "loginToJoin": "Login to Join",
     "leave": "LEAVE",
     "joining": "Loading...",
-    "passcodeNotice": "The passcode will be available when the match starts."
+    "passcodeNotice": "When the countdown reaches zero, the passcode will be revealed.",
+    "needMore": "{count} more to start",
+    "matchConfirmed": "Match Ready",
+    "ratedMatch": "Rated"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -442,7 +450,7 @@
       "joiningTitle": "Joining a Match",
       "beforeMatch": "Before the Match",
       "beforeMatch1": "Log in with Discord and join from the home page (first come, first served)",
-      "beforeMatch2": "Minimum players required for a match: Classic Mode = 12, GP Mode = 30. The match will be cancelled if not met.",
+      "beforeMatch2": "Minimum players required for a match: Classic Mode = 4, GP Mode = 10. Matches with fewer than 12 (Classic/Team Classic) or 30 (GP/Team GP) players will be Unrated.",
       "beforeMatch3": "You can cancel freely before the match starts",
       "whenStarts": "When the Match Starts",
       "whenStarts1": "You will be redirected to the match page (you will receive a Discord mention if you are in the <discordLink>Discord server</discordLink>)",
@@ -556,7 +564,11 @@
     "race": "Race {raceNumber}",
     "conflictFound": "Conflict found",
     "requireScreenshot": "Requires screenshot verification:",
-    "positionLabel": "({position})"
+    "positionLabel": "({position})",
+    "notifyDiscord": "Notify on Discord",
+    "notifying": "Sending...",
+    "notified": "Notified",
+    "notifyFailed": "Failed to send notification"
   },
   "moderatorPanel": {
     "waitingForAllSubmissions": "Waiting for {count} more player(s) to submit. Verify/Reject will be enabled after all submissions.",
@@ -663,11 +675,27 @@
     "ended": "ENDED",
     "prevWeek": "Previous week",
     "nextWeek": "Next week",
-"inProgress": "LIVE",
+    "inProgress": "LIVE",
     "login": "Login",
     "loginToJoin": "Please log in to join. Use the Discord button in the top right corner.",
     "entry": "ENTRY",
-    "tournament": "TOURNAMENT"
+    "tournament": "TOURNAMENT",
+    "races": "races",
+    "tomorrow": "TOMORROW",
+    "matchOn": "UNRATED",
+    "rated": "RATED",
+    "pending": "PENDING",
+    "full": "FULL",
+    "joinRated": "JOIN · RATED",
+    "joinUnrated": "JOIN · UNRATED",
+    "joinToStart": "JOIN · {count} TO START",
+    "result": "RESULT",
+    "join": "JOIN",
+    "joined": "JOINED",
+    "cancel": "CANCEL",
+    "beTheSpark": "BE THE SPARK",
+    "filters": "FILTERS",
+    "density": "DENSITY"
   },
   "discord": {
     "assignRoles": "Assign Discord Roles",
@@ -704,7 +732,7 @@
       "startRequired": "Start time is required",
       "startTooSoon": "Start time must be at least 1 minute from now",
       "minPlayersRequired": "Min players is required",
-      "minPlayersMin": "Min players must be at least 12",
+      "minPlayersMin": "Min players must be at least 4",
       "maxPlayersRequired": "Max players is required",
       "maxPlayersMin": "Max players must be at least 1",
       "maxPlayersGreater": "Max players must be greater than or equal to min players"

@@ -51,7 +51,7 @@ function TrackPlane() {
 }
 
 const GRID_HUES = [180, 260, 300, 220, 180]; // cyan → purple → pink → blue → cyan
-const GRID_CYCLE_DURATION = 30; // seconds for full cycle
+const GRID_CYCLE_DURATION = 24; // seconds for full cycle
 
 function getHue(elapsedTime: number) {
   const t = (elapsedTime % GRID_CYCLE_DURATION) / GRID_CYCLE_DURATION;
@@ -59,6 +59,20 @@ function getHue(elapsedTime: number) {
   const seg = Math.floor(t * segCount);
   const frac = (t * segCount) - seg;
   return THREE.MathUtils.lerp(GRID_HUES[seg], GRID_HUES[seg + 1] ?? GRID_HUES[0], frac);
+}
+
+/** 0.2→1→0.2 smoothly over GRID_CYCLE_DURATION (subtle white → color → subtle white) */
+function getAccentMix(elapsedTime: number): number {
+  const raw = (Math.sin(elapsedTime * 2 * Math.PI / GRID_CYCLE_DURATION - Math.PI / 2) + 1) / 2;
+  return THREE.MathUtils.lerp(0.4, 1, raw);
+}
+
+/** Extract hue (0-360) from a hex color string */
+function hexToHue(hex: string): number {
+  const c = new THREE.Color(hex);
+  const hsl = { h: 0, s: 0, l: 0 };
+  c.getHSL(hsl);
+  return hsl.h * 360;
 }
 
 const PARTICLE_COUNT = 30;
@@ -77,7 +91,7 @@ const SS_SPAWN_Y_MAX = 5;
 const SS_SPAWN_RADIUS_MIN = 1;
 const SS_SPAWN_RADIUS_MAX = 5;
 
-function FloatingParticles() {
+function FloatingParticles({ accentHue }: { accentHue?: number }) {
   const ref = useRef<THREE.Points>(null);
   const particleColor = useMemo(() => new THREE.Color(), []);
   const { size } = useThree();
@@ -122,8 +136,13 @@ function FloatingParticles() {
 
     pos.needsUpdate = true;
 
-    const hue = getHue(t);
-    particleColor.setHSL(hue / 360, 0.7, 0.7);
+    if (accentHue !== undefined) {
+      const mix = getAccentMix(t);
+      particleColor.setHSL(accentHue / 360, mix * 0.9, THREE.MathUtils.lerp(0.85, 0.75, mix));
+    } else {
+      const hue = getHue(t);
+      particleColor.setHSL(hue / 360, 0.7, 0.7);
+    }
     const mat = ref.current.material as THREE.ShaderMaterial;
     mat.uniforms.uColor.value.copy(particleColor);
     mat.uniforms.uBaseSize.value = baseSize;
@@ -191,7 +210,7 @@ interface StarState {
   cb: number;
 }
 
-function ShootingStars() {
+function ShootingStars({ accentHue }: { accentHue?: number }) {
   const ref = useRef<THREE.Points>(null);
   const { size } = useThree();
   const responsiveT = THREE.MathUtils.clamp((size.width - 375) / (1200 - 375), 0, 1);
@@ -299,8 +318,9 @@ function ShootingStars() {
     s.vy = -downRatio;
     s.vz = Math.sin(horizAngle) * horizRatio;
 
-    // Random pink-to-purple trail color (hue 280-330)
-    const hue = (280 + Math.random() * 50) / 360;
+    // Trail color: category hue ±25, or default pink-to-purple
+    const baseHue = accentHue !== undefined ? accentHue : 305;
+    const hue = (baseHue - 25 + Math.random() * 50) / 360;
     const _c = new THREE.Color().setHSL(hue, 0.8, 0.65);
     s.cr = _c.r;
     s.cg = _c.g;
@@ -383,7 +403,7 @@ function ShootingStars() {
   return <points ref={ref} geometry={geometry} material={material} />;
 }
 
-function AnimatedGrid() {
+function AnimatedGrid({ accentHue }: { accentHue?: number }) {
   const gridRef = useRef<THREE.Mesh>(null);
   const cellColor = useMemo(() => new THREE.Color(), []);
   const sectionColor = useMemo(() => new THREE.Color(), []);
@@ -393,10 +413,16 @@ function AnimatedGrid() {
     const material = gridRef.current.material as THREE.ShaderMaterial;
     if (!material.uniforms) return;
 
-    const hue = getHue(clock.elapsedTime);
-
-    cellColor.setHSL(hue / 360, 0.8, 0.4);
-    sectionColor.setHSL(hue / 360, 0.7, 0.55);
+    if (accentHue !== undefined) {
+      // White ↔ category color cycle
+      const mix = getAccentMix(clock.elapsedTime);
+      cellColor.setHSL(accentHue / 360, mix * 1.0, THREE.MathUtils.lerp(0.45, 0.5, mix));
+      sectionColor.setHSL(accentHue / 360, mix * 0.9, THREE.MathUtils.lerp(0.55, 0.65, mix));
+    } else {
+      const hue = getHue(clock.elapsedTime);
+      cellColor.setHSL(hue / 360, 0.8, 0.4);
+      sectionColor.setHSL(hue / 360, 0.7, 0.55);
+    }
 
     if (material.uniforms.cellColor) material.uniforms.cellColor.value.copy(cellColor);
     if (material.uniforms.sectionColor) material.uniforms.sectionColor.value.copy(sectionColor);
@@ -442,7 +468,7 @@ function CameraRig() {
   return null;
 }
 
-function Scene() {
+function Scene({ accentHue }: { accentHue?: number }) {
   return (
     <>
       <color attach="background" args={['#030712']} />
@@ -450,10 +476,10 @@ function Scene() {
 
       <ambientLight intensity={1} />
 
-      <AnimatedGrid />
+      <AnimatedGrid accentHue={accentHue} />
 
-      <FloatingParticles />
-      <ShootingStars />
+      <FloatingParticles accentHue={accentHue} />
+      <ShootingStars accentHue={accentHue} />
 
       <Suspense fallback={null}>
         <TrackPlane />
@@ -464,7 +490,9 @@ function Scene() {
   );
 }
 
-export function TrackScene() {
+export function TrackScene({ accentColor }: { accentColor?: string } = {}) {
+  const accentHue = accentColor ? hexToHue(accentColor) : undefined;
+
   return (
     <div className="absolute inset-0 pointer-events-none">
       <Canvas
@@ -477,7 +505,7 @@ export function TrackScene() {
           far: 100,
         }}
       >
-        <Scene />
+        <Scene accentHue={accentHue} />
       </Canvas>
 
       {/* Gradient overlay for text readability */}

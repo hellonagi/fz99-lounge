@@ -997,17 +997,32 @@ export class GamesService {
       );
     }
 
-    // Calculate ratings based on event category
-    if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
-      // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
-      await this.calculateAndSaveTeamScores(game.id);
-      await this.teamClassicRatingService.calculateAndUpdateRatings(game.id);
-    } else if (eventCategory === EventCategory.GP) {
-      // For GP: Use same classic rating algorithm (stored in DB, not displayed on frontend)
-      await this.classicRatingService.calculateAndUpdateRatings(game.id);
+    // Calculate ratings based on event category (skip if unrated)
+    if (game.match.isRated) {
+      if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
+        // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
+        // If teamConfig is null (prime fallback), use classic rating service
+        await this.calculateAndSaveTeamScores(game.id);
+        if (game.teamConfig) {
+          await this.teamClassicRatingService.calculateAndUpdateRatings(game.id);
+        } else {
+          await this.classicRatingService.calculateAndUpdateRatings(game.id);
+        }
+      } else if (eventCategory === EventCategory.GP) {
+        // For GP: Use same classic rating algorithm (stored in DB, not displayed on frontend)
+        await this.classicRatingService.calculateAndUpdateRatings(game.id);
+      } else {
+        // For CLASSIC: Use standard rating calculation
+        await this.classicRatingService.calculateAndUpdateRatings(game.id);
+      }
     } else {
-      // For CLASSIC: Use standard rating calculation
-      await this.classicRatingService.calculateAndUpdateRatings(game.id);
+      this.logger.log(`Match ${game.matchId} is unrated, skipping rating calculation`);
+      // Still calculate team scores for display purposes
+      if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
+        if (game.teamConfig) {
+          await this.calculateAndSaveTeamScores(game.id);
+        }
+      }
     }
 
     // Update match status to FINALIZED
@@ -1218,6 +1233,7 @@ export class GamesService {
         seasonName,
         topParticipants,
         topTeams,
+        isRated: game.match.isRated,
       });
 
       this.logger.log(`Announced match results for game ${gameId}`);
@@ -1300,6 +1316,7 @@ export class GamesService {
         gameId,
         participants: participantsWithPositions,
         allTeams,
+        isRated: game.match?.isRated,
       });
 
       this.logger.log(`Posted match results to channel for game ${gameId}`);
@@ -1875,7 +1892,8 @@ export class GamesService {
       const category =
         game.match.season?.event?.category?.toLowerCase() || 'classic';
       const seasonNumber = game.match.season?.seasonNumber ?? 1;
-      const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonNumber}/${game.match.matchNumber}`;
+      const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
+      const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonSlug}/${game.match.matchNumber}`;
       this.discordBotService.postScreenshotRequest(
         game.discordChannelId,
         updated.user.discordId,
@@ -2037,7 +2055,8 @@ export class GamesService {
     if (game.discordChannelId && updated.user.discordId) {
       const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
       const seasonNumber = game.match.season?.seasonNumber ?? 1;
-      const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonNumber}/${game.match.matchNumber}`;
+      const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
+      const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonSlug}/${game.match.matchNumber}`;
       this.discordBotService.postScreenshotRequest(
         game.discordChannelId,
         updated.user.discordId,
@@ -2051,6 +2070,70 @@ export class GamesService {
     });
 
     return updated;
+  }
+
+  /**
+   * Notify position conflict via Discord channel
+   */
+  async notifyPositionConflict(
+    gameId: number,
+    conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }>,
+  ) {
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        match: {
+          include: {
+            season: {
+              include: { event: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    if (!game.discordChannelId) {
+      return { success: false, message: 'No Discord channel linked to this game' };
+    }
+
+    // Collect all unique user IDs from conflicts
+    const userIds = [...new Set(conflicts.flatMap((c) => c.users.map((u) => u.userId)))];
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, discordId: true, displayName: true },
+    });
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const enrichedConflicts = conflicts.map((c) => ({
+      raceNumber: c.raceNumber,
+      users: c.users.map((u) => {
+        const user = userMap.get(u.userId);
+        return {
+          userName: user?.displayName || `User#${u.userId}`,
+          discordId: user?.discordId || null,
+          position: u.position,
+        };
+      }),
+    }));
+
+    const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
+    const seasonNumber = game.match.season?.seasonNumber ?? 1;
+    const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
+    const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonSlug}/${game.match.matchNumber}`;
+
+    const success = await this.discordBotService.postPositionConflictNotification(
+      game.discordChannelId,
+      enrichedConflicts,
+      matchUrl,
+    );
+
+    return { success };
   }
 
   /**

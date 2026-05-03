@@ -80,7 +80,7 @@ export class MatchesController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
-    const seasonNum = parseInt(seasonNumber, 10);
+    const seasonNum = seasonNumber === 'unrated' ? -1 : parseInt(seasonNumber, 10);
     return this.matchesService.getResultsPaginated(
       category,
       seasonNum,

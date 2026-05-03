@@ -183,6 +183,7 @@ export default function Home() {
             matchUrl={matchUrl}
             isParticipant={isUserInMatch}
             isAuthenticated={isAuthenticated}
+            participants={nextMatch.participants}
           />
         )}
       </div>

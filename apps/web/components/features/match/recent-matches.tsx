@@ -12,6 +12,7 @@ interface RecentMatch {
   playerCount: number;
   status: string;
   startedAt: string | null;
+  isRated?: boolean;
   winner: {
     id: number;
     displayName: string | null;
@@ -66,7 +67,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
         {validMatches.map((match) => (
           <Link
             key={match.id}
-            href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber}/${match.matchNumber}`}
+            href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber === -1 ? 'unrated' : match.seasonNumber}/${match.matchNumber}`}
             className="block"
           >
             <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 transition-colors">
@@ -74,7 +75,10 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
               <div className="flex items-center gap-3 shrink-0">
                 <CategoryBadge category={match.category} />
                 <span className="text-gray-300 text-sm whitespace-nowrap">
-                  S{match.seasonNumber} #{match.matchNumber}
+                  {match.seasonNumber === -1
+                    ? tCommon('unrated')
+                    : `S${match.seasonNumber} #${match.matchNumber}`
+                  }
                 </span>
                 {match.startedAt && (
                   <span className="hidden sm:inline text-gray-500 text-xs whitespace-nowrap">

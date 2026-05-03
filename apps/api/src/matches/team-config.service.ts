@@ -75,26 +75,23 @@ export const TEAM_COLOR_HEX: Record<number, string> = {
  * Format: "AxB" = A players per team x B teams
  */
 const TEAM_CONFIGS: Record<number, string[]> = {
+  4: ['2x2'],
+  6: ['2x3', '3x2'],
+  8: ['2x4', '4x2'],
+  9: ['3x3'],
+  10: ['2x5', '5x2'],
   12: ['2x6', '3x4', '4x3', '6x2'],
-  13: ['2x6', '3x4', '4x3', '6x2'], // 1 player excluded
   14: ['2x7', '7x2'],
   15: ['3x5', '5x3'],
   16: ['2x8', '4x4', '8x2'],
-  17: ['2x8', '4x4', '8x2'], // 1 player excluded
   18: ['2x9', '3x6', '6x3', '9x2'],
-  19: ['2x9', '3x6', '6x3', '9x2'], // 1 player excluded
   20: ['2x10', '4x5', '5x4', '10x2'],
 };
 
 /**
- * Player counts that require excluding 1 player (TEAM_CLASSIC)
- */
-const EXCLUDE_ONE_PLAYER_COUNTS = [13, 17, 19];
-
-/**
  * Check if a number is prime
  */
-function isPrime(n: number): boolean {
+export function isPrime(n: number): boolean {
   if (n < 2) return false;
   if (n < 4) return true;
   if (n % 2 === 0 || n % 3 === 0) return false;
@@ -132,22 +129,10 @@ export class TeamConfigService {
   // ===== TEAM_CLASSIC methods =====
 
   /**
-   * Get the number of players to exclude for a given player count (TEAM_CLASSIC)
-   */
-  getExcludeCount(playerCount: number): number {
-    if (EXCLUDE_ONE_PLAYER_COUNTS.includes(playerCount)) {
-      return 1;
-    }
-    return 0;
-  }
-
-  /**
    * Get available team configurations for a player count (TEAM_CLASSIC)
    */
   getAvailableConfigs(playerCount: number): string[] {
-    // Adjust for excluded players
-    const effectiveCount = playerCount - this.getExcludeCount(playerCount);
-    return TEAM_CONFIGS[effectiveCount] || [];
+    return TEAM_CONFIGS[playerCount] || [];
   }
 
   /**
@@ -176,10 +161,10 @@ export class TeamConfigService {
   }
 
   /**
-   * Check if a player count is valid for TEAM_CLASSIC
+   * Check if a player count is valid for TEAM_CLASSIC (4-20, non-prime only)
    */
   isValidPlayerCount(playerCount: number): boolean {
-    return playerCount >= 12 && playerCount <= 20;
+    return playerCount >= 4 && playerCount <= 20 && !isPrime(playerCount);
   }
 
   /**
@@ -200,16 +185,16 @@ export class TeamConfigService {
    * Get all supported player counts (TEAM_CLASSIC)
    */
   getSupportedPlayerCounts(): number[] {
-    return [12, 13, 14, 15, 16, 17, 18, 19, 20];
+    return [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20];
   }
 
   // ===== TEAM_GP methods =====
 
   /**
-   * Check if a player count is valid for TEAM_GP (30-99)
+   * Check if a player count is valid for TEAM_GP (10-99)
    */
   isValidTeamGpPlayerCount(playerCount: number): boolean {
-    return playerCount >= 30 && playerCount <= 99;
+    return playerCount >= 10 && playerCount <= 99;
   }
 
   /**

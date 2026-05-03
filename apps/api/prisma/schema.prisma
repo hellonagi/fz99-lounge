@@ -500,6 +500,9 @@ model Match {
   fakeCount Int @default(0)
   joinCount Int @default(0)
 
+  // レート計算対象フラグ（12人未満の場合はfalse）
+  isRated Boolean @default(true)
+
   // 定期スケジュールとの紐付け（手動作成の場合はnull）
   recurringMatchId Int?
   recurringMatch   RecurringMatch? @relation("GeneratedMatches", fields: [recurringMatchId], references: [id], onDelete: SetNull)
@@ -860,7 +863,7 @@ model RecurringMatch {
   eventCategory EventCategory
   inGameMode    InGameMode
   leagueType    League?
-  minPlayers    Int                  @default(12)
+  minPlayers    Int                  @default(4)
   maxPlayers    Int                  @default(20)
   isEnabled     Boolean              @default(true)
   name          String?

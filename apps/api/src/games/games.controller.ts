@@ -59,7 +59,7 @@ export class GamesController {
 
     // Convert category string to EventCategory enum
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     return this.gamesService.getByEventSeasonMatch(
@@ -82,7 +82,7 @@ export class GamesController {
   ) {
     const user = req.user as any;
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     // Determine target user ID
@@ -132,7 +132,7 @@ export class GamesController {
   ) {
     const user = req.user as any;
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
@@ -155,9 +155,10 @@ export class GamesController {
     @Param('userId') targetUserId: string,
   ) {
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     return this.gamesService.disqualifyParticipant(
       eventCategory,
-      parseInt(season, 10),
+      seasonNumber,
       parseInt(match, 10),
       parseInt(targetUserId, 10),
     );
@@ -174,9 +175,10 @@ export class GamesController {
     @Body() dto: OverrideScoreDto,
   ) {
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     return this.gamesService.overrideScore(
       eventCategory,
-      parseInt(season, 10),
+      seasonNumber,
       parseInt(match, 10),
       parseInt(targetUserId, 10),
       dto.totalScore,
@@ -215,7 +217,7 @@ export class GamesController {
     @Param('match') match: string,
   ) {
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     return this.gamesService.endMatch(eventCategory, seasonNumber, matchNumber);
@@ -233,7 +235,7 @@ export class GamesController {
     @Body() body: { tracks: number[] },
   ) {
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     return this.gamesService.updateTracks(
@@ -258,7 +260,7 @@ export class GamesController {
   ) {
     const user = req.user as any;
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
@@ -276,7 +278,7 @@ export class GamesController {
   ) {
     const user = req.user as any;
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
@@ -294,7 +296,7 @@ export class GamesController {
     @Param('match') match: string,
   ) {
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
     const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
@@ -320,7 +322,7 @@ export class GamesController {
     const user = req.user as any;
 
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
@@ -343,7 +345,7 @@ export class GamesController {
     const user = req.user as any;
 
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
@@ -366,7 +368,7 @@ export class GamesController {
     const user = req.user as any;
 
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
@@ -390,12 +392,31 @@ export class GamesController {
     @Param('userId') targetUserId: string,
   ) {
     const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
-    const seasonNumber = parseInt(season, 10);
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
     const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
     return this.gamesService.markNoShow(game.id, targetId);
+  }
+
+  @Post(':category/:season/:match/notify-position-conflict')
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  @Permissions(ModeratorPermission.REJECT_SCORE)
+  @HttpCode(HttpStatus.OK)
+  async notifyPositionConflict(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Body() body: { conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }> },
+  ) {
+    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
+    const matchNumber = parseInt(match, 10);
+
+    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    return this.gamesService.notifyPositionConflict(game.id, body.conflicts);
   }
 
   // ========================================

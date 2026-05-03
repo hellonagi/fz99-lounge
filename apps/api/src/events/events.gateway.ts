@@ -50,6 +50,7 @@ export class EventsGateway
     season: number;
     match: number;
     url: string;
+    message?: string;
   }) {
     this.logger.log(`Emitting match-started event for match ${matchData.matchId}`);
     this.server.emit('match-started', matchData);

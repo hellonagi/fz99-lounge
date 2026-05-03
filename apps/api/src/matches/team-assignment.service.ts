@@ -46,23 +46,7 @@ export class TeamAssignmentService {
       return null;
     }
 
-    // Step 1: Determine how many players to exclude
-    const excludeCount = this.teamConfigService.getExcludeCount(playerCount);
-
-    // Step 2: Identify excluded players (those who joined last)
-    const sortedByJoinTime = [...players].sort(
-      (a, b) => b.joinedAt.getTime() - a.joinedAt.getTime(),
-    );
-    const excludedUserIds = sortedByJoinTime
-      .slice(0, excludeCount)
-      .map((p) => p.userId);
-
-    // Step 3: Get eligible players (not excluded)
-    const eligiblePlayers = players.filter(
-      (p) => !excludedUserIds.includes(p.userId),
-    );
-
-    // Step 4: Select random team configuration
+    // Step 1: Select random team configuration
     const config = this.teamConfigService.selectRandomConfig(playerCount);
     if (!config) {
       this.logger.error(
@@ -71,25 +55,25 @@ export class TeamAssignmentService {
       return null;
     }
 
-    // Step 5: Sort eligible players by rating (descending)
-    const sortedByRating = [...eligiblePlayers].sort(
+    // Step 2: Sort players by rating (descending)
+    const sortedByRating = [...players].sort(
       (a, b) => b.rating - a.rating,
     );
 
-    // Step 6: Apply snake draft
+    // Step 3: Apply snake draft
     const teams = this.snakeDraft(sortedByRating, config.teamCount);
 
-    // Step 7: Shuffle team labels so top-rated player isn't always Team A
+    // Step 4: Shuffle team labels so top-rated player isn't always Team A
     this.shuffleTeams(teams);
 
     this.logger.log(
-      `Assigned ${eligiblePlayers.length} players to ${config.teamCount} teams (${config.configString}), excluded ${excludeCount}`,
+      `Assigned ${players.length} players to ${config.teamCount} teams (${config.configString})`,
     );
 
     return {
       config,
       teams,
-      excludedUserIds,
+      excludedUserIds: [],
     };
   }
 
