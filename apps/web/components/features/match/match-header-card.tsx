@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { useFormatter, useLocale, useTranslations } from 'next-intl';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -143,12 +142,21 @@ export function MatchHeaderCard(props: MatchHeaderCardProps) {
 
           {/* Status Badge */}
           <div className="flex justify-center">
-            <Badge
-              variant={isLive ? 'default' : 'secondary'}
-              className={isLive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-600 hover:bg-gray-700'}
+            <span
+              className={
+                isLive
+                  ? 'inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-[.12em] uppercase px-2 py-1 border rounded-[3px] border-red-500/40 bg-red-500/10 text-red-400'
+                  : 'inline-flex items-center text-[10px] font-extrabold tracking-[.12em] uppercase px-2 py-1 border rounded-[3px] border-white/[.07] bg-black/20 text-gray-400'
+              }
             >
+              {isLive && (
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-400" />
+                </span>
+              )}
               {isLive ? 'Live' : 'Match over'}
-            </Badge>
+            </span>
           </div>
         </div>
       </CardContent>
