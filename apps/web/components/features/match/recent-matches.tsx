@@ -2,7 +2,15 @@
 
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { CategoryBadge } from '@/components/ui/category-badge';
+import { Trophy } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { CATEGORY_BADGE_CLASS, CATEGORY_LABEL } from './match-constants';
+
+interface MatchWinner {
+  id: number;
+  displayName: string | null;
+  totalScore: number | null;
+}
 
 interface RecentMatch {
   id: number;
@@ -13,11 +21,8 @@ interface RecentMatch {
   status: string;
   startedAt: string | null;
   isRated?: boolean;
-  winner: {
-    id: number;
-    displayName: string | null;
-    totalScore: number | null;
-  } | null;
+  winner: MatchWinner | null;
+  winners?: MatchWinner[];
 }
 
 interface RecentMatchesProps {
@@ -25,87 +30,152 @@ interface RecentMatchesProps {
   loading?: boolean;
 }
 
+function formatDate(iso: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(iso));
+}
+
 export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
   const locale = useLocale();
 
-  if (loading) {
-    return (
-      <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-        <div className="text-gray-400 text-sm text-center">{tCommon('loading')}</div>
-      </div>
-    );
-  }
-
-  if (!matches || matches.length === 0) {
-    return (
-      <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-        <div className="text-gray-400 text-sm text-center">{t('noRecentMatches')}</div>
-      </div>
-    );
-  }
-
-  // Filter out cancelled matches (matchNumber is null)
-  const validMatches = matches.filter((m) => m.matchNumber !== null);
-
-  if (validMatches.length === 0) {
-    return (
-      <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-        <div className="text-gray-400 text-sm text-center">{t('noRecentMatches')}</div>
-      </div>
-    );
-  }
+  const validMatches = (matches || []).filter((m) => m.matchNumber !== null);
 
   return (
-    <div>
-      <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">{t('recentMatches')}</h2>
-      <div className="space-y-2 mx-0">
-        {validMatches.map((match) => (
-          <Link
-            key={match.id}
-            href={`/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber === -1 ? 'unrated' : match.seasonNumber}/${match.matchNumber}`}
-            className="block"
-          >
-            <div className="flex items-center justify-between py-3 px-4 rounded-lg bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 transition-colors">
-              {/* Left: Category & Match Info */}
-              <div className="flex items-center gap-3 shrink-0">
-                <CategoryBadge category={match.category} />
-                <span className="text-gray-300 text-sm whitespace-nowrap">
-                  {match.seasonNumber === -1
-                    ? tCommon('unrated')
-                    : `S${match.seasonNumber} #${match.matchNumber}`
-                  }
-                </span>
-                {match.startedAt && (
-                  <span className="hidden sm:inline text-gray-500 text-xs whitespace-nowrap">
-                    {new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(match.startedAt))}
-                  </span>
-                )}
-              </div>
+    <section className="pt-4 pb-4">
+      <div className="max-w-6xl mx-auto sm:px-6 lg:px-8">
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-6 text-center px-4 sm:px-0">
+          {t('recentMatches')}
+        </h2>
 
-              {/* Right: Winner */}
-              <div className="flex items-center gap-2">
-                {match.winner && (
-                  <>
-                    <span className="text-gray-200 text-sm font-bold truncate max-w-[160px] sm:max-w-none">
-                      🏆️{match.winner.displayName || `User#${match.winner.id}`}
-                    </span>
-                    {match.winner.totalScore !== null && (
-                      <span className="text-gray-500 text-xs whitespace-nowrap">
-                        {match.winner.totalScore}pts
+        {loading ? (
+          <div className="text-gray-400 text-sm text-center py-8">
+            {tCommon('loading')}
+          </div>
+        ) : validMatches.length === 0 ? (
+          <div className="text-gray-400 text-sm text-center py-8">
+            {t('noRecentMatches')}
+          </div>
+        ) : (
+          <div className="border border-white/[.07] bg-white/[.05] sm:rounded-lg overflow-hidden">
+            {validMatches.map((match) => {
+              const category = match.category.toUpperCase();
+              const badgeClass =
+                CATEGORY_BADGE_CLASS[category] ||
+                'text-gray-400 border-gray-500/50';
+              const categoryLabel = CATEGORY_LABEL[category] || category;
+              const matchUrl = `/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber === -1 ? 'unrated' : match.seasonNumber}/${match.matchNumber}`;
+              const seasonLabel =
+                match.seasonNumber === -1
+                  ? tCommon('unrated').toUpperCase()
+                  : `S${match.seasonNumber} #${match.matchNumber}`;
+              const dateLabel = match.startedAt
+                ? formatDate(match.startedAt, locale)
+                : '';
+
+              const winnerList =
+                match.winners && match.winners.length > 0
+                  ? match.winners
+                  : match.winner
+                    ? [match.winner]
+                    : [];
+              const winnerNames = winnerList
+                .map((w) => w.displayName || `User#${w.id}`)
+                .join(' ');
+              const sharedScore = winnerList[0]?.totalScore ?? null;
+
+              return (
+                <Link
+                  key={match.id}
+                  href={matchUrl}
+                  className="block border-b border-white/[.07] last:border-b-0 hover:bg-white/[.03] transition-colors"
+                >
+                  {/* Desktop */}
+                  <div className="hidden md:grid grid-cols-[auto_1fr_auto] gap-x-2 items-center py-3.5 px-5">
+                    <div className="font-mono tabular-nums text-xs text-gray-500">
+                      {dateLabel}
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={cn(
+                          'text-[10px] font-extrabold tracking-[.1em] px-1.5 py-0.5 border rounded-[3px] bg-black/20 whitespace-nowrap',
+                          badgeClass,
+                        )}
+                      >
+                        {categoryLabel}
                       </span>
+                      <span className="font-mono tabular-nums text-xs text-gray-400 whitespace-nowrap">
+                        {seasonLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 justify-end min-w-0">
+                      {winnerList.length > 0 && (
+                        <>
+                          <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="text-sm font-bold text-gray-200 truncate max-w-[320px]">
+                            {winnerNames}
+                          </span>
+                          {sharedScore !== null && (
+                            <span className="flex items-baseline gap-0.5 shrink-0">
+                              <span className="font-mono tabular-nums text-xs text-gray-500">
+                                {sharedScore}
+                              </span>
+                              <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-600">
+                                pts
+                              </span>
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mobile */}
+                  <div className="md:hidden px-4 py-3 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'text-[10px] font-extrabold tracking-[.1em] px-1.5 py-0.5 border rounded-[3px] bg-black/20 whitespace-nowrap',
+                          badgeClass,
+                        )}
+                      >
+                        {categoryLabel}
+                      </span>
+                      <span className="font-mono tabular-nums text-xs text-gray-400 whitespace-nowrap">
+                        {seasonLabel}
+                      </span>
+                      <span className="font-mono tabular-nums text-[11px] text-gray-500 ml-auto">
+                        {dateLabel}
+                      </span>
+                    </div>
+                    {winnerList.length > 0 && (
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="text-sm font-bold text-gray-200 truncate">
+                          {winnerNames}
+                        </span>
+                        {sharedScore !== null && (
+                          <span className="flex items-baseline gap-0.5 ml-auto shrink-0">
+                            <span className="font-mono tabular-nums text-xs text-gray-500">
+                              {sharedScore}
+                            </span>
+                            <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-600">
+                              pts
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     )}
-                  </>
-                )}
-              </div>
-            </div>
-          </Link>
-        ))}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

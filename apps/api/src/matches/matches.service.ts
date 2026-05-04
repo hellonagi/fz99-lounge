@@ -576,19 +576,23 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           isRated: match.isRated,
         };
 
-        // Individual top scorer (participants are ordered by totalScore desc)
-        const topScorer = game?.participants[0];
-        const winner = topScorer
-          ? {
-              id: topScorer.user.id,
-              displayName: topScorer.user.displayName,
-              totalScore: topScorer.totalScore,
-            }
-          : null;
+        // Individual top scorer(s) — include ties (participants are ordered by totalScore desc)
+        const topScore = game?.participants[0]?.totalScore ?? null;
+        const winners = game && topScore !== null
+          ? game.participants
+              .filter((p) => p.totalScore === topScore)
+              .map((p) => ({
+                id: p.user.id,
+                displayName: p.user.displayName,
+                totalScore: p.totalScore,
+              }))
+          : [];
+        const winner = winners[0] ?? null;
 
         return {
           ...commonFields,
           winner,
+          winners,
           winningTeam: null,
         };
       })

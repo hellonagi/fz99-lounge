@@ -350,7 +350,8 @@
         "classicTopScorer": "Classic 最高得点",
         "gpTopScorer": "GP 最高得点",
         "mostMvps": "最多チームMVP",
-        "rookie": "期待の新人"
+        "rookie": "期待の新人",
+        "biggestRatingGain": "レート上昇王"
       },
       "units": {
         "mostWins": "勝",

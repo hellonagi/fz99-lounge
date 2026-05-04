@@ -1068,26 +1068,38 @@ export class TournamentsService {
         `
       : [];
 
-    // Build a map: seasonId → top 3 scorers
+    // Build a map: seasonId → top 3 scorers, plus the full top-tied set
     const topScorersMap = new Map<
       number,
       Array<{ rank: number; id: number; displayName: string | null; totalScore: number }>
     >();
+    const allByseasonId = new Map<
+      number,
+      Array<{ id: number; displayName: string | null; totalScore: number }>
+    >();
     for (const w of winners) {
+      const entry = {
+        id: w.userId,
+        displayName: w.displayName,
+        totalScore: Number(w.totalScore),
+      };
+      const all = allByseasonId.get(w.seasonId) ?? [];
+      all.push(entry);
+      allByseasonId.set(w.seasonId, all);
+
       const list = topScorersMap.get(w.seasonId) ?? [];
       if (list.length < 3) {
-        list.push({
-          rank: list.length + 1,
-          id: w.userId,
-          displayName: w.displayName,
-          totalScore: Number(w.totalScore),
-        });
+        list.push({ rank: list.length + 1, ...entry });
         topScorersMap.set(w.seasonId, list);
       }
     }
 
     return configs.map((c) => {
       const topScorers = topScorersMap.get(c.seasonId) ?? [];
+      const all = allByseasonId.get(c.seasonId) ?? [];
+      const topScore = all[0]?.totalScore ?? null;
+      const tiedWinners =
+        topScore !== null ? all.filter((s) => s.totalScore === topScore) : [];
       return {
         id: c.id,
         name: c.name,
@@ -1096,9 +1108,8 @@ export class TournamentsService {
         tournamentDate: c.tournamentDate,
         totalRounds: c.totalRounds,
         participantCount: c._count.registrations,
-        winner: topScorers[0]
-          ? { id: topScorers[0].id, displayName: topScorers[0].displayName, totalScore: topScorers[0].totalScore }
-          : null,
+        winner: tiedWinners[0] ?? null,
+        winners: tiedWinners,
         topScorers,
       };
     });

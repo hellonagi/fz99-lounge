@@ -351,7 +351,8 @@
         "classicTopScorer": "Classic Highest Score",
         "gpTopScorer": "GP Highest Score",
         "mostMvps": "Most Team MVPs",
-        "rookie": "Rising Rookie"
+        "rookie": "Rising Rookie",
+        "biggestRatingGain": "Biggest Rating Gain"
       },
       "units": {
         "mostWins": "wins",

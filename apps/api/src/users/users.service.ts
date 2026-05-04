@@ -1127,12 +1127,73 @@ export class UsersService {
       }
     }
 
+    // レート上昇王: rookieが選出できなかった場合のフォールバック
+    // 条件: 先週開始前にRatingHistoryがある（=新規ではない） && 同一シーズン内で2試合以上 && 上昇量>0
+    let ratingGainEntry: { userId: number; value: number } | null = null;
+    if (!rookieEntry && allParticipantUserIds.size > 0) {
+      const userIdList = [...allParticipantUserIds];
+      const histories = await this.prisma.ratingHistory.findMany({
+        where: {
+          userId: { in: userIdList },
+          createdAt: { lte: weekEnd },
+        },
+        select: {
+          userId: true,
+          displayRating: true,
+          createdAt: true,
+          match: { select: { seasonId: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      // (userId, seasonId) 単位でweek前の最終レートとweek内の最終レートを集計
+      type SeasonState = { beforeWeek: number | null; endOfWeek: number | null; weekMatches: number };
+      const grouped = new Map<string, SeasonState>();
+      for (const h of histories) {
+        const key = `${h.userId}-${h.match.seasonId}`;
+        let state = grouped.get(key);
+        if (!state) {
+          state = { beforeWeek: null, endOfWeek: null, weekMatches: 0 };
+          grouped.set(key, state);
+        }
+        if (h.createdAt < weekStart) {
+          state.beforeWeek = h.displayRating;
+        } else {
+          state.endOfWeek = h.displayRating;
+          state.weekMatches++;
+        }
+      }
+
+      // ユーザーごとのベスト差分を取り、全体の最大を選出
+      const userBestGain = new Map<number, number>();
+      for (const [key, state] of grouped) {
+        if (state.beforeWeek === null || state.endOfWeek === null) continue;
+        if (state.weekMatches < 2) continue;
+        const gain = state.endOfWeek - state.beforeWeek;
+        if (gain <= 0) continue;
+        const userId = parseInt(key.split('-')[0]);
+        const cur = userBestGain.get(userId) || 0;
+        if (gain > cur) userBestGain.set(userId, gain);
+      }
+
+      let best: { userId: number; gain: number } | null = null;
+      for (const [userId, gain] of userBestGain) {
+        if (!best || gain > best.gain || (gain === best.gain && userId < best.userId)) {
+          best = { userId, gain };
+        }
+      }
+      if (best) {
+        ratingGainEntry = { userId: best.userId, value: best.gain };
+      }
+    }
+
     // 受賞者のuserIdを収集
     const awardUserIds = new Set<number>();
     for (const entry of Object.values(results)) {
       if (entry) awardUserIds.add(entry[0]);
     }
     if (rookieEntry) awardUserIds.add(rookieEntry.userId);
+    if (ratingGainEntry) awardUserIds.add(ratingGainEntry.userId);
 
     if (awardUserIds.size === 0) {
       return { weekStart, weekEnd, awards: [] };
@@ -1180,6 +1241,8 @@ export class UsersService {
     }
     if (rookieEntry) {
       awards.push({ category: 'rookie', player: buildPlayer(rookieEntry.userId), value: rookieEntry.value, rookieType: rookieEntry.type });
+    } else if (ratingGainEntry) {
+      awards.push({ category: 'biggestRatingGain', player: buildPlayer(ratingGainEntry.userId), value: ratingGainEntry.value });
     }
     if (results.mostMvps) {
       awards.push({ category: 'mostMvps', player: buildPlayer(results.mostMvps[0]), value: results.mostMvps[1] });
