@@ -932,9 +932,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       const mentions = unsubmittedDiscordIds.map((id) => `<@${id}>`).join(' ');
 
-      // Format deadline in JST
-      const deadlineJST = new Date(deadline.getTime() + 9 * 60 * 60 * 1000);
-      const deadlineStr = `${deadlineJST.getUTCHours().toString().padStart(2, '0')}:${deadlineJST.getUTCMinutes().toString().padStart(2, '0')} JST`;
+      // Discord auto-localizes <t:UNIX:t> to the viewer's timezone
+      const deadlineUnix = Math.floor(deadline.getTime() / 1000);
+      const deadlineStr = `<t:${deadlineUnix}:t> (<t:${deadlineUnix}:R>)`;
 
       const embed = new EmbedBuilder()
         .setTitle('Score Submission Reminder / スコア提出リマインダー')
@@ -1404,7 +1404,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       const baseUrl =
         this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
-      const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
+      const seasonSlug =
+        params.seasonNumber === -1 ? 'unrated' : params.seasonNumber;
+      const matchUrl = `${baseUrl}/matches/${params.category}/${seasonSlug}/${params.matchNumber}`;
 
       // Build result lines
       const rankEmojis: Record<number, string> = {
@@ -1434,11 +1436,15 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       // Build embed
       const unratedLabel = params.isRated === false ? ' [Unrated]' : '';
+      const seasonLabelEn =
+        params.seasonNumber === -1 ? 'Unrated' : `Season${params.seasonNumber}`;
+      const seasonLabelJa =
+        params.seasonNumber === -1 ? 'Unrated' : `シーズン${params.seasonNumber}`;
       const embed = new EmbedBuilder()
         .setTitle(`Match Results${unratedLabel}`)
         .setColor(params.isRated === false ? 0x808080 : 0xf39c12)
         .setDescription(
-          `${params.seasonName} Season${params.seasonNumber} #${params.matchNumber} has been finalized!\n${params.seasonName} シーズン${params.seasonNumber} #${params.matchNumber} の結果が確定しました!\n\n${resultLines}`,
+          `${params.seasonName} ${seasonLabelEn} #${params.matchNumber} has been finalized!\n${params.seasonName} ${seasonLabelJa} #${params.matchNumber} の結果が確定しました!\n\n${resultLines}`,
         )
         .addFields({ name: 'View results', value: matchUrl });
 

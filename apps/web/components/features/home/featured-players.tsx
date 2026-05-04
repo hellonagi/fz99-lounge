@@ -1,13 +1,11 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAvatarUrl } from '@/hooks/useAvatarUrl';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { EffectCoverflow } from 'swiper/modules';
-import 'swiper/css';
-import 'swiper/css/effect-coverflow';
 
 interface AwardPlayer {
   userId: number;
@@ -19,7 +17,7 @@ interface AwardPlayer {
 }
 
 interface Award {
-  category: 'mostWins' | 'classicTopScorer' | 'gpTopScorer' | 'mostMvps' | 'rookie';
+  category: 'mostWins' | 'classicTopScorer' | 'gpTopScorer' | 'mostMvps' | 'rookie' | 'biggestRatingGain';
   player: AwardPlayer;
   value: number;
   rookieType?: 'wins' | 'mvps' | 'score';
@@ -50,37 +48,43 @@ function PlayerAvatar({ discordId, avatarHash, displayName }: {
   );
 }
 
-const cardStyle = { border: 'border-white/20', ring: 'ring-white/10' };
-
-const labelColor: Record<Award['category'], string> = {
-  mostWins: 'text-red-400',
-  classicTopScorer: 'text-yellow-400',
-  gpTopScorer: 'text-blue-400',
-  mostMvps: 'text-green-400',
-  rookie: 'text-purple-400',
+const categoryBadgeClass: Record<Award['category'], string> = {
+  mostWins: 'text-rose-400 border-rose-500/50',
+  classicTopScorer: 'text-amber-400 border-amber-500/50',
+  gpTopScorer: 'text-cyan-400 border-cyan-500/50',
+  mostMvps: 'text-emerald-400 border-emerald-500/50',
+  rookie: 'text-violet-400 border-violet-500/50',
+  biggestRatingGain: 'text-violet-400 border-violet-500/50',
 };
 
 function AwardCard({ award }: { award: Award }) {
   const t = useTranslations('home.featuredPlayers');
-  const config = cardStyle;
 
-  const getValueDisplay = () => {
+  const getValueDisplay = (): { value: string; unit: string } => {
     if (award.category === 'rookie') {
-      if (award.rookieType === 'wins') return `${award.value} ${t('units.mostWins')}`;
-      if (award.rookieType === 'mvps') return `${award.value} ${t('units.mostMvps')}`;
-      return `${award.value.toLocaleString()} pts`;
+      if (award.rookieType === 'wins') return { value: String(award.value), unit: t('units.mostWins') };
+      if (award.rookieType === 'mvps') return { value: String(award.value), unit: t('units.mostMvps') };
+      return { value: award.value.toLocaleString(), unit: 'pts' };
+    }
+    if (award.category === 'biggestRatingGain') {
+      return { value: `+${award.value.toLocaleString()}`, unit: '' };
     }
     if (award.category === 'classicTopScorer' || award.category === 'gpTopScorer') {
-      return `${award.value.toLocaleString()} pts`;
+      return { value: award.value.toLocaleString(), unit: 'pts' };
     }
-    return `${award.value} ${t(`units.${award.category}`)}`;
+    return { value: String(award.value), unit: t(`units.${award.category}`) };
   };
-  const valueDisplay = getValueDisplay();
+  const { value, unit } = getValueDisplay();
 
   return (
-    <Card className={`border ${config.border} bg-white/5 backdrop-blur-md ring-1 ${config.ring} h-full`}>
-      <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2 sm:gap-3">
-        <span className={`text-xs sm:text-sm font-semibold whitespace-nowrap ${labelColor[award.category]}`}>
+    <Card className="border border-white/[.07] bg-white/[.05] h-full rounded-[5px]">
+      <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-3">
+        <span
+          className={cn(
+            'text-[10px] font-extrabold tracking-[.12em] uppercase px-1.5 py-0.5 border rounded-[3px] bg-black/20 whitespace-nowrap',
+            categoryBadgeClass[award.category],
+          )}
+        >
           {t(`categories.${award.category}`)}
         </span>
 
@@ -105,8 +109,13 @@ function AwardCard({ award }: { award: Award }) {
           </Link>
         </div>
 
-        <div className="text-xs sm:text-sm text-muted-foreground">
-          <span className="font-semibold text-white text-base sm:text-lg">{valueDisplay}</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-mono tabular-nums text-lg sm:text-xl font-extrabold text-white">
+            {value}
+          </span>
+          <span className="text-[10px] font-bold tracking-[.12em] uppercase text-gray-400">
+            {unit}
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -115,46 +124,47 @@ function AwardCard({ award }: { award: Award }) {
 
 export function FeaturedPlayers({ awards, loading }: FeaturedPlayersProps) {
   const t = useTranslations('home.featuredPlayers');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (!container || awards.length === 0) return;
+    if (container.scrollWidth <= container.clientWidth) return; // desktop grid: no-op
+    const middleIdx = Math.floor(awards.length / 2);
+    const middle = container.children[middleIdx] as HTMLElement | undefined;
+    if (!middle) return;
+    container.scrollLeft = middle.offsetLeft + middle.offsetWidth / 2 - container.clientWidth / 2;
+  }, [awards.length]);
 
   if (loading || awards.length === 0) {
     return null;
   }
 
   return (
-    <section className="pt-4 pb-8 overflow-hidden">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 overflow-visible">
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-8 text-center">
+    <section className="pt-4 pb-8">
+      <div className="max-w-6xl mx-auto sm:px-6 lg:px-8">
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-6 text-center px-4 sm:px-0">
           {t('title')}
         </h2>
 
-        <Swiper
-          className="!overflow-visible"
-          modules={[EffectCoverflow]}
-          effect="coverflow"
-          grabCursor
-          centeredSlides
-          slideToClickedSlide
-          initialSlide={2}
-          coverflowEffect={{
-            rotate: 0,
-            stretch: 80,
-            depth: 100,
-            modifier: 1,
-            scale: 0.9,
-            slideShadows: false,
-          }}
-          breakpoints={{
-            0: { slidesPerView: 2, spaceBetween: 12 },
-            640: { slidesPerView: 3, spaceBetween: 16 },
-            1024: { slidesPerView: 3.5, spaceBetween: 20 },
-          }}
+        <div
+          ref={scrollRef}
+          className={cn(
+            'flex gap-3 overflow-x-auto px-4 pb-2 snap-x snap-mandatory',
+            '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+            'sm:grid sm:grid-cols-3 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 sm:snap-none',
+            'lg:grid-cols-5',
+          )}
         >
           {awards.map((award) => (
-            <SwiperSlide key={award.category}>
+            <div
+              key={award.category}
+              className="shrink-0 w-[44%] max-w-[180px] snap-center sm:w-auto sm:max-w-none"
+            >
               <AwardCard award={award} />
-            </SwiperSlide>
+            </div>
           ))}
-        </Swiper>
+        </div>
       </div>
     </section>
   );

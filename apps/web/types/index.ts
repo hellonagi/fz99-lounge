@@ -307,6 +307,11 @@ export interface RecentTournament {
     displayName: string | null;
     totalScore: number;
   } | null;
+  winners?: Array<{
+    id: number;
+    displayName: string | null;
+    totalScore: number;
+  }>;
   topScorers?: Array<{
     rank: number;
     id: number;

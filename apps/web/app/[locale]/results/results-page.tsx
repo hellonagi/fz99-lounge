@@ -210,7 +210,7 @@ export default function ResultsPage() {
       ) : (
         <>
           {meta && (
-            <div className="text-sm text-gray-400 mb-4">
+            <div className="text-[11px] font-bold tracking-[.12em] uppercase text-gray-500 mb-3 px-4 sm:px-0">
               {t('matchesFound', { count: meta.total })}
             </div>
           )}
@@ -235,7 +235,7 @@ export default function ResultsPage() {
       ) : (
         <>
           {!tournamentsLoading && tournaments.length > 0 && (
-            <div className="text-sm text-gray-400 mb-4">
+            <div className="text-[11px] font-bold tracking-[.12em] uppercase text-gray-500 mb-3 px-4 sm:px-0">
               {t('tournamentsFound', { count: tournaments.length })}
             </div>
           )}
@@ -249,10 +249,12 @@ export default function ResultsPage() {
   );
 
   return (
-    <main className="max-w-6xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+    <main className="max-w-6xl mx-auto sm:px-4 lg:px-8 py-4 sm:py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl font-bold text-white">{t('title')}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 px-4 sm:px-0">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+          {t('title')}
+        </h1>
         {!isTournamentTab && seasons.length > 0 && selectedSeasonNumber !== undefined && (
           <SeasonSelect
             seasons={seasons}
@@ -263,47 +265,42 @@ export default function ResultsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-gray-800 rounded-lg">
-        {mounted ? (
-          <Tabs
-            value={activeTab}
-            onValueChange={handleTabChange}
-          >
-            <TabsList>
-              <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
-              <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
-              <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
-              <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
-              <TabsTrigger value="tournament">{t('tournament')}</TabsTrigger>
-            </TabsList>
+      {mounted ? (
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="px-4 sm:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsTrigger value="gp">{t('gp')}</TabsTrigger>
+            <TabsTrigger value="team_gp">{t('teamGp')}</TabsTrigger>
+            <TabsTrigger value="classic">{t('classic')}</TabsTrigger>
+            <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
+            <TabsTrigger value="tournament">{t('tournament')}</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="gp" className="p-4">
-              {renderMatchContent()}
-            </TabsContent>
+          <TabsContent value="gp" className="p-0 pt-4 sm:pt-6">
+            {renderMatchContent()}
+          </TabsContent>
 
-            <TabsContent value="team_gp" className="p-4">
-              {renderMatchContent()}
-            </TabsContent>
+          <TabsContent value="team_gp" className="p-0 pt-4 sm:pt-6">
+            {renderMatchContent()}
+          </TabsContent>
 
-            <TabsContent value="classic" className="p-4">
-              {renderMatchContent()}
-            </TabsContent>
+          <TabsContent value="classic" className="p-0 pt-4 sm:pt-6">
+            {renderMatchContent()}
+          </TabsContent>
 
-            <TabsContent value="team_classic" className="p-4">
-              {renderMatchContent()}
-            </TabsContent>
+          <TabsContent value="team_classic" className="p-0 pt-4 sm:pt-6">
+            {renderMatchContent()}
+          </TabsContent>
 
-            <TabsContent value="tournament" className="p-4">
-              {renderTournamentContent()}
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="p-6">
-            <div className="h-10 bg-gray-700/50 rounded animate-pulse w-32 mb-4" />
-            <div className="h-64 bg-gray-700/30 rounded animate-pulse" />
-          </div>
-        )}
-      </div>
+          <TabsContent value="tournament" className="p-0 pt-4 sm:pt-6">
+            {renderTournamentContent()}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="px-4 sm:px-0">
+          <div className="h-10 bg-white/[.05] rounded animate-pulse w-32 mb-4" />
+          <div className="h-64 bg-white/[.05] rounded animate-pulse" />
+        </div>
+      )}
     </main>
   );
 }

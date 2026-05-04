@@ -201,18 +201,10 @@ export default function Home() {
       <FeaturedPlayers awards={featuredAwards} loading={featuredAwardsLoading} />
 
       {/* Recent Matches Section */}
-      <section className="pt-4 pb-4">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
-        </div>
-      </section>
+      <RecentMatches matches={recentMatches} loading={recentMatchesLoading} />
 
       {/* Past Tournament Results */}
-      <section className="pt-4 pb-16">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <PastTournamentResults tournaments={recentTournaments} loading={recentTournamentsLoading} />
-        </div>
-      </section>
+      <PastTournamentResults tournaments={recentTournaments} loading={recentTournamentsLoading} />
     </>
   );
 }

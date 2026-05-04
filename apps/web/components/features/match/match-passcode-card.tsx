@@ -126,7 +126,7 @@ export function MatchPasscodeCard({
 
   return (
     <Card showGradient className="bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
-      <CardContent className="text-center">
+      <CardContent className="text-center pt-3 sm:pt-6">
         {inGameMode && (
           <p className="text-sm text-gray-400 mb-1">
             {inGameMode.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')}

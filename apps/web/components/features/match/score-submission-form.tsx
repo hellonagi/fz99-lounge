@@ -382,7 +382,11 @@ export function ScoreSubmissionForm({
           {/* Race Results */}
           <div className="space-y-3">
             <FormLabel className="text-gray-300">{t('raceResults')}</FormLabel>
-            <p className="text-sm text-gray-400">{t('raceResultsDescription')}</p>
+            <p className="text-sm text-gray-400">
+              {t.rich('raceResultsDescription', {
+                b: (chunks) => <span className="font-bold text-gray-200">{chunks}</span>,
+              })}
+            </p>
 
             {Array.from({ length: raceCount }, (_, idx) => {
               const raceNum = idx + 1;
@@ -401,11 +405,11 @@ export function ScoreSubmissionForm({
                       control={form.control}
                       name={`race${raceNum}Position`}
                       render={({ field, fieldState }) => (
-                        <FormItem className="w-14">
+                        <FormItem className="w-20">
                           <FormControl>
                             <Input
                               type="number"
-                              placeholder="#"
+                              placeholder={`1-${raceMax}`}
                               min="1"
                               max={raceMax}
                               disabled={posDisabled}
