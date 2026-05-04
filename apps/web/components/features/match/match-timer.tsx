@@ -26,10 +26,10 @@ function SlotDigit({ value }: { value: string }) {
   }, [value, current]);
 
   return (
-    <div className="relative inline-flex h-[48px] w-[44px] overflow-hidden rounded-md bg-white/[.06] sm:h-[64px] sm:w-[60px] md:h-[88px] md:w-[80px]">
+    <div className="relative inline-flex h-[56px] w-[52px] overflow-hidden rounded-md bg-white/[.06] sm:h-[72px] sm:w-[68px] md:h-[88px] md:w-[80px]">
       {/* Old value - slides out upward */}
       <div
-        className={`absolute inset-0 flex items-center justify-center text-4xl font-extrabold tabular-nums text-white sm:text-5xl md:text-7xl ${animating ? 'animate-slot-out' : ''}`}
+        className={`absolute inset-0 flex items-center justify-center text-5xl font-extrabold tabular-nums text-white sm:text-6xl md:text-7xl ${animating ? 'animate-slot-out' : ''}`}
         onAnimationEnd={() => setAnimating(false)}
       >
         {animating ? previous : current}
@@ -37,7 +37,7 @@ function SlotDigit({ value }: { value: string }) {
 
       {/* New value - slides in from below */}
       {animating && (
-        <div className="absolute inset-0 flex items-center justify-center text-4xl font-extrabold tabular-nums text-white animate-slot-in sm:text-5xl md:text-7xl">
+        <div className="absolute inset-0 flex items-center justify-center text-5xl font-extrabold tabular-nums text-white animate-slot-in sm:text-6xl md:text-7xl">
           {current}
         </div>
       )}
@@ -100,11 +100,11 @@ export function MatchTimer({ scheduledStart, timeOffset }: MatchTimerProps) {
         {hours > 0 && (
           <>
             <SlotUnit value={hours.toString()} />
-            <span className="text-3xl font-thin opacity-50 animate-colon-blink sm:text-4xl md:text-6xl">:</span>
+            <span className="text-4xl font-thin opacity-50 animate-colon-blink sm:text-5xl md:text-6xl">:</span>
           </>
         )}
         <SlotUnit value={minutes.toString()} />
-        <span className="text-3xl font-thin opacity-50 animate-colon-blink sm:text-4xl md:text-6xl">:</span>
+        <span className="text-4xl font-thin opacity-50 animate-colon-blink sm:text-5xl md:text-6xl">:</span>
         <SlotUnit value={seconds.toString()} />
       </div>
     </div>

@@ -182,7 +182,7 @@ export function MatchHero({
                   )}
 
                   {/* Bottom: avatars + CTA */}
-                  <div className="max-w-lg mx-auto mt-3 pt-3 border-t border-white/[.07]">
+                  <div className="max-w-lg mx-auto mt-3">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                       {(() => {
                         const realCount = participants?.length ?? 0;
@@ -207,7 +207,7 @@ export function MatchHero({
                           )}
                         >
                           <SiDiscord className="w-4 h-4 mr-1.5 md:w-5 md:h-5 md:mr-2" />
-                          {t('loginToJoin')}
+                          {t('join')}
                         </a>
                       ) : onJoinClick ? (
                         <button
