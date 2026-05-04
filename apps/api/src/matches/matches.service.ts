@@ -37,6 +37,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
             discordId: true,
             displayName: true,
             avatarHash: true,
+            profile: { select: { country: true } },
           },
         },
       },
@@ -62,6 +63,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
               discordId: true,
               displayName: true,
               avatarHash: true,
+              profile: { select: { country: true } },
               seasonStats: {
                 where: {
                   seasonId,

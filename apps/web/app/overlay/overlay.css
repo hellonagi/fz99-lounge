@@ -1,0 +1,76 @@
+html,
+body {
+  background: transparent !important;
+  margin: 0;
+  padding: 0;
+}
+
+.overlay-root {
+  background: transparent;
+  color: #fff;
+}
+
+/* Match-found animations */
+
+@keyframes overlay-flash {
+  0% { opacity: 0; }
+  15% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+@keyframes overlay-shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translate(-3px, 1px); }
+  25% { transform: translate(4px, -1px); }
+  40% { transform: translate(-3px, 0); }
+  55% { transform: translate(2px, 1px); }
+  70% { transform: translate(-1px, 0); }
+  85% { transform: translate(1px, 0); }
+}
+
+@keyframes overlay-glow-pulse {
+  0% { box-shadow: 0 0 24px var(--cat-color, #fff)55, inset 0 0 40px var(--cat-soft, transparent); }
+  20% { box-shadow: 0 0 60px var(--cat-color, #fff), 0 0 120px var(--cat-color, #fff)aa, inset 0 0 80px var(--cat-soft, transparent); }
+  100% { box-shadow: 0 0 24px var(--cat-color, #fff)55, inset 0 0 40px var(--cat-soft, transparent); }
+}
+
+@keyframes match-found-text-in {
+  0% { transform: scale(0.2) translateY(-12px); opacity: 0; filter: blur(8px); letter-spacing: -0.3em; }
+  45% { transform: scale(1.18) translateY(0); opacity: 1; filter: blur(0); letter-spacing: 0.18em; }
+  60% { transform: scale(0.94); }
+  80% { transform: scale(1.04); }
+  100% { transform: scale(1); opacity: 1; filter: blur(0); letter-spacing: 0.18em; }
+}
+
+@keyframes match-found-text-out {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.7); filter: blur(4px); }
+}
+
+@keyframes match-found-sub-in {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scan-sweep {
+  0% { transform: translateX(-100%); opacity: 0; }
+  20% { opacity: 0.9; }
+  80% { opacity: 0.9; }
+  100% { transform: translateX(220%); opacity: 0; }
+}
+
+@keyframes player-pop-in {
+  0% { transform: translateY(14px) scale(0.5); opacity: 0; filter: blur(4px); }
+  55% { transform: translateY(-2px) scale(1.1); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+}
+
+.animate-overlay-flash { animation: overlay-flash 0.55s ease-out forwards; }
+.animate-overlay-shake { animation: overlay-shake 0.5s ease-in-out; }
+.animate-overlay-glow-pulse { animation: overlay-glow-pulse 1.4s ease-out; }
+.animate-match-found-in { animation: match-found-text-in 0.7s cubic-bezier(.2,.9,.2,1.3) forwards; }
+.animate-match-found-out { animation: match-found-text-out 0.35s ease-in forwards; }
+.animate-match-found-sub-in { animation: match-found-sub-in 0.4s ease-out 0.3s both; }
+.animate-scan-sweep { animation: scan-sweep 0.9s ease-out forwards; }
+.animate-player-pop-in { animation: player-pop-in 0.55s cubic-bezier(.2,.9,.2,1.3) both; }
+
