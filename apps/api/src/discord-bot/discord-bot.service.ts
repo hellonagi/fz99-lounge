@@ -932,9 +932,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       const mentions = unsubmittedDiscordIds.map((id) => `<@${id}>`).join(' ');
 
-      // Format deadline in JST
-      const deadlineJST = new Date(deadline.getTime() + 9 * 60 * 60 * 1000);
-      const deadlineStr = `${deadlineJST.getUTCHours().toString().padStart(2, '0')}:${deadlineJST.getUTCMinutes().toString().padStart(2, '0')} JST`;
+      // Discord auto-localizes <t:UNIX:t> to the viewer's timezone
+      const deadlineUnix = Math.floor(deadline.getTime() / 1000);
+      const deadlineStr = `<t:${deadlineUnix}:t> (<t:${deadlineUnix}:R>)`;
 
       const embed = new EmbedBuilder()
         .setTitle('Score Submission Reminder / スコア提出リマインダー')
