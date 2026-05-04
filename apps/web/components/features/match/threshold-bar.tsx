@@ -70,7 +70,23 @@ function CompactThresholdBar({
   max,
   status,
 }: Omit<ThresholdBarProps, 'variant'>) {
-  const pct = (n: number) => (n / max) * 100;
+  // Piecewise-linear mapping: 0 → 0%, startThreshold → 33.3%, rated → 66.6%, max → 100%.
+  // Anchors visual milestones at fixed positions so progress feels consistent across matches.
+  const pct = (n: number) => {
+    if (n <= 0) return 0;
+    if (n <= startThreshold) {
+      return startThreshold > 0 ? (n / startThreshold) * (100 / 3) : 100 / 3;
+    }
+    if (n <= rated) {
+      const span = rated - startThreshold;
+      return 100 / 3 + (span > 0 ? (n - startThreshold) / span : 1) * (100 / 3);
+    }
+    if (n <= max) {
+      const span = max - rated;
+      return 200 / 3 + (span > 0 ? (n - rated) / span : 1) * (100 / 3);
+    }
+    return 100;
+  };
   const fillPct = Math.min(pct(current), 100);
   const startPct = pct(startThreshold);
   const ratedPct = pct(rated);
