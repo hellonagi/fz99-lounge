@@ -72,7 +72,7 @@ export function PastTournamentResults({
                 >
                   {/* Desktop */}
                   <div className="hidden md:grid grid-cols-[auto_1fr_auto] gap-x-2 items-center py-3.5 px-5">
-                    <div className="font-mono tabular-nums text-xs text-gray-500">
+                    <div className="font-mono tabular-nums text-sm text-gray-400">
                       {dateLabel}
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
@@ -84,7 +84,7 @@ export function PastTournamentResults({
                       >
                         {categoryLabel}
                       </span>
-                      <span className="text-xs font-bold text-gray-300 truncate">
+                      <span className="text-sm font-bold text-gray-300 truncate">
                         {titleLabel}
                       </span>
                     </div>
@@ -96,11 +96,11 @@ export function PastTournamentResults({
                             {winnerNames}
                           </span>
                           {sharedScore !== null && (
-                            <span className="flex items-baseline gap-0.5 shrink-0">
-                              <span className="font-mono tabular-nums text-xs text-gray-500">
+                            <span className="shrink-0">
+                              <span className="font-mono tabular-nums text-sm text-gray-400">
                                 {sharedScore}
                               </span>
-                              <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-600">
+                              <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-500 ml-0.5">
                                 pts
                               </span>
                             </span>
@@ -121,10 +121,10 @@ export function PastTournamentResults({
                       >
                         {categoryLabel}
                       </span>
-                      <span className="text-xs font-bold text-gray-300 truncate">
+                      <span className="text-sm font-bold text-gray-300 truncate">
                         {titleLabel}
                       </span>
-                      <span className="font-mono tabular-nums text-[11px] text-gray-500 ml-auto shrink-0">
+                      <span className="font-mono tabular-nums text-xs text-gray-400 ml-auto shrink-0">
                         {dateLabel}
                       </span>
                     </div>
@@ -135,11 +135,11 @@ export function PastTournamentResults({
                           {winnerNames}
                         </span>
                         {sharedScore !== null && (
-                          <span className="flex items-baseline gap-0.5 ml-auto shrink-0">
-                            <span className="font-mono tabular-nums text-xs text-gray-500">
+                          <span className="ml-auto shrink-0">
+                            <span className="font-mono tabular-nums text-sm text-gray-400">
                               {sharedScore}
                             </span>
-                            <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-600">
+                            <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-500 ml-0.5">
                               pts
                             </span>
                           </span>

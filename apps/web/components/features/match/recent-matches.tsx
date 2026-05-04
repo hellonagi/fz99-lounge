@@ -70,8 +70,8 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
               const matchUrl = `/${locale}/matches/${match.category.toLowerCase()}/${match.seasonNumber === -1 ? 'unrated' : match.seasonNumber}/${match.matchNumber}`;
               const seasonLabel =
                 match.seasonNumber === -1
-                  ? tCommon('unrated').toUpperCase()
-                  : `S${match.seasonNumber} #${match.matchNumber}`;
+                  ? tCommon('unrated')
+                  : `Season ${match.seasonNumber} #${match.matchNumber}`;
               const dateLabel = match.startedAt
                 ? formatDate(match.startedAt, locale)
                 : '';
@@ -95,7 +95,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                 >
                   {/* Desktop */}
                   <div className="hidden md:grid grid-cols-[auto_1fr_auto] gap-x-2 items-center py-3.5 px-5">
-                    <div className="font-mono tabular-nums text-xs text-gray-500">
+                    <div className="font-mono tabular-nums text-sm text-gray-400">
                       {dateLabel}
                     </div>
                     <div className="flex items-center gap-2 min-w-0">
@@ -107,7 +107,7 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                       >
                         {categoryLabel}
                       </span>
-                      <span className="font-mono tabular-nums text-xs text-gray-400 whitespace-nowrap">
+                      <span className="font-mono tabular-nums text-sm text-gray-400 whitespace-nowrap">
                         {seasonLabel}
                       </span>
                     </div>
@@ -119,11 +119,11 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                             {winnerNames}
                           </span>
                           {sharedScore !== null && (
-                            <span className="flex items-baseline gap-0.5 shrink-0">
-                              <span className="font-mono tabular-nums text-xs text-gray-500">
+                            <span className="shrink-0">
+                              <span className="font-mono tabular-nums text-sm text-gray-400">
                                 {sharedScore}
                               </span>
-                              <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-600">
+                              <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-500 ml-0.5">
                                 pts
                               </span>
                             </span>
@@ -144,10 +144,10 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                       >
                         {categoryLabel}
                       </span>
-                      <span className="font-mono tabular-nums text-xs text-gray-400 whitespace-nowrap">
+                      <span className="font-mono tabular-nums text-sm text-gray-400 whitespace-nowrap">
                         {seasonLabel}
                       </span>
-                      <span className="font-mono tabular-nums text-[11px] text-gray-500 ml-auto">
+                      <span className="font-mono tabular-nums text-xs text-gray-400 ml-auto">
                         {dateLabel}
                       </span>
                     </div>
@@ -158,11 +158,11 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
                           {winnerNames}
                         </span>
                         {sharedScore !== null && (
-                          <span className="flex items-baseline gap-0.5 ml-auto shrink-0">
-                            <span className="font-mono tabular-nums text-xs text-gray-500">
+                          <span className="ml-auto shrink-0">
+                            <span className="font-mono tabular-nums text-sm text-gray-400">
                               {sharedScore}
                             </span>
-                            <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-600">
+                            <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-500 ml-0.5">
                               pts
                             </span>
                           </span>
