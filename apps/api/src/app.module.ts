@@ -22,6 +22,7 @@ import { DiscordBotModule } from './discord-bot/discord-bot.module';
 import { PermissionsModule } from './permissions/permissions.module';
 import { RecurringMatchModule } from './recurring-matches/recurring-match.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { TournamentsModule } from './tournaments/tournaments.module';
     PermissionsModule,
     RecurringMatchModule,
     TournamentsModule,
+    CommentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

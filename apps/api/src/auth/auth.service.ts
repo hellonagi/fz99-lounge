@@ -1,7 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, UserStatus } from '@prisma/client';
+import { DiscordBotService } from '../discord-bot/discord-bot.service';
 
 interface DiscordUser {
   discordId: string;
@@ -11,11 +12,16 @@ interface DiscordUser {
   email: string | null;
 }
 
+const AVATAR_REFRESH_TTL_MS = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private discordBot: DiscordBotService,
   ) {}
 
   async validateOrCreateUser(discordUser: DiscordUser): Promise<{ user: User; isNewUser: boolean }> {
@@ -41,6 +47,7 @@ export class AuthService {
               username: discordUser.username,
               displayName: null,
               avatarHash: discordUser.avatarHash,
+              avatarSyncedAt: new Date(),
               email: discordUser.email,
               role: UserRole.PLAYER,
               status: UserStatus.ACTIVE,
@@ -68,6 +75,7 @@ export class AuthService {
         data: {
           username: discordUser.username,
           avatarHash: discordUser.avatarHash,
+          avatarSyncedAt: new Date(),
           email: discordUser.email,
           lastLoginAt: new Date(),
         },
@@ -85,6 +93,35 @@ export class AuthService {
     };
 
     return this.jwtService.sign(payload);
+  }
+
+  async refreshAvatarIfStale(userId: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { discordId: true, avatarHash: true, avatarSyncedAt: true },
+    });
+    if (!user) return;
+
+    const isStale =
+      !user.avatarSyncedAt ||
+      Date.now() - user.avatarSyncedAt.getTime() > AVATAR_REFRESH_TTL_MS;
+    if (!isStale) return;
+
+    const latest = await this.discordBot.fetchUserAvatarHash(user.discordId);
+    if (latest === undefined) return;
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        avatarHash: latest,
+        avatarSyncedAt: new Date(),
+      },
+    });
+    if (latest !== user.avatarHash) {
+      this.logger.log(
+        `Refreshed avatar for user ${userId}: ${user.avatarHash} -> ${latest}`,
+      );
+    }
   }
 
   async login(discordUser: DiscordUser) {

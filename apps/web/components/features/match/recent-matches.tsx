@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { Trophy } from 'lucide-react';
+import { ChevronRight, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_BADGE_CLASS, CATEGORY_LABEL } from './match-constants';
 
@@ -47,9 +47,18 @@ export function RecentMatches({ matches, loading }: RecentMatchesProps) {
   return (
     <section className="pt-4 pb-4">
       <div className="max-w-6xl mx-auto sm:px-6 lg:px-8">
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-6 text-center px-4 sm:px-0">
-          {t('recentMatches')}
-        </h2>
+        <div className="mb-4 px-4 sm:px-0 flex items-end justify-between">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+            {t('recentMatches')}
+          </h2>
+          <Link
+            href={`/${locale}/results`}
+            className="inline-flex items-center gap-1 text-sm font-medium text-gray-300 hover:text-white"
+          >
+            {tCommon('viewAll')}
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
 
         {loading ? (
           <div className="text-gray-400 text-sm text-center py-8">

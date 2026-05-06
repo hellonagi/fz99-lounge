@@ -61,6 +61,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const tabs = [
     { id: 'matches', label: t('matches'), href: `/${locale}/admin/matches` },
     { id: 'schedules', label: t('schedules'), href: `/${locale}/admin/schedules` },
+    { id: 'comments', label: t('comments'), href: `/${locale}/admin/comments` },
     ...(user.role === 'ADMIN'
       ? [
           { id: 'tournaments', label: t('tournaments'), href: `/${locale}/admin/tournaments` },

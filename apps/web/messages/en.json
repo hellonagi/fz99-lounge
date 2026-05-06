@@ -1,7 +1,8 @@
 {
   "metadata": {
     "title": "FZ99 Lounge | F-Zero 99 Private Matchmaking",
-    "description": "FZ99 Lounge is an unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!"
+    "description": "FZ99 Lounge is an unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!",
+    "news": "News | FZ99 Lounge"
   },
   "adminTabs": {
     "matches": "Matches",
@@ -10,7 +11,8 @@
     "users": "Users",
     "seasons": "Seasons",
     "settings": "Settings",
-    "tournaments": "Tournaments"
+    "tournaments": "Tournaments",
+    "comments": "Comments"
   },
   "tournament": {
     "title": "Tournament",
@@ -311,10 +313,11 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "noUpcomingMatch": "No Upcoming Match",
-    "unrated": "Unrated"
+    "unrated": "Unrated",
+    "viewAll": "View all"
   },
   "splitVote": {
-    "description": "If the room split, press the button below",
+    "description": "If the room split, press the Vote button below",
     "button": "Vote",
     "voted": "Voted",
     "votes": "{current}/{required} votes",
@@ -333,6 +336,39 @@
     "admin": "Admin Dashboard",
     "logout": "Logout",
     "login": "Login"
+  },
+  "news": {
+    "latestNews": "Latest News",
+    "allNews": "News",
+    "viewAll": "View all",
+    "readMore": "Read more",
+    "backToList": "Back to news",
+    "byAuthor": "By {author}",
+    "noNews": "No news yet.",
+    "charts": {
+      "progressionTitle": "Top 5 cumulative points"
+    },
+    "comments": {
+      "title": "Comments",
+      "empty": "No comments yet.",
+      "loginToComment": "Sign in to comment",
+      "guideline": "Please be respectful to others. Inappropriate comments may be removed.",
+      "placeholder": "Write a comment...",
+      "anonymousLabel": "Post anonymously",
+      "charCount": "{count}/1000",
+      "submit": "Post",
+      "posting": "Posting...",
+      "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleted": "[Deleted]",
+      "deletedName": "Deleted",
+      "deleteConfirm": "Delete this comment?",
+      "suspendedNotice": "Your account cannot post comments.",
+      "errorGeneric": "Failed to post. Please try again.",
+      "loadError": "Failed to load comments."
+    }
   },
   "home": {
     "recentMatches": "Recent Matches",
