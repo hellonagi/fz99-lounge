@@ -37,9 +37,12 @@ export function NewsArticle({ article, locale }: NewsArticleProps) {
       </Link>
 
       <header className="mb-6 space-y-3">
-        <div className="text-[11px] font-bold uppercase tracking-[.12em] text-gray-500">
+        <time
+          dateTime={article.date}
+          className="block text-[11px] font-bold uppercase tracking-[.12em] text-gray-500"
+        >
           {dateLabel}
-        </div>
+        </time>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
           {article.title}
         </h1>
@@ -49,7 +52,7 @@ export function NewsArticle({ article, locale }: NewsArticleProps) {
         <div className="relative mb-6 aspect-[16/9] w-full overflow-hidden rounded-lg bg-gray-900">
           <Image
             src={article.cover}
-            alt=""
+            alt={article.title}
             fill
             sizes="(max-width: 768px) 100vw, 768px"
             className="object-cover"
