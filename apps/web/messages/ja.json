@@ -11,7 +11,8 @@
     "users": "ユーザー",
     "seasons": "シーズン",
     "settings": "設定",
-    "tournaments": "大会"
+    "tournaments": "大会",
+    "comments": "コメント"
   },
   "tournament": {
     "title": "大会",
@@ -346,6 +347,27 @@
     "noNews": "ニュースはまだありません。",
     "charts": {
       "progressionTitle": "Top 5 のポイント推移"
+    },
+    "comments": {
+      "title": "コメント",
+      "empty": "まだコメントはありません。",
+      "loginToComment": "ログインしてコメント",
+      "guideline": "他の人への配慮をお願いします。不適切なコメントは削除されることがあります。",
+      "placeholder": "コメントを書く...",
+      "anonymousLabel": "匿名で投稿",
+      "charCount": "{count}/1000",
+      "submit": "投稿",
+      "posting": "投稿中...",
+      "reply": "返信",
+      "replyTo": "{name} に返信",
+      "cancel": "キャンセル",
+      "delete": "削除",
+      "deleted": "[削除されました]",
+      "deletedName": "削除済み",
+      "deleteConfirm": "このコメントを削除しますか？",
+      "suspendedNotice": "現在コメントを投稿できません。",
+      "errorGeneric": "投稿に失敗しました。もう一度お試しください。",
+      "loadError": "コメントの読み込みに失敗しました。"
     }
   },
   "home": {

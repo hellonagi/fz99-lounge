@@ -358,3 +358,34 @@ export const adminApi = {
   updateUserRole: (userId: number, role: 'PLAYER' | 'MODERATOR') =>
     api.patch(`/admin/users/${userId}/role`, { role }),
 };
+
+// Comments API
+export type CommentDto = {
+  id: number;
+  newsSlug: string;
+  parentId: number | null;
+  body: string | null;
+  isAnonymous: boolean;
+  isDeleted: boolean;
+  isOwn: boolean;
+  createdAt: string;
+  user: { id: number; displayName: string; avatarHash: string | null; discordId: string } | null;
+  anonymousPilot: { name: string; nameJa: string; color: string } | null;
+  revealedUser?: { id: number; displayName: string; avatarHash: string | null; discordId: string };
+  replies?: CommentDto[];
+};
+
+export const commentsApi = {
+  list: (newsSlug: string) =>
+    api.get<CommentDto[]>(`/comments?newsSlug=${encodeURIComponent(newsSlug)}`),
+  getMyPilot: (newsSlug: string) =>
+    api.get<{ name: string; nameJa: string; color: string }>(
+      `/comments/my-pilot?newsSlug=${encodeURIComponent(newsSlug)}`,
+    ),
+  create: (input: { newsSlug: string; body: string; parentId?: number; isAnonymous?: boolean }) =>
+    api.post<CommentDto>('/comments', input),
+  delete: (id: number) => api.delete(`/comments/${id}`),
+  adminList: (limit?: number) =>
+    api.get<CommentDto[]>(`/comments/admin/all${limit ? `?limit=${limit}` : ''}`),
+  adminDelete: (id: number) => api.delete(`/comments/admin/${id}`),
+};

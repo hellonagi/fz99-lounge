@@ -220,6 +220,7 @@ model User {
   permissions          UserPermission[]
   recurringMatches          RecurringMatch[]          @relation("RecurringMatchCreator")
   tournamentRegistrations   TournamentRegistration[]
+  newsComments              NewsComment[]
 
   @@index([profileNumber])
   @@index([discordId])
@@ -909,5 +910,28 @@ model PushSubscription {
   @@unique([userId, endpoint])
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// ==================== NEWS COMMENTS ====================
+
+model NewsComment {
+  id          Int       @id @default(autoincrement())
+  newsSlug    String    @db.VarChar(120)
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  parentId    Int?
+  parent      NewsComment?  @relation("NewsCommentReplies", fields: [parentId], references: [id])
+  replies     NewsComment[] @relation("NewsCommentReplies")
+  body        String    @db.Text
+  isAnonymous Boolean   @default(false)
+  deletedAt   DateTime?
+  deletedBy   Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([newsSlug, createdAt])
+  @@index([userId])
+  @@index([parentId])
+  @@map("news_comments")
 }
 

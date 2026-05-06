@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm';
 import { ChevronLeft } from 'lucide-react';
 import type { NewsArticle as NewsArticleType } from '@/lib/news';
 import { NEWS_CHART_REGISTRY } from './charts';
+import { CommentsSection } from './news-comments/comments-section';
 
 interface NewsArticleProps {
   article: NewsArticleType;
@@ -80,6 +81,8 @@ export function NewsArticle({ article, locale }: NewsArticleProps) {
           {article.content}
         </ReactMarkdown>
       </article>
+
+      <CommentsSection newsSlug={article.slug} />
 
       <div className="mt-10 border-t border-gray-700 pt-6">
         <Link

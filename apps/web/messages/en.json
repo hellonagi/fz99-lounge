@@ -11,7 +11,8 @@
     "users": "Users",
     "seasons": "Seasons",
     "settings": "Settings",
-    "tournaments": "Tournaments"
+    "tournaments": "Tournaments",
+    "comments": "Comments"
   },
   "tournament": {
     "title": "Tournament",
@@ -346,6 +347,27 @@
     "noNews": "No news yet.",
     "charts": {
       "progressionTitle": "Top 5 cumulative points"
+    },
+    "comments": {
+      "title": "Comments",
+      "empty": "No comments yet.",
+      "loginToComment": "Sign in to comment",
+      "guideline": "Please be respectful to others. Inappropriate comments may be removed.",
+      "placeholder": "Write a comment...",
+      "anonymousLabel": "Post anonymously",
+      "charCount": "{count}/1000",
+      "submit": "Post",
+      "posting": "Posting...",
+      "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "deleted": "[Deleted]",
+      "deletedName": "Deleted",
+      "deleteConfirm": "Delete this comment?",
+      "suspendedNotice": "Your account cannot post comments.",
+      "errorGeneric": "Failed to post. Please try again.",
+      "loadError": "Failed to load comments."
     }
   },
   "home": {
