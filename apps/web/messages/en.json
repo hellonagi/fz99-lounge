@@ -317,7 +317,7 @@
     "viewAll": "View all"
   },
   "splitVote": {
-    "description": "If the room split, press the button below",
+    "description": "If the room split, press the Vote button below",
     "button": "Vote",
     "voted": "Voted",
     "votes": "{current}/{required} votes",

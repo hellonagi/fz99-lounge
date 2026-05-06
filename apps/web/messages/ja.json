@@ -317,7 +317,7 @@
     "viewAll": "すべて見る"
   },
   "splitVote": {
-    "description": "部屋が分かれた場合は下のボタンを押してください",
+    "description": "部屋が分かれた場合は下の投票ボタンを押してください",
     "button": "投票",
     "voted": "投票済み",
     "votes": "{current}/{required} 票",
