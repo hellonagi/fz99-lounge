@@ -5,6 +5,11 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  outputFileTracingIncludes: {
+    '/[locale]': ['./content/**/*'],
+    '/[locale]/news': ['./content/**/*'],
+    '/[locale]/news/[slug]': ['./content/**/*'],
+  },
   compiler: {
     removeConsole: {
       exclude: ['error', 'warn'],

@@ -149,6 +149,7 @@ services:
       - ./apps/web/public:/app/public:cached
       - ./apps/web/i18n:/app/i18n:cached
       - ./apps/web/messages:/app/messages:cached
+      - ./apps/web/content:/app/content:cached
       - ./apps/web/package.json:/app/package.json:ro
       - ./apps/web/next.config.ts:/app/next.config.ts:ro
       - ./apps/web/middleware.ts:/app/middleware.ts:ro

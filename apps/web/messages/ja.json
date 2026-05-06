@@ -1,7 +1,8 @@
 {
   "metadata": {
     "title": "FZ99 Lounge | F-Zero 99 プライベートマッチメイキング",
-    "description": "FZ99 LoungeはF-Zero 99の非公式プライベートマッチメイキングサービスです。世界中のプレイヤーと熱いレースを繰り広げましょう！"
+    "description": "FZ99 LoungeはF-Zero 99の非公式プライベートマッチメイキングサービスです。世界中のプレイヤーと熱いレースを繰り広げましょう！",
+    "news": "ニュース | FZ99 Lounge"
   },
   "adminTabs": {
     "matches": "マッチ",
@@ -333,6 +334,18 @@
     "admin": "管理画面",
     "logout": "ログアウト",
     "login": "ログイン"
+  },
+  "news": {
+    "latestNews": "最新ニュース",
+    "allNews": "ニュース",
+    "viewAll": "すべて見る",
+    "readMore": "続きを読む",
+    "backToList": "ニュース一覧に戻る",
+    "byAuthor": "By {author}",
+    "noNews": "ニュースはまだありません。",
+    "charts": {
+      "progressionTitle": "Top 5 のポイント推移"
+    }
   },
   "home": {
     "recentMatches": "最近の試合",

@@ -1,7 +1,8 @@
 {
   "metadata": {
     "title": "FZ99 Lounge | F-Zero 99 Private Matchmaking",
-    "description": "FZ99 Lounge is an unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!"
+    "description": "FZ99 Lounge is an unofficial private matchmaking platform for F-Zero 99. Experience thrilling races with players from around the world!",
+    "news": "News | FZ99 Lounge"
   },
   "adminTabs": {
     "matches": "Matches",
@@ -333,6 +334,18 @@
     "admin": "Admin Dashboard",
     "logout": "Logout",
     "login": "Login"
+  },
+  "news": {
+    "latestNews": "Latest News",
+    "allNews": "News",
+    "viewAll": "View all",
+    "readMore": "Read more",
+    "backToList": "Back to news",
+    "byAuthor": "By {author}",
+    "noNews": "No news yet.",
+    "charts": {
+      "progressionTitle": "Top 5 cumulative points"
+    }
   },
   "home": {
     "recentMatches": "Recent Matches",
