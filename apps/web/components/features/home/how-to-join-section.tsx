@@ -15,10 +15,11 @@ export function HowToJoinSection() {
   return (
     <section className="pt-4 pb-16">
       <div className="max-w-6xl mx-auto sm:px-6 lg:px-8">
-        {/* Title */}
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-6 text-center px-4 sm:px-0">
-          {t('title')}
-        </h2>
+        <div className="mb-4 px-4 sm:px-0">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+            {t('title')}
+          </h2>
+        </div>
 
         <div className="border border-white/[.07] bg-white/[.05] sm:rounded-lg overflow-hidden">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 px-5 sm:px-8 py-8 md:py-10">

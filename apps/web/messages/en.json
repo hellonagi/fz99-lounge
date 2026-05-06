@@ -312,7 +312,8 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "noUpcomingMatch": "No Upcoming Match",
-    "unrated": "Unrated"
+    "unrated": "Unrated",
+    "viewAll": "View all"
   },
   "splitVote": {
     "description": "If the room split, press the button below",

@@ -197,14 +197,14 @@ export function HomePage({ latestNews }: HomePageProps) {
       {/* Tournament Banner */}
       <TournamentBanner tournaments={openTournaments} />
 
-      {/* Latest News */}
-      <LatestNewsSection articles={latestNews} locale={locale} />
-
       {/* Weekly Calendar Section */}
       <WeeklyCalendar />
 
       {/* How to Join Section - only show when not logged in */}
       {!isAuthenticated && <HowToJoinSection />}
+
+      {/* Latest News */}
+      <LatestNewsSection articles={latestNews} locale={locale} />
 
       {/* Featured Players of the Week */}
       <FeaturedPlayers awards={featuredAwards} loading={featuredAwardsLoading} />

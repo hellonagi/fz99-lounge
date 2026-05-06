@@ -143,9 +143,11 @@ export function FeaturedPlayers({ awards, loading }: FeaturedPlayersProps) {
   return (
     <section className="pt-4 pb-8">
       <div className="max-w-6xl mx-auto sm:px-6 lg:px-8">
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-6 text-center px-4 sm:px-0">
-          {t('title')}
-        </h2>
+        <div className="mb-4 px-4 sm:px-0">
+          <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+            {t('title')}
+          </h2>
+        </div>
 
         <div
           ref={scrollRef}
