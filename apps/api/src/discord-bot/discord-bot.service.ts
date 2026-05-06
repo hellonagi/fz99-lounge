@@ -433,6 +433,22 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  async fetchUserAvatarHash(discordId: string): Promise<string | null | undefined> {
+    if (!this.isReady || !this.isEnabled()) {
+      return undefined;
+    }
+    if (!/^\d{17,19}$/.test(discordId)) {
+      return undefined;
+    }
+    try {
+      const user = await this.client.users.fetch(discordId, { force: true });
+      return user.avatar ?? null;
+    } catch (error) {
+      this.logger.warn(`Failed to fetch Discord user ${discordId}: ${error}`);
+      return undefined;
+    }
+  }
+
   /**
    * Create a private passcode channel for match participants
    */

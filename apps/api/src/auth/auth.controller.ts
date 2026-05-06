@@ -1,4 +1,4 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Logger, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -11,6 +11,8 @@ import { setAuthCookie, clearAuthCookie } from './utils/cookie.utils';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
@@ -53,6 +55,9 @@ export class AuthController {
     if (!user) {
       return null;
     }
+    this.authService.refreshAvatarIfStale(user.id).catch((err) => {
+      this.logger.warn(`Avatar refresh failed for user ${user.id}: ${err}`);
+    });
     return this.usersService.findById(user.id);
   }
 
