@@ -375,12 +375,16 @@ export class ClassicRatingService {
       });
 
       // Prepare rating history data for batch insert
+      // Pin createdAt to the match's actual/scheduled start so recalculation
+      // doesn't collapse all histories to the recalc moment.
+      const matchCreatedAt = game.match.actualStart ?? game.match.scheduledStart;
       const historyData = ratingChanges.map((change) => ({
         userId: change.userId,
         matchId: game.matchId,
         internalRating: change.newInternalRating,
         displayRating: change.newDisplayRating,
         convergencePoints: change.newConvergencePoints,
+        createdAt: matchCreatedAt,
       }));
 
       // Execute updates in parallel and batch insert history
@@ -527,36 +531,40 @@ export class ClassicRatingService {
         });
       }
     } else {
-      // Get from rating_history at fromMatchNumber-1
-      const prevMatch = await this.prisma.match.findFirst({
+      baseRatingsByUser = new Map();
+
+      // For each user, pick the most recent rating_history strictly before
+      // fromMatchNumber. Looking only at fromMatchNumber-1 would reset users
+      // who skipped that specific match back to INITIAL_RATING.
+      const allPrevHistories = await this.prisma.ratingHistory.findMany({
         where: {
-          seasonId,
-          matchNumber: fromMatchNumber - 1,
-          status: 'FINALIZED',
+          userId: { in: userIds },
+          match: {
+            seasonId,
+            matchNumber: { lt: fromMatchNumber },
+            status: 'FINALIZED',
+          },
+        },
+        orderBy: { match: { matchNumber: 'desc' } },
+        select: {
+          userId: true,
+          internalRating: true,
+          displayRating: true,
+          convergencePoints: true,
         },
       });
 
-      baseRatingsByUser = new Map();
-
-      if (prevMatch) {
-        const prevHistories = await this.prisma.ratingHistory.findMany({
-          where: {
-            matchId: prevMatch.id,
-            userId: { in: userIds },
-          },
+      for (const rh of allPrevHistories) {
+        if (baseRatingsByUser.has(rh.userId)) continue;
+        baseRatingsByUser.set(rh.userId, {
+          internalRating: rh.internalRating,
+          displayRating: rh.displayRating,
+          convergencePoints: rh.convergencePoints,
+          totalMatches: 0,
         });
-
-        for (const rh of prevHistories) {
-          baseRatingsByUser.set(rh.userId, {
-            internalRating: rh.internalRating,
-            displayRating: rh.displayRating,
-            convergencePoints: rh.convergencePoints,
-            totalMatches: 0,
-          });
-        }
       }
 
-      // Users who joined after fromMatchNumber get initial values
+      // Users with no prior history are genuinely new: initial values
       for (const userId of userIds) {
         if (!baseRatingsByUser.has(userId)) {
           baseRatingsByUser.set(userId, {
