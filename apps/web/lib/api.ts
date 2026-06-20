@@ -318,8 +318,10 @@ export const tournamentsApi = {
   }) => api.post('/tournaments', data),
   update: (id: number, data: Record<string, unknown>) =>
     api.patch(`/tournaments/${id}`, data),
-  register: (id: number, data?: { prizeEntry?: boolean }) => api.post(`/tournaments/${id}/register`, data),
-  cancelRegistration: (id: number) => api.delete(`/tournaments/${id}/register`),
+  register: (id: number, data: { division: 'GP' | 'CLASSIC'; mode?: 'OFFLINE' | 'ONLINE' | null; prizeEntry?: boolean }) =>
+    api.post(`/tournaments/${id}/register`, data),
+  cancelRegistration: (id: number, division: 'GP' | 'CLASSIC') =>
+    api.delete(`/tournaments/${id}/register?division=${division}`),
   getParticipants: (id: number) => api.get(`/tournaments/${id}/participants`),
   getStreams: (id: number) => api.get(`/tournaments/${id}/streams`),
   addStream: (id: number, data: { platform: 'YOUTUBE' | 'TWITCH'; channelIdentifier: string; label: string }) =>

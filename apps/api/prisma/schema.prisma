@@ -135,6 +135,16 @@ enum TournamentStatus {
   COMPLETED
 }
 
+enum TournamentDivision {
+  GP
+  CLASSIC
+}
+
+enum TournamentMode {
+  OFFLINE
+  ONLINE
+}
+
 enum ModeratorPermission {
   CREATE_MATCH
   DELETE_MATCH
@@ -424,6 +434,14 @@ model TournamentConfig {
   // コンテンツ（日英対応: { en: string, ja: string }）
   content Json?
 
+  // 補助スケジュール行（開場/インターバル/結果発表/終了など、レース以外）
+  // 形式: Array<{ offsetMinutes: number, label: { en: string, ja: string }, type?: 'OPEN'|'INTERVAL'|'RESULTS'|'END' }>
+  scheduleEvents Json?
+
+  // 開催地（オフライン参加時）
+  venue    String?
+  venueUrl String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -450,15 +468,17 @@ model TournamentStream {
 }
 
 model TournamentRegistration {
-  id                 Int              @id @default(autoincrement())
+  id                 Int                @id @default(autoincrement())
   userId             Int
-  user               User             @relation(fields: [userId], references: [id])
+  user               User               @relation(fields: [userId], references: [id])
   tournamentConfigId Int
-  tournamentConfig   TournamentConfig @relation(fields: [tournamentConfigId], references: [id], onDelete: Cascade)
-  registeredAt       DateTime         @default(now())
-  prizeEntry         Boolean          @default(false)
+  tournamentConfig   TournamentConfig   @relation(fields: [tournamentConfigId], references: [id], onDelete: Cascade)
+  registeredAt       DateTime           @default(now())
+  prizeEntry         Boolean            @default(false)
+  division           TournamentDivision @default(GP)
+  mode               TournamentMode?
 
-  @@unique([userId, tournamentConfigId])
+  @@unique([userId, tournamentConfigId, division])
   @@index([tournamentConfigId])
   @@index([userId])
   @@map("tournament_registrations")

@@ -10,7 +10,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
-import { EventCategory, MatchStatus, Prisma, StreamPlatform, TournamentStatus } from '@prisma/client';
+import { EventCategory, MatchStatus, Prisma, StreamPlatform, TournamentStatus, TournamentDivision, TournamentMode } from '@prisma/client';
 
 const STATUS_ORDER: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -539,10 +539,23 @@ export class TournamentsService {
     return result.tournament;
   }
 
-  async register(tournamentConfigId: number, userId: number, prizeEntry?: boolean) {
+  async register(
+    tournamentConfigId: number,
+    userId: number,
+    params: {
+      division: TournamentDivision;
+      mode?: TournamentMode | null;
+      prizeEntry?: boolean;
+    },
+  ) {
+    const { division, mode, prizeEntry } = params;
+
+    if (mode !== TournamentMode.OFFLINE && mode !== TournamentMode.ONLINE) {
+      throw new BadRequestException('mode must be OFFLINE or ONLINE');
+    }
+
     const config = await this.prisma.tournamentConfig.findUnique({
       where: { id: tournamentConfigId },
-      include: { _count: { select: { registrations: true } } },
     });
 
     if (!config) {
@@ -558,21 +571,19 @@ export class TournamentsService {
       throw new BadRequestException('Registration period has ended or not started');
     }
 
-    if (config._count.registrations >= config.maxPlayers) {
-      throw new BadRequestException('Tournament is full');
-    }
-
     try {
       await this.prisma.tournamentRegistration.create({
         data: {
           userId,
           tournamentConfigId,
+          division,
+          mode,
           prizeEntry: prizeEntry ?? false,
         },
       });
     } catch (error: any) {
       if (error.code === 'P2002') {
-        throw new BadRequestException('Already registered');
+        throw new BadRequestException('Already registered for this division');
       }
       throw error;
     }
@@ -580,7 +591,11 @@ export class TournamentsService {
     return { message: 'Registered successfully' };
   }
 
-  async cancelRegistration(tournamentConfigId: number, userId: number) {
+  async cancelRegistration(
+    tournamentConfigId: number,
+    userId: number,
+    division: TournamentDivision,
+  ) {
     const config = await this.prisma.tournamentConfig.findUnique({
       where: { id: tournamentConfigId },
     });
@@ -600,9 +615,10 @@ export class TournamentsService {
 
     const registration = await this.prisma.tournamentRegistration.findUnique({
       where: {
-        userId_tournamentConfigId: {
+        userId_tournamentConfigId_division: {
           userId,
           tournamentConfigId,
+          division,
         },
       },
     });

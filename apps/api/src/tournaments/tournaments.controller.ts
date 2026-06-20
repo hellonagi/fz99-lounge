@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, TournamentDivision, TournamentMode } from '@prisma/client';
 
 @Controller('tournaments')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -100,15 +100,27 @@ export class TournamentsController {
   }
 
   @Post(':id/register')
-  async register(@Param('id') id: string, @Req() req: Request, @Body() body: { prizeEntry?: boolean }) {
+  async register(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Body() body: { division: TournamentDivision; mode?: TournamentMode | null; prizeEntry?: boolean },
+  ) {
     const user = req.user as any;
-    return this.tournamentsService.register(parseInt(id, 10), user.id, body?.prizeEntry);
+    return this.tournamentsService.register(parseInt(id, 10), user.id, {
+      division: body?.division,
+      mode: body?.mode ?? null,
+      prizeEntry: body?.prizeEntry,
+    });
   }
 
   @Delete(':id/register')
-  async cancelRegistration(@Param('id') id: string, @Req() req: Request) {
+  async cancelRegistration(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Query('division') division: TournamentDivision,
+  ) {
     const user = req.user as any;
-    return this.tournamentsService.cancelRegistration(parseInt(id, 10), user.id);
+    return this.tournamentsService.cancelRegistration(parseInt(id, 10), user.id, division);
   }
 
   @Get(':id/participants')
