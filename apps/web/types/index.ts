@@ -266,6 +266,14 @@ export interface LocalizedContent {
   ja: string;
 }
 
+export type ScheduleEventType = 'OPEN' | 'INTERVAL' | 'RESULTS' | 'END';
+
+export interface TournamentScheduleEvent {
+  offsetMinutes: number;
+  label: LocalizedContent;
+  type?: ScheduleEventType;
+}
+
 export interface Tournament {
   id: number;
   seasonId: number;
@@ -281,6 +289,9 @@ export interface Tournament {
   maxPlayers: number;
   registrationCount: number;
   content?: LocalizedContent | null;
+  scheduleEvents?: TournamentScheduleEvent[] | null;
+  venue?: string | null;
+  venueUrl?: string | null;
   season?: Season & { matches?: Match[] };
 }
 
@@ -320,11 +331,17 @@ export interface RecentTournament {
   }>;
 }
 
+export type TournamentDivision = 'GP' | 'CLASSIC';
+export type TournamentMode = 'OFFLINE' | 'ONLINE';
+
 export interface TournamentRegistration {
   id: number;
   userId: number;
   tournamentConfigId: number;
   registeredAt: string;
+  division: TournamentDivision;
+  mode: TournamentMode | null;
+  prizeEntry: boolean;
   user?: User;
 }
 

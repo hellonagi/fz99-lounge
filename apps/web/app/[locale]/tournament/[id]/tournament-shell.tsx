@@ -51,7 +51,10 @@ export default function TournamentShell({ children }: { children: React.ReactNod
       ? 'match'
       : 'overview';
 
-  const showMatch = tournament.status !== 'DRAFT';
+  const showMatch =
+    tournament.status === 'IN_PROGRESS' ||
+    tournament.status === 'RESULTS_PENDING' ||
+    tournament.status === 'COMPLETED';
   const showStats = tournament.status === 'COMPLETED';
 
   const tabs = [

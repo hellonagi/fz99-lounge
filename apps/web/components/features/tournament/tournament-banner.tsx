@@ -42,7 +42,7 @@ function TournamentBannerItem({ tournament }: { tournament: WeeklyTournament }) 
               </span>
             </div>
             <p className="text-sm font-medium text-white truncate mt-0.5">
-              {tournament.name}
+              {tournament.name}{tournament.tournamentNumber ? ` #${tournament.tournamentNumber}` : ''}
             </p>
             <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
               <span>{dateStr}</span>
