@@ -54,6 +54,16 @@ temp/
 # Personal notes
 kadai
 prompt.md
+rules.md
+rules_en.md
+apps/api/prize-entries.md
+apps/api/scripts/masters-2-updates.md
+
+# Tooling artifacts
+.playwright-mcp/
+
+# Design WIP
+designs/project/
 
 # Local docs and simulations
 docs/
