@@ -1,0 +1,38 @@
+# Dependencies and build outputs (installed/built inside the image)
+**/node_modules
+**/dist
+**/.next
+**/coverage
+
+# VCS / CI
+.git
+.github
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.prod.example
+!.env.stg.example
+
+# Local-only directories
+docs
+simulations
+designs
+.playwright-mcp
+postgres_data
+redis_data
+
+# Tests that never run inside images
+apps/web/cypress
+
+# Logs and temp
+*.log
+tmp
+temp
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea
+.vscode

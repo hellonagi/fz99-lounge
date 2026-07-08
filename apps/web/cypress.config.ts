@@ -55,11 +55,11 @@ export default defineConfig({
           console.log('Resetting database...');
           try {
             execSync(
-              'docker exec fz99-lounge-api npx prisma db push --force-reset --accept-data-loss',
+              'docker exec fz99-lounge-api npm exec -w api -- prisma db push --force-reset --accept-data-loss',
               { stdio: 'inherit' }
             );
             execSync(
-              'docker exec fz99-lounge-api npx prisma db seed',
+              'docker exec fz99-lounge-api npm exec -w api -- prisma db seed',
               { stdio: 'inherit' }
             );
             console.log('Database reset complete');

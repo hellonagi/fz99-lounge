@@ -34,7 +34,7 @@ schema.prisma の変更だけがコミットされてマイグレーションが
 cd apps/api
 npx prisma migrate dev --name <変更内容>
 # 3. コンテナに反映
-docker exec fz99-lounge-api npx prisma generate
+docker exec fz99-lounge-api npm exec -w api -- prisma generate
 docker restart fz99-lounge-api
 # 4. schema.prisma とマイグレーションファイルを一緒にコミット
 git add prisma/schema.prisma prisma/migrations/
@@ -42,7 +42,7 @@ git add prisma/schema.prisma prisma/migrations/
 
 ### 本番/stg環境への適用
 ```bash
-IMAGE_TAG=xxx docker compose -f compose.ecr.yaml --env-file .env.stg run --rm api npx prisma migrate deploy
+IMAGE_TAG=xxx docker compose -f compose.ecr.yaml --env-file .env.stg run --rm api npm exec -w api -- prisma migrate deploy
 ```
 
 ### よくある問題
@@ -87,14 +87,16 @@ IMAGE_TAG=xxx docker compose -f compose.ecr.yaml --env-file .env.stg run --rm ap
 
 ## 🔧 パッケージ追加時の手順
 
+**npm workspaces構成のため、インストールは必ずリポジトリルートから `-w` で行う。**
+lockfileはルートの `package-lock.json` 1本のみ（apps配下に作らない）。
+
 ### APIにパッケージを追加する場合:
 ```bash
-# 1. ローカルでインストール
-cd apps/api
-npm install package-name
+# 1. リポジトリルートでインストール
+npm install package-name -w api
 
 # 2. 【重要】コンテナ内にも反映
-docker exec fz99-lounge-api npm install package-name
+docker exec fz99-lounge-api npm install package-name -w api
 
 # 3. コンテナ再起動
 docker restart fz99-lounge-api
@@ -102,16 +104,27 @@ docker restart fz99-lounge-api
 
 ### Webにパッケージを追加する場合:
 ```bash
-# 1. ローカルでインストール
-cd apps/web
-npm install package-name
+# 1. リポジトリルートでインストール
+npm install package-name -w web
 
 # 2. 【重要】コンテナ内にも反映
-docker exec fz99-lounge-web npm install package-name
+docker exec fz99-lounge-web npm install package-name -w web
 
 # 3. コンテナ再起動
 docker restart fz99-lounge-web
 ```
+
+## 📦 packages/shared（共有パッケージ）
+
+API/Web共通のenum・型定義は `packages/shared` (`@fz99/shared`) に置く。
+
+- devコンテナには `packages/shared/src` のみマウントされ、ビルド済み `dist` はコンテナ内管理
+- **sharedを変更したら各コンテナ内で再ビルドが必要**:
+```bash
+docker exec fz99-lounge-api npm run build -w @fz99/shared
+docker exec fz99-lounge-web npm run build -w @fz99/shared
+```
+- Prisma enumを変更したら `packages/shared/src/enums.ts` にも同じ変更を入れる。ズレは `apps/api/src/common/shared-type-assertions.ts` の型チェックで検出される（typecheck/CIが落ちる）
 
 ## 🎮 レーティングシミュレーション
 

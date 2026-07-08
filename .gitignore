@@ -61,6 +61,7 @@ apps/api/scripts/masters-2-updates.md
 
 # Tooling artifacts
 .playwright-mcp/
+dev-db-backup-*.sql
 
 # Design WIP
 designs/project/
@@ -75,3 +76,7 @@ apps/api/test/helpers/
 apps/api/test/load/
 apps/api/prisma/migrations_backup/
 compose.test.yaml
+
+# Cypress artifacts
+apps/web/cypress/screenshots/
+apps/web/cypress/videos/
