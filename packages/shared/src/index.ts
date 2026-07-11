@@ -1,1 +1,2 @@
-export const SHARED_PACKAGE = '@fz99/shared';
+export * from './enums';
+export * from './api-types';
