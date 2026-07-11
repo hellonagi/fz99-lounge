@@ -26,6 +26,7 @@ import type {
   TournamentRoundConfig,
   Match,
   Game,
+  GameParticipant,
 } from '@/types';
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
@@ -406,10 +407,13 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
         assistEnabled: p.assistEnabled,
         totalScore: p.totalScore,
         eliminatedAtRace: p.eliminatedAtRace,
-        raceResults: p.raceResults,
+        // WS payload rows have no DB ids; the tables only read
+        // raceNumber/position/points/isEliminated
+        raceResults: p.raceResults as GameParticipant['raceResults'],
         ratingAfter: p.ratingAfter,
         ratingChange: p.ratingChange,
-        status: p.status,
+        // Keep the existing status when the update omits it
+        status: p.status ?? (idx >= 0 ? prev[idx].status : 'UNSUBMITTED'),
       };
       if (idx >= 0) {
         const next = [...prev];
@@ -873,7 +877,7 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
           className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
         >
           <span className="text-gray-400 text-sm">
-            {t('roundLabel', { number: match.matchNumber })}
+            {t('roundLabel', { number: match.matchNumber ?? 0 })}
           </span>
 
           {!allSubmitted ? (

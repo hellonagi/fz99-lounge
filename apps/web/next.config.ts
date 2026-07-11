@@ -18,10 +18,8 @@ const nextConfig: NextConfig = {
     },
   },
   eslint: {
+    // TODO: remove once the pre-existing lint debt is cleared
     ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
   images: {
     remotePatterns: [

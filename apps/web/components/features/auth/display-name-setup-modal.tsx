@@ -160,7 +160,7 @@ export function DisplayNameSetupModal({ open }: DisplayNameSetupModalProps) {
                     />
                   </FormControl>
                   <FormDescription>
-                    {t('characters', { count: field.value.length })}
+                    {t('characters', { count: field.value?.length ?? 0 })}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
