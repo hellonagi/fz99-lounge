@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSeasonDto } from './dto/create-season.dto';
 import { EventCategory } from '@prisma/client';
@@ -12,7 +16,8 @@ export class SeasonsService {
    * If an Event for this category doesn't exist, it will be created.
    */
   async create(createSeasonDto: CreateSeasonDto) {
-    const { category, seasonNumber, startDate, endDate, description } = createSeasonDto;
+    const { category, seasonNumber, startDate, endDate, description } =
+      createSeasonDto;
 
     // Find or create the Event for this category
     let event = await this.prisma.event.findFirst({
@@ -42,7 +47,7 @@ export class SeasonsService {
 
     if (existing) {
       throw new BadRequestException(
-        `Season ${seasonNumber} already exists for ${category}`
+        `Season ${seasonNumber} already exists for ${category}`,
       );
     }
 
@@ -107,10 +112,7 @@ export class SeasonsService {
       include: {
         event: true,
       },
-      orderBy: [
-        { event: { category: 'asc' } },
-        { seasonNumber: 'desc' },
-      ],
+      orderBy: [{ event: { category: 'asc' } }, { seasonNumber: 'desc' }],
     });
   }
 
@@ -142,12 +144,15 @@ export class SeasonsService {
       description?: string;
       startDate?: string;
       endDate?: string;
-    }
+    },
   ) {
     const season = await this.getById(id);
 
     // If changing season number, check for duplicates
-    if (updateData.seasonNumber && updateData.seasonNumber !== season.seasonNumber) {
+    if (
+      updateData.seasonNumber &&
+      updateData.seasonNumber !== season.seasonNumber
+    ) {
       const existing = await this.prisma.season.findUnique({
         where: {
           eventId_seasonNumber: {
@@ -159,7 +164,7 @@ export class SeasonsService {
 
       if (existing) {
         throw new BadRequestException(
-          `Season ${updateData.seasonNumber} already exists for ${season.event.category}`
+          `Season ${updateData.seasonNumber} already exists for ${season.event.category}`,
         );
       }
     }
@@ -168,9 +173,15 @@ export class SeasonsService {
     const updated = await this.prisma.season.update({
       where: { id },
       data: {
-        ...(updateData.seasonNumber && { seasonNumber: updateData.seasonNumber }),
-        ...(updateData.description !== undefined && { description: updateData.description }),
-        ...(updateData.startDate && { startDate: new Date(updateData.startDate) }),
+        ...(updateData.seasonNumber && {
+          seasonNumber: updateData.seasonNumber,
+        }),
+        ...(updateData.description !== undefined && {
+          description: updateData.description,
+        }),
+        ...(updateData.startDate && {
+          startDate: new Date(updateData.startDate),
+        }),
         ...(updateData.endDate !== undefined && {
           endDate: updateData.endDate ? new Date(updateData.endDate) : null,
         }),
@@ -229,7 +240,7 @@ export class SeasonsService {
 
     if (matchesCount > 0) {
       throw new BadRequestException(
-        `Cannot delete season with ${matchesCount} associated matches. Please delete or reassign the matches first.`
+        `Cannot delete season with ${matchesCount} associated matches. Please delete or reassign the matches first.`,
       );
     }
 

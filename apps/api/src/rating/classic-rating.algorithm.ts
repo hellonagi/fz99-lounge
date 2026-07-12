@@ -153,8 +153,10 @@ function calculateWithAllComparison(
 
   for (const opponent of opponents) {
     const oppPosition = normalizedPositions[opponent.userId];
-    if (oppPosition < myPosition) betterCount++; // opponent finished higher
-    else if (oppPosition > myPosition) worseCount++; // opponent finished lower
+    if (oppPosition < myPosition)
+      betterCount++; // opponent finished higher
+    else if (oppPosition > myPosition)
+      worseCount++; // opponent finished lower
     else sameCount++; // same position (tie)
   }
 
@@ -439,7 +441,8 @@ function calculateDisplayRating(
   if (convergencePoints <= CLASSIC_CONFIG.CONVERGENCE_THRESHOLD) {
     // Sine curve provides smooth acceleration (reaches 1.0 exactly at threshold)
     convergenceMultiplier = Math.sin(
-      (Math.PI / (2 * CLASSIC_CONFIG.CONVERGENCE_THRESHOLD)) * convergencePoints,
+      (Math.PI / (2 * CLASSIC_CONFIG.CONVERGENCE_THRESHOLD)) *
+        convergencePoints,
     );
   } else {
     // Fully converged

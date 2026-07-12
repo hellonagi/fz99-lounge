@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Delete, Body, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { PushNotificationsService } from './push-notifications.service';

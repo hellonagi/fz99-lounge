@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 const UAParser = require('ua-parser-js');
 
 interface GeoLocation {
-  country?: string;  // ISO 3166-1 alpha-2 (JP, US, etc.)
+  country?: string; // ISO 3166-1 alpha-2 (JP, US, etc.)
   city?: string;
   timezone?: string;
 }
@@ -19,7 +19,10 @@ export class LoginTrackingService {
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    this.multiAccountThreshold = this.configService.get<number>('MULTI_ACCOUNT_IP_THRESHOLD', 3);
+    this.multiAccountThreshold = this.configService.get<number>(
+      'MULTI_ACCOUNT_IP_THRESHOLD',
+      3,
+    );
   }
 
   /**
@@ -31,7 +34,8 @@ export class LoginTrackingService {
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
       // X-Forwarded-For can contain multiple IPs, take the first one
-      const ips = typeof forwarded === 'string' ? forwarded.split(',') : forwarded;
+      const ips =
+        typeof forwarded === 'string' ? forwarded.split(',') : forwarded;
       return (Array.isArray(ips) ? ips[0] : ips).trim();
     }
 
@@ -125,7 +129,7 @@ export class LoginTrackingService {
       /^198\.96\.155\./,
     ];
 
-    return torPatterns.some(pattern => pattern.test(ipAddress));
+    return torPatterns.some((pattern) => pattern.test(ipAddress));
   }
 
   /**
@@ -142,19 +146,24 @@ export class LoginTrackingService {
       const response = await fetch(`https://ipinfo.io/${ipAddress}/json`);
 
       if (!response.ok) {
-        this.logger.warn(`ipinfo.io returned ${response.status} for IP ${ipAddress}`);
+        this.logger.warn(
+          `ipinfo.io returned ${response.status} for IP ${ipAddress}`,
+        );
         return {};
       }
 
       const data = await response.json();
 
       return {
-        country: data.country || undefined,  // "JP", "US", etc.
+        country: data.country || undefined, // "JP", "US", etc.
         city: data.city || undefined,
         timezone: data.timezone || undefined,
       };
     } catch (error) {
-      this.logger.error(`Failed to get geolocation for IP ${ipAddress}:`, error);
+      this.logger.error(
+        `Failed to get geolocation for IP ${ipAddress}:`,
+        error,
+      );
       return {};
     }
   }
@@ -187,7 +196,7 @@ export class LoginTrackingService {
     userId: number,
     req: Request,
     loginMethod: string = 'discord',
-    isNewUser: boolean = false
+    isNewUser: boolean = false,
   ): Promise<void> {
     try {
       const ipAddress = this.extractIpAddress(req);
@@ -248,21 +257,26 @@ export class LoginTrackingService {
   /**
    * Check for suspicious login patterns
    */
-  private async checkSuspiciousActivity(userId: number, ipAddress: string): Promise<void> {
+  private async checkSuspiciousActivity(
+    userId: number,
+    ipAddress: string,
+  ): Promise<void> {
     try {
       // Check if multiple accounts are using the same IP
       const accountsFromSameIp = await this.getAccountsFromIp(ipAddress);
 
       if (accountsFromSameIp.length >= this.multiAccountThreshold) {
-        const otherAccounts = accountsFromSameIp.filter(acc => acc.userId !== userId);
+        const otherAccounts = accountsFromSameIp.filter(
+          (acc) => acc.userId !== userId,
+        );
 
         if (otherAccounts.length > 0) {
           this.logger.warn(
             `Multiple accounts detected from IP ${ipAddress}: ${accountsFromSameIp.length} accounts (threshold: ${this.multiAccountThreshold})`,
             {
               currentUser: userId,
-              otherUsers: otherAccounts.map(acc => acc.userId),
-            }
+              otherUsers: otherAccounts.map((acc) => acc.userId),
+            },
           );
 
           // In production, you might want to:
@@ -274,11 +288,11 @@ export class LoginTrackingService {
 
       // Check for rapid IP changes (potential account sharing)
       const recentLogins = await this.getRecentLoginsForUser(userId, 24); // Last 24 hours
-      const uniqueIps = new Set(recentLogins.map(login => login.ipAddress));
+      const uniqueIps = new Set(recentLogins.map((login) => login.ipAddress));
 
       if (uniqueIps.size > 5) {
         this.logger.warn(
-          `User ${userId} has logged in from ${uniqueIps.size} different IPs in the last 24 hours`
+          `User ${userId} has logged in from ${uniqueIps.size} different IPs in the last 24 hours`,
         );
       }
     } catch (error) {
@@ -291,7 +305,7 @@ export class LoginTrackingService {
    */
   async getAccountsFromIp(
     ipAddress: string,
-    daysBack: number = 30
+    daysBack: number = 30,
   ): Promise<Array<{ userId: number; username: string; lastLogin: Date }>> {
     const since = new Date();
     since.setDate(since.getDate() - daysBack);
@@ -314,7 +328,7 @@ export class LoginTrackingService {
       orderBy: { loginAt: 'desc' },
     });
 
-    return logins.map(login => ({
+    return logins.map((login) => ({
       userId: login.userId,
       username: login.user.username,
       lastLogin: login.loginAt,
@@ -326,7 +340,7 @@ export class LoginTrackingService {
    */
   async getRecentLoginsForUser(
     userId: number,
-    hoursBack: number = 24
+    hoursBack: number = 24,
   ): Promise<Array<{ ipAddress: string; loginAt: Date }>> {
     const since = new Date();
     since.setHours(since.getHours() - hoursBack);
@@ -347,10 +361,7 @@ export class LoginTrackingService {
   /**
    * Get login history for a user
    */
-  async getUserLoginHistory(
-    userId: number,
-    limit: number = 50
-  ) {
+  async getUserLoginHistory(userId: number, limit: number = 50) {
     return this.prisma.userLoginHistory.findMany({
       where: { userId },
       orderBy: { loginAt: 'desc' },
@@ -361,15 +372,17 @@ export class LoginTrackingService {
   /**
    * Find users with multiple accounts (same IP)
    */
-  async findMultiAccountUsers(daysBack: number = 30): Promise<Array<{
-    ipAddress: string;
-    accounts: Array<{
-      userId: number;
-      username: string;
-      displayName: string | null;
-      lastLogin: Date;
-    }>;
-  }>> {
+  async findMultiAccountUsers(daysBack: number = 30): Promise<
+    Array<{
+      ipAddress: string;
+      accounts: Array<{
+        userId: number;
+        username: string;
+        displayName: string | null;
+        lastLogin: Date;
+      }>;
+    }>
+  > {
     const since = new Date();
     since.setDate(since.getDate() - daysBack);
 
@@ -424,7 +437,7 @@ export class LoginTrackingService {
       if (accounts.length > 1) {
         results.push({
           ipAddress,
-          accounts: accounts.map(acc => ({
+          accounts: accounts.map((acc) => ({
             userId: acc.userId,
             username: acc.user.username,
             displayName: acc.user.displayName,

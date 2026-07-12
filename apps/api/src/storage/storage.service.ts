@@ -23,7 +23,8 @@ export class StorageService {
 
   constructor(private configService: ConfigService) {
     this.bucketName = this.configService.get<string>('S3_BUCKET_NAME')!;
-    this.region = this.configService.get<string>('AWS_REGION') || 'ap-northeast-1';
+    this.region =
+      this.configService.get<string>('AWS_REGION') || 'ap-northeast-1';
 
     // MinIO (開発環境) vs AWS S3 (本番環境)
     const endpoint = this.configService.get<string>('S3_ENDPOINT');
@@ -39,8 +40,11 @@ export class StorageService {
       s3Config.endpoint = endpoint;
       s3Config.forcePathStyle = true;
       s3Config.credentials = {
-        accessKeyId: this.configService.get<string>('S3_ACCESS_KEY_ID') || 'minioadmin',
-        secretAccessKey: this.configService.get<string>('S3_SECRET_ACCESS_KEY') || 'minioadmin',
+        accessKeyId:
+          this.configService.get<string>('S3_ACCESS_KEY_ID') || 'minioadmin',
+        secretAccessKey:
+          this.configService.get<string>('S3_SECRET_ACCESS_KEY') ||
+          'minioadmin',
       };
       this.usePathStyle = true;
     } else {

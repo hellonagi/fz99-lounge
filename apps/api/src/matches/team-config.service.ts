@@ -24,7 +24,9 @@ export const TEAM_GRID_NUMBERS: number[] = [1, 2, 3, 4, 5, 6, 8, 10, 14, 15];
 /**
  * Full 16-position grid for TEAM_GP (supports up to 16 teams with unique colors)
  */
-export const TEAM_GP_GRID_NUMBERS: number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+export const TEAM_GP_GRID_NUMBERS: number[] = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+];
 
 /**
  * Team colors for display (keyed by grid position)
@@ -113,11 +115,19 @@ function getTeamGpDivisorPairs(n: number): TeamConfig[] {
       const other = n / d;
       // d = teamSize, other = teamCount
       if (other >= 2 && other <= 16) {
-        configs.push({ teamSize: d, teamCount: other, configString: `${d}x${other}` });
+        configs.push({
+          teamSize: d,
+          teamCount: other,
+          configString: `${d}x${other}`,
+        });
       }
       // other = teamSize, d = teamCount (avoid duplicate when d === other)
       if (d !== other && d <= 16) {
-        configs.push({ teamSize: other, teamCount: d, configString: `${other}x${d}` });
+        configs.push({
+          teamSize: other,
+          teamCount: d,
+          configString: `${other}x${d}`,
+        });
       }
     }
   }

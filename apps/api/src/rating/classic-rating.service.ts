@@ -87,7 +87,9 @@ export class ClassicRatingService {
 
     // Collect all game IDs
     const gameIds = [
-      ...new Set(allUserParticipations.map((p: { gameId: number }) => p.gameId)),
+      ...new Set(
+        allUserParticipations.map((p: { gameId: number }) => p.gameId),
+      ),
     ];
 
     // 1 query: Get all participants for these games to calculate positions
@@ -117,7 +119,11 @@ export class ClassicRatingService {
     // Group user participations by user
     const userParticipationsMap = new Map<
       number,
-      Array<{ totalScore: number | null; machine: string | null; gameId: number }>
+      Array<{
+        totalScore: number | null;
+        machine: string | null;
+        gameId: number;
+      }>
     >();
     for (const p of allUserParticipations) {
       const list = userParticipationsMap.get(p.userId) || [];
@@ -231,7 +237,10 @@ export class ClassicRatingService {
     }
 
     const eventCategory = game.match.season.event.category;
-    if (eventCategory !== EventCategory.CLASSIC && eventCategory !== EventCategory.GP) {
+    if (
+      eventCategory !== EventCategory.CLASSIC &&
+      eventCategory !== EventCategory.GP
+    ) {
       throw new Error(
         `Game ${gameId} is not CLASSIC or GP mode (got ${eventCategory})`,
       );
@@ -306,13 +315,23 @@ export class ClassicRatingService {
       );
 
       // For GP: fetch existing bestPosition/bestPoints values to compare
-      let existingBestStats: Map<number, { bestPosition: number | null; bestPoints: number | null }> | undefined;
+      let existingBestStats:
+        | Map<
+            number,
+            { bestPosition: number | null; bestPoints: number | null }
+          >
+        | undefined;
       if (eventCategory === EventCategory.GP) {
         const existingStats = await tx.userSeasonStats.findMany({
           where: { userId: { in: userIds }, seasonId },
           select: { userId: true, bestPosition: true, bestPoints: true },
         });
-        existingBestStats = new Map(existingStats.map(s => [s.userId, { bestPosition: s.bestPosition, bestPoints: s.bestPoints }]));
+        existingBestStats = new Map(
+          existingStats.map((s) => [
+            s.userId,
+            { bestPosition: s.bestPosition, bestPoints: s.bestPoints },
+          ]),
+        );
       }
 
       // Update UserSeasonStats for each participant
@@ -326,15 +345,20 @@ export class ClassicRatingService {
         let bestPosition: number | undefined;
         let bestPoints: number | undefined;
         if (eventCategory === EventCategory.GP && existingBestStats) {
-          const existing = existingBestStats.get(change.userId) ?? { bestPosition: null, bestPoints: null };
+          const existing = existingBestStats.get(change.userId) ?? {
+            bestPosition: null,
+            bestPoints: null,
+          };
           const currentPosition = participant.position;
-          bestPosition = existing.bestPosition === null
-            ? currentPosition
-            : Math.min(existing.bestPosition, currentPosition);
+          bestPosition =
+            existing.bestPosition === null
+              ? currentPosition
+              : Math.min(existing.bestPosition, currentPosition);
           const currentPoints = participant.totalScore ?? 0;
-          bestPoints = existing.bestPoints === null
-            ? currentPoints
-            : Math.max(existing.bestPoints, currentPoints);
+          bestPoints =
+            existing.bestPoints === null
+              ? currentPoints
+              : Math.max(existing.bestPoints, currentPoints);
         }
 
         return tx.userSeasonStats.update({
@@ -377,7 +401,8 @@ export class ClassicRatingService {
       // Prepare rating history data for batch insert
       // Pin createdAt to the match's actual/scheduled start so recalculation
       // doesn't collapse all histories to the recalc moment.
-      const matchCreatedAt = game.match.actualStart ?? game.match.scheduledStart;
+      const matchCreatedAt =
+        game.match.actualStart ?? game.match.scheduledStart;
       const historyData = ratingChanges.map((change) => ({
         userId: change.userId,
         matchId: game.matchId,

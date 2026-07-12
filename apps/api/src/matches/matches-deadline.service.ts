@@ -89,12 +89,15 @@ export class MatchesDeadlineService {
         select: { userId: true },
       });
 
-      const existingGameParticipants = await this.prisma.gameParticipant.findMany({
-        where: { gameId: game.id },
-        select: { userId: true },
-      });
+      const existingGameParticipants =
+        await this.prisma.gameParticipant.findMany({
+          where: { gameId: game.id },
+          select: { userId: true },
+        });
 
-      const existingUserIds = new Set(existingGameParticipants.map((p) => p.userId));
+      const existingUserIds = new Set(
+        existingGameParticipants.map((p) => p.userId),
+      );
       const missingUserIds = matchParticipants
         .map((p) => p.userId)
         .filter((uid) => !existingUserIds.has(uid));
@@ -116,6 +119,8 @@ export class MatchesDeadlineService {
     // Emit WebSocket event
     this.eventsGateway.emitMatchCompleted(match.id);
 
-    this.logger.log(`Match ${match.id} marked as COMPLETED after deadline (awaiting finalization)`);
+    this.logger.log(
+      `Match ${match.id} marked as COMPLETED after deadline (awaiting finalization)`,
+    );
   }
 }

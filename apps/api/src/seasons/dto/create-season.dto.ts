@@ -1,4 +1,11 @@
-import { IsEnum, IsInt, IsString, IsOptional, IsISO8601, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsString,
+  IsOptional,
+  IsISO8601,
+  Min,
+} from 'class-validator';
 import { EventCategory } from '@prisma/client';
 
 export class CreateSeasonDto {
@@ -14,7 +21,7 @@ export class CreateSeasonDto {
 
   @IsOptional()
   @IsISO8601()
-  endDate?: string;  // ISO 8601 format (optional)
+  endDate?: string; // ISO 8601 format (optional)
 
   @IsOptional()
   @IsString()

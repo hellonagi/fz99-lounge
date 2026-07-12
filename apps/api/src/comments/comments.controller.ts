@@ -65,7 +65,10 @@ export class CommentsController {
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
-  async listAllForAdmin(@Query('limit') limit: string | undefined, @Req() req: Request) {
+  async listAllForAdmin(
+    @Query('limit') limit: string | undefined,
+    @Req() req: Request,
+  ) {
     const lim = limit ? Math.min(500, Math.max(1, parseInt(limit, 10))) : 200;
     const viewer = req.user as { id: number };
     return this.commentsService.listAllForAdmin(lim, viewer.id);

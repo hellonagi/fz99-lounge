@@ -155,8 +155,7 @@ export class TeamClassicRatingService {
       const machineCount = new Map<string, number>();
 
       for (const userPart of userParticipations) {
-        const gameParticipants =
-          gameParticipantsMap.get(userPart.gameId) || [];
+        const gameParticipants = gameParticipantsMap.get(userPart.gameId) || [];
         // Sort by score descending
         const sorted = [...gameParticipants].sort(
           (a, b) => b.totalScore - a.totalScore,
@@ -251,7 +250,10 @@ export class TeamClassicRatingService {
     }
 
     const eventCategory = game.match.season.event.category;
-    if (eventCategory !== EventCategory.TEAM_CLASSIC && eventCategory !== EventCategory.TEAM_GP) {
+    if (
+      eventCategory !== EventCategory.TEAM_CLASSIC &&
+      eventCategory !== EventCategory.TEAM_GP
+    ) {
       throw new Error(
         `Game ${gameId} is not a team mode (got ${eventCategory})`,
       );
@@ -381,13 +383,29 @@ export class TeamClassicRatingService {
       );
 
       // For TEAM_GP: fetch existing bestPosition/bestPoints values to compare
-      let existingBestStats: Map<number, { bestPosition: number | null; bestPoints: number | null }> | undefined;
+      let existingBestStats:
+        | Map<
+            number,
+            { bestPosition: number | null; bestPoints: number | null }
+          >
+        | undefined;
       if (isTeamGp) {
         const existingStats = await tx.userSeasonStats.findMany({
           where: { userId: { in: userIds }, seasonId },
           select: { userId: true, bestPosition: true, bestPoints: true },
         });
-        existingBestStats = new Map(existingStats.map((s: { userId: number; bestPosition: number | null; bestPoints: number | null }) => [s.userId, { bestPosition: s.bestPosition, bestPoints: s.bestPoints }]));
+        existingBestStats = new Map(
+          existingStats.map(
+            (s: {
+              userId: number;
+              bestPosition: number | null;
+              bestPoints: number | null;
+            }) => [
+              s.userId,
+              { bestPosition: s.bestPosition, bestPoints: s.bestPoints },
+            ],
+          ),
+        );
       }
 
       // Calculate individual rankings by totalScore for bestPosition
@@ -416,15 +434,20 @@ export class TeamClassicRatingService {
         let bestPosition: number | undefined;
         let bestPoints: number | undefined;
         if (isTeamGp && existingBestStats) {
-          const existing = existingBestStats.get(change.userId) ?? { bestPosition: null, bestPoints: null };
+          const existing = existingBestStats.get(change.userId) ?? {
+            bestPosition: null,
+            bestPoints: null,
+          };
           const currentPosition = individualRanks.get(change.userId)!;
-          bestPosition = existing.bestPosition === null
-            ? currentPosition
-            : Math.min(existing.bestPosition, currentPosition);
+          bestPosition =
+            existing.bestPosition === null
+              ? currentPosition
+              : Math.min(existing.bestPosition, currentPosition);
           const currentPoints = participant.totalScore ?? 0;
-          bestPoints = existing.bestPoints === null
-            ? currentPoints
-            : Math.max(existing.bestPoints, currentPoints);
+          bestPoints =
+            existing.bestPoints === null
+              ? currentPoints
+              : Math.max(existing.bestPoints, currentPoints);
         }
 
         return tx.userSeasonStats.update({
@@ -470,7 +493,8 @@ export class TeamClassicRatingService {
       // Prepare rating history data for batch insert
       // Pin createdAt to the match's actual/scheduled start so recalculation
       // doesn't collapse all histories to the recalc moment.
-      const matchCreatedAt = game.match.actualStart ?? game.match.scheduledStart;
+      const matchCreatedAt =
+        game.match.actualStart ?? game.match.scheduledStart;
       const historyData = ratingChanges.map((change) => ({
         userId: change.userId,
         matchId: game.matchId,
@@ -500,7 +524,8 @@ export class TeamClassicRatingService {
     fromMatchNumber: number,
     category: EventCategory = EventCategory.TEAM_CLASSIC,
   ): Promise<{ recalculatedMatches: number; recalculatedGames: number }> {
-    const label = category === EventCategory.TEAM_GP ? 'TEAM_GP' : 'TEAM_CLASSIC';
+    const label =
+      category === EventCategory.TEAM_GP ? 'TEAM_GP' : 'TEAM_CLASSIC';
     this.logger.log(
       `[${label} RECALC] Starting recalculation from match ${fromMatchNumber} for ${label} season ${seasonNumber}`,
     );

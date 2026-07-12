@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, UserStatus } from '@prisma/client';
@@ -24,7 +28,9 @@ export class AuthService {
     private discordBot: DiscordBotService,
   ) {}
 
-  async validateOrCreateUser(discordUser: DiscordUser): Promise<{ user: User; isNewUser: boolean }> {
+  async validateOrCreateUser(
+    discordUser: DiscordUser,
+  ): Promise<{ user: User; isNewUser: boolean }> {
     let user = await this.prisma.user.findUnique({
       where: { discordId: discordUser.discordId },
     });
@@ -57,7 +63,9 @@ export class AuthService {
           });
           break;
         } catch (e) {
-          const isUniqueViolation = e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002';
+          const isUniqueViolation =
+            e instanceof Prisma.PrismaClientKnownRequestError &&
+            e.code === 'P2002';
           if (!isUniqueViolation || attempt === MAX_RETRIES - 1) {
             throw e;
           }

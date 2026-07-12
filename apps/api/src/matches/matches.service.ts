@@ -15,8 +15,13 @@ import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { TracksService } from '../tracks/tracks.service';
 import { CreateMatchDto } from './dto/create-match.dto';
 import { UpdateGameLeagueDto } from './dto/update-game-league.dto';
-import { EventCategory, InGameMode, League, MatchStatus, UserStatus } from '@prisma/client';
-
+import {
+  EventCategory,
+  InGameMode,
+  League,
+  MatchStatus,
+  UserStatus,
+} from '@prisma/client';
 
 @Injectable()
 export class MatchesService implements OnModuleInit, OnModuleDestroy {
@@ -132,13 +137,17 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       for (const job of delayedJobs) {
         if (
           job.data?.matchId === matchId &&
-          (job.name === 'fake-count-increase' || job.name === 'fake-count-decrease')
+          (job.name === 'fake-count-increase' ||
+            job.name === 'fake-count-decrease')
         ) {
           await job.remove();
         }
       }
     } catch (error) {
-      this.logger.error(`Failed to remove fake jobs for match ${matchId}:`, error);
+      this.logger.error(
+        `Failed to remove fake jobs for match ${matchId}:`,
+        error,
+      );
     }
   }
 
@@ -191,11 +200,15 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     if (overdueMatches.length === 0) return;
 
-    this.logger.warn(`Found ${overdueMatches.length} overdue WAITING match(es), re-queuing start-match jobs`);
+    this.logger.warn(
+      `Found ${overdueMatches.length} overdue WAITING match(es), re-queuing start-match jobs`,
+    );
 
     for (const match of overdueMatches) {
       // 既にジョブが存在するか確認
-      const existingJob = await this.matchQueue.getJob(`start-match-${match.id}`);
+      const existingJob = await this.matchQueue.getJob(
+        `start-match-${match.id}`,
+      );
       if (existingJob) {
         this.logger.log(`Job already exists for match ${match.id}, skipping`);
         continue;
@@ -212,7 +225,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           jobId: `start-match-${match.id}`,
         },
       );
-      this.logger.log(`Re-queued start-match job for overdue match ${match.id}`);
+      this.logger.log(
+        `Re-queued start-match job for overdue match ${match.id}`,
+      );
     }
   }
 
@@ -226,7 +241,10 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
     return {
       ...rest,
-      currentPlayers: Math.min(rawCurrentPlayers, match.maxPlayers ?? rawCurrentPlayers),
+      currentPlayers: Math.min(
+        rawCurrentPlayers,
+        match.maxPlayers ?? rawCurrentPlayers,
+      ),
     };
   }
 
@@ -234,15 +252,29 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     return matches.map((m) => this.transformMatchResponse(m));
   }
 
-  async create(createMatchDto: CreateMatchDto, createdBy: number, options?: { silent?: boolean }) {
-    const { seasonId, inGameMode, leagueType, scheduledStart, minPlayers, maxPlayers, notes, recurringMatchId } =
-      createMatchDto;
+  async create(
+    createMatchDto: CreateMatchDto,
+    createdBy: number,
+    options?: { silent?: boolean },
+  ) {
+    const {
+      seasonId,
+      inGameMode,
+      leagueType,
+      scheduledStart,
+      minPlayers,
+      maxPlayers,
+      notes,
+      recurringMatchId,
+    } = createMatchDto;
 
     // Validate scheduledStart is at least 1 minute from now
     const scheduledDate = new Date(scheduledStart);
     const minTime = new Date(Date.now() + 60 * 1000);
     if (scheduledDate < minTime) {
-      throw new BadRequestException('Start time must be at least 1 minute from now');
+      throw new BadRequestException(
+        'Start time must be at least 1 minute from now',
+      );
     }
 
     // Get season with event
@@ -262,11 +294,17 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     // CLASSIC_MINI_PRIXモードの場合、トラックセットを自動計算
     let tracks: number[] | null = null;
     if (inGameMode === InGameMode.CLASSIC_MINI_PRIX) {
-      tracks = this.tracksService.calculateClassicMiniTracks(new Date(scheduledStart));
+      tracks = this.tracksService.calculateClassicMiniTracks(
+        new Date(scheduledStart),
+      );
     }
 
     // GP/MIRROR_GP: auto-assign 5 tracks based on league
-    if ((inGameMode === InGameMode.GRAND_PRIX || inGameMode === InGameMode.MIRROR_GRAND_PRIX) && leagueType) {
+    if (
+      (inGameMode === InGameMode.GRAND_PRIX ||
+        inGameMode === InGameMode.MIRROR_GRAND_PRIX) &&
+      leagueType
+    ) {
       tracks = this.tracksService.getGpTracksByLeague(leagueType);
     }
 
@@ -376,13 +414,20 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
             },
           );
         }
-        this.logger.log(`Scheduled ${maxFake} fake-count-increase jobs for match ${match.id}`);
+        this.logger.log(
+          `Scheduled ${maxFake} fake-count-increase jobs for match ${match.id}`,
+        );
       }
     }
 
     // Announce match creation to Discord (fire and forget - don't block on errors)
     // Skip if silent mode (e.g., auto-generated by recurring schedule)
-    if (!options?.silent && matchWithIncludes && matchWithIncludes.matchNumber && matchWithIncludes.games[0]) {
+    if (
+      !options?.silent &&
+      matchWithIncludes &&
+      matchWithIncludes.matchNumber &&
+      matchWithIncludes.games[0]
+    ) {
       try {
         const creator = await this.prisma.user.findUnique({
           where: { id: createdBy },
@@ -399,10 +444,14 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           scheduledStart: new Date(scheduledStart),
           minPlayers: match.minPlayers,
           maxPlayers: match.maxPlayers,
-          creatorDisplayName: creator?.displayName || creator?.username || 'Unknown',
+          creatorDisplayName:
+            creator?.displayName || creator?.username || 'Unknown',
         });
       } catch (error) {
-        this.logger.error('Failed to announce match creation to Discord:', error);
+        this.logger.error(
+          'Failed to announce match creation to Discord:',
+          error,
+        );
         // Don't throw - Discord failure should not block match creation
       }
     }
@@ -572,7 +621,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           matchNumber: match.matchNumber,
           category: matchCategory,
           seasonNumber: match.season.seasonNumber,
-          playerCount: game ? game.participants.length : match.participants.length,
+          playerCount: game
+            ? game.participants.length
+            : match.participants.length,
           status: match.status,
           startedAt: match.actualStart,
           isRated: match.isRated,
@@ -580,15 +631,16 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
         // Individual top scorer(s) — include ties (participants are ordered by totalScore desc)
         const topScore = game?.participants[0]?.totalScore ?? null;
-        const winners = game && topScore !== null
-          ? game.participants
-              .filter((p) => p.totalScore === topScore)
-              .map((p) => ({
-                id: p.user.id,
-                displayName: p.user.displayName,
-                totalScore: p.totalScore,
-              }))
-          : [];
+        const winners =
+          game && topScore !== null
+            ? game.participants
+                .filter((p) => p.totalScore === topScore)
+                .map((p) => ({
+                  id: p.user.id,
+                  displayName: p.user.displayName,
+                  totalScore: p.totalScore,
+                }))
+            : [];
         const winner = winners[0] ?? null;
 
         return {
@@ -669,7 +721,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
               select: { participants: { where: { isExcluded: false } } },
             },
             participants: {
-              ...((category === 'TEAM_CLASSIC' || category === 'TEAM_GP')
+              ...(category === 'TEAM_CLASSIC' || category === 'TEAM_GP'
                 ? {
                     where: { isExcluded: false, totalScore: { not: null } },
                     orderBy: { totalScore: 'desc' as const },
@@ -706,7 +758,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         matchNumber: match.matchNumber,
         category: matchCategory,
         seasonNumber: match.season.seasonNumber,
-        playerCount: game ? game._count.participants : match.participants.length,
+        playerCount: game
+          ? game._count.participants
+          : match.participants.length,
         status: match.status,
         startedAt: match.actualStart,
         isRated: match.isRated,
@@ -815,7 +869,8 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
       const nearMinPlayers = totalPlayers >= updatedMatchRaw.minPlayers - 3;
 
       if (nearMinPlayers || participantCount % 2 === 0) {
-        const remainingMs = new Date(updatedMatchRaw.scheduledStart).getTime() - Date.now();
+        const remainingMs =
+          new Date(updatedMatchRaw.scheduledStart).getTime() - Date.now();
         if (remainingMs > 0) {
           const fakeDecDelay = Math.max(
             Math.round(remainingMs * (0.03 + Math.random() * 0.05)),
@@ -902,8 +957,13 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     }
 
     // Only allow cancellation of WAITING or IN_PROGRESS matches
-    if (match.status !== MatchStatus.WAITING && match.status !== MatchStatus.IN_PROGRESS) {
-      throw new BadRequestException('Can only cancel matches in WAITING or IN_PROGRESS status');
+    if (
+      match.status !== MatchStatus.WAITING &&
+      match.status !== MatchStatus.IN_PROGRESS
+    ) {
+      throw new BadRequestException(
+        'Can only cancel matches in WAITING or IN_PROGRESS status',
+      );
     }
 
     // Save original matchNumber before clearing it (for Discord announcement)
@@ -933,7 +993,10 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Removed reminder job for match ${matchId}`);
       }
     } catch (error) {
-      this.logger.error(`Failed to remove reminder job for match ${matchId}:`, error);
+      this.logger.error(
+        `Failed to remove reminder job for match ${matchId}:`,
+        error,
+      );
     }
 
     // Post cancellation message to passcode channel and schedule channel deletion after 1 hour
@@ -944,10 +1007,17 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         await this.matchQueue.add(
           'delete-discord-channel',
           { gameId: game.id },
-          { delay: 24 * 60 * 60 * 1000, removeOnComplete: true, removeOnFail: { count: 10 } }, // 24 hours
+          {
+            delay: 24 * 60 * 60 * 1000,
+            removeOnComplete: true,
+            removeOnFail: { count: 10 },
+          }, // 24 hours
         );
       } catch (error) {
-        this.logger.error(`Failed to handle Discord channel for game ${game.id}:`, error);
+        this.logger.error(
+          `Failed to handle Discord channel for game ${game.id}:`,
+          error,
+        );
         // Continue even if Discord fails
       }
     }
@@ -963,14 +1033,22 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
           reason: 'admin_cancelled',
         });
       } catch (error) {
-        this.logger.error('Failed to announce match cancellation to Discord:', error);
+        this.logger.error(
+          'Failed to announce match cancellation to Discord:',
+          error,
+        );
       }
     }
 
     // Emit WebSocket event to notify all clients
-    this.eventsGateway.emitMatchUpdated(this.transformMatchResponse(updatedMatch));
+    this.eventsGateway.emitMatchUpdated(
+      this.transformMatchResponse(updatedMatch),
+    );
 
-    return { message: 'Match cancelled successfully', match: this.transformMatchResponse(updatedMatch) };
+    return {
+      message: 'Match cancelled successfully',
+      match: this.transformMatchResponse(updatedMatch),
+    };
   }
 
   async delete(matchId: number) {
@@ -978,7 +1056,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     // Only allow deletion of WAITING matches
     if (match.status !== MatchStatus.WAITING) {
-      throw new BadRequestException('Cannot delete match that is not in WAITING status');
+      throw new BadRequestException(
+        'Cannot delete match that is not in WAITING status',
+      );
     }
 
     const seasonId = match.seasonId;
@@ -1044,12 +1124,16 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (match.status !== MatchStatus.WAITING) {
-      throw new BadRequestException('Can only change league for WAITING matches');
+      throw new BadRequestException(
+        'Can only change league for WAITING matches',
+      );
     }
 
     const category = match.season.event.category;
     if (category !== 'GP' && category !== 'TEAM_GP') {
-      throw new BadRequestException('League change is only supported for GP/TEAM_GP matches');
+      throw new BadRequestException(
+        'League change is only supported for GP/TEAM_GP matches',
+      );
     }
 
     const game = match.games[0];
@@ -1059,7 +1143,9 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     const { leagueType } = dto;
     const isMirror = leagueType.startsWith('MIRROR_');
-    const inGameMode = isMirror ? InGameMode.MIRROR_GRAND_PRIX : InGameMode.GRAND_PRIX;
+    const inGameMode = isMirror
+      ? InGameMode.MIRROR_GRAND_PRIX
+      : InGameMode.GRAND_PRIX;
     const tracks = this.tracksService.getGpTracksByLeague(leagueType);
 
     await this.prisma.game.update({
@@ -1122,8 +1208,12 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
     // Sort flexible by scheduledStart, then by id for tiebreaker
     flexible.sort(
-      (a: { scheduledStart: Date; id: number }, b: { scheduledStart: Date; id: number }) => {
-        const timeDiff = a.scheduledStart.getTime() - b.scheduledStart.getTime();
+      (
+        a: { scheduledStart: Date; id: number },
+        b: { scheduledStart: Date; id: number },
+      ) => {
+        const timeDiff =
+          a.scheduledStart.getTime() - b.scheduledStart.getTime();
         return timeDiff !== 0 ? timeDiff : a.id - b.id;
       },
     );
@@ -1137,7 +1227,8 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Assign numbers starting after the highest locked number (no gaps in WAITING range)
-    const maxLocked = lockedNumbers.size > 0 ? Math.max(...Array.from(lockedNumbers)) : 0;
+    const maxLocked =
+      lockedNumbers.size > 0 ? Math.max(...Array.from(lockedNumbers)) : 0;
     let nextNumber = maxLocked + 1;
     for (const match of flexible) {
       await tx.match.update({

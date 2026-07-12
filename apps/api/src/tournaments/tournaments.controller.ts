@@ -40,7 +40,10 @@ export class TournamentsController {
   @Get('week')
   @Public()
   async getWeek(@Query('from') from: string, @Query('to') to: string) {
-    return this.tournamentsService.findByDateRange(new Date(from), new Date(to));
+    return this.tournamentsService.findByDateRange(
+      new Date(from),
+      new Date(to),
+    );
   }
 
   @Get('recent')
@@ -103,7 +106,12 @@ export class TournamentsController {
   async register(
     @Param('id') id: string,
     @Req() req: Request,
-    @Body() body: { division: TournamentDivision; mode?: TournamentMode | null; prizeEntry?: boolean },
+    @Body()
+    body: {
+      division: TournamentDivision;
+      mode?: TournamentMode | null;
+      prizeEntry?: boolean;
+    },
   ) {
     const user = req.user as any;
     return this.tournamentsService.register(parseInt(id, 10), user.id, {
@@ -120,7 +128,11 @@ export class TournamentsController {
     @Query('division') division: TournamentDivision,
   ) {
     const user = req.user as any;
-    return this.tournamentsService.cancelRegistration(parseInt(id, 10), user.id, division);
+    return this.tournamentsService.cancelRegistration(
+      parseInt(id, 10),
+      user.id,
+      division,
+    );
   }
 
   @Get(':id/participants')
@@ -139,7 +151,12 @@ export class TournamentsController {
   @Roles(UserRole.ADMIN)
   async addStream(
     @Param('id') id: string,
-    @Body() body: { platform: 'YOUTUBE' | 'TWITCH'; channelIdentifier: string; label: string },
+    @Body()
+    body: {
+      platform: 'YOUTUBE' | 'TWITCH';
+      channelIdentifier: string;
+      label: string;
+    },
   ) {
     return this.tournamentsService.addStream(parseInt(id, 10), body);
   }
@@ -152,7 +169,13 @@ export class TournamentsController {
 
   @Patch(':id/streams/:streamId/featured')
   @Roles(UserRole.ADMIN)
-  async setFeaturedStream(@Param('id') id: string, @Param('streamId') streamId: string) {
-    return this.tournamentsService.setFeaturedStream(parseInt(id, 10), parseInt(streamId, 10));
+  async setFeaturedStream(
+    @Param('id') id: string,
+    @Param('streamId') streamId: string,
+  ) {
+    return this.tournamentsService.setFeaturedStream(
+      parseInt(id, 10),
+      parseInt(streamId, 10),
+    );
   }
 }

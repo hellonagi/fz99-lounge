@@ -62,14 +62,18 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('game.scoreUpdated')
   handleScoreUpdated(payload: { gameId: number; participant: any }) {
     // Emit to all clients in the game room
-    this.server.to(`game:${payload.gameId}`).emit('scoreUpdated', { ...payload.participant, gameId: payload.gameId });
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('scoreUpdated', { ...payload.participant, gameId: payload.gameId });
     console.log(`Score update emitted to game room: ${payload.gameId}`);
   }
 
   @OnEvent('game.statusChanged')
   handleStatusChanged(payload: { gameId: number; status: string }) {
     // Emit status change to all clients in the game room
-    this.server.to(`game:${payload.gameId}`).emit('statusChanged', payload.status);
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('statusChanged', payload.status);
     console.log(`Status change emitted to game room: ${payload.gameId}`);
   }
 
@@ -99,7 +103,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       currentVotes: payload.currentVotes,
       requiredVotes: payload.requiredVotes,
     });
-    console.log(`Split vote threshold reached emitted to game room: ${payload.gameId}`);
+    console.log(
+      `Split vote threshold reached emitted to game room: ${payload.gameId}`,
+    );
   }
 
   @OnEvent('game.passcodeRegenerated')
@@ -116,27 +122,37 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       currentVotes: 0,
       requiredVotes: payload.requiredVotes,
     });
-    console.log(`Passcode regenerated event emitted to game room: ${payload.gameId}`);
+    console.log(
+      `Passcode regenerated event emitted to game room: ${payload.gameId}`,
+    );
   }
 
   @OnEvent('game.participantVerified')
   handleParticipantVerified(payload: { gameId: number; participant: any }) {
-    this.server.to(`game:${payload.gameId}`).emit('participantVerified', payload.participant);
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('participantVerified', payload.participant);
   }
 
   @OnEvent('game.participantRejected')
   handleParticipantRejected(payload: { gameId: number; participant: any }) {
-    this.server.to(`game:${payload.gameId}`).emit('participantRejected', payload.participant);
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('participantRejected', payload.participant);
   }
 
   @OnEvent('game.screenshotRequested')
   handleScreenshotRequested(payload: { gameId: number; participant: any }) {
-    this.server.to(`game:${payload.gameId}`).emit('screenshotRequested', payload.participant);
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('screenshotRequested', payload.participant);
   }
 
   @OnEvent('game.participantNoShow')
   handleParticipantNoShow(payload: { gameId: number; participant: any }) {
-    this.server.to(`game:${payload.gameId}`).emit('participantNoShow', payload.participant);
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('participantNoShow', payload.participant);
   }
 
   @OnEvent('game.passcodeCountdownStarted')
@@ -155,9 +171,7 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('game.passcodeHidden')
   handlePasscodeHidden(payload: { gameId: number }) {
     this.server.to(`game:${payload.gameId}`).emit('passcodeHidden', {});
-    console.log(
-      `Passcode hidden emitted to game room: ${payload.gameId}`,
-    );
+    console.log(`Passcode hidden emitted to game room: ${payload.gameId}`);
   }
 
   @OnEvent('game.screenshotUpdated')
@@ -180,7 +194,9 @@ export class GamesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
   }) {
     // Emit screenshot update to all clients in the game room
-    this.server.to(`game:${payload.gameId}`).emit('screenshotUpdated', payload.screenshot);
+    this.server
+      .to(`game:${payload.gameId}`)
+      .emit('screenshotUpdated', payload.screenshot);
     console.log(`Screenshot update emitted to game room: ${payload.gameId}`);
   }
 }

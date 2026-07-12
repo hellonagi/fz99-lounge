@@ -6,7 +6,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { EventCategory, MatchStatus, ResultStatus, ScreenshotType } from '@prisma/client';
+import {
+  EventCategory,
+  MatchStatus,
+  ResultStatus,
+  ScreenshotType,
+} from '@prisma/client';
 import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -215,33 +220,35 @@ export class GamesService {
     // Get previous ratings for each user to calculate change
     // Important: Use matchNumber (not matchId) for ordering, since matchId may not
     // reflect chronological order when matches are created out of sequence
-    const userIds = game.participants.map(p => p.userId);
+    const userIds = game.participants.map((p) => p.userId);
     const seasonId = game.match?.seasonId;
     const currentMatchNumber = game.match?.matchNumber;
-    const previousRatings = currentMatchNumber != null
-      ? await this.prisma.ratingHistory.findMany({
-          where: {
-            userId: { in: userIds },
-            match: {
-              seasonId,
-              matchNumber: { lt: currentMatchNumber },
+    const previousRatings =
+      currentMatchNumber != null
+        ? await this.prisma.ratingHistory.findMany({
+            where: {
+              userId: { in: userIds },
+              match: {
+                seasonId,
+                matchNumber: { lt: currentMatchNumber },
+              },
             },
-          },
-          orderBy: { match: { matchNumber: 'desc' } },
-          distinct: ['userId'],
-        })
-      : [];
+            orderBy: { match: { matchNumber: 'desc' } },
+            distinct: ['userId'],
+          })
+        : [];
     const previousRatingMap = new Map<number, number>();
     for (const pr of previousRatings) {
       previousRatingMap.set(pr.userId, pr.displayRating);
     }
 
     // Add rating info to participants
-    const participantsWithRating = game.participants.map(p => {
+    const participantsWithRating = game.participants.map((p) => {
       const currentRating = ratingMap.get(p.userId);
       const previousRating = previousRatingMap.get(p.userId) ?? 0; // 0 if first match
       const ratingAfter = currentRating?.displayRating ?? null;
-      const ratingChange = ratingAfter !== null ? ratingAfter - previousRating : null;
+      const ratingChange =
+        ratingAfter !== null ? ratingAfter - previousRating : null;
 
       return {
         ...p,
@@ -281,7 +288,12 @@ export class GamesService {
    * Current implementation creates GameParticipant with basic info,
    * RaceResult submission needs to be implemented separately
    */
-  async submitScore(gameId: number, userId: number, submitScoreDto: SubmitScoreDto, isModeratorAction: boolean = false) {
+  async submitScore(
+    gameId: number,
+    userId: number,
+    submitScoreDto: SubmitScoreDto,
+    isModeratorAction: boolean = false,
+  ) {
     // Find the game and verify it's in progress
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
@@ -314,7 +326,9 @@ export class GamesService {
       const isTournament = eventCategory === EventCategory.TOURNAMENT;
       const allowCompleted = isModeratorAction || isTournament;
       if (!(allowCompleted && game.match.status === MatchStatus.COMPLETED)) {
-        throw new BadRequestException('Cannot submit score - match is not in progress');
+        throw new BadRequestException(
+          'Cannot submit score - match is not in progress',
+        );
       }
     }
 
@@ -379,7 +393,7 @@ export class GamesService {
 
       // Generic race validation: validate each race sequentially
       const races = Array.from({ length: maxRaces }, (_, i) =>
-        submitScoreDto.raceResults!.find(r => r.raceNumber === i + 1),
+        submitScoreDto.raceResults!.find((r) => r.raceNumber === i + 1),
       );
 
       let eliminated = false;
@@ -391,13 +405,23 @@ export class GamesService {
 
         if (!race?.isDisconnected) {
           // Check if all previous races are not eliminated/dc
-          const prevEliminated = races.slice(0, i).some(r => r?.isEliminated || r?.isDisconnected);
+          const prevEliminated = races
+            .slice(0, i)
+            .some((r) => r?.isEliminated || r?.isDisconnected);
           if (!prevEliminated) {
-            if (!race || race.position === undefined || race.position === null) {
-              throw new BadRequestException(`Race ${i + 1} position is required`);
+            if (
+              !race ||
+              race.position === undefined ||
+              race.position === null
+            ) {
+              throw new BadRequestException(
+                `Race ${i + 1} position is required`,
+              );
             }
             if (race.position < 1 || race.position > raceMaxPosition) {
-              throw new BadRequestException(`Race ${i + 1} position must be between 1 and ${raceMaxPosition}`);
+              throw new BadRequestException(
+                `Race ${i + 1} position must be between 1 and ${raceMaxPosition}`,
+              );
             }
           }
         }
@@ -611,7 +635,7 @@ export class GamesService {
 
     // Generic race validation: validate each race sequentially
     const races = Array.from({ length: maxRaces }, (_, i) =>
-      updateScoreDto.raceResults.find(r => r.raceNumber === i + 1),
+      updateScoreDto.raceResults.find((r) => r.raceNumber === i + 1),
     );
 
     let eliminatedCheck = false;
@@ -622,13 +646,17 @@ export class GamesService {
       const raceMaxPosition = raceMaxPositions[i];
 
       if (!race?.isDisconnected) {
-        const prevEliminated = races.slice(0, i).some(r => r?.isEliminated || r?.isDisconnected);
+        const prevEliminated = races
+          .slice(0, i)
+          .some((r) => r?.isEliminated || r?.isDisconnected);
         if (!prevEliminated) {
           if (!race || race.position === undefined || race.position === null) {
             throw new BadRequestException(`Race ${i + 1} position is required`);
           }
           if (race.position < 1 || race.position > raceMaxPosition) {
-            throw new BadRequestException(`Race ${i + 1} position must be between 1 and ${raceMaxPosition}`);
+            throw new BadRequestException(
+              `Race ${i + 1} position must be between 1 and ${raceMaxPosition}`,
+            );
           }
         }
       }
@@ -920,11 +948,24 @@ export class GamesService {
    * Determine GP mode based on event category and in-game mode.
    * For TOURNAMENT category, derive from game's actual inGameMode.
    */
-  private isGpModeForGame(eventCategory: EventCategory, inGameMode: string): boolean {
-    if (eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP) return true;
-    if (eventCategory === EventCategory.CLASSIC || eventCategory === EventCategory.TEAM_CLASSIC) return false;
+  private isGpModeForGame(
+    eventCategory: EventCategory,
+    inGameMode: string,
+  ): boolean {
+    if (
+      eventCategory === EventCategory.GP ||
+      eventCategory === EventCategory.TEAM_GP
+    )
+      return true;
+    if (
+      eventCategory === EventCategory.CLASSIC ||
+      eventCategory === EventCategory.TEAM_CLASSIC
+    )
+      return false;
     // TOURNAMENT: derive from game's actual mode
-    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(inGameMode);
+    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(
+      inGameMode,
+    );
   }
 
   /**
@@ -934,7 +975,7 @@ export class GamesService {
    */
   private calculateRacePoints(position: number): number {
     if (position < 1 || position > 20) return 0;
-    return 105 - (position * 5); // 1st=100, 2nd=95, 3rd=90...
+    return 105 - position * 5; // 1st=100, 2nd=95, 3rd=90...
   }
 
   /**
@@ -991,7 +1032,10 @@ export class GamesService {
     }
 
     // Check if match is in a state that can be finalized
-    if (game.match.status !== MatchStatus.IN_PROGRESS && game.match.status !== MatchStatus.COMPLETED) {
+    if (
+      game.match.status !== MatchStatus.IN_PROGRESS &&
+      game.match.status !== MatchStatus.COMPLETED
+    ) {
       throw new BadRequestException(
         `Cannot finalize match - current status is ${game.match.status}`,
       );
@@ -999,12 +1043,17 @@ export class GamesService {
 
     // Calculate ratings based on event category (skip if unrated)
     if (game.match.isRated) {
-      if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
+      if (
+        eventCategory === EventCategory.TEAM_CLASSIC ||
+        eventCategory === EventCategory.TEAM_GP
+      ) {
         // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
         // If teamConfig is null (prime fallback), use classic rating service
         await this.calculateAndSaveTeamScores(game.id);
         if (game.teamConfig) {
-          await this.teamClassicRatingService.calculateAndUpdateRatings(game.id);
+          await this.teamClassicRatingService.calculateAndUpdateRatings(
+            game.id,
+          );
         } else {
           await this.classicRatingService.calculateAndUpdateRatings(game.id);
         }
@@ -1016,9 +1065,14 @@ export class GamesService {
         await this.classicRatingService.calculateAndUpdateRatings(game.id);
       }
     } else {
-      this.logger.log(`Match ${game.matchId} is unrated, skipping rating calculation`);
+      this.logger.log(
+        `Match ${game.matchId} is unrated, skipping rating calculation`,
+      );
       // Still calculate team scores for display purposes
-      if (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP) {
+      if (
+        eventCategory === EventCategory.TEAM_CLASSIC ||
+        eventCategory === EventCategory.TEAM_GP
+      ) {
         if (game.teamConfig) {
           await this.calculateAndSaveTeamScores(game.id);
         }
@@ -1051,7 +1105,11 @@ export class GamesService {
       await this.matchQueue.add(
         'delete-discord-channel',
         { gameId: game.id },
-        { delay: 24 * 60 * 60 * 1000, removeOnComplete: true, removeOnFail: { count: 10 } }, // 24 hours
+        {
+          delay: 24 * 60 * 60 * 1000,
+          removeOnComplete: true,
+          removeOnFail: { count: 10 },
+        }, // 24 hours
       );
     } catch (error) {
       this.logger.error('Failed to schedule Discord channel deletion:', error);
@@ -1176,7 +1234,9 @@ export class GamesService {
       });
 
       if (!game || game.participants.length === 0) {
-        this.logger.debug(`No verified participants for game ${gameId}, skipping results announcement`);
+        this.logger.debug(
+          `No verified participants for game ${gameId}, skipping results announcement`,
+        );
         return;
       }
 
@@ -1192,7 +1252,10 @@ export class GamesService {
 
       for (const participant of game.participants) {
         // If score is different from previous, update position
-        if (previousScore !== null && participant.totalScore !== previousScore) {
+        if (
+          previousScore !== null &&
+          participant.totalScore !== previousScore
+        ) {
           currentPosition = participantsWithPositions.length + 1;
         }
 
@@ -1206,7 +1269,9 @@ export class GamesService {
       }
 
       // Filter to top 3 positions (may include ties)
-      const topParticipants = participantsWithPositions.filter((p) => p.position <= 3);
+      const topParticipants = participantsWithPositions.filter(
+        (p) => p.position <= 3,
+      );
 
       if (topParticipants.length === 0) {
         this.logger.debug(`No top participants for game ${gameId}`);
@@ -1219,7 +1284,9 @@ export class GamesService {
 
       // Skip if matchNumber is null (cancelled matches)
       if (game.match.matchNumber === null) {
-        this.logger.warn(`Game ${gameId} has no matchNumber, skipping announcement`);
+        this.logger.warn(
+          `Game ${gameId} has no matchNumber, skipping announcement`,
+        );
         return;
       }
 
@@ -1238,7 +1305,10 @@ export class GamesService {
 
       this.logger.log(`Announced match results for game ${gameId}`);
     } catch (error) {
-      this.logger.error(`Failed to announce match results for game ${gameId}:`, error);
+      this.logger.error(
+        `Failed to announce match results for game ${gameId}:`,
+        error,
+      );
       // Continue even if Discord fails
     }
   }
@@ -1280,7 +1350,9 @@ export class GamesService {
       });
 
       if (!game || game.participants.length === 0) {
-        this.logger.debug(`No verified participants for game ${gameId}, skipping channel results`);
+        this.logger.debug(
+          `No verified participants for game ${gameId}, skipping channel results`,
+        );
         return;
       }
 
@@ -1295,7 +1367,10 @@ export class GamesService {
       let previousScore: number | null = null;
 
       for (const participant of game.participants) {
-        if (previousScore !== null && participant.totalScore !== previousScore) {
+        if (
+          previousScore !== null &&
+          participant.totalScore !== previousScore
+        ) {
           currentPosition = participantsWithPositions.length + 1;
         }
 
@@ -1321,7 +1396,10 @@ export class GamesService {
 
       this.logger.log(`Posted match results to channel for game ${gameId}`);
     } catch (error) {
-      this.logger.error(`Failed to post match results to channel for game ${gameId}:`, error);
+      this.logger.error(
+        `Failed to post match results to channel for game ${gameId}:`,
+        error,
+      );
     }
   }
 
@@ -1337,8 +1415,13 @@ export class GamesService {
         user: { displayName: string | null };
       }>;
     },
-  ): { teamLabel: string; score: number; rank: number; members: string[] }[] | undefined {
-    if ((category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') || !game.teamScores) {
+  ):
+    | { teamLabel: string; score: number; rank: number; members: string[] }[]
+    | undefined {
+    if (
+      (category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') ||
+      !game.teamScores
+    ) {
       return undefined;
     }
 
@@ -1373,8 +1456,13 @@ export class GamesService {
         user: { displayName: string | null };
       }>;
     },
-  ): Array<{ label: string; score: number; rank: number; members: string[] }> | undefined {
-    if ((category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') || !game.teamScores) {
+  ):
+    | Array<{ label: string; score: number; rank: number; members: string[] }>
+    | undefined {
+    if (
+      (category !== 'TEAM_CLASSIC' && category !== 'TEAM_GP') ||
+      !game.teamScores
+    ) {
       return undefined;
     }
 
@@ -1408,7 +1496,10 @@ export class GamesService {
   /**
    * Get current split vote status for a game
    */
-  async getSplitVoteStatus(gameId: number, userId: number): Promise<SplitVoteStatus> {
+  async getSplitVoteStatus(
+    gameId: number,
+    userId: number,
+  ): Promise<SplitVoteStatus> {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: {
@@ -1455,7 +1546,10 @@ export class GamesService {
   /**
    * Cast a split vote
    */
-  async castSplitVote(gameId: number, userId: number): Promise<SplitVoteResult> {
+  async castSplitVote(
+    gameId: number,
+    userId: number,
+  ): Promise<SplitVoteResult> {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
       include: {
@@ -1474,11 +1568,15 @@ export class GamesService {
 
     // Check if match is IN_PROGRESS
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
-      throw new BadRequestException('Can only vote during an in-progress match');
+      throw new BadRequestException(
+        'Can only vote during an in-progress match',
+      );
     }
 
     // Check if user is a participant
-    const isParticipant = game.match.participants.some((p) => p.userId === userId);
+    const isParticipant = game.match.participants.some(
+      (p) => p.userId === userId,
+    );
     if (!isParticipant) {
       throw new ForbiddenException('Only participants can vote');
     }
@@ -1582,7 +1680,9 @@ export class GamesService {
 
     // Check if match is IN_PROGRESS
     if (game.match.status !== MatchStatus.IN_PROGRESS) {
-      throw new BadRequestException('Can only regenerate passcode during an in-progress match');
+      throw new BadRequestException(
+        'Can only regenerate passcode during an in-progress match',
+      );
     }
 
     // Generate new passcode
@@ -1696,12 +1796,17 @@ export class GamesService {
     }
 
     // Allow verification of PENDING or REJECTED scores (after screenshot resubmission)
-    if (participant.status !== ResultStatus.PENDING && participant.status !== ResultStatus.REJECTED) {
+    if (
+      participant.status !== ResultStatus.PENDING &&
+      participant.status !== ResultStatus.REJECTED
+    ) {
       // Already verified or in other state
       if (participant.status === ResultStatus.VERIFIED) {
         return participant;
       }
-      throw new BadRequestException('Can only verify pending or rejected scores');
+      throw new BadRequestException(
+        'Can only verify pending or rejected scores',
+      );
     }
 
     // Check for position conflicts in CLASSIC modes
@@ -1748,11 +1853,19 @@ export class GamesService {
           const targetRr = participant.raceResults.find(
             (r) => r.raceNumber === raceNumber,
           );
-          if (targetRr && targetRr.position !== null && !targetRr.isDisconnected) {
-            const tiedUsers = positionCounts.get(targetRr!.position!);
-            if (tiedUsers && tiedUsers.length > 1 && tiedUsers.includes(targetUserId)) {
+          if (
+            targetRr &&
+            targetRr.position !== null &&
+            !targetRr.isDisconnected
+          ) {
+            const tiedUsers = positionCounts.get(targetRr.position);
+            if (
+              tiedUsers &&
+              tiedUsers.length > 1 &&
+              tiedUsers.includes(targetUserId)
+            ) {
               // Check if this tie causes the invalid position
-              const pos = targetRr!.position!;
+              const pos = targetRr.position;
               for (let i = 1; i < tiedUsers.length; i++) {
                 if (pos + i === invalidPos) {
                   throw new BadRequestException(
@@ -1879,7 +1992,9 @@ export class GamesService {
       where: {
         gameId,
         userId: targetUserId,
-        type: { in: [ScreenshotType.INDIVIDUAL_1, ScreenshotType.INDIVIDUAL_2] },
+        type: {
+          in: [ScreenshotType.INDIVIDUAL_1, ScreenshotType.INDIVIDUAL_2],
+        },
         deletedAt: null,
       },
       data: {
@@ -2053,7 +2168,8 @@ export class GamesService {
 
     // Discord notification via channel
     if (game.discordChannelId && updated.user.discordId) {
-      const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
+      const category =
+        game.match.season?.event?.category?.toLowerCase() || 'classic';
       const seasonNumber = game.match.season?.seasonNumber ?? 1;
       const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
       const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonSlug}/${game.match.matchNumber}`;
@@ -2077,7 +2193,10 @@ export class GamesService {
    */
   async notifyPositionConflict(
     gameId: number,
-    conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }>,
+    conflicts: Array<{
+      raceNumber: number;
+      users: Array<{ userId: number; position: number }>;
+    }>,
   ) {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
@@ -2097,11 +2216,16 @@ export class GamesService {
     }
 
     if (!game.discordChannelId) {
-      return { success: false, message: 'No Discord channel linked to this game' };
+      return {
+        success: false,
+        message: 'No Discord channel linked to this game',
+      };
     }
 
     // Collect all unique user IDs from conflicts
-    const userIds = [...new Set(conflicts.flatMap((c) => c.users.map((u) => u.userId)))];
+    const userIds = [
+      ...new Set(conflicts.flatMap((c) => c.users.map((u) => u.userId))),
+    ];
 
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds } },
@@ -2122,16 +2246,18 @@ export class GamesService {
       }),
     }));
 
-    const category = game.match.season?.event?.category?.toLowerCase() || 'classic';
+    const category =
+      game.match.season?.event?.category?.toLowerCase() || 'classic';
     const seasonNumber = game.match.season?.seasonNumber ?? 1;
     const seasonSlug = seasonNumber === -1 ? 'unrated' : String(seasonNumber);
     const matchUrl = `${process.env.FRONTEND_URL}/matches/${category}/${seasonSlug}/${game.match.matchNumber}`;
 
-    const success = await this.discordBotService.postPositionConflictNotification(
-      game.discordChannelId,
-      enrichedConflicts,
-      matchUrl,
-    );
+    const success =
+      await this.discordBotService.postPositionConflictNotification(
+        game.discordChannelId,
+        enrichedConflicts,
+        matchUrl,
+      );
 
     return { success };
   }
@@ -2206,5 +2332,4 @@ export class GamesService {
       `Calculated team scores for game ${gameId}: ${JSON.stringify(teamScores)}`,
     );
   }
-
 }

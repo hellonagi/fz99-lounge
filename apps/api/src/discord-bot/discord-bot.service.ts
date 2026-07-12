@@ -91,7 +91,12 @@ export interface AnnounceMatchResultsParams {
   category: string;
   seasonName: string;
   topParticipants: MatchResultParticipant[];
-  topTeams?: { teamLabel: string; score: number; rank: number; members: string[] }[];
+  topTeams?: {
+    teamLabel: string;
+    score: number;
+    rank: number;
+    members: string[];
+  }[];
   isRated?: boolean;
 }
 
@@ -145,7 +150,12 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
       ],
-      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
+      partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction,
+        Partials.User,
+      ],
     });
 
     this.client.on('ready', async () => {
@@ -215,7 +225,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private getTournamentPasscodeChannelId(): string | undefined {
-    return this.configService.get<string>('DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID');
+    return this.configService.get<string>(
+      'DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID',
+    );
   }
 
   private getTournamentRoleId(): string | undefined {
@@ -227,7 +239,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private getReactionRoleEmoji(): string {
-    return this.configService.get<string>('DISCORD_REACTION_ROLE_EMOJI') || '🔔';
+    return (
+      this.configService.get<string>('DISCORD_REACTION_ROLE_EMOJI') || '🔔'
+    );
   }
 
   private getReactionRoleMessageId(): string | undefined {
@@ -253,7 +267,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     try {
       const channel = await this.client.channels.fetch(channelId);
       if (!channel || !channel.isTextBased()) {
-        this.logger.warn(`Reaction role channel ${channelId} not found or not text-based`);
+        this.logger.warn(
+          `Reaction role channel ${channelId} not found or not text-based`,
+        );
         return;
       }
 
@@ -264,7 +280,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       } catch {
         this.logger.warn(
           `Reaction role message ${messageId} not found in channel ${channelId}. ` +
-          'Please check DISCORD_REACTION_ROLE_MESSAGE_ID is correct.',
+            'Please check DISCORD_REACTION_ROLE_MESSAGE_ID is correct.',
         );
       }
     } catch (error) {
@@ -433,7 +449,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async fetchUserAvatarHash(discordId: string): Promise<string | null | undefined> {
+  async fetchUserAvatarHash(
+    discordId: string,
+  ): Promise<string | null | undefined> {
     if (!this.isReady || !this.isEnabled()) {
       return undefined;
     }
@@ -456,7 +474,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     params: CreatePasscodeChannelParams,
   ): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping channel creation');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping channel creation',
+      );
       return null;
     }
 
@@ -468,7 +488,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const guild = await this.client.guilds.fetch(guildId);
-      const seasonLabel = params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
+      const seasonLabel =
+        params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
       const channelName = `${params.category}-${seasonLabel}-game${params.matchNumber}`;
 
       // Build permission overwrites
@@ -522,7 +543,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Post initial passcode message
-      const baseUrl = this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+      const baseUrl =
+        this.configService.get<string>('CORS_ORIGIN') ||
+        'https://fz99lounge.com';
       const matchUrl = `${baseUrl}/matches/${params.category}/${params.seasonNumber}/${params.matchNumber}`;
 
       const fields: { name: string; value: string; inline?: boolean }[] = [
@@ -574,7 +597,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     params: CreateTeamSetupChannelParams,
   ): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping channel creation');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping channel creation',
+      );
       return null;
     }
 
@@ -586,7 +611,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const guild = await this.client.guilds.fetch(guildId);
-      const seasonLabel = params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
+      const seasonLabel =
+        params.seasonNumber === -1 ? 'unrated' : `s${params.seasonNumber}`;
       const channelName = `${params.category}-${seasonLabel}-game${params.matchNumber}`;
 
       // Build permission overwrites
@@ -647,10 +673,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .setDescription(
           'Please check the match page and change your machine color.\n試合ページを確認して、マシンカラーを変更してください。',
         )
-        .addFields(
-          ...teamFields,
-          { name: 'Match Page', value: params.matchUrl },
-        );
+        .addFields(...teamFields, {
+          name: 'Match Page',
+          value: params.matchUrl,
+        });
 
       await channel.send({ content: '@here', embeds: [embed] });
 
@@ -677,9 +703,14 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   /**
    * Post passcode to an existing Discord channel (for TEAM_CLASSIC passcode reveal)
    */
-  async postPasscodeToChannel(gameId: number, passcode: string): Promise<boolean> {
+  async postPasscodeToChannel(
+    gameId: number,
+    passcode: string,
+  ): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping passcode post');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping passcode post',
+      );
       return false;
     }
 
@@ -719,7 +750,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         )
         .addFields(...fields);
 
-      await (channel as TextChannel).send({ content: '@here', embeds: [embed] });
+      await (channel as TextChannel).send({
+        content: '@here',
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Posted passcode to channel ${game.discordChannelId} for game ${gameId}`,
@@ -740,7 +774,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
    */
   async postNewPasscode(params: PostNewPasscodeParams): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping passcode post');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping passcode post',
+      );
       return false;
     }
 
@@ -780,7 +816,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         )
         .addFields(...fields);
 
-      await (channel as TextChannel).send({ content: '@here', embeds: [embed] });
+      await (channel as TextChannel).send({
+        content: '@here',
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Posted new passcode to channel ${game.discordChannelId} for game ${params.gameId}`,
@@ -814,9 +853,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     try {
       const channel = await this.client.channels.fetch(channelId);
       if (!channel || !channel.isTextBased()) {
-        this.logger.warn(
-          `Channel ${channelId} not found or not text-based`,
-        );
+        this.logger.warn(`Channel ${channelId} not found or not text-based`);
         return false;
       }
 
@@ -825,15 +862,18 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .setColor(0xe74c3c)
         .setDescription(
           'Your score has been rejected by a moderator. Please:\n' +
-          '1. Resubmit your score on the match page\n' +
-          '2. Post your result screenshot in this channel\n\n' +
-          'モデレーターによりスコアが却下されました:\n' +
-          '1. 試合ページからスコアを再提出してください\n' +
-          '2. 結果のスクリーンショットをこのチャンネルに投稿してください',
+            '1. Resubmit your score on the match page\n' +
+            '2. Post your result screenshot in this channel\n\n' +
+            'モデレーターによりスコアが却下されました:\n' +
+            '1. 試合ページからスコアを再提出してください\n' +
+            '2. 結果のスクリーンショットをこのチャンネルに投稿してください',
         )
         .addFields({ name: 'Match Page', value: matchUrl });
 
-      await (channel as TextChannel).send({ content: `<@${discordId}>`, embeds: [embed] });
+      await (channel as TextChannel).send({
+        content: `<@${discordId}>`,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Posted screenshot request to channel ${channelId} for user ${discordId}`,
@@ -856,7 +896,11 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     channelId: string,
     conflicts: Array<{
       raceNumber: number;
-      users: Array<{ userName: string; discordId: string | null; position: number }>;
+      users: Array<{
+        userName: string;
+        discordId: string | null;
+        position: number;
+      }>;
     }>,
     matchUrl: string,
   ): Promise<boolean> {
@@ -870,29 +914,29 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     try {
       const channel = await this.client.channels.fetch(channelId);
       if (!channel || !channel.isTextBased()) {
-        this.logger.warn(
-          `Channel ${channelId} not found or not text-based`,
-        );
+        this.logger.warn(`Channel ${channelId} not found or not text-based`);
         return false;
       }
 
-      const conflictLines = conflicts.map((c) => {
-        const userLines = c.users
-          .map((u) => `${u.userName} (${u.position})`)
-          .join('\n');
-        return `**Race ${c.raceNumber}**\n${userLines}`;
-      }).join('\n\n');
+      const conflictLines = conflicts
+        .map((c) => {
+          const userLines = c.users
+            .map((u) => `${u.userName} (${u.position})`)
+            .join('\n');
+          return `**Race ${c.raceNumber}**\n${userLines}`;
+        })
+        .join('\n\n');
 
       const embed = new EmbedBuilder()
         .setTitle('Position Conflict / 順位の不整合')
         .setColor(0xf1c40f)
         .setDescription(
           conflictLines +
-          '\n\n' +
-          'A position conflict was detected. One or more players above may have submitted an incorrect position. ' +
-          'Please check your results and resubmit if needed.\n\n' +
-          '上記プレイヤー間で順位の不整合が検出されました。' +
-          '誤った順位で提出していないか確認し、必要であれば再提出してください。',
+            '\n\n' +
+            'A position conflict was detected. One or more players above may have submitted an incorrect position. ' +
+            'Please check your results and resubmit if needed.\n\n' +
+            '上記プレイヤー間で順位の不整合が検出されました。' +
+            '誤った順位で提出していないか確認し、必要であれば再提出してください。',
         )
         .addFields({ name: 'Match Page', value: matchUrl });
 
@@ -933,7 +977,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     deadline: Date,
   ): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping score submission reminder');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping score submission reminder',
+      );
       return false;
     }
 
@@ -957,13 +1003,16 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .setColor(0xf39c12)
         .setDescription(
           `Please submit your score on the match page.\n` +
-          `If not submitted by **${deadlineStr}**, your score will be counted as 0 points.\n\n` +
-          `試合ページからスコアを提出してください。\n` +
-          `**${deadlineStr}** までに未提出の場合、0ポイント扱いになります。`,
+            `If not submitted by **${deadlineStr}**, your score will be counted as 0 points.\n\n` +
+            `試合ページからスコアを提出してください。\n` +
+            `**${deadlineStr}** までに未提出の場合、0ポイント扱いになります。`,
         )
         .addFields({ name: 'Match Page', value: matchUrl });
 
-      await (channel as TextChannel).send({ content: mentions, embeds: [embed] });
+      await (channel as TextChannel).send({
+        content: mentions,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Posted score submission reminder to channel ${channelId} for ${unsubmittedDiscordIds.length} users`,
@@ -984,7 +1033,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
    */
   async postCancellationMessage(gameId: number): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping cancellation message');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping cancellation message',
+      );
       return false;
     }
 
@@ -1043,11 +1094,18 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       displayName: string;
       totalScore: number;
     }>;
-    allTeams?: Array<{ label: string; score: number; rank: number; members: string[] }>;
+    allTeams?: Array<{
+      label: string;
+      score: number;
+      rank: number;
+      members: string[];
+    }>;
     isRated?: boolean;
   }): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping match results to channel');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping match results to channel',
+      );
       return false;
     }
 
@@ -1137,7 +1195,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
    */
   async deletePasscodeChannel(gameId: number): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) {
-      this.logger.debug('Discord bot not ready or disabled, skipping channel deletion');
+      this.logger.debug(
+        'Discord bot not ready or disabled, skipping channel deletion',
+      );
       return false;
     }
 
@@ -1216,7 +1276,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       // Build join link
       const baseUrl =
-        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+        this.configService.get<string>('CORS_ORIGIN') ||
+        'https://fz99lounge.com';
 
       // Build role mention
       const roleId = this.getMatchNotifyRoleId();
@@ -1237,11 +1298,18 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
             value: `${params.minPlayers}-${params.maxPlayers}`,
             inline: true,
           },
-          { name: 'Created by', value: params.creatorDisplayName, inline: true },
+          {
+            name: 'Created by',
+            value: params.creatorDisplayName,
+            inline: true,
+          },
           { name: 'Join', value: baseUrl },
         );
 
-      await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      await (channel as TextChannel).send({
+        content: roleMention,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Announced match #${params.matchNumber} creation to channel ${channelId}`,
@@ -1286,7 +1354,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       const baseUrl =
-        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+        this.configService.get<string>('CORS_ORIGIN') ||
+        'https://fz99lounge.com';
 
       // Build role mention
       const roleId = this.getMatchNotifyRoleId();
@@ -1301,7 +1370,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         )
         .addFields({ name: 'Join', value: baseUrl });
 
-      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      const message = await (channel as TextChannel).send({
+        content: roleMention,
+        embeds: [embed],
+      });
 
       if (channel.type === ChannelType.GuildAnnouncement) {
         await message.crosspost();
@@ -1370,11 +1442,15 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       } else if (params.reason === 'admin_cancelled') {
         embed.addFields({
           name: 'Reason / 理由',
-          value: 'Cancelled by administrator / 管理者によりキャンセルされました',
+          value:
+            'Cancelled by administrator / 管理者によりキャンセルされました',
         });
       }
 
-      await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      await (channel as TextChannel).send({
+        content: roleMention,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Announced match #${params.matchNumber} cancellation to channel ${channelId}`,
@@ -1419,7 +1495,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       const baseUrl =
-        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+        this.configService.get<string>('CORS_ORIGIN') ||
+        'https://fz99lounge.com';
       const seasonSlug =
         params.seasonNumber === -1 ? 'unrated' : params.seasonNumber;
       const matchUrl = `${baseUrl}/matches/${params.category}/${seasonSlug}/${params.matchNumber}`;
@@ -1455,7 +1532,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const seasonLabelEn =
         params.seasonNumber === -1 ? 'Unrated' : `Season${params.seasonNumber}`;
       const seasonLabelJa =
-        params.seasonNumber === -1 ? 'Unrated' : `シーズン${params.seasonNumber}`;
+        params.seasonNumber === -1
+          ? 'Unrated'
+          : `シーズン${params.seasonNumber}`;
       const embed = new EmbedBuilder()
         .setTitle(`Match Results${unratedLabel}`)
         .setColor(params.isRated === false ? 0x808080 : 0xf39c12)
@@ -1510,7 +1589,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       const baseUrl =
-        this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+        this.configService.get<string>('CORS_ORIGIN') ||
+        'https://fz99lounge.com';
 
       const lines = entries.map((e) => {
         const ts = Math.floor(e.scheduledStart.getTime() / 1000);
@@ -1583,19 +1663,32 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
       const fields = [
-        { name: 'Game Mode', value: params.inGameMode.replace(/_/g, ' '), inline: true },
+        {
+          name: 'Game Mode',
+          value: params.inGameMode.replace(/_/g, ' '),
+          inline: true,
+        },
       ];
       if (params.league) {
-        fields.push({ name: 'League', value: params.league.replace(/_/g, ' '), inline: true });
+        fields.push({
+          name: 'League',
+          value: params.league.replace(/_/g, ' '),
+          inline: true,
+        });
       }
 
       const embed = new EmbedBuilder()
         .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
         .setColor(0x9b59b6)
-        .setDescription(params.description || `Passcode reveals <t:${revealTs}:R>`)
+        .setDescription(
+          params.description || `Passcode reveals <t:${revealTs}:R>`,
+        )
         .addFields(fields);
 
-      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      const message = await (channel as TextChannel).send({
+        content: roleMention,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Announced tournament countdown for ${params.roundLabel} to channel ${channelId}`,
@@ -1648,10 +1741,14 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       // Delete countdown message
       if (params.countdownMessageId) {
         try {
-          const msg = await (channel as TextChannel).messages.fetch(params.countdownMessageId);
+          const msg = await (channel as TextChannel).messages.fetch(
+            params.countdownMessageId,
+          );
           await msg.delete();
         } catch {
-          this.logger.debug('Could not delete countdown message, may already be deleted');
+          this.logger.debug(
+            'Could not delete countdown message, may already be deleted',
+          );
         }
       }
 
@@ -1659,13 +1756,29 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
       const fields = [
-        { name: 'Game Mode', value: params.inGameMode.replace(/_/g, ' '), inline: true },
+        {
+          name: 'Game Mode',
+          value: params.inGameMode.replace(/_/g, ' '),
+          inline: true,
+        },
       ];
       if (params.league) {
-        fields.push({ name: 'League', value: params.league.replace(/_/g, ' '), inline: true });
+        fields.push({
+          name: 'League',
+          value: params.league.replace(/_/g, ' '),
+          inline: true,
+        });
       }
-      fields.push({ name: 'Passcode', value: `**${params.passcode}**`, inline: false });
-      fields.push({ name: 'Score Submission', value: params.scoreUrl, inline: false });
+      fields.push({
+        name: 'Passcode',
+        value: `**${params.passcode}**`,
+        inline: false,
+      });
+      fields.push({
+        name: 'Score Submission',
+        value: params.scoreUrl,
+        inline: false,
+      });
 
       const embed = new EmbedBuilder()
         .setTitle(`${params.roundLabel} Started`)
@@ -1675,7 +1788,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         )
         .addFields(fields);
 
-      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      const message = await (channel as TextChannel).send({
+        content: roleMention,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Announced tournament passcode for ${params.roundLabel} to channel ${channelId}`,
@@ -1726,7 +1842,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
           'A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes.\n\n部屋が分かれました。ロビーから退出してください。\n2分以内にパスコードを再生成します。',
         );
 
-      const message = await (channel as TextChannel).send({ content: roleMention, embeds: [embed] });
+      const message = await (channel as TextChannel).send({
+        content: roleMention,
+        embeds: [embed],
+      });
 
       this.logger.log(
         `Announced tournament split for ${params.roundLabel} to channel ${channelId}`,

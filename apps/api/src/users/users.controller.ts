@@ -1,4 +1,13 @@
-import { Controller, Get, Put, Param, Body, UseGuards, Req, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  Query,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -17,21 +26,30 @@ export class UsersController {
 
   @Put('me/display-name')
   @UseGuards(JwtAuthGuard)
-  async updateDisplayName(@Req() req: Request, @Body() body: { displayName: string }) {
+  async updateDisplayName(
+    @Req() req: Request,
+    @Body() body: { displayName: string },
+  ) {
     const user = req.user as any;
     return this.usersService.updateDisplayName(user.id, body.displayName);
   }
 
   @Put('me')
   @UseGuards(JwtAuthGuard)
-  async updateMe(@Req() req: Request, @Body() updateProfileDto: UpdateProfileDto) {
+  async updateMe(
+    @Req() req: Request,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
     const user = req.user as any;
     return this.usersService.updateStreamUrls(user.id, updateProfileDto);
   }
 
   @Put('me/profile')
   @UseGuards(JwtAuthGuard)
-  async updateProfile(@Req() req: Request, @Body() updateProfileDto: UpdateProfileDto) {
+  async updateProfile(
+    @Req() req: Request,
+    @Body() updateProfileDto: UpdateProfileDto,
+  ) {
     const user = req.user as any;
     return this.usersService.updateProfile(user.id, updateProfileDto);
   }
@@ -50,7 +68,8 @@ export class UsersController {
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
   ) {
-    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
+    const parsedSeason =
+      seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getLeaderboard(
       mode,
       parsedSeason,
@@ -70,8 +89,13 @@ export class UsersController {
     @Query('seasonNumber') seasonNumber?: string,
     @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
   ) {
-    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
-    return this.usersService.findByProfileNumber(parseInt(profileId, 10), parsedSeason, category);
+    const parsedSeason =
+      seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
+    return this.usersService.findByProfileNumber(
+      parseInt(profileId, 10),
+      parsedSeason,
+      category,
+    );
   }
 
   @Get(':id/seasons')
@@ -95,7 +119,8 @@ export class UsersController {
     @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
     @Query('seasonNumber') seasonNumber?: string,
   ) {
-    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
+    const parsedSeason =
+      seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getUserMatchHistory(
       parseInt(id, 10),
       parseInt(limit, 10),
@@ -111,7 +136,8 @@ export class UsersController {
     @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
     @Query('seasonNumber') seasonNumber?: string,
   ) {
-    const parsedSeason = seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
+    const parsedSeason =
+      seasonNumber !== undefined ? parseInt(seasonNumber, 10) : undefined;
     return this.usersService.getUserRatingHistory(
       parseInt(id, 10),
       category,
@@ -124,9 +150,6 @@ export class UsersController {
     @Param('id') id: string,
     @Query('category') category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
   ) {
-    return this.usersService.getUserTrackStats(
-      parseInt(id, 10),
-      category,
-    );
+    return this.usersService.getUserTrackStats(parseInt(id, 10), category);
   }
 }

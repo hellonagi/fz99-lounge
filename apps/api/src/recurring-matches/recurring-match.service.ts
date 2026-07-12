@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { EventCategory, InGameMode, League } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchesService } from '../matches/matches.service';
@@ -28,12 +33,14 @@ export class RecurringMatchService {
     // Validate daysOfWeek values (0-6) in all rules
     for (const rule of dto.rules) {
       if (rule.daysOfWeek.some((d) => d < 0 || d > 6)) {
-        throw new BadRequestException('daysOfWeek values must be between 0 and 6');
+        throw new BadRequestException(
+          'daysOfWeek values must be between 0 and 6',
+        );
       }
     }
 
     // スパン重複チェック
-    await this.validateNoTimeOverlap(null, dto.eventCategory as EventCategory, dto.rules);
+    await this.validateNoTimeOverlap(null, dto.eventCategory, dto.rules);
 
     // 1カテゴリ1スケジュール制約チェック
     const existing = await this.prisma.recurringMatch.findUnique({
@@ -50,8 +57,16 @@ export class RecurringMatchService {
         eventCategory: dto.eventCategory,
         inGameMode: dto.inGameMode,
         leagueType: dto.leagueType,
-        minPlayers: dto.minPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 10 : 4),
-        maxPlayers: dto.maxPlayers ?? (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP' ? 99 : 20),
+        minPlayers:
+          dto.minPlayers ??
+          (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP'
+            ? 10
+            : 4),
+        maxPlayers:
+          dto.maxPlayers ??
+          (dto.eventCategory === 'GP' || dto.eventCategory === 'TEAM_GP'
+            ? 99
+            : 20),
         name: dto.name,
         notes: dto.notes,
         createdBy,
@@ -105,12 +120,14 @@ export class RecurringMatchService {
     if (dto.rules) {
       for (const rule of dto.rules) {
         if (rule.daysOfWeek?.some((d) => d < 0 || d > 6)) {
-          throw new BadRequestException('daysOfWeek values must be between 0 and 6');
+          throw new BadRequestException(
+            'daysOfWeek values must be between 0 and 6',
+          );
         }
       }
 
       // スパン重複チェック
-      const category = (dto.eventCategory ?? existing.eventCategory) as EventCategory;
+      const category = dto.eventCategory ?? existing.eventCategory;
       await this.validateNoTimeOverlap(id, category, dto.rules);
     }
 
@@ -119,7 +136,9 @@ export class RecurringMatchService {
       await tx.recurringMatch.update({
         where: { id },
         data: {
-          ...(dto.eventCategory !== undefined && { eventCategory: dto.eventCategory }),
+          ...(dto.eventCategory !== undefined && {
+            eventCategory: dto.eventCategory,
+          }),
           ...(dto.inGameMode !== undefined && { inGameMode: dto.inGameMode }),
           ...(dto.leagueType !== undefined && { leagueType: dto.leagueType }),
           ...(dto.minPlayers !== undefined && { minPlayers: dto.minPlayers }),
@@ -131,7 +150,9 @@ export class RecurringMatchService {
 
       // Replace all rules if provided
       if (dto.rules) {
-        await tx.recurringMatchRule.deleteMany({ where: { recurringMatchId: id } });
+        await tx.recurringMatchRule.deleteMany({
+          where: { recurringMatchId: id },
+        });
         await tx.recurringMatchRule.createMany({
           data: dto.rules.map((rule) => ({
             recurringMatchId: id,
@@ -148,12 +169,20 @@ export class RecurringMatchService {
       const savedParticipants = await this.collectParticipantsForSchedule(id);
       await this.deleteWaitingMatchesForSchedule(id);
       if (updated.isEnabled) {
-        await this.generateMatchesForSchedule(updated, 8, userId ?? updated.createdBy ?? undefined);
+        await this.generateMatchesForSchedule(
+          updated,
+          8,
+          userId ?? updated.createdBy ?? undefined,
+        );
         await this.restoreParticipantsForSchedule(id, savedParticipants);
       }
     } else if (updated.isEnabled) {
       // No rule change, just fill in any missing matches
-      await this.generateMatchesForSchedule(updated, 8, userId ?? updated.createdBy ?? undefined);
+      await this.generateMatchesForSchedule(
+        updated,
+        8,
+        userId ?? updated.createdBy ?? undefined,
+      );
     }
 
     return updated;
@@ -173,7 +202,11 @@ export class RecurringMatchService {
     if (enabled) {
       // Re-fetch after deleteWaitingMatchesForSchedule resets lastScheduledAt to null
       const freshSchedule = await this.findById(id);
-      await this.generateMatchesForSchedule(freshSchedule, 8, userId ?? freshSchedule.createdBy ?? undefined);
+      await this.generateMatchesForSchedule(
+        freshSchedule,
+        8,
+        userId ?? freshSchedule.createdBy ?? undefined,
+      );
       await this.restoreParticipantsForSchedule(id, savedParticipants);
     }
 
@@ -247,7 +280,9 @@ export class RecurringMatchService {
   /**
    * Delete all WAITING matches linked to a schedule, then reassign matchNumbers.
    */
-  private async deleteWaitingMatchesForSchedule(scheduleId: number): Promise<void> {
+  private async deleteWaitingMatchesForSchedule(
+    scheduleId: number,
+  ): Promise<void> {
     // Find WAITING matches for this schedule to get their seasonIds
     const waitingMatches = await this.prisma.match.findMany({
       where: { recurringMatchId: scheduleId, status: 'WAITING' },
@@ -268,7 +303,9 @@ export class RecurringMatchService {
 
       await this.prisma.$transaction(async (tx) => {
         await tx.game.deleteMany({ where: { matchId: { in: matchIds } } });
-        await tx.matchParticipant.deleteMany({ where: { matchId: { in: matchIds } } });
+        await tx.matchParticipant.deleteMany({
+          where: { matchId: { in: matchIds } },
+        });
         await tx.match.deleteMany({
           where: { recurringMatchId: scheduleId, status: 'WAITING' },
         });
@@ -325,7 +362,9 @@ export class RecurringMatchService {
     }
 
     // 他の有効スケジュールとのチェック
-    const spanCategories = Object.keys(CATEGORY_SPAN_MINUTES) as EventCategory[];
+    const spanCategories = Object.keys(
+      CATEGORY_SPAN_MINUTES,
+    ) as EventCategory[];
     const otherSchedules = await this.prisma.recurringMatch.findMany({
       where: {
         ...(scheduleId && { id: { not: scheduleId } }),
@@ -450,10 +489,19 @@ export class RecurringMatchService {
           let inGameMode = schedule.inGameMode;
           let leagueType = schedule.leagueType ?? undefined;
 
-          if ((schedule.eventCategory === EventCategory.GP || schedule.eventCategory === EventCategory.TEAM_GP) && !schedule.leagueType) {
-            leagueType = await this.pickLeastPlayedLeague(schedule.eventCategory, season.id);
+          if (
+            (schedule.eventCategory === EventCategory.GP ||
+              schedule.eventCategory === EventCategory.TEAM_GP) &&
+            !schedule.leagueType
+          ) {
+            leagueType = await this.pickLeastPlayedLeague(
+              schedule.eventCategory,
+              season.id,
+            );
             const isMirror = leagueType.startsWith('MIRROR_');
-            inGameMode = isMirror ? InGameMode.MIRROR_GRAND_PRIX : InGameMode.GRAND_PRIX;
+            inGameMode = isMirror
+              ? InGameMode.MIRROR_GRAND_PRIX
+              : InGameMode.GRAND_PRIX;
           }
 
           await this.matchesService.create(
@@ -502,8 +550,14 @@ export class RecurringMatchService {
     seasonId: number,
   ): Promise<League> {
     const allGpLeagues: League[] = [
-      League.KNIGHT, League.QUEEN, League.KING, League.ACE,
-      League.MIRROR_KNIGHT, League.MIRROR_QUEEN, League.MIRROR_KING, League.MIRROR_ACE,
+      League.KNIGHT,
+      League.QUEEN,
+      League.KING,
+      League.ACE,
+      League.MIRROR_KNIGHT,
+      League.MIRROR_QUEEN,
+      League.MIRROR_KING,
+      League.MIRROR_ACE,
     ];
 
     // Count games per league in this season (excluding cancelled matches)

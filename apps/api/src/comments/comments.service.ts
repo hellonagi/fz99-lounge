@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -10,7 +15,13 @@ const MODERATOR_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.MODERATOR];
 type CommentWithUser = Prisma.NewsCommentGetPayload<{
   include: {
     user: {
-      select: { id: true; displayName: true; username: true; avatarHash: true; discordId: true };
+      select: {
+        id: true;
+        displayName: true;
+        username: true;
+        avatarHash: true;
+        discordId: true;
+      };
     };
   };
 }>;
@@ -24,9 +35,19 @@ export type CommentDto = {
   isDeleted: boolean;
   isOwn: boolean;
   createdAt: string;
-  user: { id: number; displayName: string; avatarHash: string | null; discordId: string } | null;
+  user: {
+    id: number;
+    displayName: string;
+    avatarHash: string | null;
+    discordId: string;
+  } | null;
   anonymousPilot: { name: string; nameJa: string; color: string } | null;
-  revealedUser?: { id: number; displayName: string; avatarHash: string | null; discordId: string };
+  revealedUser?: {
+    id: number;
+    displayName: string;
+    avatarHash: string | null;
+    discordId: string;
+  };
   replies?: CommentDto[];
 };
 
@@ -34,13 +55,22 @@ export type CommentDto = {
 export class CommentsService {
   constructor(private prisma: PrismaService) {}
 
-  async listForArticle(newsSlug: string, viewerId: number | null): Promise<CommentDto[]> {
+  async listForArticle(
+    newsSlug: string,
+    viewerId: number | null,
+  ): Promise<CommentDto[]> {
     const comments = await this.prisma.newsComment.findMany({
       where: { newsSlug },
       orderBy: { createdAt: 'asc' },
       include: {
         user: {
-          select: { id: true, displayName: true, username: true, avatarHash: true, discordId: true },
+          select: {
+            id: true,
+            displayName: true,
+            username: true,
+            avatarHash: true,
+            discordId: true,
+          },
         },
       },
     });
@@ -57,22 +87,36 @@ export class CommentsService {
 
     return tops.map((top) => ({
       ...this.toPublicDto(top, viewerId),
-      replies: (repliesByParent.get(top.id) ?? []).map((r) => this.toPublicDto(r, viewerId)),
+      replies: (repliesByParent.get(top.id) ?? []).map((r) =>
+        this.toPublicDto(r, viewerId),
+      ),
     }));
   }
 
-  getPilotForUser(newsSlug: string, userId: number): { name: string; nameJa: string; color: string } {
+  getPilotForUser(
+    newsSlug: string,
+    userId: number,
+  ): { name: string; nameJa: string; color: string } {
     const p = getAnonymousPilot(newsSlug, userId);
     return { name: p.name, nameJa: p.nameJa, color: p.color };
   }
 
-  async listAllForAdmin(limit = 200, viewerId: number | null): Promise<CommentDto[]> {
+  async listAllForAdmin(
+    limit = 200,
+    viewerId: number | null,
+  ): Promise<CommentDto[]> {
     const comments = await this.prisma.newsComment.findMany({
       orderBy: { createdAt: 'desc' },
       take: limit,
       include: {
         user: {
-          select: { id: true, displayName: true, username: true, avatarHash: true, discordId: true },
+          select: {
+            id: true,
+            displayName: true,
+            username: true,
+            avatarHash: true,
+            discordId: true,
+          },
         },
       },
     });
@@ -98,10 +142,14 @@ export class CommentsService {
         throw new BadRequestException('Parent comment not found');
       }
       if (parent.parentId !== null) {
-        throw new BadRequestException('Replies can only be made to top-level comments');
+        throw new BadRequestException(
+          'Replies can only be made to top-level comments',
+        );
       }
       if (parent.newsSlug !== dto.newsSlug) {
-        throw new BadRequestException('Parent comment belongs to a different article');
+        throw new BadRequestException(
+          'Parent comment belongs to a different article',
+        );
       }
       if (parent.deletedAt !== null) {
         throw new BadRequestException('Cannot reply to a deleted comment');
@@ -118,7 +166,13 @@ export class CommentsService {
       },
       include: {
         user: {
-          select: { id: true, displayName: true, username: true, avatarHash: true, discordId: true },
+          select: {
+            id: true,
+            displayName: true,
+            username: true,
+            avatarHash: true,
+            discordId: true,
+          },
         },
       },
     });
@@ -128,7 +182,11 @@ export class CommentsService {
       : this.toPublicDto(created, userId);
   }
 
-  async softDelete(commentId: number, actorId: number, actorRole: UserRole): Promise<void> {
+  async softDelete(
+    commentId: number,
+    actorId: number,
+    actorRole: UserRole,
+  ): Promise<void> {
     const comment = await this.prisma.newsComment.findUnique({
       where: { id: commentId },
       select: { id: true, userId: true, deletedAt: true },
@@ -161,20 +219,22 @@ export class CommentsService {
       isDeleted,
       isOwn: viewerId !== null && c.userId === viewerId,
       createdAt: c.createdAt.toISOString(),
-      user: isDeleted || c.isAnonymous
-        ? null
-        : {
-            id: c.user.id,
-            displayName: c.user.displayName ?? c.user.username,
-            avatarHash: c.user.avatarHash,
-            discordId: c.user.discordId,
-          },
-      anonymousPilot: c.isAnonymous && !isDeleted
-        ? (() => {
-            const p = getAnonymousPilot(c.newsSlug, c.userId);
-            return { name: p.name, nameJa: p.nameJa, color: p.color };
-          })()
-        : null,
+      user:
+        isDeleted || c.isAnonymous
+          ? null
+          : {
+              id: c.user.id,
+              displayName: c.user.displayName ?? c.user.username,
+              avatarHash: c.user.avatarHash,
+              discordId: c.user.discordId,
+            },
+      anonymousPilot:
+        c.isAnonymous && !isDeleted
+          ? (() => {
+              const p = getAnonymousPilot(c.newsSlug, c.userId);
+              return { name: p.name, nameJa: p.nameJa, color: p.color };
+            })()
+          : null,
     };
   }
 

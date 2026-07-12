@@ -36,6 +36,8 @@ export class RecurringMatchCron {
       }
     }
 
-    this.logger.log(`Replenishment complete. Processed ${schedules.length} schedules.`);
+    this.logger.log(
+      `Replenishment complete. Processed ${schedules.length} schedules.`,
+    );
   }
 }
