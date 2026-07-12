@@ -14,7 +14,7 @@
     "lint:check": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "test": "jest",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "dotenv -e .env.test -- jest --config ./test/jest-e2e.json --runInBand --forceExit"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.937.0",
