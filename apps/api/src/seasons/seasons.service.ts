@@ -231,7 +231,7 @@ export class SeasonsService {
    * Delete a season
    */
   async delete(id: number) {
-    const season = await this.getById(id);
+    await this.getById(id);
 
     // Check if there are any matches associated with this season
     const matchesCount = await this.prisma.match.count({

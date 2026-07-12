@@ -158,10 +158,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       ],
     });
 
-    this.client.on('ready', async () => {
+    this.client.on('ready', () => {
       this.isReady = true;
       this.logger.log(`Discord bot logged in as ${this.client.user?.tag}`);
-      await this.setupReactionRoleMessage();
+      void this.setupReactionRoleMessage();
     });
 
     this.client.on('error', (error) => {
@@ -439,7 +439,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
   private async disconnect(): Promise<void> {
     if (this.client) {
-      this.client.destroy();
+      await this.client.destroy();
       this.isReady = false;
       this.logger.log('Discord bot disconnected');
     }
@@ -1220,7 +1220,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
             `Deleted Discord channel ${game.discordChannelId} for game ${gameId}`,
           );
         }
-      } catch (fetchError) {
+      } catch {
         // Channel might already be deleted
         this.logger.debug(
           `Channel ${game.discordChannelId} not found, may already be deleted`,

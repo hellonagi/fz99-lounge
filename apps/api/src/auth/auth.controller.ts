@@ -74,7 +74,7 @@ export class AuthController {
 
   @Get('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@Res({ passthrough: true }) res: Response) {
+  logout(@Res({ passthrough: true }) res: Response) {
     // Clear the auth cookie
     clearAuthCookie(res, this.configService);
     return { message: 'Logged out successfully' };

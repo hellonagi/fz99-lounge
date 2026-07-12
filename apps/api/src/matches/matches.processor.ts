@@ -829,7 +829,7 @@ export class MatchesProcessor {
       });
 
       // Emit transformed match data
-      const { fakeCount, joinCount, ...rest } = updated;
+      const { fakeCount, joinCount: _joinCount, ...rest } = updated;
       const participantCount = updated.participants?.length ?? 0;
       const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
       const transformed = {
@@ -885,7 +885,7 @@ export class MatchesProcessor {
       });
 
       // Emit transformed match data
-      const { fakeCount, joinCount, ...rest } = updated;
+      const { fakeCount, joinCount: _joinCount, ...rest } = updated;
       const participantCount = updated.participants?.length ?? 0;
       const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
       const transformed = {

@@ -7,7 +7,7 @@ export function toHalfWidth(str: string): string {
       // 全角記号・英数字を半角に変換
       return String.fromCharCode(char.charCodeAt(0) - 0xfee0);
     })
-    .replace(/　/g, ' '); // 全角スペースを半角スペースに
+    .replace(/\u3000/g, ' '); // 全角スペースを半角スペースに
 }
 
 /**
@@ -29,7 +29,7 @@ export function validateDisplayName(displayName: string): {
 
   // 文字種チェック: a-zA-Z0-9、ひらがな、カタカナ、記号、半角スペース
   const allowedPattern =
-    /^[a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF!"#$%&'()=~|`{+*}<>?_@\[;:\],.\/ -]+$/;
+    /^[a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF!"#$%&'()=~|`{+*}<>?_@[;:\],./ -]+$/;
   if (!allowedPattern.test(normalized)) {
     return { valid: false, error: 'Display name contains invalid characters' };
   }

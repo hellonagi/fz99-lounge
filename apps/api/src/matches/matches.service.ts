@@ -18,7 +18,6 @@ import { UpdateGameLeagueDto } from './dto/update-game-league.dto';
 import {
   EventCategory,
   InGameMode,
-  League,
   MatchStatus,
   UserStatus,
 } from '@prisma/client';
@@ -236,7 +235,7 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
    */
   private transformMatchResponse(match: any) {
     if (!match) return match;
-    const { fakeCount, joinCount, ...rest } = match;
+    const { fakeCount, joinCount: _joinCount, ...rest } = match;
     const participantCount = match.participants?.length ?? 0;
     const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
     return {

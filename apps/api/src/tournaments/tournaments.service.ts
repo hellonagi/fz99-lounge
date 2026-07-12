@@ -364,43 +364,50 @@ export class TournamentsService {
 
         const delayMs = params.revealAt.getTime() - Date.now();
         if (delayMs > 0) {
-          setTimeout(async () => {
-            try {
-              const freshGame = await this.prisma.game.findUnique({
-                where: { id: params.gameId },
-                select: { passcodeRevealTime: true, passcode: true },
-              });
-              if (
-                !freshGame?.passcodeRevealTime ||
-                new Date(freshGame.passcodeRevealTime).getTime() <= 0
-              ) {
-                this.logger.debug(
-                  'Passcode was hidden before reveal, skipping Discord passcode announcement',
-                );
-                return;
-              }
-              const passcodeMessageId =
-                await this.discordBotService.announceTournamentPasscodeRevealed(
-                  {
-                    tournamentName: params.tournamentName,
-                    roundLabel: params.roundLabel,
-                    inGameMode: params.inGameMode,
-                    league: params.league,
-                    passcode: freshGame.passcode,
-                    scoreUrl: params.scoreUrl,
-                    countdownMessageId: countdownMessageId || undefined,
-                  },
-                );
-              if (passcodeMessageId) {
-                this.passcodeMessageIds.set(params.gameId, passcodeMessageId);
-              }
-            } catch (err) {
-              this.logger.error(
-                'Failed to send passcode reveal Discord announcement',
-                err,
-              );
-            }
-          }, delayMs);
+          setTimeout(
+            () =>
+              void (async () => {
+                try {
+                  const freshGame = await this.prisma.game.findUnique({
+                    where: { id: params.gameId },
+                    select: { passcodeRevealTime: true, passcode: true },
+                  });
+                  if (
+                    !freshGame?.passcodeRevealTime ||
+                    new Date(freshGame.passcodeRevealTime).getTime() <= 0
+                  ) {
+                    this.logger.debug(
+                      'Passcode was hidden before reveal, skipping Discord passcode announcement',
+                    );
+                    return;
+                  }
+                  const passcodeMessageId =
+                    await this.discordBotService.announceTournamentPasscodeRevealed(
+                      {
+                        tournamentName: params.tournamentName,
+                        roundLabel: params.roundLabel,
+                        inGameMode: params.inGameMode,
+                        league: params.league,
+                        passcode: freshGame.passcode,
+                        scoreUrl: params.scoreUrl,
+                        countdownMessageId: countdownMessageId || undefined,
+                      },
+                    );
+                  if (passcodeMessageId) {
+                    this.passcodeMessageIds.set(
+                      params.gameId,
+                      passcodeMessageId,
+                    );
+                  }
+                } catch (err) {
+                  this.logger.error(
+                    'Failed to send passcode reveal Discord announcement',
+                    err,
+                  );
+                }
+              })(),
+            delayMs,
+          );
         }
       } catch (err) {
         this.logger.error('Failed to send countdown Discord announcement', err);

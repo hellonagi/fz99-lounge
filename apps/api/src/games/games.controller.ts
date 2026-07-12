@@ -132,9 +132,7 @@ export class GamesController {
     @Param('match') match: string,
     @Param('userId') targetUserId: string,
     @Body() updateScoreDto: UpdateScoreDto,
-    @Req() req: Request,
   ) {
-    const user = req.user as any;
     const eventCategory = category
       .toUpperCase()
       .replace(/-/g, '_') as EventCategory;
@@ -198,7 +196,7 @@ export class GamesController {
   // Test endpoint to emit WebSocket events manually (for testing only)
   @Post(':id/emit-test')
   @HttpCode(HttpStatus.OK)
-  async emitTestScore(
+  emitTestScore(
     @Param('id') gameId: string,
     @Body() data: { participant: any },
   ) {

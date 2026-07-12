@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-const UAParser = require('ua-parser-js');
+import { UAParser } from 'ua-parser-js';
 
 interface GeoLocation {
   country?: string; // ISO 3166-1 alpha-2 (JP, US, etc.)
@@ -96,11 +96,11 @@ export class LoginTrackingService {
   /**
    * Basic VPN/Proxy detection (can be enhanced with external services)
    */
-  async detectProxyVpn(ipAddress: string): Promise<{
+  detectProxyVpn(ipAddress: string): {
     isVpn: boolean;
     isProxy: boolean;
     isTor: boolean;
-  }> {
+  } {
     // Basic Tor exit node detection (checks for common Tor patterns)
     const isTor = this.checkForTorExitNode(ipAddress);
 
@@ -203,7 +203,7 @@ export class LoginTrackingService {
       const userAgent = req.headers['user-agent'];
       const { browser, os, deviceType } = this.parseUserAgent(userAgent);
       const ipVersion = this.detectIpVersion(ipAddress);
-      const { isVpn, isProxy, isTor } = await this.detectProxyVpn(ipAddress);
+      const { isVpn, isProxy, isTor } = this.detectProxyVpn(ipAddress);
 
       // Get geolocation only for new users (to save ipinfo.io API quota)
       let country: string | null = null;

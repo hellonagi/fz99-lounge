@@ -116,7 +116,7 @@ export class GamesService {
 
     // Only show passcode to non-excluded participants
     if (!isParticipant || isExcluded) {
-      const { passcode, ...gameWithoutPasscode } = game;
+      const { passcode: _passcode, ...gameWithoutPasscode } = game;
       return gameWithoutPasscode;
     }
 
@@ -275,7 +275,7 @@ export class GamesService {
 
     // Only show passcode to non-excluded participants
     if (!isParticipant || isExcluded) {
-      const { passcode, ...gameWithoutPasscode } = gameWithRatings;
+      const { passcode: _passcode, ...gameWithoutPasscode } = gameWithRatings;
       return gameWithoutPasscode;
     }
 

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { toHalfWidth, validateDisplayName } from '../common/utils/string.util';
-import { EventCategory, MatchStatus, Prisma } from '@prisma/client';
+import { EventCategory, MatchStatus } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -124,7 +124,6 @@ export class UsersService {
     const seasonStatsWithRank = await Promise.all(
       user.seasonStats.map(async (stats) => {
         const eventCategory = stats.season.event.category;
-        const isGpMode = eventCategory === 'GP' || eventCategory === 'TEAM_GP';
 
         let rank: number;
         if (eventCategory === 'TEAM_GP') {
@@ -171,7 +170,7 @@ export class UsersService {
     );
 
     // Flatten profile.country to country, flatten permissions
-    const { profile, seasonStats, permissions, ...rest } = user;
+    const { profile, seasonStats: _seasonStats, permissions, ...rest } = user;
     return {
       ...rest,
       country: profile?.country || null,

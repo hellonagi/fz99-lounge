@@ -35,7 +35,7 @@ export class CommentsController {
 
   @Get('my-pilot')
   @UseGuards(JwtAuthGuard)
-  async getMyPilot(@Query('newsSlug') newsSlug: string, @Req() req: Request) {
+  getMyPilot(@Query('newsSlug') newsSlug: string, @Req() req: Request) {
     if (!newsSlug || !/^[a-z0-9-]+$/.test(newsSlug)) {
       throw new BadRequestException('Invalid newsSlug');
     }

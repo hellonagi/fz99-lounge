@@ -429,7 +429,7 @@ export class ClassicRatingService {
    */
   private sortAndRankParticipants(
     participants: any[],
-  ): Array<any & { calculatedPosition: number }> {
+  ): Array<Record<string, any> & { calculatedPosition: number }> {
     // Sort by score (descending), NO_SHOW always last
     const sorted = [...participants].sort((a, b) => {
       const aNoShow = a.status === 'NO_SHOW' ? 1 : 0;
@@ -439,7 +439,8 @@ export class ClassicRatingService {
     });
 
     // Calculate positions (same score = same position)
-    const result: Array<any & { calculatedPosition: number }> = [];
+    const result: Array<Record<string, any> & { calculatedPosition: number }> =
+      [];
     let currentPosition = 1;
     let prevScore: number | null = null;
     let samePositionCount = 0;

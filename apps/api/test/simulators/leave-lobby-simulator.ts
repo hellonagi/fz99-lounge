@@ -8,14 +8,18 @@ const API_URL = process.env.API_URL || 'http://localhost:3000/api';
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key';
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function generateToken(user: { id: number; discordId: string; username: string }) {
+function generateToken(user: {
+  id: number;
+  discordId: string;
+  username: string;
+}) {
   return jwt.sign(
     { sub: user.id, discordId: user.discordId, username: user.username },
     JWT_SECRET,
-    { expiresIn: '1h' }
+    { expiresIn: '1h' },
   );
 }
 
@@ -44,7 +48,9 @@ async function leaveMatch(count: number, delay: number, all: boolean) {
     return;
   }
 
-  const targetCount = all ? fakeParticipants.length : Math.min(count, fakeParticipants.length);
+  const targetCount = all
+    ? fakeParticipants.length
+    : Math.min(count, fakeParticipants.length);
 
   console.log(`Found match ID: ${match.id}`);
   console.log(`Fake users in match: ${fakeParticipants.length}`);
@@ -57,12 +63,9 @@ async function leaveMatch(count: number, delay: number, all: boolean) {
 
     try {
       const token = generateToken(user);
-      await axios.delete(
-        `${API_URL}/matches/${match.id}/leave`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      await axios.delete(`${API_URL}/matches/${match.id}/leave`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       left++;
       console.log(`  [${left}] ${user.displayName} left`);
     } catch (error: any) {
@@ -86,8 +89,8 @@ async function leaveMatch(count: number, delay: number, all: boolean) {
 async function main() {
   const args = process.argv.slice(2);
 
-  const countArg = args.find(arg => arg.startsWith('--count='));
-  const delayArg = args.find(arg => arg.startsWith('--delay='));
+  const countArg = args.find((arg) => arg.startsWith('--count='));
+  const delayArg = args.find((arg) => arg.startsWith('--delay='));
   const all = args.includes('--all');
 
   const count = countArg ? parseInt(countArg.split('=')[1], 10) : 20;
@@ -98,4 +101,4 @@ async function main() {
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(() => void prisma.$disconnect());

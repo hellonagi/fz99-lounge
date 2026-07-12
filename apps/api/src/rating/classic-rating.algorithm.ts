@@ -147,15 +147,12 @@ function calculateWithAllComparison(
 
   // Calculate actual score based on positions
   const myPosition = normalizedPositions[player.userId];
-  let betterCount = 0,
-    worseCount = 0,
+  let worseCount = 0,
     sameCount = 0;
 
   for (const opponent of opponents) {
     const oppPosition = normalizedPositions[opponent.userId];
-    if (oppPosition < myPosition)
-      betterCount++; // opponent finished higher
-    else if (oppPosition > myPosition)
+    if (oppPosition > myPosition)
       worseCount++; // opponent finished lower
     else sameCount++; // same position (tie)
   }

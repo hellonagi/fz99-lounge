@@ -26,7 +26,7 @@ export class EventsGateway
 
   private readonly logger = new Logger(EventsGateway.name);
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway initialized');
   }
 

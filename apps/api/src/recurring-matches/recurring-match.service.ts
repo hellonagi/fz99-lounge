@@ -189,7 +189,7 @@ export class RecurringMatchService {
   }
 
   async toggleEnabled(id: number, enabled: boolean, userId?: number) {
-    const schedule = await this.findById(id);
+    await this.findById(id);
 
     await this.prisma.recurringMatch.update({
       where: { id },
