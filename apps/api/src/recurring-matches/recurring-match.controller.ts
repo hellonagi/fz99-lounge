@@ -39,7 +39,11 @@ export class RecurringMatchController {
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() dto: UpdateRecurringMatchDto, @Req() req: Request) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateRecurringMatchDto,
+    @Req() req: Request,
+  ) {
     const user = req.user as any;
     return this.recurringMatchService.update(parseInt(id, 10), dto, user.id);
   }
@@ -51,7 +55,11 @@ export class RecurringMatchController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    return this.recurringMatchService.toggleEnabled(parseInt(id, 10), enabled, user.id);
+    return this.recurringMatchService.toggleEnabled(
+      parseInt(id, 10),
+      enabled,
+      user.id,
+    );
   }
 
   @Delete(':id')

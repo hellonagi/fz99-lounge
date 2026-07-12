@@ -17,7 +17,8 @@ import * as jwt from 'jsonwebtoken';
 const prisma = new PrismaClient();
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
-const JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
 
 interface UserWithToken {
   id: number;
@@ -69,7 +70,9 @@ class TournamentSplitVoteSimulator {
     });
 
     if (!game) {
-      throw new Error('No IN_PROGRESS TOURNAMENT game found. Start a tournament round first.');
+      throw new Error(
+        'No IN_PROGRESS TOURNAMENT game found. Start a tournament round first.',
+      );
     }
 
     this.game = game;
@@ -92,8 +95,12 @@ class TournamentSplitVoteSimulator {
       ),
     }));
 
-    console.log(`Found: Season ${this.seasonNumber}, Round ${this.matchNumber}`);
-    console.log(`  Game ID: ${game.id}, Passcode version: ${game.passcodeVersion}`);
+    console.log(
+      `Found: Season ${this.seasonNumber}, Round ${this.matchNumber}`,
+    );
+    console.log(
+      `  Game ID: ${game.id}, Passcode version: ${game.passcodeVersion}`,
+    );
     console.log(`  Total participants: ${this.users.length}`);
 
     return game;
@@ -153,7 +160,7 @@ class TournamentSplitVoteSimulator {
 
       if (result.success) {
         const progress = `${result.currentVotes}/${result.requiredVotes}`;
-        const bar = this.progressBar(result.currentVotes!, result.requiredVotes!);
+        const bar = this.progressBar(result.currentVotes, result.requiredVotes);
 
         if (result.regenerated) {
           console.log(`  >> ${displayName}: PASSCODE REGENERATED!`);

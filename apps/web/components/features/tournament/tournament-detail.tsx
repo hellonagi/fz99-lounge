@@ -19,7 +19,11 @@ import { getCountryByCode } from '@/lib/countries';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { SiDiscord } from 'react-icons/si';
-import { Tournament, LocalizedContent, TournamentDivision, TournamentMode, TournamentScheduleEvent, TournamentRoundConfig } from '@/types';
+import { Tournament, LocalizedContent, TournamentDivision, TournamentMode, TournamentScheduleEvent, TournamentRoundConfig, TournamentRegistration, User } from '@/types';
+
+type TournamentParticipant = TournamentRegistration & {
+  user?: User & { profile?: { country?: string | null } | null };
+};
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
   KNIGHT: '/leagues/knight_64x64.png',
@@ -149,7 +153,7 @@ function TournamentContent({ content, locale }: { content?: LocalizedContent | n
         <ReactMarkdown
           rehypePlugins={[rehypeRaw]}
           components={{
-            img: ({ node, ...props }) => (
+            img: ({ node: _node, ...props }) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img {...props} alt={props.alt || ''} style={{ maxWidth: 300 }} />
             ),
@@ -241,8 +245,8 @@ export function TournamentOverview({ tournament, onUpdate }: TournamentOverviewP
       setSuccess(t('registered'));
       refreshMyRegs();
       onUpdate();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('error'));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } }).response?.data?.message || t('error'));
     } finally {
       setSubmitting(false);
     }
@@ -256,8 +260,8 @@ export function TournamentOverview({ tournament, onUpdate }: TournamentOverviewP
       await tournamentsApi.cancelRegistration(tournament.id, division);
       refreshMyRegs();
       onUpdate();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('error'));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } }).response?.data?.message || t('error'));
     } finally {
       setSubmitting(false);
     }
@@ -633,7 +637,7 @@ export function TournamentOverview({ tournament, onUpdate }: TournamentOverviewP
   );
 }
 
-function ParticipantTile({ p, statusLabel, muted }: { p: any; statusLabel?: string; muted?: boolean }) {
+function ParticipantTile({ p, statusLabel, muted }: { p: TournamentParticipant; statusLabel?: string; muted?: boolean }) {
   return (
     <div
       className={cn(
@@ -664,7 +668,7 @@ const CLASSIC_INVITATIONAL = 5;
 
 type GpSlot = 'OFFLINE_CONFIRMED' | 'ONLINE_CONFIRMED' | 'ONLINE_OVERFLOW' | 'WAITLIST';
 
-function assignGpSlots(entries: any[]): Array<{ entry: any; slot: GpSlot }> {
+function assignGpSlots(entries: TournamentParticipant[]): Array<{ entry: TournamentParticipant; slot: GpSlot }> {
   let offline = 0;
   let online = 0;
   return entries.map((entry) => {
@@ -683,7 +687,7 @@ function assignGpSlots(entries: any[]): Array<{ entry: any; slot: GpSlot }> {
   });
 }
 
-function GpSection({ entries, t }: { entries: any[]; t: ReturnType<typeof useTranslations> }) {
+function GpSection({ entries, t }: { entries: TournamentParticipant[]; t: ReturnType<typeof useTranslations> }) {
   const assigned = useMemo(() => assignGpSlots(entries), [entries]);
   const offline = assigned.filter((a) => a.slot === 'OFFLINE_CONFIRMED');
   const online = assigned.filter((a) => a.slot === 'ONLINE_CONFIRMED' || a.slot === 'ONLINE_OVERFLOW');
@@ -742,7 +746,7 @@ function GpSection({ entries, t }: { entries: any[]; t: ReturnType<typeof useTra
   );
 }
 
-function ClassicSection({ entries, t }: { entries: any[]; t: ReturnType<typeof useTranslations> }) {
+function ClassicSection({ entries, t }: { entries: TournamentParticipant[]; t: ReturnType<typeof useTranslations> }) {
   const confirmed = entries.slice(0, CLASSIC_FIRST_COME);
   const waitlist = entries.slice(CLASSIC_FIRST_COME);
 
@@ -792,7 +796,7 @@ function ClassicSection({ entries, t }: { entries: any[]; t: ReturnType<typeof u
 
 function ParticipantsList({ tournamentId }: { tournamentId: number }) {
   const t = useTranslations('tournament');
-  const [participants, setParticipants] = useState<any[]>([]);
+  const [participants, setParticipants] = useState<TournamentParticipant[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -829,7 +833,7 @@ function ParticipantsList({ tournamentId }: { tournamentId: number }) {
   );
 }
 
-function CountryRepresentation({ participants }: { participants: any[] }) {
+function CountryRepresentation({ participants }: { participants: TournamentParticipant[] }) {
   const t = useTranslations('tournament');
   const uniqueByUser = useMemo(() => {
     const seen = new Set<number>();
@@ -842,7 +846,7 @@ function CountryRepresentation({ participants }: { participants: any[] }) {
   const total = uniqueByUser.length;
 
   const countryRows = useMemo(() => {
-    const grouped: Record<string, { count: number; players: { displayName: string; profileNumber: string }[] }> = {};
+    const grouped: Record<string, { count: number; players: { displayName: string; profileNumber: number | string }[] }> = {};
     for (const p of uniqueByUser) {
       const code = p.user?.profile?.country || 'UNKNOWN';
       if (!grouped[code]) grouped[code] = { count: 0, players: [] };
@@ -866,7 +870,7 @@ function CountryRepresentation({ participants }: { participants: any[] }) {
       if (i > 0 && row.count < sorted[i - 1].count) rank = i + 1;
       return { ...row, rank };
     });
-  }, [participants, t]);
+  }, [uniqueByUser, t]);
 
   if (countryRows.length === 0) return null;
 

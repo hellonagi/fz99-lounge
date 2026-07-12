@@ -88,8 +88,6 @@ const SS_COOLDOWN_MIN = 2;
 const SS_COOLDOWN_MAX = 8;
 const SS_SPAWN_Y_MIN = 3;
 const SS_SPAWN_Y_MAX = 5;
-const SS_SPAWN_RADIUS_MIN = 1;
-const SS_SPAWN_RADIUS_MAX = 5;
 
 function FloatingParticles({ accentHue }: { accentHue?: number }) {
   const ref = useRef<THREE.Points>(null);

@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { SeasonsService } from './seasons.service';
 import { CreateSeasonDto } from './dto/create-season.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -18,7 +29,9 @@ export class SeasonsController {
   }
 
   @Get('active')
-  async getActive(@Query('category') category: EventCategory = EventCategory.GP) {
+  async getActive(
+    @Query('category') category: EventCategory = EventCategory.GP,
+  ) {
     return this.seasonsService.getActive(category);
   }
 
@@ -37,12 +50,13 @@ export class SeasonsController {
   @Roles(UserRole.ADMIN)
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateData: {
+    @Body()
+    updateData: {
       seasonNumber?: number;
       description?: string;
       startDate?: string;
       endDate?: string;
-    }
+    },
   ) {
     return this.seasonsService.update(id, updateData);
   }
@@ -52,7 +66,7 @@ export class SeasonsController {
   @Roles(UserRole.ADMIN)
   async toggleStatus(
     @Param('id', ParseIntPipe) id: number,
-    @Body() data: { isActive: boolean }
+    @Body() data: { isActive: boolean },
   ) {
     return this.seasonsService.toggleStatus(id, data.isActive);
   }

@@ -10,7 +10,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
-import { EventCategory, MatchStatus, Prisma, StreamPlatform, TournamentStatus, TournamentDivision, TournamentMode } from '@prisma/client';
+import {
+  EventCategory,
+  MatchStatus,
+  Prisma,
+  StreamPlatform,
+  TournamentStatus,
+  TournamentDivision,
+  TournamentMode,
+} from '@prisma/client';
 
 const STATUS_ORDER: TournamentStatus[] = [
   TournamentStatus.DRAFT,
@@ -238,7 +246,9 @@ export class TournamentsService {
         where: { id },
         data: {
           ...(dto.name !== undefined && { name: dto.name }),
-          ...(dto.totalRounds !== undefined && { totalRounds: dto.totalRounds }),
+          ...(dto.totalRounds !== undefined && {
+            totalRounds: dto.totalRounds,
+          }),
           ...(dto.rounds !== undefined && { rounds: dto.rounds as any }),
           ...(dto.tournamentDate !== undefined && {
             tournamentDate: new Date(dto.tournamentDate),
@@ -278,15 +288,20 @@ export class TournamentsService {
   }
 
   private generatePasscode(): string {
-    return Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, '0');
   }
 
-  private getRoundMeta(config: {
-    id: number;
-    name: string;
-    tournamentNumber: number;
-    rounds: any;
-  }, matchNumber: number) {
+  private getRoundMeta(
+    config: {
+      id: number;
+      name: string;
+      tournamentNumber: number;
+      rounds: any;
+    },
+    matchNumber: number,
+  ) {
     const rounds = config.rounds as Array<{
       roundNumber: number;
       inGameMode: string;
@@ -328,7 +343,10 @@ export class TournamentsService {
             await this.discordBotService
               .deleteTournamentMessage(existingMessageId)
               .catch((err) =>
-                this.logger.error('Failed to delete existing Discord passcode message', err),
+                this.logger.error(
+                  'Failed to delete existing Discord passcode message',
+                  err,
+                ),
               );
             this.passcodeMessageIds.delete(params.gameId);
           }
@@ -346,41 +364,50 @@ export class TournamentsService {
 
         const delayMs = params.revealAt.getTime() - Date.now();
         if (delayMs > 0) {
-          setTimeout(async () => {
-            try {
-              const freshGame = await this.prisma.game.findUnique({
-                where: { id: params.gameId },
-                select: { passcodeRevealTime: true, passcode: true },
-              });
-              if (
-                !freshGame?.passcodeRevealTime ||
-                new Date(freshGame.passcodeRevealTime).getTime() <= 0
-              ) {
-                this.logger.debug(
-                  'Passcode was hidden before reveal, skipping Discord passcode announcement',
-                );
-                return;
-              }
-              const passcodeMessageId =
-                await this.discordBotService.announceTournamentPasscodeRevealed({
-                  tournamentName: params.tournamentName,
-                  roundLabel: params.roundLabel,
-                  inGameMode: params.inGameMode,
-                  league: params.league,
-                  passcode: freshGame.passcode,
-                  scoreUrl: params.scoreUrl,
-                  countdownMessageId: countdownMessageId || undefined,
-                });
-              if (passcodeMessageId) {
-                this.passcodeMessageIds.set(params.gameId, passcodeMessageId);
-              }
-            } catch (err) {
-              this.logger.error(
-                'Failed to send passcode reveal Discord announcement',
-                err,
-              );
-            }
-          }, delayMs);
+          setTimeout(
+            () =>
+              void (async () => {
+                try {
+                  const freshGame = await this.prisma.game.findUnique({
+                    where: { id: params.gameId },
+                    select: { passcodeRevealTime: true, passcode: true },
+                  });
+                  if (
+                    !freshGame?.passcodeRevealTime ||
+                    new Date(freshGame.passcodeRevealTime).getTime() <= 0
+                  ) {
+                    this.logger.debug(
+                      'Passcode was hidden before reveal, skipping Discord passcode announcement',
+                    );
+                    return;
+                  }
+                  const passcodeMessageId =
+                    await this.discordBotService.announceTournamentPasscodeRevealed(
+                      {
+                        tournamentName: params.tournamentName,
+                        roundLabel: params.roundLabel,
+                        inGameMode: params.inGameMode,
+                        league: params.league,
+                        passcode: freshGame.passcode,
+                        scoreUrl: params.scoreUrl,
+                        countdownMessageId: countdownMessageId || undefined,
+                      },
+                    );
+                  if (passcodeMessageId) {
+                    this.passcodeMessageIds.set(
+                      params.gameId,
+                      passcodeMessageId,
+                    );
+                  }
+                } catch (err) {
+                  this.logger.error(
+                    'Failed to send passcode reveal Discord announcement',
+                    err,
+                  );
+                }
+              })(),
+            delayMs,
+          );
         }
       } catch (err) {
         this.logger.error('Failed to send countdown Discord announcement', err);
@@ -416,7 +443,9 @@ export class TournamentsService {
     for (const round of rounds) {
       const scheduledStart = new Date(config.tournamentDate);
       if (round.offsetMinutes) {
-        scheduledStart.setMinutes(scheduledStart.getMinutes() + round.offsetMinutes);
+        scheduledStart.setMinutes(
+          scheduledStart.getMinutes() + round.offsetMinutes,
+        );
       }
       // Deadline: 15 minutes after scheduled start
       const deadline = new Date(scheduledStart);
@@ -568,7 +597,9 @@ export class TournamentsService {
 
     const now = new Date();
     if (now < config.registrationStart || now > config.registrationEnd) {
-      throw new BadRequestException('Registration period has ended or not started');
+      throw new BadRequestException(
+        'Registration period has ended or not started',
+      );
     }
 
     try {
@@ -610,7 +641,9 @@ export class TournamentsService {
 
     const now = new Date();
     if (now < config.registrationStart || now > config.registrationEnd) {
-      throw new BadRequestException('Registration period has ended or not started');
+      throw new BadRequestException(
+        'Registration period has ended or not started',
+      );
     }
 
     const registration = await this.prisma.tournamentRegistration.findUnique({
@@ -791,7 +824,10 @@ export class TournamentsService {
       throw new BadRequestException('No in-progress round found');
     }
 
-    const { tournamentName, roundLabel } = this.getRoundMeta(config, currentMatch.matchNumber!);
+    const { tournamentName, roundLabel } = this.getRoundMeta(
+      config,
+      currentMatch.matchNumber!,
+    );
     await this.discordBotService.announceTournamentSplit({
       tournamentName,
       roundLabel,
@@ -831,13 +867,18 @@ export class TournamentsService {
     });
     if (!config) return;
 
-    const { tournamentName, roundLabel } = this.getRoundMeta(config, payload.matchNumber);
+    const { tournamentName, roundLabel } = this.getRoundMeta(
+      config,
+      payload.matchNumber,
+    );
     await this.discordBotService.announceTournamentSplit({
       tournamentName,
       roundLabel,
     });
 
-    this.logger.log(`Auto split notification sent for ${roundLabel} (gameId: ${payload.gameId})`);
+    this.logger.log(
+      `Auto split notification sent for ${roundLabel} (gameId: ${payload.gameId})`,
+    );
   }
 
   async regeneratePasscode(tournamentConfigId: number, countdownSeconds = 30) {
@@ -965,7 +1006,8 @@ export class TournamentsService {
       .map((r) => r.user.discordId)
       .filter((id): id is string => !!id);
 
-    const result = await this.discordBotService.assignTournamentRole(discordIds);
+    const result =
+      await this.discordBotService.assignTournamentRole(discordIds);
 
     // Map notInServer discord IDs back to display names
     const discordIdToName = new Map(
@@ -991,7 +1033,11 @@ export class TournamentsService {
 
   async addStream(
     tournamentConfigId: number,
-    dto: { platform: 'YOUTUBE' | 'TWITCH'; channelIdentifier: string; label: string },
+    dto: {
+      platform: 'YOUTUBE' | 'TWITCH';
+      channelIdentifier: string;
+      label: string;
+    },
   ) {
     const config = await this.prisma.tournamentConfig.findUnique({
       where: { id: tournamentConfigId },
@@ -1087,7 +1133,12 @@ export class TournamentsService {
     // Build a map: seasonId → top 3 scorers, plus the full top-tied set
     const topScorersMap = new Map<
       number,
-      Array<{ rank: number; id: number; displayName: string | null; totalScore: number }>
+      Array<{
+        rank: number;
+        id: number;
+        displayName: string | null;
+        totalScore: number;
+      }>
     >();
     const allByseasonId = new Map<
       number,

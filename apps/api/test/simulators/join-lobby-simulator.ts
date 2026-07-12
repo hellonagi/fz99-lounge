@@ -8,14 +8,18 @@ const API_URL = process.env.API_URL || 'http://localhost:3000/api';
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key';
 
 function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function generateToken(user: { id: number; discordId: string; username: string }) {
+function generateToken(user: {
+  id: number;
+  discordId: string;
+  username: string;
+}) {
   return jwt.sign(
     { sub: user.id, discordId: user.discordId, username: user.username },
     JWT_SECRET,
-    { expiresIn: '1h' }
+    { expiresIn: '1h' },
   );
 }
 
@@ -36,11 +40,15 @@ async function joinMatch(count: number, delay: number) {
   }
 
   console.log(`Found match ID: ${match.id}`);
-  console.log(`Current players: ${match.participants.length}/${match.maxPlayers}`);
-  console.log(`Joining ${count} fake users via API (WebSocket events will fire)...\n`);
+  console.log(
+    `Current players: ${match.participants.length}/${match.maxPlayers}`,
+  );
+  console.log(
+    `Joining ${count} fake users via API (WebSocket events will fire)...\n`,
+  );
 
   // Get fake users who are not already in this match
-  const existingUserIds = match.participants.map(p => p.userId);
+  const existingUserIds = match.participants.map((p) => p.userId);
   const fakeUsers = await prisma.user.findMany({
     where: {
       isFake: true,
@@ -67,7 +75,7 @@ async function joinMatch(count: number, delay: number) {
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       joined++;
       console.log(`  [${joined}] ${user.displayName} joined`);
@@ -96,8 +104,8 @@ async function joinMatch(count: number, delay: number) {
 async function main() {
   const args = process.argv.slice(2);
 
-  const countArg = args.find(arg => arg.startsWith('--count='));
-  const delayArg = args.find(arg => arg.startsWith('--delay='));
+  const countArg = args.find((arg) => arg.startsWith('--count='));
+  const delayArg = args.find((arg) => arg.startsWith('--delay='));
 
   const count = countArg ? parseInt(countArg.split('=')[1], 10) : 20;
   const delay = delayArg ? parseInt(delayArg.split('=')[1], 10) : 500;
@@ -107,4 +115,4 @@ async function main() {
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(() => void prisma.$disconnect());

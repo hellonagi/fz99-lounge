@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { tournamentsApi } from '@/lib/api';
-import { Tournament, TournamentStatus, TournamentRoundConfig, TournamentStream } from '@/types';
+import { Tournament, TournamentStatus, TournamentRoundConfig, TournamentStream, InGameMode, League } from '@/types';
 
 const STATUS_OPTIONS: TournamentStatus[] = [
   'DRAFT',
@@ -74,18 +74,18 @@ function StreamManager({ tournamentId }: { tournamentId: number }) {
   const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fetchStreams = async () => {
+  const fetchStreams = useCallback(async () => {
     try {
       const res = await tournamentsApi.getStreams(tournamentId);
       setStreams(res.data);
     } catch {
       // ignore
     }
-  };
+  }, [tournamentId]);
 
   useEffect(() => {
     fetchStreams();
-  }, [tournamentId]);
+  }, [fetchStreams]);
 
   const extractChannelIdentifier = (input: string, plat: 'TWITCH' | 'YOUTUBE'): string => {
     const trimmed = input.trim();
@@ -230,8 +230,8 @@ function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onS
       : 20;
     setRounds([...rounds, {
       roundNumber: rounds.length + 1,
-      inGameMode: 'GRAND_PRIX' as any,
-      league: 'KNIGHT' as any,
+      inGameMode: 'GRAND_PRIX' as InGameMode,
+      league: 'KNIGHT' as League,
       offsetMinutes: (last?.offsetMinutes ?? 0) + gap,
     }]);
   };
@@ -259,10 +259,10 @@ function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onS
         rounds: cleanRounds,
         totalRounds: cleanRounds.length,
         content,
-      } as any);
+      });
       onSaved();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('error'));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } }).response?.data?.message || t('error'));
     } finally {
       setSaving(false);
     }
@@ -299,8 +299,8 @@ function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onS
                     const mode = e.target.value;
                     const newLeagues = getLeagueOptions(mode);
                     updateRound(i, {
-                      inGameMode: mode as any,
-                      league: newLeagues ? newLeagues[0].value as any : undefined,
+                      inGameMode: mode as InGameMode,
+                      league: newLeagues ? newLeagues[0].value as League : undefined,
                     });
                   }}
                 >
@@ -310,7 +310,7 @@ function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onS
                   <select
                     className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm"
                     value={round.league || leagueOpts[0].value}
-                    onChange={(e) => updateRound(i, { league: e.target.value as any })}
+                    onChange={(e) => updateRound(i, { league: e.target.value as League })}
                   >
                     {leagueOpts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -381,7 +381,7 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const fetchTournaments = async () => {
+  const fetchTournaments = useCallback(async () => {
     try {
       setLoading(true);
       const res = await tournamentsApi.getAll();
@@ -391,18 +391,18 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     fetchTournaments();
-  }, [refreshKey]);
+  }, [refreshKey, fetchTournaments]);
 
   const handleStatusUpdate = async (id: number, status: TournamentStatus) => {
     try {
       await tournamentsApi.update(id, { status });
       fetchTournaments();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('error'));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } }).response?.data?.message || t('error'));
     }
   };
 

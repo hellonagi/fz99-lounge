@@ -17,10 +17,6 @@ const nextConfig: NextConfig = {
       exclude: ['error', 'warn'],
     },
   },
-  eslint: {
-    // TODO: remove once the pre-existing lint debt is cleared
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {

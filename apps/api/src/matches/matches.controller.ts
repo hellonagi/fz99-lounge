@@ -20,7 +20,12 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { Permissions } from '../auth/decorators/permissions.decorator';
-import { UserRole, EventCategory, MatchStatus, ModeratorPermission } from '@prisma/client';
+import {
+  UserRole,
+  EventCategory,
+  MatchStatus,
+  ModeratorPermission,
+} from '@prisma/client';
 
 @Controller('matches')
 export class MatchesController {
@@ -53,10 +58,7 @@ export class MatchesController {
   }
 
   @Get('week')
-  async getWeek(
-    @Query('from') from: string,
-    @Query('to') to: string,
-  ) {
+  async getWeek(@Query('from') from: string, @Query('to') to: string) {
     const fromDate = new Date(from);
     const toDate = new Date(to);
     if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
@@ -80,7 +82,8 @@ export class MatchesController {
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
-    const seasonNum = seasonNumber === 'unrated' ? -1 : parseInt(seasonNumber, 10);
+    const seasonNum =
+      seasonNumber === 'unrated' ? -1 : parseInt(seasonNumber, 10);
     return this.matchesService.getResultsPaginated(
       category,
       seasonNum,
@@ -112,7 +115,10 @@ export class MatchesController {
   @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(UserRole.ADMIN, UserRole.MODERATOR)
   @Permissions(ModeratorPermission.CREATE_MATCH)
-  async updateLeague(@Param('id') id: string, @Body() dto: UpdateGameLeagueDto) {
+  async updateLeague(
+    @Param('id') id: string,
+    @Body() dto: UpdateGameLeagueDto,
+  ) {
     return this.matchesService.updateGameLeague(parseInt(id, 10), dto);
   }
 
@@ -124,7 +130,10 @@ export class MatchesController {
     @Param('id') id: string,
     @Body() body: { showTracks: boolean },
   ) {
-    return this.matchesService.updateShowTracks(parseInt(id, 10), body.showTracks);
+    return this.matchesService.updateShowTracks(
+      parseInt(id, 10),
+      body.showTracks,
+    );
   }
 
   @Patch(':id/cancel')

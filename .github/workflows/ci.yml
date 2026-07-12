@@ -27,8 +27,9 @@ jobs:
       - name: Generate Prisma client
         run: npm exec -w api -- prisma generate
 
-      # TODO: enable `npm run lint` once the pre-existing lint debt is cleared
-      # (api: ~1600 errors, web: ~100 errors as of the workspaces migration)
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck (api)
         run: npm run typecheck -w api
 

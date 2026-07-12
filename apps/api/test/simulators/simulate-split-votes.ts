@@ -14,7 +14,8 @@ import * as jwt from 'jsonwebtoken';
 const prisma = new PrismaClient();
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
-const JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
 
 interface UserWithToken {
   id: number;
@@ -67,7 +68,9 @@ class SplitVoteSimulator {
     });
 
     if (!game) {
-      throw new Error('No IN_PROGRESS CLASSIC game found. Please start a CLASSIC match first.');
+      throw new Error(
+        'No IN_PROGRESS CLASSIC game found. Please start a CLASSIC match first.',
+      );
     }
 
     const category = game.match.season?.event?.category;
@@ -95,11 +98,13 @@ class SplitVoteSimulator {
             role: 'PLAYER',
           },
           JWT_SECRET,
-          { expiresIn: '1h' }
+          { expiresIn: '1h' },
         ),
       }));
 
-    console.log(`✅ Found CLASSIC game: Season ${this.seasonNumber}, Match ${this.matchNumber}`);
+    console.log(
+      `✅ Found CLASSIC game: Season ${this.seasonNumber}, Match ${this.matchNumber}`,
+    );
     console.log(`   Game ID: ${game.id}`);
     console.log(`   Total participants: ${game.match.participants.length}`);
     console.log(`   Fake users available: ${this.fakeUsers.length}`);
@@ -124,7 +129,7 @@ class SplitVoteSimulator {
             Authorization: `Bearer ${user.token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       return {
@@ -161,7 +166,10 @@ class SplitVoteSimulator {
 
       if (result.success) {
         const progress = `${result.currentVotes}/${result.requiredVotes}`;
-        const bar = this.progressBar(result.currentVotes!, result.requiredVotes!);
+        const bar = this.progressBar(
+          result.currentVotes!,
+          result.requiredVotes!,
+        );
 
         if (result.regenerated) {
           console.log(`   🎉 ${displayName}: PASSCODE REGENERATED!`);
@@ -180,7 +188,7 @@ class SplitVoteSimulator {
       }
 
       if (i < usersToVote.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
@@ -201,7 +209,9 @@ class SplitVoteSimulator {
       await this.simulate(10, 500);
 
       console.log(`\n✅ Simulation complete!`);
-      console.log(`📊 View at: http://localhost:3001/matches/classic/${this.seasonNumber}/${this.matchNumber}`);
+      console.log(
+        `📊 View at: http://localhost:3001/matches/classic/${this.seasonNumber}/${this.matchNumber}`,
+      );
     } catch (error: any) {
       console.error('❌ Error:', error.message || error);
     } finally {

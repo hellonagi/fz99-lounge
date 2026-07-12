@@ -18,9 +18,15 @@ import * as path from 'path';
 const prisma = new PrismaClient();
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
-const JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
 
-const F99_MACHINES = ['Blue Falcon', 'Golden Fox', 'Wild Goose', 'Fire Stingray'];
+const F99_MACHINES = [
+  'Blue Falcon',
+  'Golden Fox',
+  'Wild Goose',
+  'Fire Stingray',
+];
 
 // Test image for screenshot simulation
 const TEST_IMAGE_PATH = path.join(__dirname, '../fixtures/test-screenshot.png');
@@ -93,7 +99,9 @@ class TeamClassicScoreSimulator {
     });
 
     if (!game) {
-      throw new Error('No IN_PROGRESS TEAM_CLASSIC game found. Please start a TEAM_CLASSIC match first.');
+      throw new Error(
+        'No IN_PROGRESS TEAM_CLASSIC game found. Please start a TEAM_CLASSIC match first.',
+      );
     }
 
     const category = game.match.season?.event?.category;
@@ -106,7 +114,10 @@ class TeamClassicScoreSimulator {
     // Collect real user submissions (already submitted scores)
     for (const participant of game.participants) {
       if (!participant.user.isFake) {
-        this.realUserSubmissions.set(participant.userId, participant.raceResults);
+        this.realUserSubmissions.set(
+          participant.userId,
+          participant.raceResults,
+        );
       }
     }
 
@@ -120,7 +131,10 @@ class TeamClassicScoreSimulator {
     );
 
     // Create a map of gameParticipant info (teamIndex, isExcluded) for each user
-    const gameParticipantMap = new Map<number, { teamIndex: number | null; isExcluded: boolean }>();
+    const gameParticipantMap = new Map<
+      number,
+      { teamIndex: number | null; isExcluded: boolean }
+    >();
     for (const gp of game.participants) {
       gameParticipantMap.set(gp.userId, {
         teamIndex: gp.teamIndex,
@@ -145,7 +159,7 @@ class TeamClassicScoreSimulator {
               role: 'PLAYER',
             },
             JWT_SECRET,
-            { expiresIn: '1h' }
+            { expiresIn: '1h' },
           ),
           teamIndex: gpInfo?.teamIndex ?? null,
           isExcluded: gpInfo?.isExcluded ?? false,
@@ -156,10 +170,14 @@ class TeamClassicScoreSimulator {
     const matchNumber = game.match.matchNumber || 'Unknown';
     const teamConfig = game.teamConfig || 'Unknown';
 
-    console.log(`✅ Found TEAM_CLASSIC game: Season ${seasonNumber}, Match ${matchNumber}`);
+    console.log(
+      `✅ Found TEAM_CLASSIC game: Season ${seasonNumber}, Match ${matchNumber}`,
+    );
     console.log(`   Game ID: ${game.id}`);
     console.log(`   Team Config: ${teamConfig}`);
-    console.log(`   Total match participants: ${game.match.participants.length}`);
+    console.log(
+      `   Total match participants: ${game.match.participants.length}`,
+    );
     console.log(`   Already submitted: ${game.participants.length}`);
     console.log(`   Real users submitted: ${this.realUserSubmissions.size}`);
     console.log(`   Fake users waiting: ${this.fakeUsers.length}`);
@@ -189,7 +207,9 @@ class TeamClassicScoreSimulator {
     const totalParticipants = this.game.match.participants.length;
     const fakeCount = this.fakeUsers.length;
 
-    console.log(`\n📋 Generating race assignments for ${fakeCount} fake users (${totalParticipants} total participants)...`);
+    console.log(
+      `\n📋 Generating race assignments for ${fakeCount} fake users (${totalParticipants} total participants)...`,
+    );
 
     // Fixed position ranges for CLASSIC mode
     const race1Max = 20;
@@ -219,12 +239,34 @@ class TeamClassicScoreSimulator {
       }
     }
 
-    console.log(`   Race 1 taken: ${Array.from(takenPositions.get(1) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
-    console.log(`   Race 2 taken: ${Array.from(takenPositions.get(2) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
-    console.log(`   Race 3 taken: ${Array.from(takenPositions.get(3) || []).sort((a, b) => a - b).join(', ') || 'none'}`);
+    console.log(
+      `   Race 1 taken: ${
+        Array.from(takenPositions.get(1) || [])
+          .sort((a, b) => a - b)
+          .join(', ') || 'none'
+      }`,
+    );
+    console.log(
+      `   Race 2 taken: ${
+        Array.from(takenPositions.get(2) || [])
+          .sort((a, b) => a - b)
+          .join(', ') || 'none'
+      }`,
+    );
+    console.log(
+      `   Race 3 taken: ${
+        Array.from(takenPositions.get(3) || [])
+          .sort((a, b) => a - b)
+          .join(', ') || 'none'
+      }`,
+    );
 
     // Helper to get available positions
-    const getAvailablePositions = (raceNum: number, min: number, max: number): number[] => {
+    const getAvailablePositions = (
+      raceNum: number,
+      min: number,
+      max: number,
+    ): number[] => {
       const taken = takenPositions.get(raceNum) || new Set();
       const available: number[] = [];
       for (let i = min; i <= max; i++) {
@@ -234,7 +276,10 @@ class TeamClassicScoreSimulator {
     };
 
     // Helper to pick and mark position as taken
-    const pickPosition = (raceNum: number, available: number[]): number | undefined => {
+    const pickPosition = (
+      raceNum: number,
+      available: number[],
+    ): number | undefined => {
       if (available.length === 0) return undefined;
       const idx = Math.floor(Math.random() * available.length);
       const pos = available[idx];
@@ -244,33 +289,67 @@ class TeamClassicScoreSimulator {
     };
 
     // Calculate distribution
-    const race1DnfSlots = getAvailablePositions(1, race1DnfMin, race1Max).length;
-    const race2DnfSlots = getAvailablePositions(2, race2DnfMin, race2Max).length;
-    const race3DnfSlots = getAvailablePositions(3, race3DnfMin, race3Max).length;
+    const race1DnfSlots = getAvailablePositions(
+      1,
+      race1DnfMin,
+      race1Max,
+    ).length;
+    const race2DnfSlots = getAvailablePositions(
+      2,
+      race2DnfMin,
+      race2Max,
+    ).length;
+    const race3DnfSlots = getAvailablePositions(
+      3,
+      race3DnfMin,
+      race3Max,
+    ).length;
 
     let fakeToEliminateAt1 = Math.min(race1DnfSlots, 4);
     let fakeToEliminateAt2 = Math.min(race2DnfSlots, 4);
     let fakeToEliminateAt3 = Math.min(race3DnfSlots, 4);
-    let fakeToSurvive = fakeCount - fakeToEliminateAt1 - fakeToEliminateAt2 - fakeToEliminateAt3;
+    let fakeToSurvive =
+      fakeCount - fakeToEliminateAt1 - fakeToEliminateAt2 - fakeToEliminateAt3;
 
     if (fakeToSurvive < 0) {
       const excess = -fakeToSurvive;
-      fakeToEliminateAt1 = Math.max(0, fakeToEliminateAt1 - Math.ceil(excess / 3));
-      fakeToEliminateAt2 = Math.max(0, fakeToEliminateAt2 - Math.ceil(excess / 3));
-      fakeToEliminateAt3 = Math.max(0, fakeToEliminateAt3 - Math.ceil(excess / 3));
-      fakeToSurvive = fakeCount - fakeToEliminateAt1 - fakeToEliminateAt2 - fakeToEliminateAt3;
+      fakeToEliminateAt1 = Math.max(
+        0,
+        fakeToEliminateAt1 - Math.ceil(excess / 3),
+      );
+      fakeToEliminateAt2 = Math.max(
+        0,
+        fakeToEliminateAt2 - Math.ceil(excess / 3),
+      );
+      fakeToEliminateAt3 = Math.max(
+        0,
+        fakeToEliminateAt3 - Math.ceil(excess / 3),
+      );
+      fakeToSurvive =
+        fakeCount -
+        fakeToEliminateAt1 -
+        fakeToEliminateAt2 -
+        fakeToEliminateAt3;
     }
 
-    console.log(`\n   Distribution: R1 DNF=${fakeToEliminateAt1}, R2 DNF=${fakeToEliminateAt2}, R3 DNF=${fakeToEliminateAt3}, Survive=${fakeToSurvive}`);
+    console.log(
+      `\n   Distribution: R1 DNF=${fakeToEliminateAt1}, R2 DNF=${fakeToEliminateAt2}, R3 DNF=${fakeToEliminateAt3}, Survive=${fakeToSurvive}`,
+    );
 
     // Shuffle and assign
-    const shuffledFakeUsers = [...this.fakeUsers].sort(() => Math.random() - 0.5);
+    const shuffledFakeUsers = [...this.fakeUsers].sort(
+      () => Math.random() - 0.5,
+    );
     const assignments: RaceAssignment[] = [];
     let userIdx = 0;
 
     // Race 1 DNF users
     const r1DnfPositions = getAvailablePositions(1, race1DnfMin, race1Max);
-    for (let i = 0; i < fakeToEliminateAt1 && userIdx < shuffledFakeUsers.length; i++) {
+    for (
+      let i = 0;
+      i < fakeToEliminateAt1 && userIdx < shuffledFakeUsers.length;
+      i++
+    ) {
       const user = shuffledFakeUsers[userIdx++];
       const pos1 = pickPosition(1, r1DnfPositions);
       assignments.push({
@@ -285,9 +364,16 @@ class TeamClassicScoreSimulator {
 
     // Race 2 DNF users
     const r2DnfPositions = getAvailablePositions(2, race2DnfMin, race2Max);
-    for (let i = 0; i < fakeToEliminateAt2 && userIdx < shuffledFakeUsers.length; i++) {
+    for (
+      let i = 0;
+      i < fakeToEliminateAt2 && userIdx < shuffledFakeUsers.length;
+      i++
+    ) {
       const user = shuffledFakeUsers[userIdx++];
-      const pos1 = pickPosition(1, getAvailablePositions(1, 1, race1DnfMin - 1));
+      const pos1 = pickPosition(
+        1,
+        getAvailablePositions(1, 1, race1DnfMin - 1),
+      );
       const pos2 = pickPosition(2, r2DnfPositions);
       assignments.push({
         user,
@@ -301,10 +387,20 @@ class TeamClassicScoreSimulator {
 
     // Race 3 DNF users
     const r3DnfPositions = getAvailablePositions(3, race3DnfMin, race3Max);
-    for (let i = 0; i < fakeToEliminateAt3 && userIdx < shuffledFakeUsers.length; i++) {
+    for (
+      let i = 0;
+      i < fakeToEliminateAt3 && userIdx < shuffledFakeUsers.length;
+      i++
+    ) {
       const user = shuffledFakeUsers[userIdx++];
-      const pos1 = pickPosition(1, getAvailablePositions(1, 1, race1DnfMin - 1));
-      const pos2 = pickPosition(2, getAvailablePositions(2, 1, race2DnfMin - 1));
+      const pos1 = pickPosition(
+        1,
+        getAvailablePositions(1, 1, race1DnfMin - 1),
+      );
+      const pos2 = pickPosition(
+        2,
+        getAvailablePositions(2, 1, race2DnfMin - 1),
+      );
       const pos3 = pickPosition(3, r3DnfPositions);
       assignments.push({
         user,
@@ -319,9 +415,18 @@ class TeamClassicScoreSimulator {
     // Survivors
     for (; userIdx < shuffledFakeUsers.length; userIdx++) {
       const user = shuffledFakeUsers[userIdx];
-      const pos1 = pickPosition(1, getAvailablePositions(1, 1, race1DnfMin - 1));
-      const pos2 = pickPosition(2, getAvailablePositions(2, 1, race2DnfMin - 1));
-      const pos3 = pickPosition(3, getAvailablePositions(3, 1, race3DnfMin - 1));
+      const pos1 = pickPosition(
+        1,
+        getAvailablePositions(1, 1, race1DnfMin - 1),
+      );
+      const pos2 = pickPosition(
+        2,
+        getAvailablePositions(2, 1, race2DnfMin - 1),
+      );
+      const pos3 = pickPosition(
+        3,
+        getAvailablePositions(3, 1, race3DnfMin - 1),
+      );
       assignments.push({
         user,
         raceResults: [
@@ -356,20 +461,23 @@ class TeamClassicScoreSimulator {
             Authorization: `Bearer ${user.token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const displayName = user.displayName || user.discordId;
       const resultText = this.formatRaceResults(raceResults);
-      const teamTag = user.teamIndex !== null ? ` [Team ${user.teamIndex}]` : '';
-      console.log(`   📤 ${displayName}${teamTag}: ${resultText} | ${machine}${assistEnabled ? ' +Assist' : ''}`);
+      const teamTag =
+        user.teamIndex !== null ? ` [Team ${user.teamIndex}]` : '';
+      console.log(
+        `   📤 ${displayName}${teamTag}: ${resultText} | ${machine}${assistEnabled ? ' +Assist' : ''}`,
+      );
 
       return response.data;
     } catch (error: any) {
       const displayName = user.displayName || user.discordId;
       console.error(
         `   ❌ ${displayName} failed to submit:`,
-        error.response?.data?.message || error.message
+        error.response?.data?.message || error.message,
       );
       throw error;
     }
@@ -406,19 +514,24 @@ class TeamClassicScoreSimulator {
       return;
     }
 
-    const shuffledAssignments = [...assignments].sort(() => Math.random() - 0.5);
+    const shuffledAssignments = [...assignments].sort(
+      () => Math.random() - 0.5,
+    );
 
     for (let i = 0; i < shuffledAssignments.length; i++) {
       const { user, raceResults } = shuffledAssignments[i];
       await this.submitScore(user, raceResults);
 
       if (i < shuffledAssignments.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
 
-  async submitScreenshot(user: UserWithToken, type: 'INDIVIDUAL' | 'FINAL_SCORE'): Promise<boolean> {
+  async submitScreenshot(
+    user: UserWithToken,
+    type: 'INDIVIDUAL' | 'FINAL_SCORE',
+  ): Promise<boolean> {
     if (!fs.existsSync(TEST_IMAGE_PATH)) {
       console.log(`   ⚠️  Test image not found: ${TEST_IMAGE_PATH}`);
       return false;
@@ -433,22 +546,24 @@ class TeamClassicScoreSimulator {
       formData.append('gameId', String(this.game.id));
       formData.append('type', type);
 
-      await axios.post(
-        `${API_URL}/api/screenshots/submit`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${user.token}`,
-          },
-        }
-      );
+      await axios.post(`${API_URL}/api/screenshots/submit`, formData, {
+        headers: {
+          Authorization: `Bearer ${user.token}`,
+        },
+      });
 
       return true;
     } catch (error: any) {
-      if (error.response?.status === 409 || error.response?.data?.message?.includes('already')) {
+      if (
+        error.response?.status === 409 ||
+        error.response?.data?.message?.includes('already')
+      ) {
         return true;
       }
-      console.error(`   ❌ Screenshot failed for ${user.displayName || user.discordId}:`, error.response?.data?.message || error.message);
+      console.error(
+        `   ❌ Screenshot failed for ${user.displayName || user.discordId}:`,
+        error.response?.data?.message || error.message,
+      );
       return false;
     }
   }
@@ -477,7 +592,7 @@ class TeamClassicScoreSimulator {
         token: jwt.sign(
           { sub: p.user.id, discordId: p.user.discordId, role: 'PLAYER' },
           JWT_SECRET,
-          { expiresIn: '1h' }
+          { expiresIn: '1h' },
         ),
         teamIndex: p.teamIndex,
         isExcluded: p.isExcluded,
@@ -485,9 +600,11 @@ class TeamClassicScoreSimulator {
 
       const success = await this.submitScreenshot(userWithToken, 'INDIVIDUAL');
       if (success) successCount++;
-      await new Promise(resolve => setTimeout(resolve, delayMs));
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
-    console.log(`   📷 INDIVIDUAL: ${successCount}/${participants.length} submitted`);
+    console.log(
+      `   📷 INDIVIDUAL: ${successCount}/${participants.length} submitted`,
+    );
 
     // Submit FINAL_SCORE for 1st place
     const firstPlace = participants[0];
@@ -498,9 +615,13 @@ class TeamClassicScoreSimulator {
         displayName: firstPlace.user.displayName,
         isFake: firstPlace.user.isFake,
         token: jwt.sign(
-          { sub: firstPlace.user.id, discordId: firstPlace.user.discordId, role: 'PLAYER' },
+          {
+            sub: firstPlace.user.id,
+            discordId: firstPlace.user.discordId,
+            role: 'PLAYER',
+          },
           JWT_SECRET,
-          { expiresIn: '1h' }
+          { expiresIn: '1h' },
         ),
         teamIndex: firstPlace.teamIndex,
         isExcluded: firstPlace.isExcluded,
@@ -508,7 +629,9 @@ class TeamClassicScoreSimulator {
 
       const success = await this.submitScreenshot(userWithToken, 'FINAL_SCORE');
       if (success) {
-        console.log(`   🏆 FINAL_SCORE: ${firstPlace.user.displayName || firstPlace.user.discordId}`);
+        console.log(
+          `   🏆 FINAL_SCORE: ${firstPlace.user.displayName || firstPlace.user.discordId}`,
+        );
       }
     }
   }
@@ -551,31 +674,44 @@ class TeamClassicScoreSimulator {
     }
 
     // Calculate team scores
-    const teamScores = Array.from(teamMap.entries()).map(([teamIndex, members]) => {
-      const totalScore = members.reduce((sum, m) => sum + (m.totalScore ?? 0), 0);
-      return { teamIndex, totalScore, members };
-    }).sort((a, b) => b.totalScore - a.totalScore);
+    const teamScores = Array.from(teamMap.entries())
+      .map(([teamIndex, members]) => {
+        const totalScore = members.reduce(
+          (sum, m) => sum + (m.totalScore ?? 0),
+          0,
+        );
+        return { teamIndex, totalScore, members };
+      })
+      .sort((a, b) => b.totalScore - a.totalScore);
 
     console.log('\n📊 Team Rankings:');
     console.log('==================');
 
     for (let i = 0; i < teamScores.length; i++) {
       const team = teamScores[i];
-      console.log(`\n🏅 #${i + 1} Team ${team.teamIndex} - ${team.totalScore} pts`);
+      console.log(
+        `\n🏅 #${i + 1} Team ${team.teamIndex} - ${team.totalScore} pts`,
+      );
 
       // Sort members by score
-      const sortedMembers = [...team.members].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+      const sortedMembers = [...team.members].sort(
+        (a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0),
+      );
       for (const p of sortedMembers) {
         const displayName = p.user.displayName || p.user.discordId;
         const fakeTag = p.user.isFake ? '' : ' [REAL]';
         const score = p.totalScore ?? 0;
-        const races = p.raceResults.map(r => {
-          if (r.position === null) return '-';
-          if (r.isEliminated) return `${r.position}*`;
-          return `${r.position}`;
-        }).join(', ');
+        const races = p.raceResults
+          .map((r) => {
+            if (r.position === null) return '-';
+            if (r.isEliminated) return `${r.position}*`;
+            return `${r.position}`;
+          })
+          .join(', ');
 
-        console.log(`      ${String(score).padStart(3)} pts | [${races.padEnd(12)}] | ${displayName}${fakeTag}`);
+        console.log(
+          `      ${String(score).padStart(3)} pts | [${races.padEnd(12)}] | ${displayName}${fakeTag}`,
+        );
       }
     }
 
@@ -591,7 +727,9 @@ class TeamClassicScoreSimulator {
     console.log('\n📊 Individual Rankings (by Total Score):');
     console.log('=========================================');
 
-    const sorted = [...participants].sort((a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0));
+    const sorted = [...participants].sort(
+      (a, b) => (b.totalScore ?? 0) - (a.totalScore ?? 0),
+    );
     let rank = 1;
     let prevScore: number | null = null;
     let displayRank = 1;
@@ -602,7 +740,12 @@ class TeamClassicScoreSimulator {
       const score = p.totalScore ?? 0;
       const elim = p.eliminatedAtRace;
       const dnfTag = elim !== null ? ` (DNF R${elim})` : '';
-      const teamTag = p.teamIndex !== null ? ` [T${p.teamIndex}]` : p.isExcluded ? ' [EX]' : '';
+      const teamTag =
+        p.teamIndex !== null
+          ? ` [T${p.teamIndex}]`
+          : p.isExcluded
+            ? ' [EX]'
+            : '';
 
       if (prevScore !== null && score === prevScore) {
         // Same rank
@@ -610,14 +753,16 @@ class TeamClassicScoreSimulator {
         displayRank = rank;
       }
 
-      const races = p.raceResults.map(r => {
-        if (r.position === null) return '-';
-        if (r.isEliminated) return `${r.position}*`;
-        return `${r.position}`;
-      }).join(', ');
+      const races = p.raceResults
+        .map((r) => {
+          if (r.position === null) return '-';
+          if (r.isEliminated) return `${r.position}*`;
+          return `${r.position}`;
+        })
+        .join(', ');
 
       console.log(
-        `   #${String(displayRank).padStart(2)} | ${String(score).padStart(3)} pts | [${races.padEnd(12)}] | ${displayName}${teamTag}${dnfTag}${fakeTag}`
+        `   #${String(displayRank).padStart(2)} | ${String(score).padStart(3)} pts | [${races.padEnd(12)}] | ${displayName}${teamTag}${dnfTag}${fakeTag}`,
       );
 
       prevScore = score;
@@ -639,7 +784,9 @@ class TeamClassicScoreSimulator {
       const match = this.game.match.matchNumber;
 
       console.log(`\n✅ Simulation complete!`);
-      console.log(`📊 View at: http://localhost:3001/matches/team-classic/${season}/${match}`);
+      console.log(
+        `📊 View at: http://localhost:3001/matches/team-classic/${season}/${match}`,
+      );
     } catch (error: any) {
       console.error('❌ Error:', error.message || error);
     } finally {

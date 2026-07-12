@@ -1,4 +1,12 @@
-import { IsEnum, IsString, IsOptional, IsInt, Min, Max, IsNumber } from 'class-validator';
+import {
+  IsEnum,
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsNumber,
+} from 'class-validator';
 import { InGameMode, League } from '@prisma/client';
 
 export class CreateMatchDto {

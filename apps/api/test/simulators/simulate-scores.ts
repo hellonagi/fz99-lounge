@@ -15,7 +15,8 @@ import * as jwt from 'jsonwebtoken';
 const prisma = new PrismaClient();
 
 const API_URL = process.env.API_URL || 'http://localhost:3000';
-const JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'test_jwt_secret_key_for_testing_only';
 
 const F99_MACHINES = [
   'Blue Falcon',
@@ -106,7 +107,12 @@ class ScoreSimulator {
         .map((p: any) => p.userId),
     );
     this.users = game.match.participants
-      .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId))
+      .filter(
+        (p: any) =>
+          p.user.isFake &&
+          !submittedUserIds.has(p.userId) &&
+          !excludedUserIds.has(p.userId),
+      )
       .map((p: any) => ({
         ...p.user,
         token: jwt.sign(
@@ -116,18 +122,24 @@ class ScoreSimulator {
             role: 'PLAYER',
           },
           JWT_SECRET,
-          { expiresIn: '1h' }
+          { expiresIn: '1h' },
         ),
       }));
 
     const category = game.match.season?.event?.category || 'Unknown';
     const seasonNumber = game.match.season?.seasonNumber || 'Unknown';
     const matchNumber = game.match.matchNumber || 'Unknown';
-    const submittedCount = game.participants.filter((p: any) => p.totalScore !== null).length;
+    const submittedCount = game.participants.filter(
+      (p: any) => p.totalScore !== null,
+    ).length;
 
-    console.log(`Found IN_PROGRESS game: ${category} Season ${seasonNumber}, Match ${matchNumber}`);
+    console.log(
+      `Found IN_PROGRESS game: ${category} Season ${seasonNumber}, Match ${matchNumber}`,
+    );
     console.log(`   Game ID: ${game.id}`);
-    console.log(`   ${submittedCount} scores submitted, ${this.users.length} fake users waiting`);
+    console.log(
+      `   ${submittedCount} scores submitted, ${this.users.length} fake users waiting`,
+    );
 
     return game;
   }
@@ -183,7 +195,10 @@ class ScoreSimulator {
         .map((p: any) => p.userId),
     );
     this.users = game.match.participants
-      .filter((p: any) => !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId))
+      .filter(
+        (p: any) =>
+          !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId),
+      )
       .map((p: any) => ({
         ...p.user,
         token: jwt.sign(
@@ -193,24 +208,36 @@ class ScoreSimulator {
             role: 'PLAYER',
           },
           JWT_SECRET,
-          { expiresIn: '1h' }
+          { expiresIn: '1h' },
         ),
       }));
 
     const seasonNumber = game.match.season?.seasonNumber || 'Unknown';
-    const submittedCount = game.participants.filter((p: any) => p.status !== 'UNSUBMITTED').length;
+    const submittedCount = game.participants.filter(
+      (p: any) => p.status !== 'UNSUBMITTED',
+    ).length;
     const fakeCount = this.users.filter((u: any) => u.isFake).length;
     const realCount = this.users.length - fakeCount;
 
-    console.log(`Found TOURNAMENT game: Season ${seasonNumber}, Round ${round}`);
+    console.log(
+      `Found TOURNAMENT game: Season ${seasonNumber}, Round ${round}`,
+    );
     console.log(`   Game ID: ${game.id}`);
-    console.log(`   ${submittedCount} scores submitted, ${this.users.length} users waiting (${realCount} real, ${fakeCount} fake)`);
+    console.log(
+      `   ${submittedCount} scores submitted, ${this.users.length} users waiting (${realCount} real, ${fakeCount} fake)`,
+    );
 
     return game;
   }
 
-  async findGameByCategorySeasonMatch(category: string, season: number, match: number) {
-    console.log(`Finding game for ${category} Season ${season}, Match ${match}...`);
+  async findGameByCategorySeasonMatch(
+    category: string,
+    season: number,
+    match: number,
+  ) {
+    console.log(
+      `Finding game for ${category} Season ${season}, Match ${match}...`,
+    );
 
     const eventCategory = category.toUpperCase() as EventCategory;
 
@@ -250,7 +277,9 @@ class ScoreSimulator {
     });
 
     if (!game) {
-      throw new Error(`Game not found for ${category} Season ${season}, Match ${match}`);
+      throw new Error(
+        `Game not found for ${category} Season ${season}, Match ${match}`,
+      );
     }
 
     this.game = game;
@@ -269,7 +298,12 @@ class ScoreSimulator {
         .map((p: any) => p.userId),
     );
     this.users = game.match.participants
-      .filter((p: any) => p.user.isFake && !submittedUserIds.has(p.userId) && !excludedUserIds.has(p.userId))
+      .filter(
+        (p: any) =>
+          p.user.isFake &&
+          !submittedUserIds.has(p.userId) &&
+          !excludedUserIds.has(p.userId),
+      )
       .map((p: any) => ({
         ...p.user,
         token: jwt.sign(
@@ -279,11 +313,13 @@ class ScoreSimulator {
             role: 'PLAYER',
           },
           JWT_SECRET,
-          { expiresIn: '1h' }
+          { expiresIn: '1h' },
         ),
       }));
 
-    const submittedCount = game.participants.filter((p: any) => p.totalScore !== null).length;
+    const submittedCount = game.participants.filter(
+      (p: any) => p.totalScore !== null,
+    ).length;
     console.log(`Found game with ${submittedCount} scores submitted`);
     console.log(`   ${this.users.length} fake users waiting to submit scores`);
 
@@ -296,7 +332,9 @@ class ScoreSimulator {
     if (category === 'CLASSIC' || category === 'TEAM_CLASSIC') return false;
     // TOURNAMENT: derive from game's inGameMode
     const inGameMode = this.game?.inGameMode || '';
-    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(inGameMode);
+    return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(
+      inGameMode,
+    );
   }
 
   private get raceCount(): number {
@@ -341,9 +379,12 @@ class ScoreSimulator {
    * Simulates a realistic race: each race has unique positions,
    * eliminated players don't participate in subsequent races.
    */
-  generateAllScores(users: any[], takenPositions?: Map<number, Set<number>>): UserScore[] {
+  generateAllScores(
+    users: any[],
+    takenPositions?: Map<number, Set<number>>,
+  ): UserScore[] {
     const userCount = users.length;
-    const scores: UserScore[] = users.map(user => ({
+    const scores: UserScore[] = users.map((user) => ({
       user,
       machine: faker.helpers.arrayElement(F99_MACHINES),
       assistEnabled: this.isGpMode ? false : faker.datatype.boolean(0.15),
@@ -386,7 +427,7 @@ class ScoreSimulator {
       }
 
       // Update alive list
-      aliveIndices = aliveIndices.filter(idx => !eliminatedIndices.has(idx));
+      aliveIndices = aliveIndices.filter((idx) => !eliminatedIndices.has(idx));
     }
 
     return scores;
@@ -396,10 +437,17 @@ class ScoreSimulator {
    * Pick `count` unique random positions from [min..max], excluding already taken positions.
    * If count > available range, some positions will be duplicated (same-rank tie).
    */
-  private pickUniquePositions(count: number, min: number, max: number, taken: Set<number> = new Set()): number[] {
+  private pickUniquePositions(
+    count: number,
+    min: number,
+    max: number,
+    taken: Set<number> = new Set(),
+  ): number[] {
     // Build available positions excluding taken ones
-    const available = Array.from({ length: max - min + 1 }, (_, i) => min + i)
-      .filter(p => !taken.has(p));
+    const available = Array.from(
+      { length: max - min + 1 },
+      (_, i) => min + i,
+    ).filter((p) => !taken.has(p));
 
     if (count <= available.length) {
       // Enough unique positions available
@@ -435,7 +483,7 @@ class ScoreSimulator {
           else if (race.position === 2) total += 196;
           else total += 200 - race.position * 2;
         } else {
-          total += 105 - (race.position * 5);
+          total += 105 - race.position * 5;
         }
       }
     }
@@ -444,7 +492,8 @@ class ScoreSimulator {
 
   async submitScore(userScore: UserScore) {
     const { user, machine, assistEnabled, raceResults } = userScore;
-    const category = this.game.match.season?.event?.category?.toLowerCase() || 'classic';
+    const category =
+      this.game.match.season?.event?.category?.toLowerCase() || 'classic';
     const season = this.game.match.season?.seasonNumber;
     const match = this.game.match.matchNumber;
 
@@ -460,7 +509,7 @@ class ScoreSimulator {
             Authorization: `Bearer ${user.token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const displayName = user.displayName || user.discordId;
@@ -469,7 +518,7 @@ class ScoreSimulator {
         ? `DNF R${lastRace.raceNumber}`
         : this.calculateTotalPoints(raceResults) + ' pts';
       console.log(
-        `   ${displayName}: ${dnfText} | ${machine}${assistEnabled ? ' +Assist' : ''}`
+        `   ${displayName}: ${dnfText} | ${machine}${assistEnabled ? ' +Assist' : ''}`,
       );
 
       return response.data;
@@ -477,7 +526,7 @@ class ScoreSimulator {
       const displayName = user.displayName || user.discordId;
       console.error(
         `   [ERROR] ${displayName} failed:`,
-        error.response?.data?.message || error.message
+        error.response?.data?.message || error.message,
       );
       throw error;
     }
@@ -485,7 +534,9 @@ class ScoreSimulator {
 
   async simulateGradual(delayMs: number = 2000) {
     const modeLabel = this.isGpMode ? 'GP' : 'CLASSIC';
-    console.log(`\nStarting ${modeLabel} score submissions (${this.raceCount} races)...`);
+    console.log(
+      `\nStarting ${modeLabel} score submissions (${this.raceCount} races)...`,
+    );
     console.log(`   ${this.users.length} fake users, ${delayMs}ms delay\n`);
 
     if (this.users.length === 0) {
@@ -502,7 +553,7 @@ class ScoreSimulator {
     for (let i = 0; i < shuffled.length; i++) {
       await this.submitScore(shuffled[i]);
       if (i < shuffled.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
     }
   }
@@ -518,7 +569,7 @@ class ScoreSimulator {
 
     const takenPositions = await this.collectTakenPositions();
     const allScores = this.generateAllScores(this.users, takenPositions);
-    const promises = allScores.map(score => this.submitScore(score));
+    const promises = allScores.map((score) => this.submitScore(score));
     await Promise.allSettled(promises);
   }
 
@@ -560,13 +611,16 @@ class ScoreSimulator {
       console.log('==============');
       await this.displayFinalRankings();
 
-      const cat = this.game.match.season?.event?.category?.toLowerCase() || category;
+      const cat =
+        this.game.match.season?.event?.category?.toLowerCase() || category;
       const seasonNum = this.game.match.season?.seasonNumber || season;
       const matchNum = this.game.match.matchNumber || match;
 
       console.log(`\nSimulation complete!`);
       const seasonSlug = seasonNum === -1 ? 'unrated' : String(seasonNum);
-      console.log(`View at: http://localhost:3001/matches/${cat}/${seasonSlug}/${matchNum}`);
+      console.log(
+        `View at: http://localhost:3001/matches/${cat}/${seasonSlug}/${matchNum}`,
+      );
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -581,10 +635,7 @@ class ScoreSimulator {
       where: {
         gameId: this.game.id,
       },
-      orderBy: [
-        { totalScore: 'desc' },
-        { eliminatedAtRace: 'desc' },
-      ],
+      orderBy: [{ totalScore: 'desc' }, { eliminatedAtRace: 'desc' }],
       include: {
         user: {
           select: {
@@ -641,7 +692,7 @@ class ScoreSimulator {
       const assistText = p.assistEnabled ? ' [ASSIST]' : '';
 
       console.log(
-        `   #${String(currentRank).padStart(2)} | ${scoreText.padStart(12)} | ${displayName.padEnd(15)} | ${p.machine}${assistText}`
+        `   #${String(currentRank).padStart(2)} | ${scoreText.padStart(12)} | ${displayName.padEnd(15)} | ${p.machine}${assistText}`,
       );
     });
   }
@@ -651,7 +702,11 @@ class ScoreSimulator {
 if (require.main === module) {
   const args = process.argv.slice(2);
   const useLatest = args.includes('--latest');
-  const mode = (args.find(arg => ['gradual', 'fast', 'burst'].includes(arg)) as 'gradual' | 'fast' | 'burst') || 'gradual';
+  const mode =
+    (args.find((arg) => ['gradual', 'fast', 'burst'].includes(arg)) as
+      | 'gradual'
+      | 'fast'
+      | 'burst') || 'gradual';
 
   // --round N: tournament round shortcut
   const roundIdx = args.indexOf('--round');
@@ -659,7 +714,9 @@ if (require.main === module) {
 
   const simulator = new ScoreSimulator();
   if (round) {
-    simulator.run({ mode, category: 'TOURNAMENT', match: round }).catch(console.error);
+    simulator
+      .run({ mode, category: 'TOURNAMENT', match: round })
+      .catch(console.error);
   } else {
     simulator.run({ mode, useLatest }).catch(console.error);
   }

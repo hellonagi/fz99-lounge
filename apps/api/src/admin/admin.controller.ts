@@ -1,4 +1,16 @@
-import { Controller, Get, Post, Patch, Param, Query, Body, Req, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Query,
+  Body,
+  Req,
+  UseGuards,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -27,7 +39,10 @@ export class AdminController {
     private prisma: PrismaService,
     private dailyLoungeAnnouncementCron: DailyLoungeAnnouncementCron,
   ) {
-    this.defaultAlertDays = this.configService.get<number>('SUSPICIOUS_LOGIN_ALERT_DAYS', 7);
+    this.defaultAlertDays = this.configService.get<number>(
+      'SUSPICIOUS_LOGIN_ALERT_DAYS',
+      7,
+    );
   }
 
   /**
@@ -35,15 +50,17 @@ export class AdminController {
    */
   @Get('multi-accounts')
   @Permissions(ModeratorPermission.VIEW_MULTI_ACCOUNTS)
-  async getMultiAccountUsers(
-    @Query('days') days: string = '30',
-  ) {
+  async getMultiAccountUsers(@Query('days') days: string = '30') {
     const daysBack = parseInt(days, 10) || 30;
-    const multiAccountUsers = await this.loginTrackingService.findMultiAccountUsers(daysBack);
+    const multiAccountUsers =
+      await this.loginTrackingService.findMultiAccountUsers(daysBack);
 
     return {
       totalSuspiciousIps: multiAccountUsers.length,
-      totalAccountsInvolved: multiAccountUsers.reduce((sum, ip) => sum + ip.accounts.length, 0),
+      totalAccountsInvolved: multiAccountUsers.reduce(
+        (sum, ip) => sum + ip.accounts.length,
+        0,
+      ),
       data: multiAccountUsers,
     };
   }
@@ -58,7 +75,10 @@ export class AdminController {
     @Query('limit') limit: string = '50',
   ) {
     const limitNum = parseInt(limit, 10) || 50;
-    const history = await this.loginTrackingService.getUserLoginHistory(parseInt(userId, 10), limitNum);
+    const history = await this.loginTrackingService.getUserLoginHistory(
+      parseInt(userId, 10),
+      limitNum,
+    );
 
     return {
       userId,
@@ -77,7 +97,10 @@ export class AdminController {
     @Query('days') days: string = '30',
   ) {
     const daysBack = parseInt(days, 10) || 30;
-    const accounts = await this.loginTrackingService.getAccountsFromIp(ipAddress, daysBack);
+    const accounts = await this.loginTrackingService.getAccountsFromIp(
+      ipAddress,
+      daysBack,
+    );
 
     return {
       ipAddress,
@@ -96,9 +119,11 @@ export class AdminController {
 
     return {
       ...stats,
-      suspiciousPercentage: stats.totalLogins > 0
-        ? ((stats.suspiciousLogins / stats.totalLogins) * 100).toFixed(2) + '%'
-        : '0%',
+      suspiciousPercentage:
+        stats.totalLogins > 0
+          ? ((stats.suspiciousLogins / stats.totalLogins) * 100).toFixed(2) +
+            '%'
+          : '0%',
     };
   }
 
@@ -107,17 +132,20 @@ export class AdminController {
    */
   @Get('suspicious-activity')
   @Permissions(ModeratorPermission.VIEW_MULTI_ACCOUNTS)
-  async getSuspiciousActivity(
-    @Query('days') days?: string,
-  ) {
+  async getSuspiciousActivity(@Query('days') days?: string) {
     const daysBack = days ? parseInt(days, 10) : this.defaultAlertDays;
 
     // Get multi-account users
-    const multiAccountUsers = await this.loginTrackingService.findMultiAccountUsers(daysBack);
+    const multiAccountUsers =
+      await this.loginTrackingService.findMultiAccountUsers(daysBack);
 
     // Filter for highly suspicious cases (3+ accounts from same IP)
-    const highlySuspicious = multiAccountUsers.filter(ip => ip.accounts.length >= 3);
-    const moderatelySuspicious = multiAccountUsers.filter(ip => ip.accounts.length === 2);
+    const highlySuspicious = multiAccountUsers.filter(
+      (ip) => ip.accounts.length >= 3,
+    );
+    const moderatelySuspicious = multiAccountUsers.filter(
+      (ip) => ip.accounts.length === 2,
+    );
 
     return {
       timeframe: `Last ${daysBack} days`,
@@ -136,9 +164,7 @@ export class AdminController {
    */
   @Post('games/:gameId/calculate-rating')
   @Permissions(ModeratorPermission.RECALCULATE_RATING)
-  async calculateRating(
-    @Param('gameId') gameId: string,
-  ) {
+  async calculateRating(@Param('gameId') gameId: string) {
     const gameIdNum = parseInt(gameId, 10);
     if (isNaN(gameIdNum)) {
       throw new BadRequestException('Invalid game ID');
@@ -164,11 +190,17 @@ export class AdminController {
     @Param('season') season: string,
     @Param('matchNumber') matchNumber: string,
   ) {
-
     // Validate category
     const categoryUpper = category.toUpperCase();
-    if (categoryUpper !== 'CLASSIC' && categoryUpper !== 'GP' && categoryUpper !== 'TEAM_CLASSIC' && categoryUpper !== 'TEAM_GP') {
-      throw new BadRequestException('Only CLASSIC, GP, TEAM_CLASSIC, and TEAM_GP categories are supported');
+    if (
+      categoryUpper !== 'CLASSIC' &&
+      categoryUpper !== 'GP' &&
+      categoryUpper !== 'TEAM_CLASSIC' &&
+      categoryUpper !== 'TEAM_GP'
+    ) {
+      throw new BadRequestException(
+        'Only CLASSIC, GP, TEAM_CLASSIC, and TEAM_GP categories are supported',
+      );
     }
     const eventCategory = categoryUpper as EventCategory;
 
@@ -184,9 +216,19 @@ export class AdminController {
       throw new BadRequestException('Invalid match number');
     }
 
-    const result = (eventCategory === EventCategory.TEAM_CLASSIC || eventCategory === EventCategory.TEAM_GP)
-      ? await this.teamClassicRatingService.recalculateFromMatch(seasonNumber, fromMatchNumber, eventCategory)
-      : await this.classicRatingService.recalculateFromMatch(eventCategory, seasonNumber, fromMatchNumber);
+    const result =
+      eventCategory === EventCategory.TEAM_CLASSIC ||
+      eventCategory === EventCategory.TEAM_GP
+        ? await this.teamClassicRatingService.recalculateFromMatch(
+            seasonNumber,
+            fromMatchNumber,
+            eventCategory,
+          )
+        : await this.classicRatingService.recalculateFromMatch(
+            eventCategory,
+            seasonNumber,
+            fromMatchNumber,
+          );
 
     return {
       success: true,

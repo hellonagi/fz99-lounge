@@ -66,7 +66,7 @@ export function NewsArticle({ article, locale }: NewsArticleProps) {
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw]}
           components={{
-            // eslint-disable-next-line @next/next/no-img-element
+             
             img: ({ node: _node, ...props }) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img {...props} alt={props.alt || ''} style={{ maxWidth: '100%' }} />

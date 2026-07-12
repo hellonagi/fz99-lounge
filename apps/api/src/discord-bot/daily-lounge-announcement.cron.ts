@@ -51,7 +51,9 @@ export class DailyLoungeAnnouncementCron {
       });
 
       if (matches.length === 0) {
-        this.logger.log('No matches scheduled for today, skipping announcement');
+        this.logger.log(
+          'No matches scheduled for today, skipping announcement',
+        );
         return;
       }
 

@@ -1,7 +1,11 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { toHalfWidth, validateDisplayName } from '../common/utils/string.util';
-import { EventCategory, MatchStatus, Prisma } from '@prisma/client';
+import { EventCategory, MatchStatus } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -10,7 +14,10 @@ export class UsersService {
   /**
    * Get seasons that a user has participated in (with at least 1 match)
    */
-  async getUserSeasons(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
+  async getUserSeasons(
+    userId: number,
+    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
+  ) {
     return this.prisma.season.findMany({
       where: {
         userSeasonStats: { some: { userId, totalMatches: { gte: 1 } } },
@@ -21,7 +28,11 @@ export class UsersService {
     });
   }
 
-  async findByProfileNumber(profileNumber: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
+  async findByProfileNumber(
+    profileNumber: number,
+    seasonNumber?: number,
+    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { profileNumber },
       select: { id: true },
@@ -32,7 +43,11 @@ export class UsersService {
     return this.findById(user.id, seasonNumber, category);
   }
 
-  async findById(id: number, seasonNumber?: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
+  async findById(
+    id: number,
+    seasonNumber?: number,
+    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -60,16 +75,19 @@ export class UsersService {
         },
         // シーズン別統計を取得（seasonNumberが指定されればそのシーズン、なければアクティブシーズン）
         seasonStats: {
-          where: seasonNumber !== undefined
-            ? {
-                season: {
-                  seasonNumber,
-                  ...(category && { event: { category: category as EventCategory } }),
+          where:
+            seasonNumber !== undefined
+              ? {
+                  season: {
+                    seasonNumber,
+                    ...(category && {
+                      event: { category: category as EventCategory },
+                    }),
+                  },
+                }
+              : {
+                  season: { isActive: true },
                 },
-              }
-            : {
-                season: { isActive: true },
-              },
           select: {
             seasonId: true,
             displayRating: true,
@@ -106,7 +124,6 @@ export class UsersService {
     const seasonStatsWithRank = await Promise.all(
       user.seasonStats.map(async (stats) => {
         const eventCategory = stats.season.event.category;
-        const isGpMode = eventCategory === 'GP' || eventCategory === 'TEAM_GP';
 
         let rank: number;
         if (eventCategory === 'TEAM_GP') {
@@ -130,9 +147,10 @@ export class UsersService {
             where: {
               seasonId: stats.seasonId,
               totalMatches: { gte: 1 },
-              bestPosition: stats.bestPosition != null
-                ? { lt: stats.bestPosition }
-                : undefined,
+              bestPosition:
+                stats.bestPosition != null
+                  ? { lt: stats.bestPosition }
+                  : undefined,
             },
           });
         } else {
@@ -148,11 +166,11 @@ export class UsersService {
           ...stats,
           leaderboardRank: rank + 1,
         };
-      })
+      }),
     );
 
     // Flatten profile.country to country, flatten permissions
-    const { profile, seasonStats, permissions, ...rest } = user;
+    const { profile, seasonStats: _seasonStats, permissions, ...rest } = user;
     return {
       ...rest,
       country: profile?.country || null,
@@ -196,12 +214,13 @@ export class UsersService {
     // 60日制限チェック
     if (user.displayNameLastChangedAt) {
       const daysSinceLastChange = Math.floor(
-        (Date.now() - user.displayNameLastChangedAt.getTime()) / (1000 * 60 * 60 * 24)
+        (Date.now() - user.displayNameLastChangedAt.getTime()) /
+          (1000 * 60 * 60 * 24),
       );
       if (daysSinceLastChange < 60) {
         const daysRemaining = 60 - daysSinceLastChange;
         throw new BadRequestException(
-          `Display name can only be changed once every 60 days. ${daysRemaining} days remaining.`
+          `Display name can only be changed once every 60 days. ${daysRemaining} days remaining.`,
         );
       }
     }
@@ -224,12 +243,19 @@ export class UsersService {
     });
   }
 
-  async updateStreamUrls(userId: number, data: { youtubeUrl?: string; twitchUrl?: string }) {
+  async updateStreamUrls(
+    userId: number,
+    data: { youtubeUrl?: string; twitchUrl?: string },
+  ) {
     return this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(data.youtubeUrl !== undefined && { youtubeUrl: data.youtubeUrl || null }),
-        ...(data.twitchUrl !== undefined && { twitchUrl: data.twitchUrl || null }),
+        ...(data.youtubeUrl !== undefined && {
+          youtubeUrl: data.youtubeUrl || null,
+        }),
+        ...(data.twitchUrl !== undefined && {
+          twitchUrl: data.twitchUrl || null,
+        }),
       },
       select: {
         id: true,
@@ -244,7 +270,10 @@ export class UsersService {
     });
   }
 
-  async updateProfile(userId: number, data: { displayName?: string; country?: string }) {
+  async updateProfile(
+    userId: number,
+    data: { displayName?: string; country?: string },
+  ) {
     // ユーザー取得
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -270,12 +299,13 @@ export class UsersService {
       // 60日制限チェック（初回設定時はスキップ）
       if (user.displayName && user.displayNameLastChangedAt) {
         const daysSinceLastChange = Math.floor(
-          (Date.now() - user.displayNameLastChangedAt.getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - user.displayNameLastChangedAt.getTime()) /
+            (1000 * 60 * 60 * 24),
         );
         if (daysSinceLastChange < 60) {
           const daysRemaining = 60 - daysSinceLastChange;
           throw new BadRequestException(
-            `Display name can only be changed once every 60 days. ${daysRemaining} days remaining.`
+            `Display name can only be changed once every 60 days. ${daysRemaining} days remaining.`,
           );
         }
       }
@@ -337,7 +367,9 @@ export class UsersService {
   /**
    * Get suggested country from latest login history (IP geolocation)
    */
-  async getSuggestedCountry(userId: number): Promise<{ country: string | null }> {
+  async getSuggestedCountry(
+    userId: number,
+  ): Promise<{ country: string | null }> {
     // Find the most recent login with country data
     const latestLogin = await this.prisma.userLoginHistory.findFirst({
       where: {
@@ -374,9 +406,10 @@ export class UsersService {
                 ...(seasonNumber !== undefined && { seasonNumber }),
               },
             }),
-            ...(seasonNumber !== undefined && !category && {
-              season: { seasonNumber },
-            }),
+            ...(seasonNumber !== undefined &&
+              !category && {
+                season: { seasonNumber },
+              }),
           },
         },
       },
@@ -424,7 +457,9 @@ export class UsersService {
     });
 
     // レーティング履歴を取得（試合IDごと）
-    const matchIds = [...new Set(gameParticipants.map((gp) => gp.game.match.id))];
+    const matchIds = [
+      ...new Set(gameParticipants.map((gp) => gp.game.match.id)),
+    ];
     const ratingHistories = await this.prisma.ratingHistory.findMany({
       where: {
         userId,
@@ -445,7 +480,11 @@ export class UsersService {
     // 前回のレーティングを取得するため、シーズン別に全履歴を時系列順にソートして取得
     // ページネーションに関係なく、シーズン内の全マッチからレーティング履歴を取得
     // シーズンごとにレーティングはリセットされるため、同一シーズン内の履歴のみ使用
-    const seasonIds = [...new Set(gameParticipants.map((gp) => gp.game.match.season.seasonNumber))];
+    const seasonIds = [
+      ...new Set(
+        gameParticipants.map((gp) => gp.game.match.season.seasonNumber),
+      ),
+    ];
     const allRatingHistory = await this.prisma.ratingHistory.findMany({
       where: {
         userId,
@@ -486,10 +525,21 @@ export class UsersService {
       let totalParticipants: number;
 
       // TEAM_CLASSIC: compute team rank from teamScores
-      if ((gameCategory === 'TEAM_CLASSIC' || gameCategory === 'TEAM_GP') && gp.teamIndex !== null && gp.game.teamScores) {
-        const teamScores = gp.game.teamScores as { teamIndex: number; totalScore: number }[];
-        const sorted = [...teamScores].sort((a, b) => b.totalScore - a.totalScore);
-        position = sorted.findIndex((t) => t.teamIndex === gp.teamIndex) + 1 || teamScores.length;
+      if (
+        (gameCategory === 'TEAM_CLASSIC' || gameCategory === 'TEAM_GP') &&
+        gp.teamIndex !== null &&
+        gp.game.teamScores
+      ) {
+        const teamScores = gp.game.teamScores as {
+          teamIndex: number;
+          totalScore: number;
+        }[];
+        const sorted = [...teamScores].sort(
+          (a, b) => b.totalScore - a.totalScore,
+        );
+        position =
+          sorted.findIndex((t) => t.teamIndex === gp.teamIndex) + 1 ||
+          teamScores.length;
         totalParticipants = teamScores.length;
       } else {
         // Individual: existing sort logic
@@ -497,7 +547,8 @@ export class UsersService {
           (a, b) => (b.totalScore || 0) - (a.totalScore || 0),
         );
         position =
-          sortedParticipants.findIndex((p) => p.userId === userId) + 1 || participants.length;
+          sortedParticipants.findIndex((p) => p.userId === userId) + 1 ||
+          participants.length;
         totalParticipants = participants.length;
       }
 
@@ -523,7 +574,11 @@ export class UsersService {
   /**
    * ユーザーのレーティング履歴を取得
    */
-  async getUserRatingHistory(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP', seasonNumber?: number) {
+  async getUserRatingHistory(
+    userId: number,
+    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
+    seasonNumber?: number,
+  ) {
     // シーズンを特定（seasonNumber指定があればそのシーズン、なければアクティブシーズン）
     let targetSeason: { id: number } | null = null;
 
@@ -578,7 +633,10 @@ export class UsersService {
 
     // GP/TEAM_GP: also fetch position data for each match
     const isGpMode = category === 'GP' || category === 'TEAM_GP';
-    let positionByMatchId = new Map<number, { position: number; totalParticipants: number }>();
+    const positionByMatchId = new Map<
+      number,
+      { position: number; totalParticipants: number }
+    >();
 
     if (isGpMode && ratingHistories.length > 0) {
       const rhMatchIds = ratingHistories.map((rh) => rh.matchId);
@@ -608,14 +666,29 @@ export class UsersService {
         let position: number;
         let totalParticipants: number;
 
-        if (category === 'TEAM_GP' && gp.teamIndex !== null && gp.game.teamScores) {
-          const teamScores = gp.game.teamScores as { teamIndex: number; totalScore: number }[];
-          const sorted = [...teamScores].sort((a, b) => b.totalScore - a.totalScore);
-          position = sorted.findIndex((t) => t.teamIndex === gp.teamIndex) + 1 || teamScores.length;
+        if (
+          category === 'TEAM_GP' &&
+          gp.teamIndex !== null &&
+          gp.game.teamScores
+        ) {
+          const teamScores = gp.game.teamScores as {
+            teamIndex: number;
+            totalScore: number;
+          }[];
+          const sorted = [...teamScores].sort(
+            (a, b) => b.totalScore - a.totalScore,
+          );
+          position =
+            sorted.findIndex((t) => t.teamIndex === gp.teamIndex) + 1 ||
+            teamScores.length;
           totalParticipants = teamScores.length;
         } else {
-          const sorted = [...gp.game.participants].sort((a, b) => (b.totalScore || 0) - (a.totalScore || 0));
-          position = sorted.findIndex((p) => p.userId === userId) + 1 || gp.game.participants.length;
+          const sorted = [...gp.game.participants].sort(
+            (a, b) => (b.totalScore || 0) - (a.totalScore || 0),
+          );
+          position =
+            sorted.findIndex((p) => p.userId === userId) + 1 ||
+            gp.game.participants.length;
           totalParticipants = gp.game.participants.length;
         }
 
@@ -631,10 +704,11 @@ export class UsersService {
         displayRating: rh.displayRating,
         internalRating: rh.internalRating,
         createdAt: rh.createdAt,
-        ...(isGpMode && positionData && {
-          position: positionData.position,
-          totalParticipants: positionData.totalParticipants,
-        }),
+        ...(isGpMode &&
+          positionData && {
+            position: positionData.position,
+            totalParticipants: positionData.totalParticipants,
+          }),
       };
     });
   }
@@ -707,7 +781,14 @@ export class UsersService {
     if (!targetSeasonId) {
       return {
         data: [],
-        meta: { total: 0, page, limit, totalPages: 0, hasNext: false, hasPrev: false },
+        meta: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false,
+        },
       };
     }
 
@@ -783,7 +864,10 @@ export class UsersService {
   /**
    * ユーザーのトラック別成績を取得
    */
-  async getUserTrackStats(userId: number, category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP') {
+  async getUserTrackStats(
+    userId: number,
+    category?: 'GP' | 'CLASSIC' | 'TEAM_CLASSIC' | 'TEAM_GP',
+  ) {
     // カテゴリに対応するアクティブシーズンを取得
     const activeSeason = await this.prisma.season.findFirst({
       where: {
@@ -827,17 +911,22 @@ export class UsersService {
     });
 
     // トラック別に集計
-    const trackStats = new Map<number, {
-      trackId: number;
-      races: number;
-      wins: number;
-      podiums: number;
-      totalPosition: number;
-      eliminations: number;
-    }>();
+    const trackStats = new Map<
+      number,
+      {
+        trackId: number;
+        races: number;
+        wins: number;
+        podiums: number;
+        totalPosition: number;
+        eliminations: number;
+      }
+    >();
 
     for (const result of raceResults) {
-      const tracks = result.gameParticipant.game.tracks as (number | null)[] | null;
+      const tracks = result.gameParticipant.game.tracks as
+        | (number | null)[]
+        | null;
       if (!tracks) continue;
 
       const trackId = tracks[result.raceNumber - 1];
@@ -867,11 +956,12 @@ export class UsersService {
     }
 
     // 全トラック情報を取得（CLASSICはID 201-220、GP/TEAM_GPはID 1-120）
-    const trackFilter = (category === 'CLASSIC' || category === 'TEAM_CLASSIC')
-      ? { id: { gte: 201, lte: 220 } }
-      : (category === 'GP' || category === 'TEAM_GP')
-        ? { id: { gte: 1, lte: 120 } }
-        : undefined;
+    const trackFilter =
+      category === 'CLASSIC' || category === 'TEAM_CLASSIC'
+        ? { id: { gte: 201, lte: 220 } }
+        : category === 'GP' || category === 'TEAM_GP'
+          ? { id: { gte: 1, lte: 120 } }
+          : undefined;
     const allTracks = await this.prisma.track.findMany({
       where: trackFilter,
       select: {
@@ -895,7 +985,10 @@ export class UsersService {
         races: stats?.races || 0,
         wins: stats?.wins || 0,
         podiums: stats?.podiums || 0,
-        avgPosition: finishedRaces > 0 ? Math.round((stats!.totalPosition / finishedRaces) * 10) / 10 : null,
+        avgPosition:
+          finishedRaces > 0
+            ? Math.round((stats!.totalPosition / finishedRaces) * 10) / 10
+            : null,
       };
     });
   }
@@ -908,19 +1001,29 @@ export class UsersService {
     // 先週の日曜 00:00 UTC 〜 土曜 23:59:59.999 UTC を算出
     const now = new Date();
     const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ...
-    const thisSunday = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() - dayOfWeek,
-      0, 0, 0, 0,
-    ));
+    const thisSunday = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - dayOfWeek,
+        0,
+        0,
+        0,
+        0,
+      ),
+    );
     const weekStart = new Date(thisSunday.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const weekEnd = new Date(Date.UTC(
-      weekStart.getUTCFullYear(),
-      weekStart.getUTCMonth(),
-      weekStart.getUTCDate() + 6,
-      23, 59, 59, 999,
-    ));
+    const weekEnd = new Date(
+      Date.UTC(
+        weekStart.getUTCFullYear(),
+        weekStart.getUTCMonth(),
+        weekStart.getUTCDate() + 6,
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
 
     // 先週のFINALIZEDゲームを取得（CLASSIC, GP, TEAM_CLASSIC, TEAM_GP）
     const games = await this.prisma.game.findMany({
@@ -930,7 +1033,14 @@ export class UsersService {
           scheduledStart: { gte: weekStart, lte: weekEnd },
           season: {
             event: {
-              category: { in: [EventCategory.CLASSIC, EventCategory.GP, EventCategory.TEAM_CLASSIC, EventCategory.TEAM_GP] },
+              category: {
+                in: [
+                  EventCategory.CLASSIC,
+                  EventCategory.GP,
+                  EventCategory.TEAM_CLASSIC,
+                  EventCategory.TEAM_GP,
+                ],
+              },
             },
           },
         },
@@ -963,7 +1073,8 @@ export class UsersService {
     for (const game of games) {
       const category = game.match.season.event.category;
       const isTeam = category === 'TEAM_CLASSIC' || category === 'TEAM_GP';
-      const isClassicFamily = category === 'CLASSIC' || category === 'TEAM_CLASSIC';
+      const isClassicFamily =
+        category === 'CLASSIC' || category === 'TEAM_CLASSIC';
       const isGpFamily = category === 'GP' || category === 'TEAM_GP';
 
       // 最高得点: Classic系 / GP系それぞれで集計
@@ -980,7 +1091,9 @@ export class UsersService {
 
       // 勝利判定: ソロ戦はtotalScore最高、チーム戦はrank=1のチーム所属
       if (!isTeam) {
-        const maxScore = Math.max(...game.participants.map((p) => p.totalScore || 0));
+        const maxScore = Math.max(
+          ...game.participants.map((p) => p.totalScore || 0),
+        );
         if (maxScore > 0) {
           for (const p of game.participants) {
             if ((p.totalScore || 0) === maxScore) {
@@ -990,8 +1103,14 @@ export class UsersService {
         }
       } else if (game.teamScores) {
         // チーム勝利
-        const scores = game.teamScores as { teamIndex: number; score: number; rank: number }[];
-        const winningIndices = new Set(scores.filter((t) => t.rank === 1).map((t) => t.teamIndex));
+        const scores = game.teamScores as {
+          teamIndex: number;
+          score: number;
+          rank: number;
+        }[];
+        const winningIndices = new Set(
+          scores.filter((t) => t.rank === 1).map((t) => t.teamIndex),
+        );
         for (const p of game.participants) {
           if (p.teamIndex !== null && winningIndices.has(p.teamIndex)) {
             soloWins.set(p.userId, (soloWins.get(p.userId) || 0) + 1);
@@ -999,7 +1118,10 @@ export class UsersService {
         }
 
         // MVP判定: チームごとにtotalScore最高のプレイヤー
-        const teamGroups = new Map<number, { userId: number; totalScore: number }[]>();
+        const teamGroups = new Map<
+          number,
+          { userId: number; totalScore: number }[]
+        >();
         for (const p of game.participants) {
           if (p.teamIndex === null) continue;
           const group = teamGroups.get(p.teamIndex) || [];
@@ -1021,7 +1143,9 @@ export class UsersService {
 
     // 各部門の1位を決定
     const getTop = (map: Map<number, number>) =>
-      [...map.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1] || a[0] - b[0])[0] || null;
+      [...map.entries()]
+        .filter(([, v]) => v > 0)
+        .sort((a, b) => b[1] - a[1] || a[0] - b[0])[0] || null;
 
     const results = {
       mostWins: getTop(soloWins),
@@ -1040,7 +1164,11 @@ export class UsersService {
     }
 
     // 期待の新人: 先週登録ユーザーの中から 勝利数 > MVP数 > 最高得点 の優先順で選出
-    let rookieEntry: { userId: number; value: number; type: 'wins' | 'mvps' | 'score' } | null = null;
+    let rookieEntry: {
+      userId: number;
+      value: number;
+      type: 'wins' | 'mvps' | 'score';
+    } | null = null;
     if (allParticipantUserIds.size > 0) {
       const newUsers = await this.prisma.user.findMany({
         where: {
@@ -1071,7 +1199,9 @@ export class UsersService {
 
           if (!isTeam) {
             // ソロ勝利
-            const maxScore = Math.max(...game.participants.map((p) => p.totalScore || 0));
+            const maxScore = Math.max(
+              ...game.participants.map((p) => p.totalScore || 0),
+            );
             if (maxScore > 0) {
               for (const p of game.participants) {
                 if (!newUserIds.has(p.userId)) continue;
@@ -1082,8 +1212,14 @@ export class UsersService {
             }
           } else if (game.teamScores) {
             // チーム勝利
-            const scores = game.teamScores as { teamIndex: number; score: number; rank: number }[];
-            const winningIndices = new Set(scores.filter((t) => t.rank === 1).map((t) => t.teamIndex));
+            const scores = game.teamScores as {
+              teamIndex: number;
+              score: number;
+              rank: number;
+            }[];
+            const winningIndices = new Set(
+              scores.filter((t) => t.rank === 1).map((t) => t.teamIndex),
+            );
             for (const p of game.participants) {
               if (!newUserIds.has(p.userId)) continue;
               if (p.teamIndex !== null && winningIndices.has(p.teamIndex)) {
@@ -1091,7 +1227,10 @@ export class UsersService {
               }
             }
             // チームMVP
-            const teamGroups = new Map<number, { userId: number; totalScore: number }[]>();
+            const teamGroups = new Map<
+              number,
+              { userId: number; totalScore: number }[]
+            >();
             for (const p of game.participants) {
               if (p.teamIndex === null) continue;
               const group = teamGroups.get(p.teamIndex) || [];
@@ -1104,7 +1243,10 @@ export class UsersService {
                 for (const m of members) {
                   if (!newUserIds.has(m.userId)) continue;
                   if (m.totalScore === maxS) {
-                    rookieMvps.set(m.userId, (rookieMvps.get(m.userId) || 0) + 1);
+                    rookieMvps.set(
+                      m.userId,
+                      (rookieMvps.get(m.userId) || 0) + 1,
+                    );
                   }
                 }
               }
@@ -1122,7 +1264,11 @@ export class UsersService {
         } else if (topMvps) {
           rookieEntry = { userId: topMvps[0], value: topMvps[1], type: 'mvps' };
         } else if (topScore) {
-          rookieEntry = { userId: topScore[0], value: topScore[1], type: 'score' };
+          rookieEntry = {
+            userId: topScore[0],
+            value: topScore[1],
+            type: 'score',
+          };
         }
       }
     }
@@ -1147,7 +1293,11 @@ export class UsersService {
       });
 
       // (userId, seasonId) 単位でweek前の最終レートとweek内の最終レートを集計
-      type SeasonState = { beforeWeek: number | null; endOfWeek: number | null; weekMatches: number };
+      type SeasonState = {
+        beforeWeek: number | null;
+        endOfWeek: number | null;
+        weekMatches: number;
+      };
       const grouped = new Map<string, SeasonState>();
       for (const h of histories) {
         const key = `${h.userId}-${h.match.seasonId}`;
@@ -1178,7 +1328,11 @@ export class UsersService {
 
       let best: { userId: number; gain: number } | null = null;
       for (const [userId, gain] of userBestGain) {
-        if (!best || gain > best.gain || (gain === best.gain && userId < best.userId)) {
+        if (
+          !best ||
+          gain > best.gain ||
+          (gain === best.gain && userId < best.userId)
+        ) {
           best = { userId, gain };
         }
       }
@@ -1234,21 +1388,46 @@ export class UsersService {
 
     // 順序: gpTopScorer, mostWins, rookie, mostMvps, classicTopScorer
     if (results.gpTopScorer) {
-      awards.push({ category: 'gpTopScorer', player: buildPlayer(results.gpTopScorer[0]), value: results.gpTopScorer[1] });
+      awards.push({
+        category: 'gpTopScorer',
+        player: buildPlayer(results.gpTopScorer[0]),
+        value: results.gpTopScorer[1],
+      });
     }
     if (results.mostWins) {
-      awards.push({ category: 'mostWins', player: buildPlayer(results.mostWins[0]), value: results.mostWins[1] });
+      awards.push({
+        category: 'mostWins',
+        player: buildPlayer(results.mostWins[0]),
+        value: results.mostWins[1],
+      });
     }
     if (rookieEntry) {
-      awards.push({ category: 'rookie', player: buildPlayer(rookieEntry.userId), value: rookieEntry.value, rookieType: rookieEntry.type });
+      awards.push({
+        category: 'rookie',
+        player: buildPlayer(rookieEntry.userId),
+        value: rookieEntry.value,
+        rookieType: rookieEntry.type,
+      });
     } else if (ratingGainEntry) {
-      awards.push({ category: 'biggestRatingGain', player: buildPlayer(ratingGainEntry.userId), value: ratingGainEntry.value });
+      awards.push({
+        category: 'biggestRatingGain',
+        player: buildPlayer(ratingGainEntry.userId),
+        value: ratingGainEntry.value,
+      });
     }
     if (results.mostMvps) {
-      awards.push({ category: 'mostMvps', player: buildPlayer(results.mostMvps[0]), value: results.mostMvps[1] });
+      awards.push({
+        category: 'mostMvps',
+        player: buildPlayer(results.mostMvps[0]),
+        value: results.mostMvps[1],
+      });
     }
     if (results.classicTopScorer) {
-      awards.push({ category: 'classicTopScorer', player: buildPlayer(results.classicTopScorer[0]), value: results.classicTopScorer[1] });
+      awards.push({
+        category: 'classicTopScorer',
+        player: buildPlayer(results.classicTopScorer[0]),
+        value: results.classicTopScorer[1],
+      });
     }
 
     return { weekStart, weekEnd, awards };

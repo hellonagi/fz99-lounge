@@ -40,9 +40,7 @@ export class TeamAssignmentService {
     const playerCount = players.length;
 
     if (!this.teamConfigService.isValidPlayerCount(playerCount)) {
-      this.logger.warn(
-        `Invalid player count for TEAM_CLASSIC: ${playerCount}`,
-      );
+      this.logger.warn(`Invalid player count for TEAM_CLASSIC: ${playerCount}`);
       return null;
     }
 
@@ -56,9 +54,7 @@ export class TeamAssignmentService {
     }
 
     // Step 2: Sort players by rating (descending)
-    const sortedByRating = [...players].sort(
-      (a, b) => b.rating - a.rating,
-    );
+    const sortedByRating = [...players].sort((a, b) => b.rating - a.rating);
 
     // Step 3: Apply snake draft
     const teams = this.snakeDraft(sortedByRating, config.teamCount);
@@ -126,18 +122,19 @@ export class TeamAssignmentService {
    * Assign players to teams for TEAM_GP mode (30-99 players)
    * Uses the same snake draft algorithm as TEAM_CLASSIC
    */
-  assignTeamGpTeams(players: PlayerForAssignment[]): TeamAssignmentResult | null {
+  assignTeamGpTeams(
+    players: PlayerForAssignment[],
+  ): TeamAssignmentResult | null {
     const playerCount = players.length;
 
     if (!this.teamConfigService.isValidTeamGpPlayerCount(playerCount)) {
-      this.logger.warn(
-        `Invalid player count for TEAM_GP: ${playerCount}`,
-      );
+      this.logger.warn(`Invalid player count for TEAM_GP: ${playerCount}`);
       return null;
     }
 
     // Step 1: Determine how many players to exclude
-    const excludeCount = this.teamConfigService.getTeamGpExcludeCount(playerCount);
+    const excludeCount =
+      this.teamConfigService.getTeamGpExcludeCount(playerCount);
 
     // Step 2: Identify excluded players (those who joined last)
     const sortedByJoinTime = [...players].sort(

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -210,9 +211,12 @@ export function ModeratorPermissionsCard() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     {moderator.avatarHash ? (
-                      <img
+                      <Image
                         src={`https://cdn.discordapp.com/avatars/${moderator.discordId}/${moderator.avatarHash}.png?size=32`}
                         alt=""
+                        width={32}
+                        height={32}
+                        unoptimized
                         className="w-8 h-8 rounded-full"
                       />
                     ) : (

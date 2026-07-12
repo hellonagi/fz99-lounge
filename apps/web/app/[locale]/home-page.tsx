@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ComponentProps } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { MatchHero } from '@/components/features/match/match-hero';
@@ -34,6 +34,8 @@ interface RecentMatch {
   } | null;
 }
 
+type FeaturedAward = ComponentProps<typeof FeaturedPlayers>['awards'][number];
+
 interface HomePageProps {
   latestNews: NewsMeta[];
 }
@@ -45,7 +47,7 @@ export function HomePage({ latestNews }: HomePageProps) {
   const [wsConnected, setWsConnected] = useState(false);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
   const [recentMatchesLoading, setRecentMatchesLoading] = useState(true);
-  const [featuredAwards, setFeaturedAwards] = useState<any[]>([]);
+  const [featuredAwards, setFeaturedAwards] = useState<FeaturedAward[]>([]);
   const [featuredAwardsLoading, setFeaturedAwardsLoading] = useState(true);
   const [recentTournaments, setRecentTournaments] = useState<RecentTournament[]>([]);
   const [recentTournamentsLoading, setRecentTournamentsLoading] = useState(true);
@@ -77,7 +79,7 @@ export function HomePage({ latestNews }: HomePageProps) {
   );
 
   const { isAuthenticated } = useAuthStore();
-  const [openTournaments, setOpenTournaments] = useState<any[]>([]);
+  const [openTournaments, setOpenTournaments] = useState<Tournament[]>([]);
   const [inProgressTournament, setInProgressTournament] = useState<Tournament | null>(null);
   const [inProgressStreams, setInProgressStreams] = useState<TournamentStream[]>([]);
 
@@ -106,10 +108,11 @@ export function HomePage({ latestNews }: HomePageProps) {
     const fetchOpenTournaments = async () => {
       try {
         const response = await tournamentsApi.getAll();
+        const tournaments: Tournament[] = response.data;
         setOpenTournaments(
-          response.data.filter((t: any) => t.status === 'REGISTRATION_OPEN')
+          tournaments.filter((t) => t.status === 'REGISTRATION_OPEN')
         );
-        const inProgress = response.data.find((t: any) => t.status === 'REGISTRATION_CLOSED' || t.status === 'IN_PROGRESS');
+        const inProgress = tournaments.find((t) => t.status === 'REGISTRATION_CLOSED' || t.status === 'IN_PROGRESS');
         if (inProgress) {
           setInProgressTournament(inProgress);
           try {

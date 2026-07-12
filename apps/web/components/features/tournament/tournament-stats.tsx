@@ -15,7 +15,6 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  Cell,
   ZAxis,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +22,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Hash, Calendar, Trophy } from 'lucide-react';
 import { F99_MACHINES } from '@/lib/machines';
 import { tracksApi, type Track } from '@/lib/api';
-import type { Tournament, GameParticipant } from '@/types';
+import type { Tournament, GameParticipant, User } from '@/types';
+
+// APIレスポンスでは user に profile がネストされる場合がある
+type UserWithProfile = User & { profile?: { country?: string | null } | null };
 
 const MACHINE_HEX: Record<string, string> = {
   'Blue Falcon': '#3b82f6',   // blue-500
@@ -51,11 +53,6 @@ function StaggeredTick({ x, y, payload, index }: any) {
 
 interface TournamentStatsProps {
   tournament: Tournament;
-}
-
-interface PlayerScore {
-  userId: number;
-  totalScore: number;
 }
 
 interface MachineStats {
@@ -202,7 +199,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   // Machine usage stacked bar data: each row = round, values = % per machine
   const buildMachineRow = (label: string, machineCounts: Map<string, number>) => {
     const total = [...machineCounts.values()].reduce((a, b) => a + b, 0);
-    const row: Record<string, any> = { round: label };
+    const row: Record<string, string | number> = { round: label };
     for (const m of F99_MACHINES) {
       row[m.value] = total > 0 ? Math.round(((machineCounts.get(m.value) ?? 0) / total) * 100) : 0;
     }
@@ -238,7 +235,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     if (seenUsers.has(userId)) continue;
     seenUsers.add(userId);
     const participant = allParticipants.find((p) => p.userId === userId);
-    const code = (participant?.user as any)?.profile?.country || (participant?.user as any)?.country || 'UNKNOWN';
+    const code = (participant?.user as UserWithProfile | undefined)?.profile?.country || participant?.user?.country || 'UNKNOWN';
     const scores = countryScores.get(code) ?? [];
     scores.push(total);
     countryScores.set(code, scores);
@@ -299,7 +296,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
 
   const winnerName = winnerUserId != null ? (playerNames.get(winnerUserId) ?? '') : '';
   const winnerParticipant = winnerUserId != null ? allParticipants.find((p) => p.userId === winnerUserId) : undefined;
-  const winnerCountry: string | undefined = (winnerParticipant?.user as any)?.profile?.country || (winnerParticipant?.user as any)?.country || undefined;
+  const winnerCountry: string | undefined = (winnerParticipant?.user as UserWithProfile | undefined)?.profile?.country || winnerParticipant?.user?.country || undefined;
 
   // Score vs Survived scatter data
   const scoreVsSurvived: ScoreVsSurvivedPoint[] = [];
@@ -332,7 +329,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
         value,
         sub: subFn?.(userId),
         profileNumber: participant?.user?.profileNumber,
-        country: (participant?.user as any)?.profile?.country || (participant?.user as any)?.country || undefined,
+        country: (participant?.user as UserWithProfile | undefined)?.profile?.country || participant?.user?.country || undefined,
         survived: opts?.showSurvived ? (playerSurvivedCount.get(userId) ?? 0) : undefined,
       };
     });
@@ -387,7 +384,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
           value: p.totalScore,
           sub: roundLabel,
           profileNumber: participant?.user?.profileNumber,
-          country: (participant?.user as any)?.profile?.country || (participant?.user as any)?.country || undefined,
+          country: (participant?.user as UserWithProfile | undefined)?.profile?.country || participant?.user?.country || undefined,
         });
       }
     }
@@ -511,8 +508,8 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     return { roundLabel, machineScores };
   });
 
-  const machineScoreByRound: Record<string, any>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
-    const row: Record<string, any> = { round: roundLabel };
+  const machineScoreByRound: Record<string, string | number | null>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
+    const row: Record<string, string | number | null> = { round: roundLabel };
     for (const m of F99_MACHINES) {
       const scores = machineScores.get(m.value);
       row[m.value] = scores && scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
@@ -520,8 +517,8 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     return row;
   });
 
-  const machineHighestByRound: Record<string, any>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
-    const row: Record<string, any> = { round: roundLabel };
+  const machineHighestByRound: Record<string, string | number | null>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
+    const row: Record<string, string | number | null> = { round: roundLabel };
     for (const m of F99_MACHINES) {
       const scores = machineScores.get(m.value);
       row[m.value] = scores && scores.length > 0 ? Math.max(...scores) : null;
@@ -529,8 +526,8 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     return row;
   });
 
-  const machineMedianByRound: Record<string, any>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
-    const row: Record<string, any> = { round: roundLabel };
+  const machineMedianByRound: Record<string, string | number | null>[] = machineRoundData.map(({ roundLabel, machineScores }) => {
+    const row: Record<string, string | number | null> = { round: roundLabel };
     for (const m of F99_MACHINES) {
       const scores = machineScores.get(m.value);
       row[m.value] = scores && scores.length > 0 ? median(scores) : null;
@@ -539,7 +536,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   });
 
   // Machine average survives per round (for line chart)
-  const machineSurvivedByRound: Record<string, any>[] = sortedMatches.map((match, i) => {
+  const machineSurvivedByRound: Record<string, string | number | null>[] = sortedMatches.map((match, i) => {
     const roundLabel = leagueLabel(match.matchNumber ?? (i + 1));
     const machineCounts = new Map<string, { survived: number; total: number }>();
     for (const game of match.games ?? []) {
@@ -551,7 +548,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
         machineCounts.set(p.machine, prev);
       }
     }
-    const row: Record<string, any> = { round: roundLabel };
+    const row: Record<string, string | number | null> = { round: roundLabel };
     for (const m of F99_MACHINES) {
       const data = machineCounts.get(m.value);
       row[m.value] = data ? data.survived : null;
@@ -587,7 +584,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
       totalScore: Math.round(mean),
       stdDev,
       range,
-      country: (participant?.user as any)?.profile?.country || (participant?.user as any)?.country || undefined,
+      country: (participant?.user as UserWithProfile | undefined)?.profile?.country || participant?.user?.country || undefined,
     });
   }
   // Sort by stdDev ascending = most consistent first

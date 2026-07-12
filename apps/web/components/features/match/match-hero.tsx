@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { SiDiscord } from 'react-icons/si';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { MatchTimer } from './match-timer';
 import { TrackScene } from '@/components/features/home/track-scene';
 import { ThresholdBar } from './threshold-bar';
@@ -73,19 +73,6 @@ export function MatchHero({
   const startThreshold = START_THRESHOLDS[categoryKey] ?? minPlayers ?? 4;
   const status = getMatchStatus(current, startThreshold, rated, max);
   const catColor = CATEGORY_COLOR[categoryKey] ?? { color: '#6b7280', soft: 'rgba(107,114,128,.12)' };
-
-  const statusLabel =
-    status === 'rated' || status === 'full'
-      ? 'RATED'
-      : status === 'matchOn'
-        ? 'MATCH ON'
-        : 'PENDING';
-  const statusColor =
-    status === 'rated' || status === 'full'
-      ? 'text-emerald-400'
-      : status === 'matchOn'
-        ? 'text-amber-400'
-        : 'text-gray-500';
 
   const heroTitle = (() => {
     const cat = category?.toLowerCase();

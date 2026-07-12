@@ -18,7 +18,10 @@ async function createFakeUsers(count: number) {
     const firstName = faker.person.firstName();
     const displayName = `${firstName.slice(0, 8)}${faker.string.numeric(2)}`; // Max 10 chars
     const discordId = generateFakeDiscordId();
-    const username = faker.internet.username({ firstName }).toLowerCase().slice(0, 32);
+    const username = faker.internet
+      .username({ firstName })
+      .toLowerCase()
+      .slice(0, 32);
 
     try {
       const [{ next }] = await prisma.$queryRaw<[{ next: bigint }]>`
@@ -40,7 +43,9 @@ async function createFakeUsers(count: number) {
         include: { profile: true },
       });
       created++;
-      console.log(`  [${created}] Created: ${displayName} (ID: ${user.id}, Country: ${user.profile?.country})`);
+      console.log(
+        `  [${created}] Created: ${displayName} (ID: ${user.id}, Country: ${user.profile?.country})`,
+      );
     } catch (error: any) {
       if (error.code === 'P2002') {
         skipped++;
@@ -72,7 +77,7 @@ async function main() {
     return;
   }
 
-  const countArg = args.find(arg => arg.startsWith('--count='));
+  const countArg = args.find((arg) => arg.startsWith('--count='));
   const count = countArg ? parseInt(countArg.split('=')[1], 10) : 40;
 
   if (isNaN(count) || count <= 0) {
@@ -86,4 +91,4 @@ async function main() {
 
 main()
   .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .finally(() => void prisma.$disconnect());
