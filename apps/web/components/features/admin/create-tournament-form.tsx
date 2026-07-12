@@ -50,22 +50,26 @@ function getLeagueOptions(mode: string) {
   return null;
 }
 
+// z.coerce.number<number>() pins the input type to number so the schema's
+// input and output types match, which zodResolver + useForm<T> require.
+// Defaults live in useForm defaultValues, so no .default() here (it would
+// make the input type optional and reintroduce the mismatch).
 const roundSchema = z.object({
   roundNumber: z.number(),
   inGameMode: z.string().min(1),
   league: z.string().optional(),
-  offsetMinutes: z.coerce.number().int().min(0).default(0),
+  offsetMinutes: z.coerce.number<number>().int().min(0),
 });
 
 const tournamentSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  totalRounds: z.coerce.number().int().min(1).max(20),
+  totalRounds: z.coerce.number<number>().int().min(1).max(20),
   rounds: z.array(roundSchema),
   tournamentDate: z.string().min(1, 'Required'),
   registrationStart: z.string().min(1, 'Required'),
   registrationEnd: z.string().min(1, 'Required'),
-  minPlayers: z.coerce.number().int().min(2).default(40),
-  maxPlayers: z.coerce.number().int().min(2).max(99).default(99),
+  minPlayers: z.coerce.number<number>().int().min(2),
+  maxPlayers: z.coerce.number<number>().int().min(2).max(99),
   contentEn: z.string().optional(),
   contentJa: z.string().optional(),
 });

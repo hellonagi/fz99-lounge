@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { ScreenshotType } from '@/types';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || '';
 
@@ -272,7 +273,7 @@ export const tracksApi = {
 };
 
 // Screenshots API
-export type ScreenshotType = 'INDIVIDUAL' | 'INDIVIDUAL_1' | 'INDIVIDUAL_2' | 'FINAL_SCORE' | 'FINAL_SCORE_1' | 'FINAL_SCORE_2';
+export type { ScreenshotType } from '@/types';
 
 export const screenshotsApi = {
   submit: (gameId: number, file: File, type: ScreenshotType = 'INDIVIDUAL') => {

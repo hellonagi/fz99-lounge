@@ -38,8 +38,8 @@ services:
   # NestJS API本番設定
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
       target: production
       args:
         NODE_VERSION: 20-alpine
@@ -101,7 +101,7 @@ services:
         awslogs-group: /fz99-lounge/api
         awslogs-stream-prefix: api
         awslogs-create-group: "true"
-    command: node dist/src/main
+    command: node apps/api/dist/src/main
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
       interval: 30s
@@ -112,8 +112,8 @@ services:
   # Next.js Web本番設定
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
       target: production
       args:
         NODE_VERSION: 20-alpine
@@ -145,7 +145,7 @@ services:
         awslogs-group: /fz99-lounge/web
         awslogs-stream-prefix: web
         awslogs-create-group: "true"
-    command: node server.js
+    command: node apps/web/server.js
 
   # Nginx (Cloudflare対応)
   nginx:

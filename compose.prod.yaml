@@ -58,7 +58,7 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
-    command: node dist/main
+    command: node apps/api/dist/src/main
 
   # Next.js Web本番設定
   web:
@@ -85,7 +85,7 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
-    command: npm start
+    command: node apps/web/server.js
 
   # Nginx本番設定
   nginx:

@@ -66,6 +66,6 @@ jobs:
               "docker image prune -af",
               "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg pull",
               "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg up -d",
-              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg exec -T api npx prisma migrate deploy"
+              "cd /home/ec2-user/fz99-lounge && IMAGE_TAG=${{ env.IMAGE_TAG }} docker compose -f compose.ecr.yaml --env-file .env.stg exec -T api npm exec -w api -- prisma migrate deploy"
             ]' \
             --output text

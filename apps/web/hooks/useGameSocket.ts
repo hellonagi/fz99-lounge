@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
+import type { ResultStatus } from '@/types';
 
 export interface SplitVoteUpdate {
   currentVotes: number;
@@ -70,7 +71,7 @@ export interface ParticipantUpdate {
   ratingChange: number | null;
   isCompensated?: boolean;
   isDisqualified?: boolean;
-  status?: string;
+  status?: ResultStatus;
   screenshotRequested?: boolean;
   raceResults?: Array<{
     raceNumber: number;

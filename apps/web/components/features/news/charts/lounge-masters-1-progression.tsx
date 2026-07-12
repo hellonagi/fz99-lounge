@@ -94,7 +94,7 @@ export function LoungeMasters1ProgressionChart() {
             }}
             labelStyle={{ color: '#9ca3af' }}
             itemStyle={{ color: '#fff' }}
-            formatter={(value: number) => value.toLocaleString()}
+            formatter={(value: number | undefined) => (value ?? 0).toLocaleString()}
             labelFormatter={(label: string) => LEAGUE_BY_GP[label] ?? label}
             itemSorter={(item) => PLAYERS.findIndex((p) => p.name === item.name)}
           />
