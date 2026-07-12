@@ -259,7 +259,7 @@ function OverlayContent() {
       socket.off('match-cancelled', onCancelled);
       clearInterval(poll);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [demo]);
 
   // Live game results: fetch + subscribe when in_progress

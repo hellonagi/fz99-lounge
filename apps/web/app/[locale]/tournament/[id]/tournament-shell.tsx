@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
@@ -19,14 +19,18 @@ export default function TournamentShell({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Keep latest tournament in a ref so fetchTournament stays stable across refetches
+  const tournamentRef = useRef<Tournament | null>(null);
+  tournamentRef.current = tournament;
+
   const fetchTournament = useCallback(async () => {
     try {
       const res = await tournamentsApi.getById(id);
       setTournament(res.data);
     } catch {
-      if (!tournament) setError(t('error'));
+      if (!tournamentRef.current) setError(t('error'));
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (id) {

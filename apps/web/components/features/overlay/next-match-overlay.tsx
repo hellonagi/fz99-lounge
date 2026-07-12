@@ -219,7 +219,6 @@ function PlayerRow({
   index,
   animate,
   showLive,
-  position,
 }: {
   participant: Participant;
   index: number;

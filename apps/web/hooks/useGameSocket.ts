@@ -160,10 +160,10 @@ export function useGameSocket({
   };
 
   // Normalize to array and create stable key for deps
-  const gameIds = (Array.isArray(gameId) ? gameId : [gameId]).filter(Boolean);
-  const gameIdsKey = gameIds.join(',');
+  const gameIdsKey = (Array.isArray(gameId) ? gameId : [gameId]).filter(Boolean).join(',');
 
   useEffect(() => {
+    const gameIds = gameIdsKey ? gameIdsKey.split(',').map(Number) : [];
     if (gameIds.length === 0) return;
 
     // Connect to the games namespace
