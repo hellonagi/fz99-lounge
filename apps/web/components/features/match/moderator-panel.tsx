@@ -141,9 +141,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   }, [isClassic]);
 
   // Get screenshots by type
-  const individualScreenshots = screenshots.filter(s =>
-    s.type === 'INDIVIDUAL' || s.type === 'INDIVIDUAL_1' || s.type === 'INDIVIDUAL_2'
-  );
   const finalScoreScreenshots = screenshots.filter(s =>
     s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2'
   );

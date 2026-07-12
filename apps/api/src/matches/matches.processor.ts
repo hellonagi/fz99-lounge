@@ -5,9 +5,24 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsGateway } from '../events/events.gateway';
 import { PushNotificationsService } from '../push-notifications/push-notifications.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
-import { Prisma, EventCategory, MatchStatus, ResultStatus } from '@prisma/client';
-import { TeamConfigService, TEAM_COLORS, TEAM_COLOR_HEX, TEAM_GRID_NUMBERS, TEAM_GP_GRID_NUMBERS, isPrime } from './team-config.service';
-import { TeamAssignmentService, PlayerForAssignment } from './team-assignment.service';
+import {
+  Prisma,
+  EventCategory,
+  MatchStatus,
+  ResultStatus,
+} from '@prisma/client';
+import {
+  TeamConfigService,
+  TEAM_COLORS,
+  TEAM_COLOR_HEX,
+  TEAM_GRID_NUMBERS,
+  TEAM_GP_GRID_NUMBERS,
+  isPrime,
+} from './team-config.service';
+import {
+  TeamAssignmentService,
+  PlayerForAssignment,
+} from './team-assignment.service';
 import { TracksService } from '../tracks/tracks.service';
 import { MatchesService } from './matches.service';
 
@@ -92,10 +107,15 @@ export class MatchesProcessor {
             },
           });
 
-          await this.matchesService.reassignWaitingMatchNumbers(tx, match.seasonId);
+          await this.matchesService.reassignWaitingMatchNumbers(
+            tx,
+            match.seasonId,
+          );
         });
 
-        this.logger.log(`Match ${matchId} cancelled due to insufficient players`);
+        this.logger.log(
+          `Match ${matchId} cancelled due to insufficient players`,
+        );
 
         // Emit WebSocket event to notify clients
         this.eventsGateway.emitMatchCancelled(matchId);
@@ -111,7 +131,10 @@ export class MatchesProcessor {
               reason: 'insufficient_players',
             });
           } catch (error) {
-            this.logger.error('Failed to announce match cancellation to Discord:', error);
+            this.logger.error(
+              'Failed to announce match cancellation to Discord:',
+              error,
+            );
           }
         }
 
@@ -131,8 +154,7 @@ export class MatchesProcessor {
       // Check if this is a team mode match
       const isTeamClassic =
         match.season.event.category === EventCategory.TEAM_CLASSIC;
-      const isTeamGp =
-        match.season.event.category === EventCategory.TEAM_GP;
+      const isTeamGp = match.season.event.category === EventCategory.TEAM_GP;
       const isTeamMode = isTeamClassic || isTeamGp;
 
       let updatedGame;
@@ -174,10 +196,16 @@ export class MatchesProcessor {
 
       // Determine if match is rated based on player count thresholds
       const isRated = (() => {
-        if (eventCategory === EventCategory.CLASSIC || eventCategory === EventCategory.TEAM_CLASSIC) {
+        if (
+          eventCategory === EventCategory.CLASSIC ||
+          eventCategory === EventCategory.TEAM_CLASSIC
+        ) {
           return currentPlayers >= 12;
         }
-        if (eventCategory === EventCategory.GP || eventCategory === EventCategory.TEAM_GP) {
+        if (
+          eventCategory === EventCategory.GP ||
+          eventCategory === EventCategory.TEAM_GP
+        ) {
           return currentPlayers >= 30;
         }
         return true;
@@ -200,8 +228,14 @@ export class MatchesProcessor {
               where: { id: match.id },
               data: { seasonId: unratedSeason.id, matchNumber: null },
             });
-            await this.matchesService.reassignWaitingMatchNumbers(tx, originalSeasonId);
-            await this.matchesService.reassignWaitingMatchNumbers(tx, unratedSeason.id);
+            await this.matchesService.reassignWaitingMatchNumbers(
+              tx,
+              originalSeasonId,
+            );
+            await this.matchesService.reassignWaitingMatchNumbers(
+              tx,
+              unratedSeason.id,
+            );
           });
 
           // Update match object for downstream use
@@ -248,7 +282,8 @@ export class MatchesProcessor {
       }
 
       // For team modes, hide passcode in the initial event (will be revealed later)
-      const emitPasscode = (isTeamMode && !isFallbackToIndividual) ? '' : updatedGame.passcode;
+      const emitPasscode =
+        isTeamMode && !isFallbackToIndividual ? '' : updatedGame.passcode;
 
       // Emit WebSocket event to all clients
       this.eventsGateway.emitMatchStarted({
@@ -296,7 +331,7 @@ export class MatchesProcessor {
 
         if (isTeamModeActive) {
           // Team mode: create team setup channel with team data
-          const teamsData = (updatedGame as any)._teamsData;
+          const teamsData = updatedGame._teamsData;
           const baseUrl = process.env.CORS_ORIGIN || 'https://fz99lounge.com';
           const matchUrl = `${baseUrl}/matches/${categoryStr}/${seasonSlug}/${matchNumber}`;
 
@@ -352,7 +387,10 @@ export class MatchesProcessor {
           },
         );
       } catch (error) {
-        this.logger.error('Failed to schedule score submission reminder:', error);
+        this.logger.error(
+          'Failed to schedule score submission reminder:',
+          error,
+        );
       }
 
       return updatedGame;
@@ -385,7 +423,9 @@ export class MatchesProcessor {
     // Check for prime player count in team modes → fallback to individual mode
     const modeLabel = isTeamGp ? 'TEAM_GP' : 'TEAM_CLASSIC';
     if (isPrime(currentPlayers)) {
-      const fallbackCategory = isTeamGp ? EventCategory.GP : EventCategory.CLASSIC;
+      const fallbackCategory = isTeamGp
+        ? EventCategory.GP
+        : EventCategory.CLASSIC;
       this.logger.log(
         `${modeLabel} match ${match.id}: ${currentPlayers} players (prime) → fallback to individual ${fallbackCategory}`,
       );
@@ -407,8 +447,14 @@ export class MatchesProcessor {
           });
 
           // Reassign matchNumbers in both seasons
-          await this.matchesService.reassignWaitingMatchNumbers(tx, match.seasonId);
-          await this.matchesService.reassignWaitingMatchNumbers(tx, individualSeason.id);
+          await this.matchesService.reassignWaitingMatchNumbers(
+            tx,
+            match.seasonId,
+          );
+          await this.matchesService.reassignWaitingMatchNumbers(
+            tx,
+            individualSeason.id,
+          );
         });
 
         // Update match object for downstream use
@@ -425,7 +471,9 @@ export class MatchesProcessor {
           `Match ${match.id} moved to ${fallbackCategory} season ${individualSeason.id} (S${individualSeason.seasonNumber} #${match.matchNumber})`,
         );
       } else {
-        this.logger.warn(`No active ${fallbackCategory} season found, keeping ${modeLabel} season`);
+        this.logger.warn(
+          `No active ${fallbackCategory} season found, keeping ${modeLabel} season`,
+        );
       }
 
       // Reveal passcode immediately (same as CLASSIC flow)
@@ -466,7 +514,10 @@ export class MatchesProcessor {
           },
         });
 
-        await this.matchesService.reassignWaitingMatchNumbers(tx, match.seasonId);
+        await this.matchesService.reassignWaitingMatchNumbers(
+          tx,
+          match.seasonId,
+        );
       });
 
       this.eventsGateway.emitMatchCancelled(match.id);
@@ -524,14 +575,17 @@ export class MatchesProcessor {
       return null;
     }
 
-    const passcodeRevealTime = new Date(Date.now() + TEAM_ANNOUNCEMENT_DELAY_MS);
+    const passcodeRevealTime = new Date(
+      Date.now() + TEAM_ANNOUNCEMENT_DELAY_MS,
+    );
 
     // Recalculate tracks based on passcode reveal time
     // TEAM_GP uses GP tracks (already set at match creation), TEAM_CLASSIC recalculates classic mini tracks
     // showTracks OFF: skip auto-prediction (mods set manually)
     let tracks: number[] | null = null;
     if (!isTeamGp && game.showTracks) {
-      tracks = this.tracksService.calculateClassicMiniTracks(passcodeRevealTime);
+      tracks =
+        this.tracksService.calculateClassicMiniTracks(passcodeRevealTime);
     }
 
     // Randomly pick N colors from available grid positions, then sort ascending
@@ -558,12 +612,20 @@ export class MatchesProcessor {
           passcodeRevealTime,
           // TEAM_GP tracks are already set at match creation; TEAM_CLASSIC recalculates
           // showTracks OFF: clear auto-predicted tracks
-          ...(tracks ? { tracks } : !game.showTracks ? { tracks: Prisma.DbNull } : {}),
+          ...(tracks
+            ? { tracks }
+            : !game.showTracks
+              ? { tracks: Prisma.DbNull }
+              : {}),
         },
       });
 
       // Create GameParticipants with team assignments
-      for (let teamIndex = 0; teamIndex < assignment.teams.length; teamIndex++) {
+      for (
+        let teamIndex = 0;
+        teamIndex < assignment.teams.length;
+        teamIndex++
+      ) {
         const teamUserIds = assignment.teams[teamIndex];
         for (const oderId of teamUserIds) {
           await tx.gameParticipant.create({
@@ -689,17 +751,17 @@ export class MatchesProcessor {
 
       // Post passcode to existing Discord channel
       try {
-        await this.discordBotService.postPasscodeToChannel(gameId, game.passcode);
+        await this.discordBotService.postPasscodeToChannel(
+          gameId,
+          game.passcode,
+        );
       } catch (error) {
         this.logger.error('Failed to post passcode to Discord channel:', error);
       }
 
       this.logger.log(`Passcode revealed for game ${gameId}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to reveal passcode for game ${gameId}:`,
-        error,
-      );
+      this.logger.error(`Failed to reveal passcode for game ${gameId}:`, error);
     }
   }
 
@@ -712,7 +774,10 @@ export class MatchesProcessor {
       await this.discordBotService.deletePasscodeChannel(gameId);
       this.logger.log(`Deleted Discord channel for game ${gameId}`);
     } catch (error) {
-      this.logger.error(`Failed to delete Discord channel for game ${gameId}:`, error);
+      this.logger.error(
+        `Failed to delete Discord channel for game ${gameId}:`,
+        error,
+      );
     }
   }
 
@@ -750,7 +815,12 @@ export class MatchesProcessor {
           participants: {
             include: {
               user: {
-                select: { id: true, discordId: true, displayName: true, avatarHash: true },
+                select: {
+                  id: true,
+                  discordId: true,
+                  displayName: true,
+                  avatarHash: true,
+                },
               },
             },
           },
@@ -759,7 +829,7 @@ export class MatchesProcessor {
       });
 
       // Emit transformed match data
-      const { fakeCount, joinCount, ...rest } = updated;
+      const { fakeCount, joinCount: _joinCount, ...rest } = updated;
       const participantCount = updated.participants?.length ?? 0;
       const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
       const transformed = {
@@ -768,7 +838,10 @@ export class MatchesProcessor {
       };
       this.eventsGateway.emitMatchUpdated(transformed);
     } catch (error) {
-      this.logger.error(`Failed to increment fake count for match ${matchId}:`, error);
+      this.logger.error(
+        `Failed to increment fake count for match ${matchId}:`,
+        error,
+      );
     }
   }
 
@@ -782,7 +855,11 @@ export class MatchesProcessor {
         select: { id: true, status: true, maxPlayers: true, fakeCount: true },
       });
 
-      if (!match || match.status !== MatchStatus.WAITING || match.fakeCount <= 0) {
+      if (
+        !match ||
+        match.status !== MatchStatus.WAITING ||
+        match.fakeCount <= 0
+      ) {
         return;
       }
 
@@ -794,7 +871,12 @@ export class MatchesProcessor {
           participants: {
             include: {
               user: {
-                select: { id: true, discordId: true, displayName: true, avatarHash: true },
+                select: {
+                  id: true,
+                  discordId: true,
+                  displayName: true,
+                  avatarHash: true,
+                },
               },
             },
           },
@@ -803,7 +885,7 @@ export class MatchesProcessor {
       });
 
       // Emit transformed match data
-      const { fakeCount, joinCount, ...rest } = updated;
+      const { fakeCount, joinCount: _joinCount, ...rest } = updated;
       const participantCount = updated.participants?.length ?? 0;
       const rawCurrentPlayers = participantCount + (fakeCount ?? 0);
       const transformed = {
@@ -812,7 +894,10 @@ export class MatchesProcessor {
       };
       this.eventsGateway.emitMatchUpdated(transformed);
     } catch (error) {
-      this.logger.error(`Failed to decrement fake count for match ${matchId}:`, error);
+      this.logger.error(
+        `Failed to decrement fake count for match ${matchId}:`,
+        error,
+      );
     }
   }
 
@@ -848,7 +933,9 @@ export class MatchesProcessor {
 
       // Skip if matchNumber is null (shouldn't happen for WAITING matches)
       if (match.matchNumber === null) {
-        this.logger.warn(`Match ${matchId} has no matchNumber, skipping reminder`);
+        this.logger.warn(
+          `Match ${matchId} has no matchNumber, skipping reminder`,
+        );
         return;
       }
 
@@ -931,7 +1018,10 @@ export class MatchesProcessor {
 
       const categoryStr = match.season.event.category.toLowerCase();
       const baseUrl = process.env.CORS_ORIGIN || 'https://fz99lounge.com';
-      const seasonSlugForReminder = match.season.seasonNumber === -1 ? 'unrated' : String(match.season.seasonNumber);
+      const seasonSlugForReminder =
+        match.season.seasonNumber === -1
+          ? 'unrated'
+          : String(match.season.seasonNumber);
       const matchUrl = `${baseUrl}/matches/${categoryStr}/${seasonSlugForReminder}/${match.matchNumber}`;
 
       await this.discordBotService.postScoreSubmissionReminder(

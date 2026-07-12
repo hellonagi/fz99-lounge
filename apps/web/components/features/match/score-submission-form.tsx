@@ -27,9 +27,6 @@ const F99_MACHINES = [
   { value: 'Fire Stingray', name: 'Fire Stingray', color: 'text-red-400' },
 ] as const;
 
-// Race field names for up to 5 races
-type RaceField = `race${1 | 2 | 3 | 4 | 5}${'Position' | 'Out' | 'Dc'}`;
-
 // Per-race max positions
 const GP_MAX_POSITIONS = [99, 80, 60, 40, 20];
 const CLASSIC_MAX_POSITIONS = [20, 16, 12];
@@ -205,6 +202,12 @@ export function ScoreSubmissionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Position`])]);
 
+  // Serialized out/dc flags so the effect below has a fixed-size dependency array
+  const outDcKey = Array.from(
+    { length: raceCount },
+    (_, i) => `${watchedValues[`race${i + 1}Out`]}:${watchedValues[`race${i + 1}Dc`]}`
+  ).join(',');
+
   // Clear subsequent race values when a race is marked as out or dc
   useEffect(() => {
     for (let i = 1; i <= raceCount; i++) {
@@ -227,8 +230,7 @@ export function ScoreSubmissionForm({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Out`]),
-     ...Array.from({ length: raceCount }, (_, i) => watchedValues[`race${i + 1}Dc`])]);
+  }, [outDcKey]);
 
   // Clear machine when race 1 is DC
   const isRace1Dc = !!watchedValues['race1Dc'];
@@ -240,7 +242,7 @@ export function ScoreSubmissionForm({
 
   const onSubmit = async (data: RaceFormData) => {
     if (isModeratorMode && !targetUserId) {
-      form.setError('root' as any, {
+      form.setError('root', {
         type: 'manual',
         message: 'Please select a player',
       });
@@ -297,7 +299,7 @@ export function ScoreSubmissionForm({
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
-      form.setError('root' as any, {
+      form.setError('root', {
         type: 'manual',
         message: axiosError.response?.data?.message || axiosError.message || 'Failed to submit score',
       });
@@ -505,8 +507,8 @@ export function ScoreSubmissionForm({
           </div>
 
           {/* Error Message */}
-          {(form.formState.errors as any).root && (
-            <Alert variant="destructive">{(form.formState.errors as any).root.message}</Alert>
+          {form.formState.errors.root && (
+            <Alert variant="destructive">{form.formState.errors.root.message}</Alert>
           )}
 
           {/* Success Message */}

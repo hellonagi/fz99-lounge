@@ -132,6 +132,8 @@ export class ScreenshotsController {
    */
   @Get('game/:gameId/official')
   async getOfficialScreenshot(@Param('gameId') gameId: string) {
-    return await this.screenshotsService.getOfficialScreenshot(parseInt(gameId, 10));
+    return await this.screenshotsService.getOfficialScreenshot(
+      parseInt(gameId, 10),
+    );
   }
 }

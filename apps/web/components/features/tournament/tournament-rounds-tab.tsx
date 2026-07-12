@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import {
   detectAllPositionConflicts,
   type ConflictResult,
+  type ParticipantForConflict,
 } from '@/lib/position-conflict-detector';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,8 +26,12 @@ import type {
   Tournament,
   TournamentRoundConfig,
   Match,
+  MatchParticipant,
   Game,
   GameParticipant,
+  RaceResult,
+  ResultStatus,
+  User,
 } from '@/types';
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
@@ -57,6 +62,44 @@ function getFormMode(inGameMode: string): string {
     : 'classic';
 }
 
+// The tournament API always includes the user relation (with profile) and
+// score fields on participants; the shared types declare them optional.
+type UserWithProfile = User & { profile?: { country: string | null } | null };
+
+type RoundGameParticipant = GameParticipant & {
+  user: UserWithProfile;
+  totalScore: number | null;
+  eliminatedAtRace: number | null;
+  raceResults?: Array<
+    RaceResult & { position: number | null; points: number | null; isDisconnected: boolean }
+  >;
+};
+
+type RoundMatchParticipant = MatchParticipant & { user: UserWithProfile };
+
+// Participant row built from a WebSocket score update (no DB ids)
+interface LiveParticipantRow {
+  user: {
+    id: number;
+    profileNumber: number;
+    displayName: string | null;
+    profile?: { country: string | null } | null;
+  };
+  machine: string;
+  assistEnabled: boolean;
+  totalScore: number | null;
+  eliminatedAtRace: number | null;
+  raceResults?: ParticipantUpdate['raceResults'];
+  ratingAfter: number | null;
+  ratingChange: number | null;
+  status?: ResultStatus;
+}
+
+type LocalParticipant = RoundGameParticipant | LiveParticipantRow;
+
+// Axios error shape used for user-facing error messages
+type ApiErrorLike = { response?: { data?: { message?: string } } };
+
 interface TournamentRoundsTabProps {
   tournament: Tournament;
   onUpdate: () => void;
@@ -72,7 +115,10 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
   const router = useRouter();
   const pathname = usePathname();
 
-  const matches = tournament.season?.matches || [];
+  const matches = useMemo(
+    () => tournament.season?.matches || [],
+    [tournament.season?.matches],
+  );
 
   // Priority: URL param > IN_PROGRESS round > overall
   const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
@@ -145,15 +191,6 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
     return null;
   }, [tournament.status, tournament.rounds, passcodeRevealTime, isPasscodeHidden, inProgressRound, nextWaitingMatch]);
 
-  const nextBannerTime = useMemo(() => {
-    if (!nextBannerRound) return null;
-    const time = new Date(tournament.tournamentDate);
-    if (nextBannerRound.offsetMinutes) {
-      time.setMinutes(time.getMinutes() + nextBannerRound.offsetMinutes);
-    }
-    return time;
-  }, [nextBannerRound, tournament.tournamentDate]);
-
   // WebSocket at TournamentRoundsTab level — always mounted regardless of active tab
   const allGameIds = useMemo(() =>
     matches.map(m => m.games?.[0]?.id).filter((id): id is number => !!id),
@@ -186,10 +223,13 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
   const showPasscodeBanner = isParticipant && remainingMs !== null && remainingMs === 0 && inProgressGame?.passcode && inProgressRound;
   const isSplit = (inProgressGame?.passcodeVersion ?? 1) > 1;
 
+  const seasonNumber = tournament.season?.seasonNumber;
+  const inProgressMatchNumber = inProgressMatch?.matchNumber;
+
   useEffect(() => {
-    if (!showPasscodeBanner || !tournament.season) return;
+    if (!showPasscodeBanner || seasonNumber == null) return;
     gamesApi
-      .getSplitVoteStatus('tournament', tournament.season.seasonNumber, inProgressMatch!.matchNumber!)
+      .getSplitVoteStatus('tournament', seasonNumber, inProgressMatchNumber!)
       .then((res) => {
         setSplitVoteStatus(res.data);
         if (res.data.splitNotified) {
@@ -197,7 +237,7 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
         }
       })
       .catch(() => {});
-  }, [showPasscodeBanner, tournament.season?.seasonNumber, inProgressMatch?.matchNumber, inProgressGame?.passcodeVersion]);
+  }, [showPasscodeBanner, seasonNumber, inProgressMatchNumber, inProgressGame?.passcodeVersion]);
 
   const handleSplitVote = async () => {
     if (!tournament.season || !inProgressMatch?.matchNumber) return;
@@ -211,11 +251,6 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
       setVoting(false);
     }
   };
-
-  // Resolve round icon for countdown/revealed banners
-  const bannerRoundIcon = inProgressRound
-    ? getRoundIcon(inProgressRound.inGameMode, inProgressRound.league)
-    : null;
 
   return (
     <div className="space-y-4">
@@ -382,26 +417,26 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
   const game = match?.games?.[0];
 
   // Local participants state — updated in-place via WebSocket instead of full refetch
-  const [localParticipants, setLocalParticipants] = useState(
-    game?.participants ?? [],
+  const [localParticipants, setLocalParticipants] = useState<LocalParticipant[]>(
+    (game?.participants as RoundGameParticipant[] | undefined) ?? [],
   );
 
   // Sync from props when parent does a full refetch (e.g. advance round)
   useEffect(() => {
-    if (game?.participants) setLocalParticipants(game.participants);
+    if (game?.participants) setLocalParticipants(game.participants as RoundGameParticipant[]);
   }, [game?.participants]);
 
   // Merge WebSocket payload into local state
   const handleScoreUpdate = (p: ParticipantUpdate) => {
     setLocalParticipants((prev) => {
-      const idx = prev.findIndex((x: any) => x.user.id === p.user.id);
-      const merged = {
+      const idx = prev.findIndex((x) => x.user.id === p.user.id);
+      const merged: LiveParticipantRow = {
         user: {
           id: p.user.id,
           profileNumber: p.user.profileNumber,
           displayName: p.user.displayName,
           // profile is not in ParticipantUpdate — preserve from existing
-          profile: idx >= 0 ? (prev[idx] as any).user?.profile : null,
+          profile: idx >= 0 ? prev[idx].user.profile : null,
         },
         machine: p.machine,
         assistEnabled: p.assistEnabled,
@@ -409,7 +444,7 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
         eliminatedAtRace: p.eliminatedAtRace,
         // WS payload rows have no DB ids; the tables only read
         // raceNumber/position/points/isEliminated
-        raceResults: p.raceResults as GameParticipant['raceResults'],
+        raceResults: p.raceResults,
         ratingAfter: p.ratingAfter,
         ratingChange: p.ratingChange,
         // Keep the existing status when the update omits it
@@ -417,10 +452,10 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
       };
       if (idx >= 0) {
         const next = [...prev];
-        next[idx] = { ...prev[idx], ...merged, user: { ...(prev[idx] as any).user, ...merged.user } };
+        next[idx] = { ...prev[idx], ...merged, user: { ...prev[idx].user, ...merged.user } };
         return next;
       }
-      return [...prev, merged as any];
+      return [...prev, merged];
     });
   };
 
@@ -509,8 +544,8 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
 
         {/* Results table — always show */}
         <MatchDetailsTable
-          gameParticipants={localParticipants as any}
-          matchParticipants={match.participants as any}
+          gameParticipants={localParticipants}
+          matchParticipants={match.participants as RoundMatchParticipant[] | undefined}
           isGpMode={isGpMode}
           isClassicMode={isClassicMode}
           hideStatus
@@ -537,7 +572,6 @@ interface AdminContentProps {
 
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
-  const td = useTranslations('discord');
   const [advanceLoading, setAdvanceLoading] = useState(false);
   const [countdownLoading, setCountdownLoading] = useState(false);
   const [hideLoading, setHideLoading] = useState(false);
@@ -809,7 +843,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
 
           <PasscodeSection
             tournament={tournament}
-            match={inProgressMatch!}
             game={inProgressGame}
           />
         </div>}
@@ -850,10 +883,13 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
           ? ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(round.inGameMode)
           : true;
         const allSubmitted = game.participants.every(
-          (p: any) => p.status !== 'UNSUBMITTED',
+          (p) => p.status !== 'UNSUBMITTED',
         );
         const conflicts: ConflictResult[] = allSubmitted
-          ? detectAllPositionConflicts(game.participants as any, isGpMode)
+          ? detectAllPositionConflicts(
+              game.participants as Array<GameParticipant & ParticipantForConflict>,
+              isGpMode,
+            )
           : [];
         return { match, allSubmitted, conflicts };
       })
@@ -928,11 +964,10 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
 
 interface PasscodeSectionProps {
   tournament: Tournament;
-  match: Match;
   game: Game | undefined;
 }
 
-function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
+function PasscodeSection({ tournament, game }: PasscodeSectionProps) {
   const t = useTranslations('tournament');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -950,8 +985,8 @@ function PasscodeSection({ tournament, match, game }: PasscodeSectionProps) {
     try {
       await tournamentsApi.regeneratePasscode(tournament.id);
       // WebSocket event triggers parent refetch, no need to update local state
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to regenerate passcode');
+    } catch (err) {
+      setError((err as ApiErrorLike).response?.data?.message || 'Failed to regenerate passcode');
     } finally {
       setGenerating(false);
     }
@@ -1074,7 +1109,10 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
   const t = useTranslations('tournament');
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
-  const matches = tournament.season?.matches || [];
+  const matches = useMemo(
+    () => tournament.season?.matches || [],
+    [tournament.season?.matches],
+  );
   const rounds = tournament.rounds;
 
   // WebSocket: live score updates + status changes for all games
@@ -1097,9 +1135,11 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
   // Map: `${userId}-${roundNumber}` → ParticipantUpdate
   const [liveScores, setLiveScores] = useState<Map<string, ParticipantUpdate>>(new Map());
 
+  const allGameIdsKey = allGameIds.join(',');
+
   useEffect(() => {
     setLiveScores(new Map());
-  }, [allGameIds.join(',')]);
+  }, [allGameIdsKey]);
 
   const handleScoreUpdate = (p: ParticipantUpdate) => {
     const roundNumber = p.gameId ? gameIdToRound.get(p.gameId) : null;
@@ -1147,7 +1187,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             userId: mp.userId,
             displayName: mp.user?.displayName || `Player ${mp.userId}`,
             profileNumber: mp.user?.profileNumber,
-            country: (mp.user as any)?.profile?.country ?? null,
+            country: (mp.user as UserWithProfile | undefined)?.profile?.country ?? null,
             roundScores: {},
             roundSurvived: {},
             roundCompensated: {},
@@ -1176,7 +1216,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             userId: p.userId,
             displayName: p.user?.displayName || `Player ${p.userId}`,
             profileNumber: p.user?.profileNumber,
-            country: (p.user as any)?.profile?.country ?? null,
+            country: (p.user as UserWithProfile | undefined)?.profile?.country ?? null,
             roundScores: {},
             roundSurvived: {},
             roundCompensated: {},
@@ -1189,10 +1229,10 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
 
         const score = p.totalScore ?? 0;
         standing.roundScores[roundNumber] = p.totalScore ?? null;
-        standing.roundSurvived[roundNumber] = p.totalScore != null && p.eliminatedAtRace == null && !p.isCompensated && !(p as any).isDisqualified;
+        standing.roundSurvived[roundNumber] = p.totalScore != null && p.eliminatedAtRace == null && !p.isCompensated && !p.isDisqualified;
         standing.roundCompensated[roundNumber] = p.isCompensated ?? false;
-        standing.roundDisqualified[roundNumber] = (p as any).isDisqualified ?? false;
-        standing.roundMachines[roundNumber] = (p as any).machine ?? null;
+        standing.roundDisqualified[roundNumber] = p.isDisqualified ?? false;
+        standing.roundMachines[roundNumber] = p.machine ?? null;
         standing.total += score;
       }
     }
@@ -1414,8 +1454,8 @@ function AdminScoreOverride({
       setSelectedUserId('');
       onUpdate();
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to override score');
+    } catch (err) {
+      setError((err as ApiErrorLike).response?.data?.message || 'Failed to override score');
     } finally {
       setSubmitting(false);
     }
@@ -1437,8 +1477,8 @@ function AdminScoreOverride({
       setDqUserId('');
       onUpdate();
       setTimeout(() => setDqSuccess(false), 3000);
-    } catch (err: any) {
-      setDqError(err.response?.data?.message || 'Failed to disqualify player');
+    } catch (err) {
+      setDqError((err as ApiErrorLike).response?.data?.message || 'Failed to disqualify player');
     } finally {
       setDqSubmitting(false);
     }

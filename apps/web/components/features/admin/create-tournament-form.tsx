@@ -246,8 +246,9 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
       setSuccess(t('created'));
       form.reset();
       onCreated?.();
-    } catch (err: any) {
-      setError(err.response?.data?.message || t('error'));
+    } catch (err) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      setError(axiosError.response?.data?.message || t('error'));
     }
   };
 

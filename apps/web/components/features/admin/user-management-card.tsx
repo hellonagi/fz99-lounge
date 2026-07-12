@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -150,9 +151,12 @@ export function UserManagementCard() {
                   {/* User info */}
                   <div className="flex items-center gap-3">
                     {user.avatarHash ? (
-                      <img
+                      <Image
                         src={`https://cdn.discordapp.com/avatars/${user.discordId}/${user.avatarHash}.png?size=32`}
                         alt=""
+                        width={32}
+                        height={32}
+                        unoptimized
                         className="w-8 h-8 rounded-full shrink-0"
                       />
                     ) : (

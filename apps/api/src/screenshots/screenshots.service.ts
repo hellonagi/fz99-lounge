@@ -25,7 +25,10 @@ export class ScreenshotsService {
   /**
    * 1位チェック（同点1位も含む）
    */
-  private async checkFirstPlace(gameId: number, userId: number): Promise<boolean> {
+  private async checkFirstPlace(
+    gameId: number,
+    userId: number,
+  ): Promise<boolean> {
     const participants = await this.prisma.gameParticipant.findMany({
       where: { gameId },
       orderBy: { totalScore: 'desc' },
@@ -34,11 +37,15 @@ export class ScreenshotsService {
     if (participants.length === 0) return false;
 
     // 最高スコアを取得
-    const topScore = participants.find((p) => p.totalScore !== null)?.totalScore;
+    const topScore = participants.find(
+      (p) => p.totalScore !== null,
+    )?.totalScore;
     if (topScore === null || topScore === undefined) return false;
 
     // 同点1位全員が提出可能
-    const firstPlaceUsers = participants.filter((p) => p.totalScore === topScore);
+    const firstPlaceUsers = participants.filter(
+      (p) => p.totalScore === topScore,
+    );
     return firstPlaceUsers.some((p) => p.userId === userId);
   }
 
@@ -73,40 +80,49 @@ export class ScreenshotsService {
     }
 
     // マッチが完了している場合は提出不可
-    if (game.match.status === 'COMPLETED' || game.match.status === 'FINALIZED') {
-      throw new ForbiddenException('Cannot submit screenshot for a completed match');
+    if (
+      game.match.status === 'COMPLETED' ||
+      game.match.status === 'FINALIZED'
+    ) {
+      throw new ForbiddenException(
+        'Cannot submit screenshot for a completed match',
+      );
     }
 
     // FINAL_SCOREの場合、1位チェック + 既にverify済みがあれば提出不可
     if (type === ScreenshotType.FINAL_SCORE) {
       const isFirstPlace = await this.checkFirstPlace(gameId, userId);
       if (!isFirstPlace) {
-        throw new ForbiddenException('Only 1st place can submit final score screenshot');
+        throw new ForbiddenException(
+          'Only 1st place can submit final score screenshot',
+        );
       }
 
       // 既にverify済みのFINAL_SCOREがあれば提出不可
-      const verifiedFinalScore = await this.prisma.gameScreenshotSubmission.findFirst({
-        where: {
-          gameId,
-          type: ScreenshotType.FINAL_SCORE,
-          isVerified: true,
-          deletedAt: null,
-        },
-      });
+      const verifiedFinalScore =
+        await this.prisma.gameScreenshotSubmission.findFirst({
+          where: {
+            gameId,
+            type: ScreenshotType.FINAL_SCORE,
+            isVerified: true,
+            deletedAt: null,
+          },
+        });
       if (verifiedFinalScore) {
         throw new ForbiddenException('Final score screenshot already verified');
       }
     }
 
     // 既存のスクショがあるか確認
-    const existingSubmission = await this.prisma.gameScreenshotSubmission.findFirst({
-      where: {
-        gameId,
-        userId,
-        type,
-        deletedAt: null,
-      },
-    });
+    const existingSubmission =
+      await this.prisma.gameScreenshotSubmission.findFirst({
+        where: {
+          gameId,
+          userId,
+          type,
+          deletedAt: null,
+        },
+      });
 
     // 既存がverifyされている場合は再提出不可
     if (existingSubmission?.isVerified) {
@@ -128,7 +144,8 @@ export class ScreenshotsService {
     const category = game.match.season.event.category.toLowerCase();
     let imageUrl: string;
     // INDIVIDUAL, INDIVIDUAL_1, INDIVIDUAL_2 は個人スクショとして処理
-    const isIndividualType = type === ScreenshotType.INDIVIDUAL ||
+    const isIndividualType =
+      type === ScreenshotType.INDIVIDUAL ||
       type === ScreenshotType.INDIVIDUAL_1 ||
       type === ScreenshotType.INDIVIDUAL_2;
 
@@ -140,7 +157,11 @@ export class ScreenshotsService {
         file,
       );
     } else {
-      imageUrl = await this.storage.uploadFinalScoreScreenshot(category, String(gameId), file);
+      imageUrl = await this.storage.uploadFinalScoreScreenshot(
+        category,
+        String(gameId),
+        file,
+      );
     }
 
     // DBに保存
@@ -237,7 +258,7 @@ export class ScreenshotsService {
     });
 
     // 削除済みの場合はimageUrlをnullにして返す
-    return submissions.map(s => ({
+    return submissions.map((s) => ({
       ...s,
       imageUrl: s.deletedAt ? null : s.imageUrl,
       isDeleted: !!s.deletedAt,
@@ -278,7 +299,9 @@ export class ScreenshotsService {
     });
 
     if (!submission) {
-      throw new NotFoundException(`Screenshot submission ${submissionId} not found`);
+      throw new NotFoundException(
+        `Screenshot submission ${submissionId} not found`,
+      );
     }
 
     if (submission.isVerified) {
@@ -357,15 +380,16 @@ export class ScreenshotsService {
       );
 
       // 他の未verifyのFINAL_SCOREを削除
-      const otherFinalScores = await this.prisma.gameScreenshotSubmission.findMany({
-        where: {
-          gameId: submission.gameId,
-          type: ScreenshotType.FINAL_SCORE,
-          isVerified: false,
-          deletedAt: null,
-          id: { not: submissionId },
-        },
-      });
+      const otherFinalScores =
+        await this.prisma.gameScreenshotSubmission.findMany({
+          where: {
+            gameId: submission.gameId,
+            type: ScreenshotType.FINAL_SCORE,
+            isVerified: false,
+            deletedAt: null,
+            id: { not: submissionId },
+          },
+        });
 
       for (const other of otherFinalScores) {
         await this.storage.deleteFile(other.imageUrl);
@@ -391,7 +415,9 @@ export class ScreenshotsService {
     });
 
     if (!submission) {
-      throw new NotFoundException(`Screenshot submission ${submissionId} not found`);
+      throw new NotFoundException(
+        `Screenshot submission ${submissionId} not found`,
+      );
     }
 
     if (submission.isVerified) {
@@ -471,22 +497,39 @@ export class ScreenshotsService {
     const totalParticipants = game.match.participants.length;
 
     // INDIVIDUAL
-    const individualSubmitted = await this.prisma.gameScreenshotSubmission.count({
-      where: { gameId, type: ScreenshotType.INDIVIDUAL, deletedAt: null },
-    });
-    const individualVerified = await this.prisma.gameScreenshotSubmission.count({
-      where: { gameId, type: ScreenshotType.INDIVIDUAL, isVerified: true, deletedAt: null },
-    });
+    const individualSubmitted =
+      await this.prisma.gameScreenshotSubmission.count({
+        where: { gameId, type: ScreenshotType.INDIVIDUAL, deletedAt: null },
+      });
+    const individualVerified = await this.prisma.gameScreenshotSubmission.count(
+      {
+        where: {
+          gameId,
+          type: ScreenshotType.INDIVIDUAL,
+          isVerified: true,
+          deletedAt: null,
+        },
+      },
+    );
 
     // FINAL_SCORE
-    const finalScoreSubmitted = await this.prisma.gameScreenshotSubmission.count({
-      where: { gameId, type: ScreenshotType.FINAL_SCORE, deletedAt: null },
-    });
-    const finalScoreVerified = await this.prisma.gameScreenshotSubmission.count({
-      where: { gameId, type: ScreenshotType.FINAL_SCORE, isVerified: true, deletedAt: null },
-    });
+    const finalScoreSubmitted =
+      await this.prisma.gameScreenshotSubmission.count({
+        where: { gameId, type: ScreenshotType.FINAL_SCORE, deletedAt: null },
+      });
+    const finalScoreVerified = await this.prisma.gameScreenshotSubmission.count(
+      {
+        where: {
+          gameId,
+          type: ScreenshotType.FINAL_SCORE,
+          isVerified: true,
+          deletedAt: null,
+        },
+      },
+    );
 
-    const isComplete = individualVerified >= totalParticipants && finalScoreVerified >= 1;
+    const isComplete =
+      individualVerified >= totalParticipants && finalScoreVerified >= 1;
 
     return {
       individual: {

@@ -31,9 +31,7 @@ interface TeamAnnouncementPhaseProps {
 export function TeamAnnouncementPhase({
   teams,
   excludedUserIds,
-  excludedUsers,
   currentUserId,
-  isPasscodeRevealed = false,
   totalParticipants,
   mvpUserIds,
 }: TeamAnnouncementPhaseProps) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -36,9 +37,12 @@ function PlayerAvatar({ discordId, avatarHash, displayName }: {
   const avatarUrl = useAvatarUrl(discordId, avatarHash, 64);
 
   return avatarUrl ? (
-    <img
+    <Image
       src={avatarUrl}
       alt={displayName}
+      width={64}
+      height={64}
+      unoptimized
       className="w-14 h-14 sm:w-16 sm:h-16 rounded-full"
     />
   ) : (

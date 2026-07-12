@@ -26,7 +26,7 @@ export class EventsGateway
 
   private readonly logger = new Logger(EventsGateway.name);
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway initialized');
   }
 
@@ -52,7 +52,9 @@ export class EventsGateway
     url: string;
     message?: string;
   }) {
-    this.logger.log(`Emitting match-started event for match ${matchData.matchId}`);
+    this.logger.log(
+      `Emitting match-started event for match ${matchData.matchId}`,
+    );
     this.server.emit('match-started', matchData);
   }
 
@@ -99,7 +101,9 @@ export class EventsGateway
     gameId: number;
     passcode: string;
   }) {
-    this.logger.log(`Emitting passcode-revealed event for match ${data.matchId}`);
+    this.logger.log(
+      `Emitting passcode-revealed event for match ${data.matchId}`,
+    );
     this.server.emit('passcode-revealed', data);
   }
 
@@ -113,7 +117,9 @@ export class EventsGateway
   // Legacy support: handle lobby:update and map to match:update
   @SubscribeMessage('lobby:update')
   handleLobbyUpdate(@MessageBody() lobbyData: any) {
-    this.logger.log(`Received legacy lobby:update from client, broadcasting as match...`);
+    this.logger.log(
+      `Received legacy lobby:update from client, broadcasting as match...`,
+    );
     this.emitMatchUpdated(lobbyData);
   }
 }

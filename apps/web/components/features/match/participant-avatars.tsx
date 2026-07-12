@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
 export function getDiscordAvatarUrl(discordId: string, avatarHash: string | null, size = 32): string {
@@ -56,11 +57,14 @@ export function ParticipantAvatars({
   return (
     <div className="flex items-center">
       {shown.map((p, i) => (
-        <img
+        <Image
           key={p.userId}
           src={getDiscordAvatarUrl(p.user.discordId, p.user.avatarHash)}
           alt={p.user.displayName || ''}
           title={p.user.displayName || undefined}
+          width={22}
+          height={22}
+          unoptimized
           className={cn(
             'h-[22px] w-[22px] rounded-full border-2 border-gray-700 object-cover',
             i > 0 && '-ml-[5px]',

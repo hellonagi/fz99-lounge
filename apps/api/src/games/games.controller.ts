@@ -58,7 +58,9 @@ export class GamesController {
     const userId = user?.id;
 
     // Convert category string to EventCategory enum
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -81,7 +83,9 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -128,10 +132,10 @@ export class GamesController {
     @Param('match') match: string,
     @Param('userId') targetUserId: string,
     @Body() updateScoreDto: UpdateScoreDto,
-    @Req() req: Request,
   ) {
-    const user = req.user as any;
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
@@ -154,7 +158,9 @@ export class GamesController {
     @Param('match') match: string,
     @Param('userId') targetUserId: string,
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     return this.gamesService.disqualifyParticipant(
       eventCategory,
@@ -174,7 +180,9 @@ export class GamesController {
     @Param('userId') targetUserId: string,
     @Body() dto: OverrideScoreDto,
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     return this.gamesService.overrideScore(
       eventCategory,
@@ -188,7 +196,7 @@ export class GamesController {
   // Test endpoint to emit WebSocket events manually (for testing only)
   @Post(':id/emit-test')
   @HttpCode(HttpStatus.OK)
-  async emitTestScore(
+  emitTestScore(
     @Param('id') gameId: string,
     @Body() data: { participant: any },
   ) {
@@ -216,7 +224,9 @@ export class GamesController {
     @Param('season') season: string,
     @Param('match') match: string,
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -234,7 +244,9 @@ export class GamesController {
     @Param('match') match: string,
     @Body() body: { tracks: number[] },
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
@@ -259,11 +271,17 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.getSplitVoteStatus(game.id, user.id);
   }
 
@@ -277,11 +295,17 @@ export class GamesController {
     @Req() req: Request,
   ) {
     const user = req.user as any;
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.castSplitVote(game.id, user.id);
   }
 
@@ -295,11 +319,17 @@ export class GamesController {
     @Param('season') season: string,
     @Param('match') match: string,
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.forceRegeneratePasscode(game.id);
   }
 
@@ -321,12 +351,18 @@ export class GamesController {
   ) {
     const user = req.user as any;
 
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.verifyParticipantScore(game.id, targetId, user.id);
   }
 
@@ -344,12 +380,18 @@ export class GamesController {
   ) {
     const user = req.user as any;
 
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.rejectParticipantScore(game.id, targetId, user.id);
   }
 
@@ -367,7 +409,9 @@ export class GamesController {
   ) {
     const user = req.user as any;
 
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
@@ -391,12 +435,18 @@ export class GamesController {
     @Param('match') match: string,
     @Param('userId') targetUserId: string,
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
     const targetId = parseInt(targetUserId, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.markNoShow(game.id, targetId);
   }
 
@@ -409,13 +459,25 @@ export class GamesController {
     @Param('category') category: string,
     @Param('season') season: string,
     @Param('match') match: string,
-    @Body() body: { conflicts: Array<{ raceNumber: number; users: Array<{ userId: number; position: number }> }> },
+    @Body()
+    body: {
+      conflicts: Array<{
+        raceNumber: number;
+        users: Array<{ userId: number; position: number }>;
+      }>;
+    },
   ) {
-    const eventCategory = category.toUpperCase().replace(/-/g, '_') as EventCategory;
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
     const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
     const matchNumber = parseInt(match, 10);
 
-    const game = await this.findGameByPath(eventCategory, seasonNumber, matchNumber);
+    const game = await this.findGameByPath(
+      eventCategory,
+      seasonNumber,
+      matchNumber,
+    );
     return this.gamesService.notifyPositionConflict(game.id, body.conflicts);
   }
 
