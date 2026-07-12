@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run"
   },
   "dependencies": {
+    "@fz99/shared": "*",
     "@hookform/resolvers": "^5.2.2",
     "@next/third-parties": "^16.1.6",
     "@radix-ui/react-alert-dialog": "^1.1.15",

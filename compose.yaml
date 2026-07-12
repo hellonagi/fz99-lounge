@@ -53,8 +53,8 @@ services:
   # NestJS v11 API (開発環境)
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
       target: development
       args:
         NODE_VERSION: 20-alpine
@@ -99,12 +99,17 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-minioadmin}
     volumes:
       # WSL2最適化: srcフォルダと設定ファイルのみマウント
-      - ./apps/api/src:/app/src:cached
-      - ./apps/api/test:/app/test:cached
-      - ./apps/api/package.json:/app/package.json:ro
-      - ./apps/api/tsconfig.json:/app/tsconfig.json:ro
-      - ./apps/api/nest-cli.json:/app/nest-cli.json:ro
-      - ./apps/api/prisma:/app/prisma:ro
+      - ./apps/api/src:/app/apps/api/src:cached
+      - ./apps/api/test:/app/apps/api/test:cached
+      - ./apps/api/package.json:/app/apps/api/package.json:ro
+      - ./apps/api/tsconfig.json:/app/apps/api/tsconfig.json:ro
+      - ./apps/api/tsconfig.build.json:/app/apps/api/tsconfig.build.json:ro
+      - ./apps/api/nest-cli.json:/app/apps/api/nest-cli.json:ro
+      - ./apps/api/prisma:/app/apps/api/prisma:ro
+      # 共有パッケージ（distはコンテナ内で管理。変更時: docker exec fz99-lounge-api npm run build -w @fz99/shared）
+      - ./packages/shared/src:/app/packages/shared/src:cached
+      - ./packages/shared/package.json:/app/packages/shared/package.json:ro
+      - ./packages/shared/tsconfig.json:/app/packages/shared/tsconfig.json:ro
       # node_modulesとdistはコンテナ内で管理（マウントしない）
     ports:
       - "${API_PORT:-3000}:3000"
@@ -119,13 +124,13 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    command: npm run start:dev
+    command: npm run start:dev -w api
 
   # Next.js 15 Web (開発環境)
   web:
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
       target: development
       args:
         NODE_VERSION: 20-alpine
@@ -140,22 +145,26 @@ services:
       NEXT_TELEMETRY_DISABLED: 1
     volumes:
       # WSL2最適化: appフォルダと設定ファイルのみマウント
-      - ./apps/web/app:/app/app:cached
-      - ./apps/web/components:/app/components:cached
-      - ./apps/web/lib:/app/lib:cached
-      - ./apps/web/store:/app/store:cached
-      - ./apps/web/hooks:/app/hooks:cached
-      - ./apps/web/types:/app/types:cached
-      - ./apps/web/public:/app/public:cached
-      - ./apps/web/i18n:/app/i18n:cached
-      - ./apps/web/messages:/app/messages:cached
-      - ./apps/web/content:/app/content:cached
-      - ./apps/web/package.json:/app/package.json:ro
-      - ./apps/web/next.config.ts:/app/next.config.ts:ro
-      - ./apps/web/middleware.ts:/app/middleware.ts:ro
-      - ./apps/web/tsconfig.json:/app/tsconfig.json:ro
-      - ./apps/web/tailwind.config.ts:/app/tailwind.config.ts:ro
-      - ./apps/web/postcss.config.mjs:/app/postcss.config.mjs:ro
+      - ./apps/web/app:/app/apps/web/app:cached
+      - ./apps/web/components:/app/apps/web/components:cached
+      - ./apps/web/lib:/app/apps/web/lib:cached
+      - ./apps/web/store:/app/apps/web/store:cached
+      - ./apps/web/hooks:/app/apps/web/hooks:cached
+      - ./apps/web/types:/app/apps/web/types:cached
+      - ./apps/web/public:/app/apps/web/public:cached
+      - ./apps/web/i18n:/app/apps/web/i18n:cached
+      - ./apps/web/messages:/app/apps/web/messages:cached
+      - ./apps/web/content:/app/apps/web/content:cached
+      - ./apps/web/package.json:/app/apps/web/package.json:ro
+      - ./apps/web/next.config.ts:/app/apps/web/next.config.ts:ro
+      - ./apps/web/middleware.ts:/app/apps/web/middleware.ts:ro
+      - ./apps/web/tsconfig.json:/app/apps/web/tsconfig.json:ro
+      - ./apps/web/tailwind.config.ts:/app/apps/web/tailwind.config.ts:ro
+      - ./apps/web/postcss.config.mjs:/app/apps/web/postcss.config.mjs:ro
+      # 共有パッケージ（distはコンテナ内で管理。変更時: docker exec fz99-lounge-web npm run build -w @fz99/shared）
+      - ./packages/shared/src:/app/packages/shared/src:cached
+      - ./packages/shared/package.json:/app/packages/shared/package.json:ro
+      - ./packages/shared/tsconfig.json:/app/packages/shared/tsconfig.json:ro
       # node_modulesと.nextはコンテナ内で管理
     ports:
       - "${WEB_PORT:-3001}:3000"

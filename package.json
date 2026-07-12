@@ -1,0 +1,15 @@
+{
+  "name": "fz99-lounge",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @fz99/shared && npm run build -w api && npm run build -w web",
+    "lint": "npm run lint:check -w api && npm run lint -w web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w api"
+  }
+}

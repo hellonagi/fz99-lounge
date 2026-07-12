@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { matchesApi } from '@/lib/api';
 
-interface Match {
+export interface Match {
   id: number;
   category: string;
   inGameMode: string;

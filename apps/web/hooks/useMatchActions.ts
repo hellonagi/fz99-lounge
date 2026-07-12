@@ -1,34 +1,7 @@
 import { useState } from 'react';
 import { matchesApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-
-interface Match {
-  id: number;
-  category: string;
-  inGameMode: string;
-  leagueType: string | null;
-  matchNumber: number;
-  scheduledStart: string;
-  currentPlayers: number;
-  maxPlayers: number;
-  minPlayers: number;
-  season: {
-    id: number;
-    seasonNumber: number;
-    event: {
-      id: number;
-      category: string;
-    };
-  };
-  participants: Array<{
-    userId: number;
-    user: {
-      id: number;
-      displayName: string;
-      avatarHash: string | null;
-    };
-  }>;
-}
+import type { Match } from '@/hooks/useMatch';
 
 export function useMatchActions(
   nextMatch: Match | null,

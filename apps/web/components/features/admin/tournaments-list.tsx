@@ -248,7 +248,7 @@ function TournamentEditor({ tournament, onSaved }: { tournament: Tournament; onS
       const content = (en || ja) ? { en, ja } : null;
       const cleanRounds = rounds.map((r) => {
         const leagueNeeded = getLeagueOptions(r.inGameMode);
-        const league = r.league && r.league !== 'none' ? r.league : undefined;
+        const league = r.league && (r.league as string) !== 'none' ? r.league : undefined;
         return {
           ...r,
           league: league ?? (leagueNeeded ? leagueNeeded[0].value : undefined),
