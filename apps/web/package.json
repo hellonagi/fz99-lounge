@@ -78,6 +78,7 @@
     "@img/sharp-libvips-linuxmusl-arm64": "^1.2.3",
     "@img/sharp-linuxmusl-arm64": "^0.34.4",
     "@parcel/watcher-linux-arm64-musl": "^2.5.1",
+    "@swc/core-linux-arm64-musl": "^1.15.8",
     "@tailwindcss/oxide-linux-arm64-musl": "^4.1.16",
     "lightningcss-linux-arm64-musl": "^1.30.2"
   }
