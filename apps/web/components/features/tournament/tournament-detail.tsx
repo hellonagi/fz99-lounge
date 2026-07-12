@@ -22,7 +22,7 @@ import { SiDiscord } from 'react-icons/si';
 import { Tournament, LocalizedContent, TournamentDivision, TournamentMode, TournamentScheduleEvent, TournamentRoundConfig, TournamentRegistration, User } from '@/types';
 
 type TournamentParticipant = TournamentRegistration & {
-  user?: User & { profile?: { country?: string | null } | null };
+  user?: User;
 };
 
 const LEAGUE_ICON_MAP: Record<string, string> = {

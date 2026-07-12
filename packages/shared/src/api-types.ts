@@ -17,6 +17,12 @@ import type {
 } from './enums';
 
 // User & Auth Types
+export interface Profile {
+  id?: number;
+  userId?: number;
+  country: string | null; // ISO 3166-1 alpha-2 (JP, US, etc.)
+}
+
 export interface User {
   id: number;
   profileNumber: number;
@@ -26,12 +32,14 @@ export interface User {
   avatarHash: string | null;
   role: UserRole;
   status?: UserStatus;
-  country?: string | null;
+  country?: string | null; // 一部APIはprofile.countryをフラット化して返す
   youtubeUrl?: string | null;
   twitchUrl?: string | null;
   createdAt?: string;
   lastLoginAt?: string | null;
   permissions?: ModeratorPermission[];
+  // Relations
+  profile?: Profile | null;
 }
 
 // Match Types (was Lobby - waiting room for a session)

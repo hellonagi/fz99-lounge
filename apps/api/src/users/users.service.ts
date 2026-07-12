@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { toHalfWidth, validateDisplayName } from '../common/utils/string.util';
+import { toHalfWidth, validateDisplayName } from '@fz99/shared';
 import { EventCategory, MatchStatus } from '@prisma/client';
 
 @Injectable()

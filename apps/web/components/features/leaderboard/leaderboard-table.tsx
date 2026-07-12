@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { getRankInfo } from '@/lib/rank-utils';
+import type { User } from '@/types';
 
 interface LeaderboardEntry {
   id: number;
@@ -23,13 +24,10 @@ interface LeaderboardEntry {
   medianPoints: number | null;
   favoriteMachine: string | null;
   mvpCount?: number;
-  user: {
-    id: number;
-    profileNumber: number;
-    displayName: string | null;
-    avatarHash: string | null;
-    profile?: { country: string | null } | null;
-  };
+  user: Pick<
+    User,
+    'id' | 'profileNumber' | 'displayName' | 'avatarHash' | 'profile'
+  >;
 }
 
 // Machine name abbreviations for mobile display

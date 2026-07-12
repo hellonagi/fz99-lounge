@@ -36,10 +36,7 @@ describe('calculateRatingChanges', () => {
 
       const changes = calculateRatingChanges(participants);
 
-      const total = changes.reduce(
-        (sum, c) => sum + c.internalRatingChange,
-        0,
-      );
+      const total = changes.reduce((sum, c) => sum + c.internalRatingChange, 0);
       expect(total).toBe(0);
     });
   });
@@ -97,10 +94,7 @@ describe('calculateRatingChanges', () => {
       }
 
       // キャップ未発動なのでゼロサムは維持される
-      const total = changes.reduce(
-        (sum, c) => sum + c.internalRatingChange,
-        0,
-      );
+      const total = changes.reduce((sum, c) => sum + c.internalRatingChange, 0);
       expect(total).toBeCloseTo(0, 6);
 
       // 大番狂わせの勝者は、同レート戦の勝者より大きく上がる
@@ -140,10 +134,7 @@ describe('calculateRatingChanges', () => {
       expect(byUser.get(2)!).toBeGreaterThan(byUser.get(4)!);
 
       // ゼロサムも維持
-      const total = changes.reduce(
-        (sum, c) => sum + c.internalRatingChange,
-        0,
-      );
+      const total = changes.reduce((sum, c) => sum + c.internalRatingChange, 0);
       expect(total).toBeCloseTo(0, 6);
     });
   });
