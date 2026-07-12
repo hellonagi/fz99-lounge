@@ -73,5 +73,12 @@
     "node-fetch": "^2.7.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "@img/sharp-libvips-linuxmusl-arm64": "^1.2.3",
+    "@img/sharp-linuxmusl-arm64": "^0.34.4",
+    "@parcel/watcher-linux-arm64-musl": "^2.5.1",
+    "@tailwindcss/oxide-linux-arm64-musl": "^4.1.16",
+    "lightningcss-linux-arm64-musl": "^1.30.2"
   }
 }
