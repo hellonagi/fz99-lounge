@@ -18,9 +18,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.937.0",
-    "@fz99/shared": "*",
     "@aws-sdk/credential-providers": "^3.958.0",
     "@aws-sdk/s3-request-presigner": "^3.937.0",
+    "@fz99/shared": "*",
     "@nestjs/bull": "^11.0.3",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -107,5 +107,9 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "optionalDependencies": {
+    "@img/sharp-libvips-linuxmusl-arm64": "^1.2.4",
+    "@img/sharp-linuxmusl-arm64": "^0.34.5"
   }
 }
