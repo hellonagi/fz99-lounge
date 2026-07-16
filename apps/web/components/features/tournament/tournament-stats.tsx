@@ -22,7 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Hash, Calendar, Trophy } from 'lucide-react';
 import { F99_MACHINES } from '@/lib/machines';
 import { tracksApi, type Track } from '@/lib/api';
-import type { Tournament, GameParticipant, User } from '@/types';
+import type { Tournament, GameParticipant } from '@/types';
 
 // APIレスポンスでは user に profile がネストされる場合がある
 
