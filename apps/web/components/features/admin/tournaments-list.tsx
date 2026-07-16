@@ -411,6 +411,16 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
     return idx < STATUS_OPTIONS.length - 1 ? STATUS_OPTIONS[idx + 1] : null;
   };
 
+  const getPrevStatus = (current: TournamentStatus): TournamentStatus | null => {
+    const idx = STATUS_OPTIONS.indexOf(current);
+    return idx > 0 ? STATUS_OPTIONS[idx - 1] : null;
+  };
+
+  const handleStatusBack = (id: number, status: TournamentStatus) => {
+    if (!window.confirm(t('confirmStatusBack', { status: tStatus(status) }))) return;
+    handleStatusUpdate(id, status);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -431,6 +441,7 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
           <div className="space-y-3">
             {tournaments.map((tournament) => {
               const nextStatus = getNextStatus(tournament.status);
+              const prevStatus = getPrevStatus(tournament.status);
               return (
                 <div
                   key={tournament.id}
@@ -463,6 +474,15 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    {prevStatus && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleStatusBack(tournament.id, prevStatus)}
+                      >
+                        ← {tStatus(prevStatus)}
+                      </Button>
+                    )}
                     {nextStatus && (
                       <Button
                         size="sm"

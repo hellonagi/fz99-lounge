@@ -14,6 +14,7 @@ import type { Request } from 'express';
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { StartCountdownDto } from './dto/start-countdown.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -68,8 +69,11 @@ export class TournamentsController {
 
   @Post(':id/start-countdown')
   @Roles(UserRole.ADMIN)
-  async startCountdown(@Param('id') id: string) {
-    return this.tournamentsService.startCountdown(parseInt(id, 10));
+  async startCountdown(
+    @Param('id') id: string,
+    @Body() dto: StartCountdownDto,
+  ) {
+    return this.tournamentsService.startCountdown(parseInt(id, 10), dto);
   }
 
   @Post(':id/hide-passcode')

@@ -175,12 +175,19 @@
       "splitNewPasscode": "スプリット — 新パスコード公開まで",
       "revealIn": "パスコード公開まで",
       "next": "次",
-      "passcodeNotice": "時間になるとパスコードがこちらに表示されます",
+      "passcodeNotice": "パスコードは大会Discordチャンネルで公開されます",
       "startCountdown": "カウントダウン開始",
       "startGP": "GP{round} カウントダウン開始",
       "hidePasscode": "パスコード非表示",
       "notifySplit": "スプリット通知",
-      "notifyingSplit": "送信中..."
+      "notifyingSplit": "送信中...",
+      "revealed": "パスコード公開中",
+      "checkDiscord": "Discordで確認",
+      "roundField": "ラウンド",
+      "leagueField": "リーグ",
+      "confirmStart": "GP{round}のカウントダウンを開始しますか？1分後にパスコード{passcode}がDiscordで公開されます",
+      "startHelp": "開始1分後にパスコードがDiscordで公開されます",
+      "completedSuffix": "終了済"
     },
     "splitVote": {
       "description": "部屋が分かれた場合は下のボタンで投票してください。1/3のプレイヤーが投票するとパスコードが再生成されます",
@@ -244,7 +251,8 @@
     "error": "エラーが発生しました",
     "content": "コンテンツ（Markdown）",
     "contentEn": "English",
-    "contentJa": "Japanese"
+    "contentJa": "Japanese",
+    "confirmStatusBack": "大会ステータスを{status}に戻しますか？"
   },
   "userManagement": {
     "title": "ユーザー管理",
@@ -560,7 +568,8 @@
       "penalty4Value": "-100 MMR + ストライク",
       "penalty5": "荒らし/妨害行為",
       "penalty5Value": "-100 MMR + ストライク"
-    }  },
+    }
+  },
   "scoreSubmission": {
     "title": "結果入力フォーム",
     "moderatorTitle": "プレイヤーのスコアを編集",

@@ -330,7 +330,8 @@ export const tournamentsApi = {
   removeStream: (id: number, streamId: number) => api.delete(`/tournaments/${id}/streams/${streamId}`),
   setFeaturedStream: (id: number, streamId: number) => api.patch(`/tournaments/${id}/streams/${streamId}/featured`),
   advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
-  startCountdown: (id: number) => api.post(`/tournaments/${id}/start-countdown`),
+  startCountdown: (id: number, data?: { matchNumber?: number; league?: string; passcode?: string }) =>
+    api.post(`/tournaments/${id}/start-countdown`, data ?? {}),
   hidePasscode: (id: number) => api.post(`/tournaments/${id}/hide-passcode`),
   assignDiscordRoles: (id: number) => api.post(`/tournaments/${id}/assign-discord-roles`),
   notifySplit: (id: number) => api.post(`/tournaments/${id}/notify-split`),

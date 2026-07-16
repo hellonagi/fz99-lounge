@@ -17,6 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { League } from '@/types';
 import { gamesApi, tournamentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useGameSocket, type ParticipantUpdate } from '@/hooks/useGameSocket';
@@ -279,7 +289,7 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
               <p className="text-sm text-gray-400 mt-1">
                 {showNextBanner && t('countdown.passcodeNotice')}
                 {showCountdownBanner && (isSplit ? t('countdown.splitNewPasscode') : t('countdown.revealIn'))}
-                {showPasscodeBanner && (isSplit ? t('round.splitNewPasscodeRevealed') : t('round.passcode'))}
+                {showPasscodeBanner && (isSplit ? t('round.splitNewPasscodeRevealed') : t('countdown.revealed'))}
               </p>
 
               {/* Line 3: XXXX / countdown / passcode */}
@@ -294,8 +304,8 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
                 </p>
               )}
               {showPasscodeBanner && !splitThresholdReached && (
-                <p className="text-5xl font-black text-white tracking-wider font-mono mt-1">
-                  {inProgressGame!.passcode}
+                <p className="text-2xl font-bold text-white mt-2">
+                  {t('countdown.checkDiscord')}
                 </p>
               )}
               {showPasscodeBanner && splitThresholdReached && (
@@ -573,7 +583,6 @@ interface AdminContentProps {
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
   const [advanceLoading, setAdvanceLoading] = useState(false);
-  const [countdownLoading, setCountdownLoading] = useState(false);
   const [hideLoading, setHideLoading] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
   const [splitThresholdReached, setSplitThresholdReached] = useState(false);
@@ -616,6 +625,8 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
       <Card>
         <CardContent className="pt-6 space-y-4">
           <p className="text-gray-400 text-sm">{t('admin.noInProgress')}</p>
+          {/* RESULTS_PENDING後でもGPを出し直せる復旧経路 */}
+          <CountdownStartForm tournament={tournament} matches={matches} />
           <DiscordRoleSection
             loading={discordRoleLoading}
             result={discordRoleResult}
@@ -642,17 +653,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const passcodeRevealed = inProgressGame?.passcodeRevealTime &&
     !isPasscodeHidden &&
     new Date(inProgressGame.passcodeRevealTime) <= new Date();
-
-  const handleStartCountdown = async () => {
-    setCountdownLoading(true);
-    try {
-      await tournamentsApi.startCountdown(tournament.id);
-      // WebSocket (passcodeCountdownStarted / statusChanged) triggers onUpdate
-    } catch {
-    } finally {
-      setCountdownLoading(false);
-    }
-  };
 
   const handleHidePasscode = async () => {
     setHideLoading(true);
@@ -688,35 +688,12 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     }
   };
 
-  // REGISTRATION_CLOSED: show Start GP1 Countdown
+  // REGISTRATION_CLOSED: countdown form for GP1
   if (tournament.status === 'REGISTRATION_CLOSED') {
-    const firstRound = tournament.rounds[0];
     return (
       <Card>
         <CardContent className="pt-6 space-y-4">
-          {firstRound && (
-            <div>
-              <h3 className="text-white font-medium">
-                {t('roundLabel', { number: firstRound.roundNumber })}
-              </h3>
-              <p className="text-sm text-gray-400">
-                {firstRound.inGameMode.replace(/_/g, ' ')}
-                {firstRound.league && ` / ${firstRound.league.replace(/_/g, ' ')}`}
-              </p>
-            </div>
-          )}
-          <Button
-            size="sm"
-            onClick={handleStartCountdown}
-            disabled={countdownLoading}
-          >
-            {countdownLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <Play className="h-3 w-3 mr-1" />
-            )}
-            {t('countdown.startGP', { round: firstRound?.roundNumber || 1 })}
-          </Button>
+          <CountdownStartForm tournament={tournament} matches={matches} />
 
           <DiscordRoleSection
             loading={discordRoleLoading}
@@ -745,25 +722,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           </div>
         )}
 
-        {/* Between GPs: no IN_PROGRESS match but WAITING matches exist */}
-        {!inProgressMatch && nextWaiting && (
-          <div>
-            <p className="text-sm text-gray-400 mb-3">{t('admin.betweenRounds')}</p>
-            <Button
-              size="sm"
-              onClick={handleStartCountdown}
-              disabled={countdownLoading}
-            >
-              {countdownLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <Play className="h-3 w-3 mr-1" />
-              )}
-              {t('countdown.startGP', { round: nextWaiting.matchNumber! })}
-            </Button>
-          </div>
-        )}
-
         {splitThresholdReached && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -771,25 +729,10 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           </Alert>
         )}
 
-        {inProgressMatch && <div className="space-y-3">
-          {/* Start Countdown — never started (null) or hidden with next round (auto-advance) */}
-          {(!inProgressGame?.passcodeRevealTime || (isPasscodeHidden && nextWaiting)) && (
-            <Button
-              size="sm"
-              onClick={handleStartCountdown}
-              disabled={countdownLoading}
-            >
-              {countdownLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <Play className="h-3 w-3 mr-1" />
-              )}
-              {isPasscodeHidden && nextWaiting
-                ? t('countdown.startGP', { round: nextWaiting.matchNumber! })
-                : t('countdown.startCountdown')}
-            </Button>
-          )}
+        {/* Countdown form — operator picks the GP, league and passcode explicitly */}
+        <CountdownStartForm tournament={tournament} matches={matches} />
 
+        {inProgressMatch && <div className="space-y-3">
           {/* Hide Passcode — when passcode has been revealed */}
           {passcodeRevealed && (
             <Button
@@ -860,6 +803,152 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
         />
       </CardContent>
     </Card>
+  );
+}
+
+interface CountdownStartFormProps {
+  tournament: Tournament;
+  matches: Match[];
+}
+
+// 運営が対象GP・リーグ・パスコードを明示指定してカウントダウンを開始するフォーム。
+// 開始1分後にDiscordへパスコードが公開される(Webには表示されない)
+function CountdownStartForm({ tournament, matches }: CountdownStartFormProps) {
+  const t = useTranslations('tournament');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // どのGPでも順番に関係なく発火できる(COMPLETEDは再オープン)
+  const startableRounds = useMemo(
+    () =>
+      tournament.rounds
+        .map((r) => ({
+          round: r,
+          match: matches.find((m) => m.matchNumber === r.roundNumber),
+        }))
+        .filter(
+          (x): x is { round: TournamentRoundConfig; match: Match } =>
+            !!x.match &&
+            ['WAITING', 'IN_PROGRESS', 'COMPLETED'].includes(x.match.status),
+        ),
+    [tournament.rounds, matches],
+  );
+
+  const defaultRoundNumber =
+    matches.find((m) => m.status === 'IN_PROGRESS')?.matchNumber ??
+    startableRounds.find((x) => x.match.status === 'WAITING')?.round.roundNumber ??
+    startableRounds[0]?.round.roundNumber;
+
+  const [roundNumber, setRoundNumber] = useState<string>(
+    defaultRoundNumber?.toString() ?? '',
+  );
+  const [league, setLeague] = useState<string>('NONE');
+  const [passcode, setPasscode] = useState<string>('');
+
+  // ラウンド変更時のみリーグ・パスコードの初期値を引き直す
+  // (refetchで運営の編集中の値を上書きしないようroundNumberだけを依存にする)
+  useEffect(() => {
+    const num = parseInt(roundNumber, 10);
+    if (!num) return;
+    const round = tournament.rounds.find((r) => r.roundNumber === num);
+    const game = matches.find((m) => m.matchNumber === num)?.games?.[0];
+    setLeague(round?.league ?? 'NONE');
+    setPasscode(game?.passcode ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundNumber]);
+
+  const passcodeValid = /^\d{4}$/.test(passcode);
+
+  const handleStart = async () => {
+    const num = parseInt(roundNumber, 10);
+    if (!num || !passcodeValid) return;
+    if (!window.confirm(t('countdown.confirmStart', { round: num, passcode }))) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await tournamentsApi.startCountdown(tournament.id, {
+        matchNumber: num,
+        league: league !== 'NONE' ? league : undefined,
+        passcode,
+      });
+      // WebSocket (passcodeCountdownStarted / statusChanged) triggers onUpdate
+    } catch (err) {
+      setError((err as ApiErrorLike).response?.data?.message || 'Failed to start countdown');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (startableRounds.length === 0) return null;
+  if (!['REGISTRATION_CLOSED', 'IN_PROGRESS', 'RESULTS_PENDING'].includes(tournament.status)) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-gray-700 p-3">
+      <div className="flex flex-wrap gap-3">
+        <div className="space-y-1">
+          <Label className="text-xs text-gray-400">{t('countdown.roundField')}</Label>
+          <Select value={roundNumber} onValueChange={setRoundNumber}>
+            <SelectTrigger className="w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {startableRounds.map(({ round: r, match: m }) => (
+                <SelectItem key={r.roundNumber} value={r.roundNumber.toString()}>
+                  GP{r.roundNumber}
+                  {m.status === 'COMPLETED' ? ` — ${t('countdown.completedSuffix')}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-gray-400">{t('countdown.leagueField')}</Label>
+          <Select value={league} onValueChange={setLeague}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">—</SelectItem>
+              {Object.values(League).map((l) => (
+                <SelectItem key={l} value={l}>
+                  {l.replace(/_/g, ' ')}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-gray-400">{t('round.passcode')}</Label>
+          <Input
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            inputMode="numeric"
+            maxLength={4}
+            className="w-24 font-mono"
+          />
+        </div>
+      </div>
+      <Button
+        size="sm"
+        onClick={handleStart}
+        disabled={loading || !roundNumber || !passcodeValid}
+      >
+        {loading ? (
+          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+        ) : (
+          <Play className="h-3 w-3 mr-1" />
+        )}
+        {t('countdown.startGP', { round: parseInt(roundNumber, 10) || 1 })}
+      </Button>
+      <p className="text-xs text-gray-500">{t('countdown.startHelp')}</p>
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </div>
   );
 }
 
