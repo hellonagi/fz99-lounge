@@ -22,7 +22,7 @@ import { SiDiscord } from 'react-icons/si';
 import { Tournament, LocalizedContent, TournamentDivision, TournamentMode, TournamentScheduleEvent, TournamentRoundConfig, TournamentRegistration, User } from '@/types';
 
 type TournamentParticipant = TournamentRegistration & {
-  user?: User & { profile?: { country?: string | null } | null };
+  user?: User;
 };
 
 const LEAGUE_ICON_MAP: Record<string, string> = {
@@ -318,7 +318,7 @@ export function TournamentOverview({ tournament, onUpdate }: TournamentOverviewP
               </div>
               <div className="text-white text-sm space-y-0.5">
                 <p>GP {divisionCounts.gp} / {GP_MAX}</p>
-                <p>Classic {divisionCounts.classic} / {CLASSIC_MAX}</p>
+                <p>Classic {Math.min(divisionCounts.classic, CLASSIC_MAX)} / {CLASSIC_MAX}</p>
               </div>
             </div>
           </div>
@@ -663,8 +663,7 @@ function ParticipantTile({ p, statusLabel, muted }: { p: TournamentParticipant; 
 
 const GP_OFFLINE_MAX = 32;
 const GP_ONLINE_MAX = 67;
-const CLASSIC_FIRST_COME = 15;
-const CLASSIC_INVITATIONAL = 5;
+const CLASSIC_FIRST_COME = 20;
 
 type GpSlot = 'OFFLINE_CONFIRMED' | 'ONLINE_CONFIRMED' | 'ONLINE_OVERFLOW' | 'WAITLIST';
 
@@ -753,7 +752,7 @@ function ClassicSection({ entries, t }: { entries: TournamentParticipant[]; t: R
   return (
     <div className="space-y-4">
       <h4 className="text-base font-medium text-gray-200">
-        {t('classicDivision')} ({entries.length} / {CLASSIC_MAX})
+        {t('classicDivision')} ({Math.min(entries.length, CLASSIC_MAX)} / {CLASSIC_MAX})
       </h4>
       <div className="space-y-2">
         <p className="text-xs text-gray-400">
@@ -786,9 +785,6 @@ function ClassicSection({ entries, t }: { entries: TournamentParticipant[]; t: R
           </div>
         </div>
       )}
-      <p className="text-xs text-gray-500 italic">
-        {t('classicInvitationalNote', { count: CLASSIC_INVITATIONAL })}
-      </p>
       <CountryRepresentation participants={entries} />
     </div>
   );

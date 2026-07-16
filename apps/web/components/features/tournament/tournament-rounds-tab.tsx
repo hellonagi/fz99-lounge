@@ -64,10 +64,10 @@ function getFormMode(inGameMode: string): string {
 
 // The tournament API always includes the user relation (with profile) and
 // score fields on participants; the shared types declare them optional.
-type UserWithProfile = User & { profile?: { country: string | null } | null };
+
 
 type RoundGameParticipant = GameParticipant & {
-  user: UserWithProfile;
+  user: User;
   totalScore: number | null;
   eliminatedAtRace: number | null;
   raceResults?: Array<
@@ -75,7 +75,7 @@ type RoundGameParticipant = GameParticipant & {
   >;
 };
 
-type RoundMatchParticipant = MatchParticipant & { user: UserWithProfile };
+type RoundMatchParticipant = MatchParticipant & { user: User };
 
 // Participant row built from a WebSocket score update (no DB ids)
 interface LiveParticipantRow {
@@ -1187,7 +1187,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             userId: mp.userId,
             displayName: mp.user?.displayName || `Player ${mp.userId}`,
             profileNumber: mp.user?.profileNumber,
-            country: (mp.user as UserWithProfile | undefined)?.profile?.country ?? null,
+            country: mp.user?.profile?.country ?? null,
             roundScores: {},
             roundSurvived: {},
             roundCompensated: {},
@@ -1216,7 +1216,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
             userId: p.userId,
             displayName: p.user?.displayName || `Player ${p.userId}`,
             profileNumber: p.user?.profileNumber,
-            country: (p.user as UserWithProfile | undefined)?.profile?.country ?? null,
+            country: p.user?.profile?.country ?? null,
             roundScores: {},
             roundSurvived: {},
             roundCompensated: {},

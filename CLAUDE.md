@@ -69,6 +69,25 @@ IMAGE_TAG=xxx docker compose -f compose.ecr.yaml --env-file .env.stg run --rm ap
 - **翻訳**: next-intl使用。`messages/en.json`, `messages/ja.json` に追加し、`useTranslations`で参照。TSXに直接日本語を書かない
 
 
+## 🧪 テスト環境(api)
+
+e2eテストは使い捨てのローカルテスト環境(devとは別のDB/Redis)で動く。
+
+```bash
+# 初回のみ: テスト用Postgres(5433)/Redis(6380)を起動してマイグレーション
+docker compose -f compose.test.yaml up -d
+cd apps/api
+cp .env.test.example .env.test   # 無ければ
+DATABASE_URL="postgresql://postgres:postgres@localhost:5433/fz99_lounge_test?schema=public" npx prisma migrate deploy
+
+# 実行
+npm test           # ユニットテスト(src/**/*.spec.ts)
+npm run test:e2e   # e2e(test/e2e/*.spec.ts、.env.testを読む)
+```
+
+- **devのDB/Redisには絶対に向けない**こと。e2eは起動時にテストRedisをflushallし、DBをTRUNCATEする
+- スキーマ変更時はテストDBにも `prisma migrate deploy` を忘れずに
+
 ## 🧪 テスト実装の手順
 
 テストを実装する際は、以下の手順を守ること:

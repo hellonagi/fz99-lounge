@@ -68,7 +68,6 @@
     "classicFirstCome": "先着",
     "statusWaitlist": "キャンセル待ち",
     "statusOfflinePreferred": "オフライン希望",
-    "classicInvitationalNote": "別途、招待枠{count}名を運営から招待します",
     "joinDiscord": "試合通知やパスコード案内を受け取るために、<link>Discordサーバー</link>に参加してください。",
     "noParticipants": "参加者はまだいません",
     "countryRepresentation": "国別参加者",

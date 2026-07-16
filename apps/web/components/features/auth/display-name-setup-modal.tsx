@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usersApi } from '@/lib/api';
-import { toHalfWidth, validateDisplayName } from '@/lib/string';
+import { toHalfWidth, validateDisplayName } from '@fz99/shared';
 import { useAuthStore } from '@/store/authStore';
 import { countries } from '@/lib/countries';
 

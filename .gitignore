@@ -75,7 +75,6 @@ apps/api/.env.test
 apps/api/test/helpers/
 apps/api/test/load/
 apps/api/prisma/migrations_backup/
-compose.test.yaml
 
 # Cypress artifacts
 apps/web/cypress/screenshots/
