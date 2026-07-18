@@ -78,12 +78,14 @@
     "notFound": "Tournament not found",
     "error": "Failed to load tournament",
     "loginToRegister": "Login to Register",
+    "practiceBanner": "This is a practice page. Participation is optional, and scores submitted here do not count toward the real tournament.",
     "banner": {
       "entryOpen": "Entry Open",
       "entry": "ENTRY"
     },
     "tabs": {
       "overview": "Overview",
+      "practice": "Practice",
       "match": "Match",
       "stats": "Stats"
     },
@@ -232,7 +234,12 @@
     "content": "Content (Markdown)",
     "contentEn": "English",
     "contentJa": "Japanese",
-    "confirmStatusBack": "Move the tournament back to {status}?"
+    "confirmStatusBack": "Move the tournament back to {status}?",
+    "createPracticeTitle": "Create Practice Tournament",
+    "createPractice": "Create Practice Tournament",
+    "createPracticeButton": "Create Practice Tournament",
+    "viewPracticeButton": "View Practice Tournament",
+    "practiceHint": "Creates a private tournament that carries over this tournament's registrants. Just set the rounds and date."
   },
   "userManagement": {
     "title": "User Management",

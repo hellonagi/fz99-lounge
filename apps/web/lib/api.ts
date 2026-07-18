@@ -309,6 +309,7 @@ export const tournamentsApi = {
   getRecent: (limit: number = 5) =>
     api.get(`/tournaments/recent?limit=${limit}`),
   getById: (id: number) => api.get(`/tournaments/${id}`),
+  getPractice: (id: number) => api.get(`/tournaments/${id}/practice`),
   getWeek: (from: string, to: string) => {
     const params = new URLSearchParams({ from, to });
     return api.get(`/tournaments/week?${params.toString()}`);
@@ -322,7 +323,14 @@ export const tournamentsApi = {
     registrationEnd: string;
     minPlayers?: number;
     maxPlayers?: number;
+    content?: { en: string; ja: string };
   }) => api.post('/tournaments', data),
+  createPractice: (id: number, data: {
+    name?: string;
+    totalRounds: number;
+    rounds: Array<{ roundNumber: number; inGameMode: string; league?: string; offsetMinutes?: number }>;
+    tournamentDate: string;
+  }) => api.post(`/tournaments/${id}/practice`, data),
   update: (id: number, data: Record<string, unknown>) =>
     api.patch(`/tournaments/${id}`, data),
   register: (id: number, data: { division: 'GP' | 'CLASSIC'; mode?: 'OFFLINE' | 'ONLINE' | null; prizeEntry?: boolean }) =>

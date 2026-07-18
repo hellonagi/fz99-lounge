@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { tournamentsApi } from '@/lib/api';
 import { Tournament, TournamentStatus, TournamentRoundConfig, TournamentStream, InGameMode, League } from '@/types';
+import { CreateTournamentForm } from './create-tournament-form';
 
 const STATUS_OPTIONS: TournamentStatus[] = [
   'DRAFT',
@@ -380,6 +381,7 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [creatingPracticeId, setCreatingPracticeId] = useState<number | null>(null);
 
   const fetchTournaments = useCallback(async () => {
     try {
@@ -452,7 +454,8 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
                       href={`/${locale}/tournament/${tournament.id}`}
                       className="text-white font-medium hover:text-blue-400 transition-colors"
                     >
-                      {tournament.name} #{tournament.tournamentNumber}
+                      {tournament.name}
+                      {!tournament.practiceForTournamentId && ` #${tournament.tournamentNumber}`}
                     </Link>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant={getStatusBadgeVariant(tournament.status)}>
@@ -492,6 +495,24 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
                         → {tStatus(nextStatus)}
                       </Button>
                     )}
+                    {!tournament.practiceForTournamentId && (
+                      tournament.practiceTournament ? (
+                        <Link
+                          href={`/${locale}/tournament/${tournament.practiceTournament.id}`}
+                          className="text-xs text-blue-400 hover:text-blue-300 transition-colors whitespace-nowrap"
+                        >
+                          {t('viewPracticeButton')}
+                        </Link>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setCreatingPracticeId(creatingPracticeId === tournament.id ? null : tournament.id)}
+                        >
+                          {t('createPracticeButton')}
+                        </Button>
+                      )
+                    )}
                   </div>
                   {editingId === tournament.id && (
                     <TournamentEditor
@@ -501,6 +522,19 @@ export function TournamentsList({ refreshKey }: TournamentsListProps) {
                         fetchTournaments();
                       }}
                     />
+                  )}
+                  {creatingPracticeId === tournament.id && (
+                    <div className="w-full mt-3 border-t border-gray-700 pt-3">
+                      <p className="text-xs text-gray-400 mb-2">{t('practiceHint')}</p>
+                      <CreateTournamentForm
+                        practiceForTournamentId={tournament.id}
+                        defaultName={`${tournament.name} #${tournament.tournamentNumber} Practice`}
+                        onCreated={() => {
+                          setCreatingPracticeId(null);
+                          fetchTournaments();
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               );

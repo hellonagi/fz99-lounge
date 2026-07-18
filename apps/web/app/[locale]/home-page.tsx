@@ -108,7 +108,10 @@ export function HomePage({ latestNews }: HomePageProps) {
     const fetchOpenTournaments = async () => {
       try {
         const response = await tournamentsApi.getAll();
-        const tournaments: Tournament[] = response.data;
+        // 練習大会はホームに出さない(#2ページのタブからのみ辿れる非公開の大会)
+        const tournaments: Tournament[] = response.data.filter(
+          (t: Tournament) => !t.practiceForTournamentId
+        );
         setOpenTournaments(
           tournaments.filter((t) => t.status === 'REGISTRATION_OPEN')
         );

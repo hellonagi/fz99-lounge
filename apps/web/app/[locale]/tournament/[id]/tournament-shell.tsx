@@ -53,7 +53,9 @@ export default function TournamentShell({ children }: { children: React.ReactNod
     ? 'stats'
     : pathname.startsWith(`${basePath}/match`)
       ? 'match'
-      : 'overview';
+      : pathname.startsWith(`${basePath}/practice`)
+        ? 'practice'
+        : 'overview';
 
   const showMatch =
     tournament.status === 'IN_PROGRESS' ||
@@ -63,6 +65,9 @@ export default function TournamentShell({ children }: { children: React.ReactNod
 
   const tabs = [
     { key: 'overview', href: basePath, label: t('tabs.overview') },
+    ...(tournament.practiceTournament
+      ? [{ key: 'practice', href: `${basePath}/practice`, label: t('tabs.practice') }]
+      : []),
     ...(showMatch
       ? [{ key: 'match', href: `${basePath}/match`, label: t('tabs.match') }]
       : []),
@@ -77,10 +82,15 @@ export default function TournamentShell({ children }: { children: React.ReactNod
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-white">
-            {tournament.name}{' '}
-            <span className="text-gray-400">
-              {t('number', { number: tournament.tournamentNumber })}
-            </span>
+            {tournament.name}
+            {!tournament.practiceForTournamentId && (
+              <>
+                {' '}
+                <span className="text-gray-400">
+                  {t('number', { number: tournament.tournamentNumber })}
+                </span>
+              </>
+            )}
           </h1>
         </div>
 

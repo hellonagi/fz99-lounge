@@ -1672,6 +1672,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     league?: string;
     passcodeRevealTime: Date;
     description?: string;
+    isPractice?: boolean;
   }): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
@@ -1717,12 +1718,19 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       const embed = new EmbedBuilder()
-        .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
-        .setColor(0x9b59b6)
+        .setTitle(
+          `${params.isPractice ? '🧪 ' : ''}${params.tournamentName} — ${params.roundLabel}`,
+        )
+        .setColor(params.isPractice ? 0xf39c12 : 0x9b59b6)
         .setDescription(
           params.description || `Passcode reveals <t:${revealTs}:R>`,
         )
         .addFields(fields);
+      if (params.isPractice) {
+        embed.setFooter({
+          text: 'Practice round — participation is optional and it does not affect the real tournament / 練習ラウンドです。参加は任意で、本番の成績には影響しません。',
+        });
+      }
 
       const message = await (channel as TextChannel).send({
         content: roleMention,
@@ -1754,6 +1762,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     passcode: string;
     scoreUrl: string;
     countdownMessageId?: string;
+    isPractice?: boolean;
   }): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
@@ -1821,12 +1830,19 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       });
 
       const embed = new EmbedBuilder()
-        .setTitle(`${params.roundLabel} Started`)
-        .setColor(0x2ecc71)
+        .setTitle(
+          `${params.isPractice ? '🧪 ' : ''}${params.tournamentName} — ${params.roundLabel} Started`,
+        )
+        .setColor(params.isPractice ? 0xf39c12 : 0x2ecc71)
         .setDescription(
           'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
         )
         .addFields(fields);
+      if (params.isPractice) {
+        embed.setFooter({
+          text: 'Practice round — participation is optional and it does not affect the real tournament / 練習ラウンドです。参加は任意で、本番の成績には影響しません。',
+        });
+      }
 
       const message = await (channel as TextChannel).send({
         content: roleMention,
@@ -1850,6 +1866,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     tournamentName: string;
     roundLabel: string;
     inGameMode: string;
+    isPractice?: boolean;
   }): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
@@ -1878,11 +1895,18 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
       const embed = new EmbedBuilder()
-        .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
-        .setColor(0xe74c3c)
+        .setTitle(
+          `${params.isPractice ? '🧪 ' : ''}${params.tournamentName} — ${params.roundLabel}`,
+        )
+        .setColor(params.isPractice ? 0xf39c12 : 0xe74c3c)
         .setDescription(
           'A lobby split has occurred. Please exit the lobby.\n\n部屋が分かれました。ロビーから退出してください。',
         );
+      if (params.isPractice) {
+        embed.setFooter({
+          text: 'Practice round — participation is optional and it does not affect the real tournament / 練習ラウンドです。参加は任意で、本番の成績には影響しません。',
+        });
+      }
 
       const message = await (channel as TextChannel).send({
         content: roleMention,

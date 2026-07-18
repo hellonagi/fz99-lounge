@@ -78,12 +78,14 @@
     "notFound": "大会が見つかりません",
     "error": "大会の読み込みに失敗しました",
     "loginToRegister": "ログインしてエントリー",
+    "practiceBanner": "これは練習用のページです。参加は任意で、ここでのスコア提出は本番の成績には反映されません。",
     "banner": {
       "entryOpen": "エントリー受付中",
       "entry": "ENTRY"
     },
     "tabs": {
       "overview": "概要",
+      "practice": "練習",
       "match": "マッチ",
       "stats": "統計"
     },
@@ -232,7 +234,12 @@
     "content": "コンテンツ（Markdown）",
     "contentEn": "English",
     "contentJa": "Japanese",
-    "confirmStatusBack": "大会ステータスを{status}に戻しますか？"
+    "confirmStatusBack": "大会ステータスを{status}に戻しますか？",
+    "createPracticeTitle": "練習大会作成",
+    "createPractice": "練習大会作成",
+    "createPracticeButton": "練習大会を作成",
+    "viewPracticeButton": "練習大会を見る",
+    "practiceHint": "この大会の登録者をそのまま引き継いだ非公開の大会を作成します。ラウンド構成と開催日時だけ指定してください。"
   },
   "userManagement": {
     "title": "ユーザー管理",

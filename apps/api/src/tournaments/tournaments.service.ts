@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  ForbiddenException,
   NotFoundException,
   Logger,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
+import { CreatePracticeTournamentDto } from './dto/create-practice-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import {
   EventCategory,
@@ -138,11 +140,157 @@ export class TournamentsService {
     });
   }
 
+  // 練習大会: 既存大会(parent)の登録者をそのまま引き継いだ非公開の大会を作る。
+  // ラウンド構成と日時だけ指定してもらい、それ以外は最小構成で作成する
+  async createPracticeTournament(
+    parentId: number,
+    dto: CreatePracticeTournamentDto,
+  ) {
+    const { name, totalRounds, rounds, tournamentDate } = dto;
+
+    if (rounds.length !== totalRounds) {
+      throw new BadRequestException(
+        `rounds array length (${rounds.length}) must match totalRounds (${totalRounds})`,
+      );
+    }
+
+    const parent = await this.prisma.tournamentConfig.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent) {
+      throw new NotFoundException('Tournament not found');
+    }
+    if (parent.practiceForTournamentId) {
+      throw new BadRequestException(
+        'Cannot create a practice tournament for a practice tournament',
+      );
+    }
+
+    // 表示名に親大会の番号を埋め込む(例: "FZ99 Lounge Masters #2 Practice")。
+    // 練習大会自身のtournamentNumberは内部管理用でしかなく、表示には使わない
+    const practiceName =
+      name || `${parent.name} #${parent.tournamentNumber} Practice`;
+
+    return this.prisma.$transaction(async (tx) => {
+      let event = await tx.event.findFirst({
+        where: { category: EventCategory.TOURNAMENT },
+      });
+      if (!event) {
+        event = await tx.event.create({
+          data: {
+            category: EventCategory.TOURNAMENT,
+            name: 'TOURNAMENT',
+            description: 'Tournament mode seasons',
+          },
+        });
+      }
+
+      const existingCount = await tx.tournamentConfig.count({
+        where: { name: practiceName },
+      });
+      const tournamentNumber = existingCount + 1;
+
+      const maxSeason = await tx.season.findFirst({
+        where: { eventId: event.id },
+        orderBy: { seasonNumber: 'desc' },
+        select: { seasonNumber: true },
+      });
+      const seasonNumber = (maxSeason?.seasonNumber ?? 0) + 1;
+
+      const season = await tx.season.create({
+        data: {
+          eventId: event.id,
+          seasonNumber,
+          startDate: new Date(tournamentDate),
+          isActive: false,
+          description: `${practiceName} #${tournamentNumber}`,
+        },
+      });
+
+      const tournamentConfig = await tx.tournamentConfig.create({
+        data: {
+          seasonId: season.id,
+          name: practiceName,
+          tournamentNumber,
+          // 練習大会に登録〆切/ラウンド進行の概念はない。作った瞬間から全ラウンドで
+          // スコア提出できる状態にする(下のcreateMatchesForTournament + updateManyで実現)
+          status: TournamentStatus.IN_PROGRESS,
+          rounds: rounds as any,
+          totalRounds,
+          tournamentDate: new Date(tournamentDate),
+          // 公開登録フローを使わないため形式上の値を入れておく(未使用)
+          registrationStart: new Date(tournamentDate),
+          registrationEnd: new Date(tournamentDate),
+          minPlayers: 2,
+          practiceForTournamentId: parentId,
+        },
+      });
+
+      // parentの登録者をそのままコピーし、再登録不要にする
+      const parentRegistrations = await tx.tournamentRegistration.findMany({
+        where: { tournamentConfigId: parentId },
+        select: { userId: true, division: true, mode: true },
+      });
+      if (parentRegistrations.length > 0) {
+        await tx.tournamentRegistration.createMany({
+          data: parentRegistrations.map((r) => ({
+            userId: r.userId,
+            tournamentConfigId: tournamentConfig.id,
+            division: r.division,
+            mode: r.mode,
+            prizeEntry: false,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // 通常のREGISTRATION_CLOSED遷移と同じロジックでマッチ/ゲームを生成し、
+      // 全ラウンドを即座にIN_PROGRESSにする(ラウンドを順番に進める運用はしない)
+      await this.createMatchesForTournament(tournamentConfig, tx);
+      await tx.match.updateMany({
+        where: { seasonId: season.id },
+        data: { status: MatchStatus.IN_PROGRESS },
+      });
+
+      return this.findOne(tournamentConfig.id, tx);
+    });
+  }
+
+  // 親大会IDに紐づく練習大会のIDを解決する(無ければnull)
+  async getPracticeTournamentId(parentId: number): Promise<number | null> {
+    const practice = await this.prisma.tournamentConfig.findUnique({
+      where: { practiceForTournamentId: parentId },
+      select: { id: true },
+    });
+    return practice?.id ?? null;
+  }
+
+  // 練習大会でない大会が非公開(練習大会)扱いされていないか、
+  // 練習大会なら閲覧者が管理者/モデレーターか登録者であることを確認する
+  async assertPubliclyViewable(id: number, userId?: number): Promise<void> {
+    const config = await this.prisma.tournamentConfig.findUnique({
+      where: { id },
+      select: { practiceForTournamentId: true },
+    });
+    if (!config?.practiceForTournamentId) return;
+
+    const isRegistrant = userId
+      ? (await this.prisma.tournamentRegistration.count({
+          where: { tournamentConfigId: id, userId },
+        })) > 0
+      : false;
+    if (!isRegistrant) {
+      throw new ForbiddenException('This tournament is private');
+    }
+  }
+
   async findByDateRange(from: Date, to: Date) {
     const configs = await this.prisma.tournamentConfig.findMany({
       where: {
         tournamentDate: { gte: from, lt: to },
         status: { not: TournamentStatus.DRAFT },
+        // 練習大会は週間カレンダーにも出さない
+        practiceForTournamentId: null,
       },
       include: {
         season: { include: { event: true } },
@@ -167,11 +315,24 @@ export class TournamentsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return configs.map((c) => ({
-      ...c,
-      registrationCount: c._count.registrations,
-      _count: undefined,
-    }));
+    // 練習大会の逆引き(parent -> practice)は同じ結果セット内で完結するので追加クエリ不要
+    const practiceByParent = new Map(
+      configs
+        .filter((c) => c.practiceForTournamentId)
+        .map((c) => [c.practiceForTournamentId as number, c]),
+    );
+
+    return configs.map((c) => {
+      const practice = practiceByParent.get(c.id);
+      return {
+        ...c,
+        registrationCount: c._count.registrations,
+        _count: undefined,
+        practiceTournament: practice
+          ? { id: practice.id, status: practice.status }
+          : null,
+      };
+    });
   }
 
   async findOne(id: number, tx?: any, includePasscodes: boolean = true) {
@@ -229,6 +390,11 @@ export class TournamentsService {
       throw new NotFoundException('Tournament not found');
     }
 
+    const practice = await prisma.tournamentConfig.findUnique({
+      where: { practiceForTournamentId: id },
+      select: { id: true, status: true },
+    });
+
     // 一般向けレスポンスからはパスコードを除去する(公開経路はDiscordのみ)
     const season =
       !includePasscodes && config.season
@@ -249,6 +415,9 @@ export class TournamentsService {
       registrationCount: config._count.registrations,
       _count: undefined,
       discordPasscodeChannelUrls: this.getDiscordPasscodeChannelUrls(),
+      practiceTournament: practice
+        ? { id: practice.id, status: practice.status }
+        : null,
     };
   }
 
@@ -353,6 +522,7 @@ export class TournamentsService {
       name: string;
       tournamentNumber: number;
       rounds: any;
+      practiceForTournamentId?: number | null;
     },
     matchNumber: number,
   ) {
@@ -364,12 +534,23 @@ export class TournamentsService {
     const roundConfig = rounds.find((r) => r.roundNumber === matchNumber);
     const baseUrl =
       this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
+    // 練習大会は独立ページを持たず親大会の /practice タブに集約されているので、
+    // スコア提出リンクは親大会側のURLを指す
+    const scoreUrl = config.practiceForTournamentId
+      ? `${baseUrl}/tournament/${config.practiceForTournamentId}/practice?round=${matchNumber}`
+      : `${baseUrl}/tournament/${config.id}?round=${matchNumber}`;
+    // 練習大会のnameは既に親大会の番号を含んだ表示名になっているので、
+    // 自身のtournamentNumberは付け足さない(二重表示防止)
+    const tournamentName = config.practiceForTournamentId
+      ? config.name
+      : `${config.name} #${config.tournamentNumber}`;
     return {
-      tournamentName: `${config.name} #${config.tournamentNumber}`,
+      tournamentName,
       roundLabel: roundQualifiedLabel(rounds, matchNumber),
       inGameMode: roundConfig?.inGameMode || 'GRAND_PRIX',
       league: roundConfig?.league,
-      scoreUrl: `${baseUrl}/tournament/${config.id}?round=${matchNumber}`,
+      scoreUrl,
+      isPractice: !!config.practiceForTournamentId,
     };
   }
 
@@ -392,6 +573,7 @@ export class TournamentsService {
     inGameMode: string;
     league?: string;
     scoreUrl: string;
+    isPractice?: boolean;
     countdownDescription?: string;
     deleteExistingMessage?: boolean;
   }) {
@@ -447,6 +629,7 @@ export class TournamentsService {
             league: params.league,
             passcodeRevealTime: params.revealAt,
             description: params.countdownDescription,
+            isPractice: params.isPractice,
           });
         if (countdownMessageId) {
           this.countdownMessageIds.set(params.gameId, countdownMessageId);
@@ -521,6 +704,7 @@ export class TournamentsService {
         passcode: game.passcode,
         scoreUrl: meta.scoreUrl,
         countdownMessageId: countdownMessageId || undefined,
+        isPractice: meta.isPractice,
       });
     this.countdownMessageIds.delete(data.gameId);
     if (messageId) {
@@ -1083,7 +1267,7 @@ export class TournamentsService {
       throw new BadRequestException('No in-progress round found');
     }
 
-    const { tournamentName, roundLabel, inGameMode } = this.getRoundMeta(
+    const { tournamentName, roundLabel, inGameMode, isPractice } = this.getRoundMeta(
       config,
       currentMatch.matchNumber!,
     );
@@ -1091,6 +1275,7 @@ export class TournamentsService {
       tournamentName,
       roundLabel,
       inGameMode,
+      isPractice,
     });
 
     // Set DB flag + notify all clients via WebSocket (skipDiscord: already sent above)
@@ -1127,7 +1312,7 @@ export class TournamentsService {
     });
     if (!config) return;
 
-    const { tournamentName, roundLabel, inGameMode } = this.getRoundMeta(
+    const { tournamentName, roundLabel, inGameMode, isPractice } = this.getRoundMeta(
       config,
       payload.matchNumber,
     );
@@ -1135,6 +1320,7 @@ export class TournamentsService {
       tournamentName,
       roundLabel,
       inGameMode,
+      isPractice,
     });
 
     this.logger.log(
@@ -1350,6 +1536,8 @@ export class TournamentsService {
         status: {
           in: [TournamentStatus.COMPLETED, TournamentStatus.RESULTS_PENDING],
         },
+        // 練習大会はホームの「最近の大会」に出さない
+        practiceForTournamentId: null,
       },
       orderBy: { tournamentDate: 'desc' },
       take: limit,

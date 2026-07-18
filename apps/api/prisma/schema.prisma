@@ -445,6 +445,11 @@ model TournamentConfig {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // 練習大会: 本番大会の登録者をそのまま引き継いだ非公開の大会(ホーム非掲載、登録者のみ閲覧可)
+  practiceForTournamentId Int?               @unique
+  practiceForTournament   TournamentConfig?  @relation("TournamentPractice", fields: [practiceForTournamentId], references: [id], onDelete: SetNull)
+  practiceTournament      TournamentConfig?  @relation("TournamentPractice")
+
   registrations TournamentRegistration[]
   streams       TournamentStream[]
 

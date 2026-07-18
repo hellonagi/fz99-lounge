@@ -159,17 +159,25 @@ const RoundRow = memo(function RoundRow({
 
 interface CreateTournamentFormProps {
   onCreated?: () => void;
+  // 指定時は「練習大会」作成モード: 対象大会に紐づく非公開の大会を、登録者を引き継いで作成する
+  practiceForTournamentId?: number;
+  defaultName?: string;
 }
 
-export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
+export function CreateTournamentForm({ onCreated, practiceForTournamentId, defaultName }: CreateTournamentFormProps) {
   const t = useTranslations('adminTournament');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const isPractice = practiceForTournamentId !== undefined;
+
+  // 登録開始/終了は練習大会では使わないフィールドなので非表示にし、
+  // バリデーションを満たすためのダミー値を入れておく
+  const now = new Date().toISOString().slice(0, 16);
 
   const form = useForm<TournamentFormData>({
     resolver: zodResolver(tournamentSchema),
     defaultValues: {
-      name: 'FZ99 Lounge Masters',
+      name: defaultName ?? 'FZ99 Lounge Masters',
       totalRounds: 8,
       rounds: Array.from({ length: 8 }, (_, i) => ({
         roundNumber: i + 1,
@@ -178,9 +186,9 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
         offsetMinutes: i * 20,
       })),
       tournamentDate: '',
-      registrationStart: '',
-      registrationEnd: '',
-      minPlayers: 40,
+      registrationStart: isPractice ? now : '',
+      registrationEnd: isPractice ? now : '',
+      minPlayers: 2,
       maxPlayers: 99,
       contentEn: '',
       contentJa: '',
@@ -221,28 +229,38 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
     setError(null);
     setSuccess(null);
     try {
-      const content = (data.contentEn || data.contentJa)
-        ? { en: data.contentEn || '', ja: data.contentJa || '' }
-        : undefined;
       const toISO = (v: string) => new Date(v).toISOString();
-      const { contentEn: _en, contentJa: _ja, ...rest } = data;
-      const payload = {
-        ...rest,
-        tournamentDate: toISO(data.tournamentDate),
-        registrationStart: toISO(data.registrationStart),
-        registrationEnd: toISO(data.registrationEnd),
-        rounds: data.rounds.map((r) => {
-          const leagueNeeded = getLeagueOptions(r.inGameMode);
-          const league = r.league && r.league !== 'none' ? r.league : undefined;
-          return {
-            ...r,
-            league: league ?? (leagueNeeded ? leagueNeeded[0].value : undefined),
-            offsetMinutes: r.offsetMinutes ?? 0,
-          };
-        }),
-        content,
-      };
-      await tournamentsApi.create(payload);
+      const rounds = data.rounds.map((r) => {
+        const leagueNeeded = getLeagueOptions(r.inGameMode);
+        const league = r.league && r.league !== 'none' ? r.league : undefined;
+        return {
+          ...r,
+          league: league ?? (leagueNeeded ? leagueNeeded[0].value : undefined),
+          offsetMinutes: r.offsetMinutes ?? 0,
+        };
+      });
+
+      if (isPractice) {
+        await tournamentsApi.createPractice(practiceForTournamentId, {
+          name: data.name,
+          totalRounds: data.totalRounds,
+          rounds,
+          tournamentDate: toISO(data.tournamentDate),
+        });
+      } else {
+        const content = (data.contentEn || data.contentJa)
+          ? { en: data.contentEn || '', ja: data.contentJa || '' }
+          : undefined;
+        const { contentEn: _en, contentJa: _ja, ...rest } = data;
+        await tournamentsApi.create({
+          ...rest,
+          tournamentDate: toISO(data.tournamentDate),
+          registrationStart: toISO(data.registrationStart),
+          registrationEnd: toISO(data.registrationEnd),
+          rounds,
+          content,
+        });
+      }
       setSuccess(t('created'));
       form.reset();
       onCreated?.();
@@ -255,7 +273,7 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('createTitle')}</CardTitle>
+        <CardTitle>{isPractice ? t('createPracticeTitle') : t('createTitle')}</CardTitle>
       </CardHeader>
       <CardContent>
         {error && (
@@ -312,7 +330,7 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
             />
 
             {/* Dates */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-1 gap-3 ${isPractice ? '' : 'sm:grid-cols-3'}`}>
               <FormField
                 control={form.control}
                 name="tournamentDate"
@@ -326,63 +344,69 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="registrationStart"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('registrationStart')}</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="registrationEnd"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('registrationEnd')}</FormLabel>
-                    <FormControl>
-                      <Input type="datetime-local" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {!isPractice && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="registrationStart"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('registrationStart')}</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="registrationEnd"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('registrationEnd')}</FormLabel>
+                        <FormControl>
+                          <Input type="datetime-local" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
             </div>
 
             {/* Player limits */}
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="minPlayers"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('minPlayers')}</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={2} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="maxPlayers"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('maxPlayers')}</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={2} max={99} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {!isPractice && (
+              <div className="grid grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="minPlayers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('minPlayers')}</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={2} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="maxPlayers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('maxPlayers')}</FormLabel>
+                      <FormControl>
+                        <Input type="number" min={2} max={99} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
             {/* Round Configuration */}
             <div>
@@ -407,38 +431,40 @@ export function CreateTournamentForm({ onCreated }: CreateTournamentFormProps) {
             </div>
 
             {/* Content (Markdown) */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-300 mb-3">{t('content')}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="contentEn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-gray-500">{t('contentEn')}</FormLabel>
-                      <FormControl>
-                        <Textarea rows={10} placeholder="Markdown" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="contentJa"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs text-gray-500">{t('contentJa')}</FormLabel>
-                      <FormControl>
-                        <Textarea rows={10} placeholder="Markdown" {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+            {!isPractice && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-300 mb-3">{t('content')}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="contentEn"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500">{t('contentEn')}</FormLabel>
+                        <FormControl>
+                          <Textarea rows={10} placeholder="Markdown" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="contentJa"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs text-gray-500">{t('contentJa')}</FormLabel>
+                        <FormControl>
+                          <Textarea rows={10} placeholder="Markdown" {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
-              {form.formState.isSubmitting ? t('creating') : t('create')}
+              {form.formState.isSubmitting ? t('creating') : (isPractice ? t('createPractice') : t('create'))}
             </Button>
           </form>
         </Form>
