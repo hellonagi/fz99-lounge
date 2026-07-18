@@ -1,7 +1,6 @@
 import {
   Injectable,
   BadRequestException,
-  ForbiddenException,
   NotFoundException,
   Logger,
 } from '@nestjs/common';
@@ -270,25 +269,6 @@ export class TournamentsService {
       select: { id: true },
     });
     return practice?.id ?? null;
-  }
-
-  // 練習大会でない大会が非公開(練習大会)扱いされていないか、
-  // 練習大会なら閲覧者が管理者/モデレーターか登録者であることを確認する
-  async assertPubliclyViewable(id: number, userId?: number): Promise<void> {
-    const config = await this.prisma.tournamentConfig.findUnique({
-      where: { id },
-      select: { practiceForTournamentId: true },
-    });
-    if (!config?.practiceForTournamentId) return;
-
-    const isRegistrant = userId
-      ? (await this.prisma.tournamentRegistration.count({
-          where: { tournamentConfigId: id, userId },
-        })) > 0
-      : false;
-    if (!isRegistrant) {
-      throw new ForbiddenException('This tournament is private');
-    }
   }
 
   async findByDateRange(from: Date, to: Date) {

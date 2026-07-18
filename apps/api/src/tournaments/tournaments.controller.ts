@@ -79,12 +79,6 @@ export class TournamentsController {
     const user = req.user as { id?: number; role?: UserRole } | undefined;
     const isPrivileged =
       user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
-    if (!isPrivileged) {
-      await this.tournamentsService.assertPubliclyViewable(
-        tournamentId,
-        user?.id,
-      );
-    }
     return this.tournamentsService.findOne(
       tournamentId,
       undefined,
@@ -108,12 +102,6 @@ export class TournamentsController {
     const user = req.user as { id?: number; role?: UserRole } | undefined;
     const isPrivileged =
       user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
-    if (!isPrivileged) {
-      await this.tournamentsService.assertPubliclyViewable(
-        practiceId,
-        user?.id,
-      );
-    }
     return this.tournamentsService.findOne(practiceId, undefined, isPrivileged);
   }
 
@@ -199,19 +187,8 @@ export class TournamentsController {
 
   @Get(':id/participants')
   @Public()
-  @UseGuards(OptionalJwtAuthGuard)
-  async getParticipants(@Param('id') id: string, @Req() req: Request) {
-    const tournamentId = parseInt(id, 10);
-    const user = req.user as { id?: number; role?: UserRole } | undefined;
-    const isPrivileged =
-      user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
-    if (!isPrivileged) {
-      await this.tournamentsService.assertPubliclyViewable(
-        tournamentId,
-        user?.id,
-      );
-    }
-    return this.tournamentsService.getParticipants(tournamentId);
+  async getParticipants(@Param('id') id: string) {
+    return this.tournamentsService.getParticipants(parseInt(id, 10));
   }
 
   @Get(':id/streams')
