@@ -5,7 +5,8 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EventCategory } from '@prisma/client';
+import { EventCategory, TournamentDivision } from '@prisma/client';
+import { divisionForInGameMode } from '@fz99/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   Client,
@@ -224,14 +225,51 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     return this.configService.get<string>('DISCORD_MATCH_NOTIFY_ROLE_ID');
   }
 
-  private getTournamentPasscodeChannelId(): string | undefined {
-    return this.configService.get<string>(
-      'DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID',
+  // 部門別チャンネルの解決。専用変数が無ければ従来の単一チャンネルへフォールバック
+  // (本番で設定漏れしても「どこにも投稿されない」事故を防ぐ)
+  resolveTournamentPasscodeChannel(division: TournamentDivision): {
+    channelId: string | undefined;
+    usedFallback: boolean;
+  } {
+    const dedicated = this.configService.get<string>(
+      `DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID_${division}`,
+    );
+    if (dedicated) return { channelId: dedicated, usedFallback: false };
+    return {
+      channelId: this.configService.get<string>(
+        'DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID',
+      ),
+      usedFallback: true,
+    };
+  }
+
+  private getTournamentPasscodeChannelId(
+    division: TournamentDivision,
+  ): string | undefined {
+    return this.resolveTournamentPasscodeChannel(division).channelId;
+  }
+
+  // メンション用ロール。部門ロールが無ければトーナメントロールへフォールバック
+  private getTournamentMentionRoleId(
+    division: TournamentDivision,
+  ): string | undefined {
+    return (
+      this.configService.get<string>(
+        `DISCORD_TOURNAMENT_ROLE_ID_${division}`,
+      ) || this.configService.get<string>('DISCORD_TOURNAMENT_ROLE_ID')
     );
   }
 
+  // 全参加者に付与するトーナメントロール(従来からの単一ロール)
   private getTournamentRoleId(): string | undefined {
     return this.configService.get<string>('DISCORD_TOURNAMENT_ROLE_ID');
+  }
+
+  // 部門ロール(付与/剥奪の同期対象。未設定ならその部門はスキップ)
+  private getDivisionRoleId(division: TournamentDivision): string | undefined {
+    return this.configService.get<string>(
+      `DISCORD_TOURNAMENT_ROLE_ID_${division}`,
+    );
   }
 
   private getReactionRoleChannelId(): string | undefined {
@@ -1634,6 +1672,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     league?: string;
     passcodeRevealTime: Date;
     description?: string;
+    isPractice?: boolean;
   }): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
@@ -1642,7 +1681,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
 
-    const channelId = this.getTournamentPasscodeChannelId();
+    const division = divisionForInGameMode(params.inGameMode);
+    const channelId = this.getTournamentPasscodeChannelId(division);
     if (!channelId) {
       this.logger.debug('Tournament passcode channel not configured');
       return null;
@@ -1659,7 +1699,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       const revealTs = Math.floor(params.passcodeRevealTime.getTime() / 1000);
 
-      const roleId = this.getTournamentRoleId();
+      const roleId = this.getTournamentMentionRoleId(division);
       const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
       const fields = [
@@ -1678,12 +1718,19 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       const embed = new EmbedBuilder()
-        .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
-        .setColor(0x9b59b6)
+        .setTitle(
+          `${params.isPractice ? '🧪 ' : ''}${params.tournamentName} — ${params.roundLabel}`,
+        )
+        .setColor(params.isPractice ? 0xf39c12 : 0x9b59b6)
         .setDescription(
           params.description || `Passcode reveals <t:${revealTs}:R>`,
         )
         .addFields(fields);
+      if (params.isPractice) {
+        embed.setFooter({
+          text: 'Practice round — participation is optional and it does not affect the real tournament / 練習ラウンドです。参加は任意で、本番の成績には影響しません。',
+        });
+      }
 
       const message = await (channel as TextChannel).send({
         content: roleMention,
@@ -1715,6 +1762,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     passcode: string;
     scoreUrl: string;
     countdownMessageId?: string;
+    isPractice?: boolean;
   }): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
@@ -1723,7 +1771,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
 
-    const channelId = this.getTournamentPasscodeChannelId();
+    const division = divisionForInGameMode(params.inGameMode);
+    const channelId = this.getTournamentPasscodeChannelId(division);
     if (!channelId) {
       this.logger.debug('Tournament passcode channel not configured');
       return null;
@@ -1752,7 +1801,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
-      const roleId = this.getTournamentRoleId();
+      const roleId = this.getTournamentMentionRoleId(division);
       const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
       const fields = [
@@ -1781,12 +1830,19 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       });
 
       const embed = new EmbedBuilder()
-        .setTitle(`${params.roundLabel} Started`)
-        .setColor(0x2ecc71)
+        .setTitle(
+          `${params.isPractice ? '🧪 ' : ''}${params.tournamentName} — ${params.roundLabel} Started`,
+        )
+        .setColor(params.isPractice ? 0xf39c12 : 0x2ecc71)
         .setDescription(
           'Please hide the passcode on your stream!\n配信者はパスコードを隠してください！',
         )
         .addFields(fields);
+      if (params.isPractice) {
+        embed.setFooter({
+          text: 'Practice round — participation is optional and it does not affect the real tournament / 練習ラウンドです。参加は任意で、本番の成績には影響しません。',
+        });
+      }
 
       const message = await (channel as TextChannel).send({
         content: roleMention,
@@ -1809,6 +1865,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   async announceTournamentSplit(params: {
     tournamentName: string;
     roundLabel: string;
+    inGameMode: string;
+    isPractice?: boolean;
   }): Promise<string | null> {
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
@@ -1817,7 +1875,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       return null;
     }
 
-    const channelId = this.getTournamentPasscodeChannelId();
+    const division = divisionForInGameMode(params.inGameMode);
+    const channelId = this.getTournamentPasscodeChannelId(division);
     if (!channelId) {
       this.logger.debug('Tournament passcode channel not configured');
       return null;
@@ -1832,15 +1891,22 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         return null;
       }
 
-      const roleId = this.getTournamentRoleId();
+      const roleId = this.getTournamentMentionRoleId(division);
       const roleMention = roleId ? `<@&${roleId}>` : undefined;
 
       const embed = new EmbedBuilder()
-        .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
-        .setColor(0xe74c3c)
+        .setTitle(
+          `${params.isPractice ? '🧪 ' : ''}${params.tournamentName} — ${params.roundLabel}`,
+        )
+        .setColor(params.isPractice ? 0xf39c12 : 0xe74c3c)
         .setDescription(
-          'A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes.\n\n部屋が分かれました。ロビーから退出してください。\n2分以内にパスコードを再生成します。',
+          'A lobby split has occurred. Please exit the lobby.\n\n部屋が分かれました。ロビーから退出してください。',
         );
+      if (params.isPractice) {
+        embed.setFooter({
+          text: 'Practice round — participation is optional and it does not affect the real tournament / 練習ラウンドです。参加は任意で、本番の成績には影響しません。',
+        });
+      }
 
       const message = await (channel as TextChannel).send({
         content: roleMention,
@@ -1861,12 +1927,15 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Delete a message from the tournament passcode channel
+   * Delete a message from the tournament passcode channel (per division)
    */
-  async deleteTournamentMessage(messageId: string): Promise<boolean> {
+  async deleteTournamentMessage(
+    messageId: string,
+    division: TournamentDivision,
+  ): Promise<boolean> {
     if (!this.isReady || !this.isEnabled()) return false;
 
-    const channelId = this.getTournamentPasscodeChannelId();
+    const channelId = this.getTournamentPasscodeChannelId(division);
     if (!channelId) return false;
 
     try {
@@ -1883,23 +1952,32 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Assign tournament role to a list of Discord users
+   * 大会ロールの同期。
+   * - トーナメントロール: 全参加者に付与(剥奪はしない)
+   * - GP/Classicロール: 各部門の登録者に付与し、非登録者からは剥奪する
+   *   (部門ロールが未設定ならその部門はスキップ)
    */
-  async assignTournamentRole(
-    discordIds: string[],
-  ): Promise<{ assigned: number; alreadyHad: number; notInServer: string[] }> {
-    const result = { assigned: 0, alreadyHad: 0, notInServer: [] as string[] };
+  async syncTournamentRoles(params: {
+    all: string[];
+    byDivision: Record<TournamentDivision, string[]>;
+  }): Promise<{
+    assigned: number;
+    alreadyHad: number;
+    removed: number;
+    notInServer: string[];
+  }> {
+    const result = {
+      assigned: 0,
+      alreadyHad: 0,
+      removed: 0,
+      notInServer: [] as string[],
+    };
+    const notInServer = new Set<string>();
 
     if (!this.isReady || !this.isEnabled()) {
       this.logger.debug(
-        'Discord bot not ready or disabled, skipping tournament role assignment',
+        'Discord bot not ready or disabled, skipping tournament role sync',
       );
-      return result;
-    }
-
-    const roleId = this.getTournamentRoleId();
-    if (!roleId) {
-      this.logger.debug('Tournament role ID not configured');
       return result;
     }
 
@@ -1912,37 +1990,148 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     try {
       const guild = await this.client.guilds.fetch(guildId);
 
-      for (const discordId of discordIds) {
-        try {
-          const member = await guild.members.fetch(discordId);
-          if (member.roles.cache.has(roleId)) {
-            result.alreadyHad++;
-          } else {
-            await member.roles.add(roleId);
-            result.assigned++;
+      const sleep = () => new Promise((resolve) => setTimeout(resolve, 100));
+      // 不正なID(テストユーザー等)はDiscord APIに投げずに即スキップする
+      const isSnowflake = (id: string) => /^\d{17,20}$/.test(id);
+
+      const addRoleTo = async (discordIds: string[], roleId: string) => {
+        for (const discordId of discordIds) {
+          if (!isSnowflake(discordId)) {
+            notInServer.add(discordId);
+            continue;
           }
-        } catch (error: any) {
-          // Unknown Member — user not in the server
-          if (error.code === 10007 || error.code === 10013) {
-            result.notInServer.push(discordId);
-          } else {
-            this.logger.warn(
-              `Failed to assign role to ${discordId}: ${error.message}`,
-            );
-            result.notInServer.push(discordId);
+          try {
+            const member = await guild.members.fetch(discordId);
+            if (member.roles.cache.has(roleId)) {
+              result.alreadyHad++;
+            } else {
+              await member.roles.add(roleId);
+              result.assigned++;
+              // Rate limit protection (書き込みを行ったときだけ待つ)
+              await sleep();
+            }
+          } catch (error: any) {
+            if (error.code !== 10007 && error.code !== 10013) {
+              this.logger.warn(
+                `Failed to assign role to ${discordId}: ${error.message}`,
+              );
+            }
+            notInServer.add(discordId);
           }
         }
-        // Rate limit protection
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      };
+
+      // トーナメントロール: 全参加者に付与
+      const tournamentRoleId = this.getTournamentRoleId();
+      if (tournamentRoleId) {
+        await addRoleTo(params.all, tournamentRoleId);
+      } else {
+        this.logger.debug('Tournament role ID not configured');
       }
 
+      // 剥奪判定用の全メンバーキャッシュは1回だけ取得する
+      // (ゲートウェイのRequest Guild Membersはレート制限が厳しいため、リトライ付き)
+      const hasDivisionRole = Object.values(TournamentDivision).some((d) =>
+        this.getDivisionRoleId(d),
+      );
+      if (hasDivisionRole) {
+        for (let attempt = 1; ; attempt++) {
+          try {
+            await guild.members.fetch();
+            break;
+          } catch (error) {
+            if (attempt >= 3) throw error;
+            this.logger.warn(
+              `guild.members.fetch() rate limited, retrying (${attempt}/3)`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          }
+        }
+      }
+
+      // 部門ロール: 登録者に付与+非登録者から剥奪
+      for (const division of Object.values(TournamentDivision)) {
+        const roleId = this.getDivisionRoleId(division);
+        if (!roleId) continue;
+
+        const registrantIds = params.byDivision[division] ?? [];
+        await addRoleTo(registrantIds, roleId);
+
+        // 剥奪: ロール保持者のうち、その部門の登録者でないメンバー
+        const registrantSet = new Set(registrantIds);
+        const role = await guild.roles.fetch(roleId);
+        if (!role) {
+          this.logger.warn(`Division role ${roleId} not found in guild`);
+          continue;
+        }
+        for (const member of role.members.values()) {
+          if (registrantSet.has(member.id)) continue;
+          try {
+            await member.roles.remove(roleId);
+            result.removed++;
+          } catch (error: any) {
+            this.logger.warn(
+              `Failed to remove role from ${member.id}: ${error.message}`,
+            );
+          }
+          await sleep();
+        }
+      }
+
+      result.notInServer = [...notInServer];
       this.logger.log(
-        `Tournament role assignment: assigned=${result.assigned}, alreadyHad=${result.alreadyHad}, notInServer=${result.notInServer.length}`,
+        `Tournament role sync: assigned=${result.assigned}, alreadyHad=${result.alreadyHad}, removed=${result.removed}, notInServer=${result.notInServer.length}`,
       );
       return result;
     } catch (error) {
-      this.logger.error('Failed to assign tournament roles:', error);
+      this.logger.error('Failed to sync tournament roles:', error);
+      result.notInServer = [...notInServer];
       return result;
+    }
+  }
+
+  /**
+   * 設定確認用のテスト投稿。パスコードチャンネルの解決経路は本番と同じ
+   * (専用チャンネル→フォールバック)。メンションは付けない
+   */
+  async postTournamentTestMessage(division: TournamentDivision): Promise<{
+    division: TournamentDivision;
+    channelId: string | null;
+    usedFallback: boolean;
+    ok: boolean;
+  }> {
+    const { channelId, usedFallback } =
+      this.resolveTournamentPasscodeChannel(division);
+    const base = {
+      division,
+      channelId: channelId ?? null,
+      usedFallback,
+      ok: false,
+    };
+
+    if (!this.isReady || !this.isEnabled() || !channelId) return base;
+
+    try {
+      const channel = await this.client.channels.fetch(channelId);
+      if (!channel || !channel.isTextBased()) return base;
+
+      const divisionLabel =
+        division === TournamentDivision.CLASSIC ? 'Classic' : 'GP';
+      const embed = new EmbedBuilder()
+        .setTitle(`${divisionLabel} Division / ${divisionLabel}部門`)
+        .setColor(0x3498db)
+        .setDescription(
+          `The passcode for the ${divisionLabel} Division will be revealed in this channel.\n${divisionLabel}部門のパスコードはこのチャンネルで公開されます。`,
+        );
+
+      await (channel as TextChannel).send({ embeds: [embed] });
+      return { ...base, ok: true };
+    } catch (error) {
+      this.logger.error(
+        `Failed to post tournament test message (${division}):`,
+        error,
+      );
+      return base;
     }
   }
 }

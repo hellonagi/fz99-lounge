@@ -9,12 +9,16 @@ import {
   Query,
   UseGuards,
   Req,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
+import { CreatePracticeTournamentDto } from './dto/create-practice-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
+import { StartCountdownDto } from './dto/start-countdown.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -29,6 +33,18 @@ export class TournamentsController {
   @Roles(UserRole.ADMIN)
   async create(@Body() dto: CreateTournamentDto) {
     return this.tournamentsService.create(dto);
+  }
+
+  @Post(':id/practice')
+  @Roles(UserRole.ADMIN)
+  async createPractice(
+    @Param('id') id: string,
+    @Body() dto: CreatePracticeTournamentDto,
+  ) {
+    return this.tournamentsService.createPracticeTournament(
+      parseInt(id, 10),
+      dto,
+    );
   }
 
   @Get()
@@ -56,8 +72,49 @@ export class TournamentsController {
 
   @Get(':id')
   @Public()
-  async findOne(@Param('id') id: string) {
-    return this.tournamentsService.findOne(parseInt(id, 10));
+  @UseGuards(OptionalJwtAuthGuard)
+  async findOne(@Param('id') id: string, @Req() req: Request) {
+    const tournamentId = parseInt(id, 10);
+    // パスコードはADMIN/MODERATORにのみ返す(公開はDiscordのみの原則)
+    const user = req.user as { id?: number; role?: UserRole } | undefined;
+    const isPrivileged =
+      user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
+    if (!isPrivileged) {
+      await this.tournamentsService.assertPubliclyViewable(
+        tournamentId,
+        user?.id,
+      );
+    }
+    return this.tournamentsService.findOne(
+      tournamentId,
+      undefined,
+      isPrivileged,
+    );
+  }
+
+  // 親大会IDから紐づく練習大会を解決する(URLを /tournament/:id/practice に
+  // ネストさせるため、フロントはこの1本で練習大会の実体を取得できる)
+  @Get(':id/practice')
+  @Public()
+  @UseGuards(OptionalJwtAuthGuard)
+  async findPractice(@Param('id') id: string, @Req() req: Request) {
+    const parentId = parseInt(id, 10);
+    const practiceId =
+      await this.tournamentsService.getPracticeTournamentId(parentId);
+    if (!practiceId) {
+      throw new NotFoundException('No practice tournament for this tournament');
+    }
+
+    const user = req.user as { id?: number; role?: UserRole } | undefined;
+    const isPrivileged =
+      user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
+    if (!isPrivileged) {
+      await this.tournamentsService.assertPubliclyViewable(
+        practiceId,
+        user?.id,
+      );
+    }
+    return this.tournamentsService.findOne(practiceId, undefined, isPrivileged);
   }
 
   @Patch(':id')
@@ -68,14 +125,11 @@ export class TournamentsController {
 
   @Post(':id/start-countdown')
   @Roles(UserRole.ADMIN)
-  async startCountdown(@Param('id') id: string) {
-    return this.tournamentsService.startCountdown(parseInt(id, 10));
-  }
-
-  @Post(':id/hide-passcode')
-  @Roles(UserRole.ADMIN)
-  async hidePasscode(@Param('id') id: string) {
-    return this.tournamentsService.hidePasscode(parseInt(id, 10));
+  async startCountdown(
+    @Param('id') id: string,
+    @Body() dto: StartCountdownDto,
+  ) {
+    return this.tournamentsService.startCountdown(parseInt(id, 10), dto);
   }
 
   @Post(':id/notify-split')
@@ -90,10 +144,18 @@ export class TournamentsController {
     return this.tournamentsService.regeneratePasscode(parseInt(id, 10));
   }
 
-  @Post(':id/advance-round')
+  @Post(':id/finish')
   @Roles(UserRole.ADMIN)
-  async advanceRound(@Param('id') id: string) {
-    return this.tournamentsService.advanceRound(parseInt(id, 10));
+  async finishTournament(@Param('id') id: string) {
+    return this.tournamentsService.finishTournament(parseInt(id, 10));
+  }
+
+  @Post(':id/test-discord')
+  @Roles(UserRole.ADMIN)
+  async testDiscord(@Param('id') id: string) {
+    return this.tournamentsService.testDiscordPasscodeChannels(
+      parseInt(id, 10),
+    );
   }
 
   @Post(':id/assign-discord-roles')
@@ -137,8 +199,19 @@ export class TournamentsController {
 
   @Get(':id/participants')
   @Public()
-  async getParticipants(@Param('id') id: string) {
-    return this.tournamentsService.getParticipants(parseInt(id, 10));
+  @UseGuards(OptionalJwtAuthGuard)
+  async getParticipants(@Param('id') id: string, @Req() req: Request) {
+    const tournamentId = parseInt(id, 10);
+    const user = req.user as { id?: number; role?: UserRole } | undefined;
+    const isPrivileged =
+      user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
+    if (!isPrivileged) {
+      await this.tournamentsService.assertPubliclyViewable(
+        tournamentId,
+        user?.id,
+      );
+    }
+    return this.tournamentsService.getParticipants(tournamentId);
   }
 
   @Get(':id/streams')

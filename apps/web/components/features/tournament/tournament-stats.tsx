@@ -22,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Hash, Calendar, Trophy } from 'lucide-react';
 import { F99_MACHINES } from '@/lib/machines';
 import { tracksApi, type Track } from '@/lib/api';
+import { divisionForInGameMode } from '@/types';
 import type { Tournament, GameParticipant } from '@/types';
 
 // APIレスポンスでは user に profile がネストされる場合がある
@@ -614,10 +615,73 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   };
 }
 
+// GP部門とClassic部門で統計を別タブにする(マッチタブと同じ分け方)。
+// 各タブには該当部門のラウンド・マッチだけに絞った tournament を渡して集計する
 export function TournamentStats({ tournament }: TournamentStatsProps) {
+  const divisions = useMemo(() => {
+    const build = (division: 'GP' | 'CLASSIC', label: string) => {
+      const rounds = tournament.rounds.filter(
+        (r) => divisionForInGameMode(r.inGameMode) === division,
+      );
+      const roundNumbers = new Set(rounds.map((r) => r.roundNumber));
+      const season = tournament.season
+        ? {
+            ...tournament.season,
+            matches: (tournament.season.matches ?? []).filter(
+              (m) => m.matchNumber != null && roundNumbers.has(m.matchNumber),
+            ),
+          }
+        : tournament.season;
+      return {
+        key: division,
+        label,
+        rounds,
+        tournament: { ...tournament, rounds, totalRounds: rounds.length, season },
+      };
+    };
+    return [build('GP', 'GP'), build('CLASSIC', 'Classic')].filter(
+      (d) => d.rounds.length > 0,
+    );
+  }, [tournament]);
+
+  if (divisions.length <= 1) {
+    return (
+      <TournamentStatsBody
+        tournament={divisions[0]?.tournament ?? tournament}
+      />
+    );
+  }
+
+  return (
+    <Tabs defaultValue={divisions[0].key}>
+      <TabsList>
+        {divisions.map((d) => (
+          <TabsTrigger key={d.key} value={d.key}>
+            {d.label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+      {divisions.map((d) => (
+        <TabsContent key={d.key} value={d.key} className="px-0 sm:px-0 pb-0 sm:pb-0">
+          <TournamentStatsBody tournament={d.tournament} />
+        </TabsContent>
+      ))}
+    </Tabs>
+  );
+}
+
+function TournamentStatsBody({ tournament }: TournamentStatsProps) {
   const t = useTranslations('tournament.stats');
 
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+  // 国未設定ユーザー等の不正コードでDisplayNames.ofがRangeErrorを投げるのを防ぐ
+  const regionNameOf = (code: string): string => {
+    try {
+      return regionNames.of(code.toUpperCase()) ?? code.toUpperCase();
+    } catch {
+      return code.toUpperCase();
+    }
+  };
   const [leagueTrackNames, setLeagueTrackNames] = useState<Map<string, string[]>>(new Map());
   useEffect(() => {
     tracksApi.getAll().then((res) => {
@@ -1155,7 +1219,7 @@ export function TournamentStats({ tournament }: TournamentStatsProps) {
                       <td className="px-1 py-1.5 sm:px-3 sm:py-2 whitespace-nowrap">
                         <span className="inline-flex items-center gap-2">
                           <span className={`fi fi-${c.code.toLowerCase()}`} />
-                          <span className="text-white">{regionNames.of(c.code.toUpperCase()) ?? c.code.toUpperCase()}</span>
+                          <span className="text-white">{regionNameOf(c.code)}</span>
                         </span>
                       </td>
                       <td className="px-1 py-1.5 sm:px-3 sm:py-2 text-right font-medium text-white">{c.avgScore}</td>

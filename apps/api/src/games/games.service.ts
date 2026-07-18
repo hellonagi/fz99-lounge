@@ -795,6 +795,7 @@ export class GamesService {
     userId: number,
     totalScore: number,
     gameNumber: number = 1,
+    compensated: boolean = true,
   ) {
     const game = await this.prisma.game.findFirst({
       where: {
@@ -807,18 +808,29 @@ export class GamesService {
           },
         },
       },
+      include: {
+        match: {
+          select: { participants: { where: { userId }, select: { id: true } } },
+        },
+      },
     });
 
     if (!game) {
       throw new NotFoundException('Game not found');
     }
 
-    const participant = await this.prisma.gameParticipant.findFirst({
+    let participant = await this.prisma.gameParticipant.findFirst({
       where: { gameId: game.id, userId },
     });
 
     if (!participant) {
-      throw new NotFoundException('Participant not found in this game');
+      // 未提出でもマッチ参加者ならモデレーターが直接スコアを入力できる
+      if (!game.match.participants.length) {
+        throw new NotFoundException('Participant not found in this match');
+      }
+      participant = await this.prisma.gameParticipant.create({
+        data: { gameId: game.id, userId, status: ResultStatus.PENDING },
+      });
     }
 
     // Clear any existing race results
@@ -832,7 +844,7 @@ export class GamesService {
         totalScore,
         eliminatedAtRace: null,
         machine: null,
-        isCompensated: true,
+        isCompensated: compensated,
         status: ResultStatus.PENDING,
         submittedAt: new Date(),
         rejectedBy: null,
@@ -865,14 +877,13 @@ export class GamesService {
     return updatedParticipant;
   }
 
-  /**
-   * Disqualify participant: sets totalScore=0, marks isDisqualified=true
-   */
-  async disqualifyParticipant(
+  // 補填フラグ(C表示)だけを切り替える。スコア・レース内訳には触れない
+  async setCompensated(
     eventCategory: EventCategory,
     seasonNumber: number,
     matchNumber: number,
     userId: number,
+    compensated: boolean,
     gameNumber: number = 1,
   ) {
     const game = await this.prisma.game.findFirst({
@@ -900,24 +911,110 @@ export class GamesService {
       throw new NotFoundException('Participant not found in this game');
     }
 
-    await this.prisma.raceResult.deleteMany({
-      where: { gameParticipantId: participant.id },
-    });
-
     await this.prisma.gameParticipant.update({
       where: { id: participant.id },
-      data: {
-        totalScore: 0,
-        eliminatedAtRace: null,
-        machine: null,
-        isDisqualified: true,
-        isCompensated: false,
-        status: ResultStatus.PENDING,
-        submittedAt: new Date(),
-        rejectedBy: null,
-        rejectedAt: null,
+      data: { isCompensated: compensated },
+    });
+
+    const updatedParticipant = await this.prisma.gameParticipant.findUnique({
+      where: { id: participant.id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            profileNumber: true,
+            discordId: true,
+            displayName: true,
+            avatarHash: true,
+            profile: { select: { country: true } },
+          },
+        },
+        raceResults: true,
       },
     });
+
+    this.eventEmitter.emit('game.scoreUpdated', {
+      gameId: game.id,
+      participant: updatedParticipant,
+    });
+
+    return updatedParticipant;
+  }
+
+  /**
+   * Disqualify participant: sets totalScore=0, marks isDisqualified=true.
+   * disqualified=false でフラグだけ解除する(スコアは0のまま。グリッドで入れ直す)
+   */
+  async disqualifyParticipant(
+    eventCategory: EventCategory,
+    seasonNumber: number,
+    matchNumber: number,
+    userId: number,
+    gameNumber: number = 1,
+    disqualified: boolean = true,
+  ) {
+    const game = await this.prisma.game.findFirst({
+      where: {
+        gameNumber,
+        match: {
+          matchNumber,
+          season: {
+            seasonNumber,
+            event: { category: eventCategory },
+          },
+        },
+      },
+      include: {
+        match: {
+          select: { participants: { where: { userId }, select: { id: true } } },
+        },
+      },
+    });
+
+    if (!game) {
+      throw new NotFoundException('Game not found');
+    }
+
+    let participant = await this.prisma.gameParticipant.findFirst({
+      where: { gameId: game.id, userId },
+    });
+
+    if (!participant) {
+      // 未提出でもマッチ参加者ならDQを付けられる(overrideScoreと同じ扱い)。
+      // DQ解除は既存レコードが前提なので従来通りNotFound
+      if (!disqualified || !game.match.participants.length) {
+        throw new NotFoundException('Participant not found in this game');
+      }
+      participant = await this.prisma.gameParticipant.create({
+        data: { gameId: game.id, userId, status: ResultStatus.PENDING },
+      });
+    }
+
+    if (disqualified) {
+      await this.prisma.raceResult.deleteMany({
+        where: { gameParticipantId: participant.id },
+      });
+
+      await this.prisma.gameParticipant.update({
+        where: { id: participant.id },
+        data: {
+          totalScore: 0,
+          eliminatedAtRace: null,
+          machine: null,
+          isDisqualified: true,
+          isCompensated: false,
+          status: ResultStatus.PENDING,
+          submittedAt: new Date(),
+          rejectedBy: null,
+          rejectedAt: null,
+        },
+      });
+    } else {
+      await this.prisma.gameParticipant.update({
+        where: { id: participant.id },
+        data: { isDisqualified: false },
+      });
+    }
 
     const updatedParticipant = await this.prisma.gameParticipant.findUnique({
       where: { id: participant.id },

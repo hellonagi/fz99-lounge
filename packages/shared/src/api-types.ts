@@ -84,10 +84,12 @@ export interface Game {
   gameNumber: number;
   inGameMode: InGameMode;
   leagueType?: League | null;
-  passcode: string;
+  // ADMIN/MODERATORへのレスポンスにのみ含まれる(一般には返さない)
+  passcode?: string;
   passcodePublishedAt?: string | null;
   passcodeVersion?: number;
   passcodeRevealTime?: string | null;
+  splitNotified?: boolean;
   startedAt?: string | null;
   tracks?: number[] | null; // CLASSIC用: 各レースのコースID [R1, R2, R3]
   // Relations
@@ -132,6 +134,7 @@ export interface RaceResult {
   position?: number | null;
   points?: number | null;
   isEliminated: boolean;  // クラッシュアウト/ランクアウトで脱落
+  isDisconnected?: boolean;  // 切断(DC)
 }
 
 // Event & Season Types
@@ -252,6 +255,12 @@ export interface Tournament {
   venue?: string | null;
   venueUrl?: string | null;
   season?: Season & { matches?: Match[] };
+  // 部門別のパスコード公開チャンネルURL(専用チャンネル未設定時は共通チャンネルへのURL)
+  discordPasscodeChannelUrls?: Record<TournamentDivision, string | null> | null;
+  // 練習大会: この大会が別の大会の練習大会である場合、そのIDを指す(非公開、登録者のみ閲覧可)
+  practiceForTournamentId?: number | null;
+  // この大会に紐づく練習大会(存在する場合)
+  practiceTournament?: { id: number; status: TournamentStatus } | null;
 }
 
 export interface TournamentStream {

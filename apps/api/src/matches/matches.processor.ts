@@ -87,6 +87,15 @@ export class MatchesProcessor {
         return;
       }
 
+      // 大会マッチは運営の発火(start-countdown)でのみ開始する。
+      // 自動開始すると人数不足のGPがCANCELLEDにされる等、大会進行を破壊する
+      if (match.season.event.category === EventCategory.TOURNAMENT) {
+        this.logger.warn(
+          `Match ${matchId} is a tournament match, skipping auto-start`,
+        );
+        return;
+      }
+
       // Check if minimum players met
       const currentPlayers = match.participants.length;
       if (currentPlayers < match.minPlayers) {

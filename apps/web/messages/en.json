@@ -78,12 +78,14 @@
     "notFound": "Tournament not found",
     "error": "Failed to load tournament",
     "loginToRegister": "Login to Register",
+    "practiceBanner": "This is a practice page. Participation is optional, and scores submitted here do not count toward the real tournament.",
     "banner": {
       "entryOpen": "Entry Open",
       "entry": "ENTRY"
     },
     "tabs": {
       "overview": "Overview",
+      "practice": "Practice",
       "match": "Match",
       "stats": "Stats"
     },
@@ -138,56 +140,41 @@
     },
     "round": {
       "notStarted": "This round has not started yet",
+      "scoreSubmitted": "Score submitted",
+      "editScore": "Edit Score",
       "passcode": "Passcode",
       "results": "Results",
       "noResults": "No results yet",
       "submitScore": "Submit Score",
       "alreadySubmitted": "Score already submitted",
-      "splitNewPasscodeRevealed": "Split — New Passcode",
-      "generatePasscode": "Regenerate Passcode",
-      "generatingPasscode": "Regenerating...",
-      "passcodeGenerated": "Passcode generated",
       "scheduled": "Scheduled: {time}"
     },
     "admin": {
-      "advanceRound": "End R{current} / Start R{next}",
-      "finishLast": "End R{current} / Finish Tournament",
-      "confirmAdvance": "End current round and start the next?",
+      "finishLast": "End {current} / Finish Tournament",
       "confirmFinish": "End the last round and finish the tournament?",
       "noInProgress": "No round is currently in progress.",
       "betweenRounds": "Previous GP has ended. Start the next GP.",
-      "scoreEdit": "Score Override (Compensation)",
-      "selectRound": "Select Round",
-      "roundOption": "Round {number}",
-      "noRoundSelected": "Select a round",
-      "noMatchYet": "Not started",
-      "scoreEditByRace": "Edit by race positions",
-      "scoreEditDirect": "Direct total score (compensation — shows C in race columns)",
-      "selectPlayer": "Select Player",
-      "totalScore": "Total Score",
-      "applyScore": "Apply Score",
-      "scoreOverrideSuccess": "Score applied",
-      "disqualifySection": "Disqualify player",
-      "disqualify": "Disqualify (0 pts)",
-      "disqualifySuccess": "Player disqualified"
+      "scoreGrid": "Score Grid",
+      "scoreGridHelp": "Enter race positions and save per row. Rank-out is derived from position; crash-out is position+o (e.g. 50o); dc for disconnect. For compensation, check C and enter points (clears race detail). DQ disqualifies (0 pts).",
+      "scoreGridWaiting": "This GP has not started yet.",
+      "gridMachine": "Machine",
+      "gridRace": "R{number}",
+      "gridSave": "Save",
+      "gridCompRequired": "Enter compensation points",
+      "confirmDq": "Disqualify {name} (0 pts)?"
     },
     "countdown": {
-      "splitNewPasscode": "Split — New passcode reveals in",
-      "revealIn": "Passcode reveals in",
       "next": "Next",
-      "passcodeNotice": "The passcode will appear here when it's time.",
+      "passcodeNotice": "Passcodes are revealed on Discord.",
       "startCountdown": "Start Countdown",
-      "startGP": "Start GP{round} Countdown",
-      "hidePasscode": "Hide Passcode",
+      "startGP": "Start {round} Countdown",
       "notifySplit": "Notify Split",
-      "notifyingSplit": "Sending..."
-    },
-    "splitVote": {
-      "description": "If the room split, please vote below. The passcode will be regenerated once 1/3 of players vote.",
-      "button": "Vote to Split",
-      "voted": "Voted",
-      "thresholdReached": "Split vote threshold reached",
-      "splitOccurred": "A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes."
+      "notifyingSplit": "Sending...",
+      "roundField": "Round",
+      "leagueField": "League",
+      "confirmStart": "Start {round} countdown? Passcode {passcode} will be revealed on Discord in 1 minute.",
+      "startHelp": "The passcode is revealed on Discord 1 minute after start.",
+      "completedSuffix": "done"
     },
     "standings": {
       "rank": "#",
@@ -244,7 +231,13 @@
     "error": "An error occurred",
     "content": "Content (Markdown)",
     "contentEn": "English",
-    "contentJa": "Japanese"
+    "contentJa": "Japanese",
+    "confirmStatusBack": "Move the tournament back to {status}?",
+    "createPracticeTitle": "Create Practice Tournament",
+    "createPractice": "Create Practice Tournament",
+    "createPracticeButton": "Create Practice Tournament",
+    "viewPracticeButton": "View Practice Tournament",
+    "practiceHint": "Creates a private tournament that carries over this tournament's registrants. Just set the rounds and date."
   },
   "userManagement": {
     "title": "User Management",
@@ -561,7 +554,8 @@
       "penalty4Value": "-100 MMR + Strike",
       "penalty5": "Trolling/Targeting",
       "penalty5Value": "-100 MMR + Strike"
-    }  },
+    }
+  },
   "scoreSubmission": {
     "title": "Submit Your Result",
     "moderatorTitle": "Edit Player Score",
@@ -761,7 +755,14 @@
     "assigned": "{count} assigned",
     "alreadyHad": "{count} already had role",
     "notInServer": "Not in Discord server",
-    "notInServerCount": "{count} participants not in Discord server"
+    "notInServerCount": "{count} participants not in Discord server",
+    "removed": "Removed from {count}",
+    "testPost": "Discord Test Post",
+    "testPosting": "Posting...",
+    "testOk": "OK",
+    "testFailed": "Failed",
+    "testDedicated": "dedicated channel",
+    "testFallback": "fallback (shared channel)"
   },
   "createMatch": {
     "title": "Create Match",

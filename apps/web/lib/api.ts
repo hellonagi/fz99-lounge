@@ -210,10 +210,16 @@ export const gamesApi = {
       isEliminated: boolean;
     }>;
   }) => api.patch(`/games/${category}/${season}/${match}/score/${userId}`, data),
-  overrideScore: (category: string, season: number, match: number, userId: number, totalScore: number) =>
-    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/override-score`, { totalScore }),
-  disqualify: (category: string, season: number, match: number, userId: number) =>
-    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/disqualify`),
+  overrideScore: (category: string, season: number, match: number, userId: number, totalScore: number, compensated?: boolean) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/override-score`, {
+      totalScore,
+      ...(compensated !== undefined && { compensated }),
+    }),
+  setCompensated: (category: string, season: number, match: number, userId: number, compensated: boolean) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/compensated`, { compensated }),
+  disqualify: (category: string, season: number, match: number, userId: number, disqualified?: boolean) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/disqualify`,
+      disqualified !== undefined ? { disqualified } : undefined),
   endMatch: (category: string, season: number, match: number) =>
     api.post(`/games/${category}/${season}/${match}/end`),
   updateTracks: (category: string, season: number, match: number, tracks: (number | null)[]) =>
@@ -303,6 +309,7 @@ export const tournamentsApi = {
   getRecent: (limit: number = 5) =>
     api.get(`/tournaments/recent?limit=${limit}`),
   getById: (id: number) => api.get(`/tournaments/${id}`),
+  getPractice: (id: number) => api.get(`/tournaments/${id}/practice`),
   getWeek: (from: string, to: string) => {
     const params = new URLSearchParams({ from, to });
     return api.get(`/tournaments/week?${params.toString()}`);
@@ -316,7 +323,14 @@ export const tournamentsApi = {
     registrationEnd: string;
     minPlayers?: number;
     maxPlayers?: number;
+    content?: { en: string; ja: string };
   }) => api.post('/tournaments', data),
+  createPractice: (id: number, data: {
+    name?: string;
+    totalRounds: number;
+    rounds: Array<{ roundNumber: number; inGameMode: string; league?: string; offsetMinutes?: number }>;
+    tournamentDate: string;
+  }) => api.post(`/tournaments/${id}/practice`, data),
   update: (id: number, data: Record<string, unknown>) =>
     api.patch(`/tournaments/${id}`, data),
   register: (id: number, data: { division: 'GP' | 'CLASSIC'; mode?: 'OFFLINE' | 'ONLINE' | null; prizeEntry?: boolean }) =>
@@ -329,10 +343,11 @@ export const tournamentsApi = {
     api.post(`/tournaments/${id}/streams`, data),
   removeStream: (id: number, streamId: number) => api.delete(`/tournaments/${id}/streams/${streamId}`),
   setFeaturedStream: (id: number, streamId: number) => api.patch(`/tournaments/${id}/streams/${streamId}/featured`),
-  advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
-  startCountdown: (id: number) => api.post(`/tournaments/${id}/start-countdown`),
-  hidePasscode: (id: number) => api.post(`/tournaments/${id}/hide-passcode`),
+  finishTournament: (id: number) => api.post(`/tournaments/${id}/finish`),
+  startCountdown: (id: number, data?: { matchNumber?: number; league?: string; passcode?: string }) =>
+    api.post(`/tournaments/${id}/start-countdown`, data ?? {}),
   assignDiscordRoles: (id: number) => api.post(`/tournaments/${id}/assign-discord-roles`),
+  testDiscord: (id: number) => api.post(`/tournaments/${id}/test-discord`),
   notifySplit: (id: number) => api.post(`/tournaments/${id}/notify-split`),
   regeneratePasscode: (id: number) => api.post(`/tournaments/${id}/regenerate-passcode`),
 };
