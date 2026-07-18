@@ -53,6 +53,23 @@ export class GamesService {
     @InjectQueue('matches') private matchQueue: Queue,
   ) {}
 
+  // トーナメント(練習大会含む)のパスコードは、Discordでの公開時刻を過ぎるまで
+  // 参加者に対してもAPIレスポンスから隠す(カウントダウン中の先取りを防ぐ)
+  private isTournamentPasscodeHidden(game: {
+    passcodeRevealTime?: Date | string | null;
+    match?: {
+      season?: { event?: { category: EventCategory } | null } | null;
+    } | null;
+  }): boolean {
+    if (game.match?.season?.event?.category !== EventCategory.TOURNAMENT) {
+      return false;
+    }
+    const revealMs = game.passcodeRevealTime
+      ? new Date(game.passcodeRevealTime).getTime()
+      : 0;
+    return !(revealMs > 0 && revealMs <= Date.now());
+  }
+
   async getById(gameId: number, userId?: number) {
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
@@ -115,7 +132,7 @@ export class GamesService {
       : false;
 
     // Only show passcode to non-excluded participants
-    if (!isParticipant || isExcluded) {
+    if (!isParticipant || isExcluded || this.isTournamentPasscodeHidden(game)) {
       const { passcode: _passcode, ...gameWithoutPasscode } = game;
       return gameWithoutPasscode;
     }
@@ -274,7 +291,7 @@ export class GamesService {
       : false;
 
     // Only show passcode to non-excluded participants
-    if (!isParticipant || isExcluded) {
+    if (!isParticipant || isExcluded || this.isTournamentPasscodeHidden(game)) {
       const { passcode: _passcode, ...gameWithoutPasscode } = gameWithRatings;
       return gameWithoutPasscode;
     }
