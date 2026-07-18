@@ -114,11 +114,7 @@ export class TournamentsController {
         user?.id,
       );
     }
-    return this.tournamentsService.findOne(
-      practiceId,
-      undefined,
-      isPrivileged,
-    );
+    return this.tournamentsService.findOne(practiceId, undefined, isPrivileged);
   }
 
   @Patch(':id')

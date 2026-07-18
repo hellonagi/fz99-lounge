@@ -229,7 +229,12 @@ export class TournamentsService {
       // parentの登録者をそのままコピーし、再登録不要にする
       const parentRegistrations = await tx.tournamentRegistration.findMany({
         where: { tournamentConfigId: parentId },
-        select: { userId: true, division: true, mode: true, registeredAt: true },
+        select: {
+          userId: true,
+          division: true,
+          mode: true,
+          registeredAt: true,
+        },
       });
       if (parentRegistrations.length > 0) {
         await tx.tournamentRegistration.createMany({
@@ -1261,10 +1266,8 @@ export class TournamentsService {
       throw new BadRequestException('No in-progress round found');
     }
 
-    const { tournamentName, roundLabel, inGameMode, isPractice } = this.getRoundMeta(
-      config,
-      currentMatch.matchNumber!,
-    );
+    const { tournamentName, roundLabel, inGameMode, isPractice } =
+      this.getRoundMeta(config, currentMatch.matchNumber!);
     await this.discordBotService.announceTournamentSplit({
       tournamentName,
       roundLabel,
@@ -1306,10 +1309,8 @@ export class TournamentsService {
     });
     if (!config) return;
 
-    const { tournamentName, roundLabel, inGameMode, isPractice } = this.getRoundMeta(
-      config,
-      payload.matchNumber,
-    );
+    const { tournamentName, roundLabel, inGameMode, isPractice } =
+      this.getRoundMeta(config, payload.matchNumber);
     await this.discordBotService.announceTournamentSplit({
       tournamentName,
       roundLabel,
