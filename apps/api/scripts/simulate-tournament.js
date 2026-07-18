@@ -7,8 +7,9 @@
  *   node scripts/simulate-tournament.js setup <tournamentId>
  *     → 偽ユーザー作成 + 参加登録投入 (GP30人 / Classic22人、うち5人は両部門)
  *       登録後、管理画面で REGISTRATION_CLOSED にするとマッチ生成が走る
- *   node scripts/simulate-tournament.js scores <tournamentId> <matchNumber> [--fast]
+ *   node scripts/simulate-tournament.js scores <tournamentId> <matchNumber> [--fast] [--all]
  *     → そのGPの偽ユーザー参加者全員がスコアを提出 (1.5秒間隔、--fastで間隔なし)
+ *       --all で偽ユーザー以外のマッチ参加者にも提出する (dev専用)
  *   node scripts/simulate-tournament.js cleanup
  *     → 偽ユーザー (discordId sim-*) と関連データを全削除
  */
@@ -138,12 +139,15 @@ async function scores(tournamentId, matchNumber, fast) {
   const raceMaxPositions = isGp ? [99, 80, 60, 40, 20] : [20, 16, 12];
   const eliminationThresholds = isGp ? [81, 61, 41, 21, null] : [17, 13, 9];
 
+  const includeAll = process.argv.includes('--all');
   const match = await prisma.match.findFirst({
     where: { seasonId: config.seasonId, matchNumber },
     include: {
       participants: {
         include: { user: true },
-        where: { user: { discordId: { startsWith: 'sim-' } } },
+        ...(includeAll
+          ? {}
+          : { where: { user: { discordId: { startsWith: 'sim-' } } } }),
       },
     },
   });

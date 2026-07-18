@@ -539,9 +539,20 @@ interface AdminContentProps {
   onUpdate: () => void;
 }
 
+const TOURNAMENT_STATUS_FLOW = [
+  'DRAFT',
+  'REGISTRATION_OPEN',
+  'REGISTRATION_CLOSED',
+  'IN_PROGRESS',
+  'RESULTS_PENDING',
+  'COMPLETED',
+] as const;
+
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
+  const tAdminTournament = useTranslations('adminTournament');
   const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
   const [discordRoleLoading, setDiscordRoleLoading] = useState(false);
   const [discordRoleResult, setDiscordRoleResult] = useState<{
@@ -549,6 +560,8 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     alreadyHad: number;
     notInServer: Array<{ displayName: string; discordId: string }>;
   } | null>(null);
+  // 運営操作のエラーは握りつぶさず表示する
+  const [adminError, setAdminError] = useState<string | null>(null);
 
   const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
   const inProgressGame = inProgressMatch?.games?.[0];
@@ -568,12 +581,78 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     .filter((m) => m.status === 'WAITING')
     .sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0];
 
+  // 大会ステータスの送り/戻し(管理画面一覧と同じ操作を大会ページから行える)
+  const statusIdx = TOURNAMENT_STATUS_FLOW.indexOf(
+    tournament.status as (typeof TOURNAMENT_STATUS_FLOW)[number],
+  );
+  const prevStatus = statusIdx > 0 ? TOURNAMENT_STATUS_FLOW[statusIdx - 1] : null;
+  const nextStatus =
+    statusIdx >= 0 && statusIdx < TOURNAMENT_STATUS_FLOW.length - 1
+      ? TOURNAMENT_STATUS_FLOW[statusIdx + 1]
+      : null;
+
+  const changeStatus = async (status: Tournament['status'], backward: boolean) => {
+    if (
+      backward &&
+      !window.confirm(
+        tAdminTournament('confirmStatusBack', { status: t(`statusLabel.${status}`) }),
+      )
+    ) {
+      return;
+    }
+    setStatusLoading(true);
+    setAdminError(null);
+    try {
+      await tournamentsApi.update(tournament.id, { status });
+      onUpdate();
+    } catch (err) {
+      setAdminError((err as ApiErrorLike).response?.data?.message || 'Failed to update status');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
+  const statusControls = (
+    <div className="space-y-3">
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant="default">{t(`statusLabel.${tournament.status}`)}</Badge>
+      {prevStatus && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={statusLoading}
+          onClick={() => changeStatus(prevStatus, true)}
+          className="text-gray-400"
+        >
+          ← {t(`statusLabel.${prevStatus}`)}
+        </Button>
+      )}
+      {nextStatus && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={statusLoading}
+          onClick={() => changeStatus(nextStatus, false)}
+        >
+          {t(`statusLabel.${nextStatus}`)} →
+        </Button>
+      )}
+    </div>
+    {adminError && (
+      <Alert variant="destructive">
+        <AlertDescription>{adminError}</AlertDescription>
+      </Alert>
+    )}
+    </div>
+  );
+
   // Show admin panel for REGISTRATION_CLOSED, when IN_PROGRESS match exists,
   // or when there are WAITING matches that need to be advanced
   if (tournament.status !== 'REGISTRATION_CLOSED' && !inProgressMatch && !nextWaiting) {
     return (
       <Card>
         <CardContent className="pt-6 space-y-4">
+          {statusControls}
           <p className="text-gray-400 text-sm">{t('admin.noInProgress')}</p>
           {/* RESULTS_PENDING後でもGPを出し直せる復旧経路 */}
           <CountdownStartForm tournament={tournament} matches={matches} />
@@ -601,10 +680,12 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     const message = isLastRound ? t('admin.confirmFinish') : t('admin.confirmAdvance');
     if (!window.confirm(message)) return;
     setAdvanceLoading(true);
+    setAdminError(null);
     try {
       await tournamentsApi.advanceRound(tournament.id);
       onUpdate();
-    } catch {
+    } catch (err) {
+      setAdminError((err as ApiErrorLike).response?.data?.message || 'Failed to advance round');
     } finally {
       setAdvanceLoading(false);
     }
@@ -612,9 +693,11 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
 
   const handleNotifySplit = async () => {
     setSplitLoading(true);
+    setAdminError(null);
     try {
       await tournamentsApi.notifySplit(tournament.id);
-    } catch {
+    } catch (err) {
+      setAdminError((err as ApiErrorLike).response?.data?.message || 'Failed to notify split');
     } finally {
       setSplitLoading(false);
     }
@@ -625,6 +708,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     return (
       <Card>
         <CardContent className="pt-6 space-y-4">
+          {statusControls}
           <CountdownStartForm tournament={tournament} matches={matches} />
 
           <DiscordRoleSection
@@ -641,6 +725,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
+        {statusControls}
         {inProgressRound && (
           <div>
             <h3 className="text-white font-medium flex items-center gap-2">
@@ -657,7 +742,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
         {/* Countdown form — operator picks the GP, league and passcode explicitly */}
         <CountdownStartForm tournament={tournament} matches={matches} />
 
-        {inProgressMatch && <div className="space-y-3">
+        {inProgressMatch && <div className="flex flex-wrap items-center gap-3">
           {/* Notify Split — 公開状態に関係なくいつでも押せる */}
           <Button
             size="sm"
@@ -686,7 +771,9 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
               ) : (
                 <ChevronRight className="h-3 w-3 mr-1" />
               )}
-              {t('admin.finishLast', { current: inProgressMatch!.matchNumber! })}
+              {t('admin.finishLast', {
+                current: roundQualifiedLabel(tournament.rounds, inProgressMatch!.matchNumber!),
+              })}
             </Button>
           )}
 

@@ -663,7 +663,11 @@ export class TournamentsService {
       throw new NotFoundException('Tournament not found');
     }
 
-    if (config.status !== TournamentStatus.IN_PROGRESS) {
+    // RESULTS_PENDING中に再オープンしたGPを閉じ直すケースも許可する(ソフトロック回避)
+    if (
+      config.status !== TournamentStatus.IN_PROGRESS &&
+      config.status !== TournamentStatus.RESULTS_PENDING
+    ) {
       throw new BadRequestException('Tournament is not in progress');
     }
 

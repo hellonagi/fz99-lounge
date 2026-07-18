@@ -148,8 +148,8 @@
       "scheduled": "Scheduled: {time}"
     },
     "admin": {
-      "advanceRound": "End R{current} / Start R{next}",
-      "finishLast": "End R{current} / Finish Tournament",
+      "advanceRound": "End {current} / Start {next}",
+      "finishLast": "End {current} / Finish Tournament",
       "confirmAdvance": "End current round and start the next?",
       "confirmFinish": "End the last round and finish the tournament?",
       "noInProgress": "No round is currently in progress.",
