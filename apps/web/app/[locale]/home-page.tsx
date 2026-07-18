@@ -115,7 +115,18 @@ export function HomePage({ latestNews }: HomePageProps) {
         setOpenTournaments(
           tournaments.filter((t) => t.status === 'REGISTRATION_OPEN')
         );
-        const inProgress = tournaments.find((t) => t.status === 'REGISTRATION_CLOSED' || t.status === 'IN_PROGRESS');
+        // 開催12時間前を切ったら、登録受付中でも大会ヒーローを優先表示する
+        const HERO_LEAD_MS = 12 * 60 * 60 * 1000;
+        const startsSoon = (t: Tournament) => {
+          const untilStart = new Date(t.tournamentDate).getTime() - Date.now();
+          return untilStart <= HERO_LEAD_MS && untilStart > -HERO_LEAD_MS;
+        };
+        const inProgress = tournaments.find(
+          (t) =>
+            t.status === 'REGISTRATION_CLOSED' ||
+            t.status === 'IN_PROGRESS' ||
+            (t.status === 'REGISTRATION_OPEN' && startsSoon(t))
+        );
         if (inProgress) {
           setInProgressTournament(inProgress);
           try {
