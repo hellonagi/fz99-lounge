@@ -1403,21 +1403,30 @@ export class TournamentsService {
       },
     });
 
-    // 全参加者(重複除去) + 部門別リスト
-    const idsOf = (division?: TournamentDivision) => [
+    // waitlistを除いた確定参加者のみをロール対象にする。
+    // 同期の剥奪ループはリスト外の保持者を剥がすので、waitlist落ちした人のロールも自動で外れる
+    const confirmedByDivision = await this.getRegisteredUserIdsByDivision(
+      tournamentConfigId,
+      this.prisma,
+    );
+    const discordIdByUserId = new Map(
+      registrations.map((r) => [r.userId, r.user.discordId]),
+    );
+    const idsOf = (userIds: number[]) => [
       ...new Set(
-        registrations
-          .filter((r) => !division || r.division === division)
-          .map((r) => r.user.discordId)
+        userIds
+          .map((id) => discordIdByUserId.get(id))
           .filter((id): id is string => !!id),
       ),
     ];
+    const gpIds = idsOf(confirmedByDivision[TournamentDivision.GP]);
+    const classicIds = idsOf(confirmedByDivision[TournamentDivision.CLASSIC]);
 
     const result = await this.discordBotService.syncTournamentRoles({
-      all: idsOf(),
+      all: [...new Set([...gpIds, ...classicIds])],
       byDivision: {
-        [TournamentDivision.GP]: idsOf(TournamentDivision.GP),
-        [TournamentDivision.CLASSIC]: idsOf(TournamentDivision.CLASSIC),
+        [TournamentDivision.GP]: gpIds,
+        [TournamentDivision.CLASSIC]: classicIds,
       },
     });
 
