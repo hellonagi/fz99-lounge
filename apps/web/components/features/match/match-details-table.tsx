@@ -282,7 +282,7 @@ export function MatchDetailsTable({
     >
       {/* Rank */}
       <td className={cn(
-        'py-1.5 px-1.5 md:py-2 md:px-2 font-bold',
+        'py-1.5 px-1 md:py-2 md:px-2 font-bold',
         !participant.hasSubmitted ? 'text-gray-500' :
         participant.rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
       )}>
@@ -303,15 +303,15 @@ export function MatchDetailsTable({
       )}
 
       {/* Player Name with Country Flag */}
-      <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-white whitespace-nowrap">
-        <span className="flex items-center gap-1.5">
+      <td className="py-1.5 px-1 md:py-2 md:px-2 text-white whitespace-nowrap">
+        <span className="flex items-center gap-1 md:gap-1.5">
           <span
             className={`fi fi-${participant.user.profile?.country?.toLowerCase() || 'un'}`}
             title={participant.user.profile?.country || 'Unknown'}
           />
           <Link
             href={`/profile/${participant.user.profileNumber}`}
-            className="truncate max-w-[140px] md:max-w-[150px] hover:text-blue-400 hover:underline"
+            className="truncate max-w-[88px] md:max-w-[150px] hover:text-blue-400 hover:underline"
           >
             {participant.user.displayName || `User#${participant.user.profileNumber}`}
           </Link>
@@ -325,26 +325,26 @@ export function MatchDetailsTable({
       </td>
 
       {/* Machine */}
-      <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-gray-100 w-8 md:w-auto">
+      <td className="py-1.5 px-1 md:py-2 md:px-2 text-gray-100 w-8 md:w-auto">
         <span className="md:hidden">{getMachineAbbr(participant.machine)}</span>
         <span className="hidden md:inline">{participant.machine || '-'}</span>
       </td>
 
       {/* Race columns - dynamic based on mode */}
       {Array.from({ length: isGpMode ? 5 : 3 }, (_, i) => (
-        <td key={`r${i + 1}`} className="py-1.5 px-1 md:py-2 text-center text-gray-100">
+        <td key={`r${i + 1}`} className="py-1.5 px-0.5 md:py-2 md:px-1 text-center text-gray-100 tabular-nums">
           {getRaceDisplay(participant, i + 1)}
         </td>
       ))}
 
       {/* Points */}
-      <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right font-medium text-white">
+      <td className="py-1.5 px-1 md:py-2 md:px-2 text-right font-medium text-white tabular-nums">
         {participant.totalScore ?? '-'}
       </td>
 
       {/* Status - Based on score verification */}
       {!hideStatus && (
-      <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-center whitespace-nowrap">
+      <td className="py-1.5 px-1 md:py-2 md:px-2 text-center whitespace-nowrap">
         {participant.status === 'NO_SHOW' ? (
           <span className="text-xs font-medium text-orange-400">
             {t('noShow')}
@@ -372,7 +372,7 @@ export function MatchDetailsTable({
 
       {/* Rating After - hidden for GP and Unrated */}
       {!isGpMode && isRated && (
-        <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+        <td className="py-1.5 px-1 md:py-2 md:px-2 text-right text-gray-100 tabular-nums">
           {participant.ratingAfter ?? (participant.preGameRating ?? 0)}
         </td>
       )}
@@ -380,7 +380,7 @@ export function MatchDetailsTable({
       {/* Rating Change - hidden for GP and Unrated */}
       {!isGpMode && isRated && (
         <td className={cn(
-          'py-1.5 px-1.5 md:py-2 md:px-2 text-right font-medium',
+          'py-1.5 px-1 md:py-2 md:px-2 text-right font-medium tabular-nums',
           participant.ratingChange == null ? 'text-gray-400' :
           participant.ratingChange > 0 ? 'text-green-400' :
           participant.ratingChange < 0 ? 'text-red-400' : 'text-gray-300'
@@ -398,23 +398,23 @@ export function MatchDetailsTable({
   const tableHeader = (
     <thead>
       <tr className="border-b border-gray-700 text-gray-400">
-        <th className="text-left py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-0">#</th>
+        <th className="text-left py-1.5 px-1 md:py-2 md:px-2 font-medium w-0">#</th>
         {isTeamClassic && <th className="py-1.5 px-1 md:py-2 font-medium w-0">Team</th>}
-        <th className="text-left py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Player</th>
-        <th className="text-left py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-8 md:w-auto">
+        <th className="text-left py-1.5 px-1 md:py-2 md:px-2 font-medium">Player</th>
+        <th className="text-left py-1.5 px-1 md:py-2 md:px-2 font-medium w-8 md:w-auto">
           <span className="md:hidden">MC</span>
           <span className="hidden md:inline">Machine</span>
         </th>
         {Array.from({ length: raceColumnCount }, (_, i) => (
-          <th key={`rh${i + 1}`} className="text-center py-1.5 px-1 md:py-2 font-medium w-8 md:w-10">R{i + 1}</th>
+          <th key={`rh${i + 1}`} className="text-center py-1.5 px-0.5 md:py-2 md:px-1 font-medium w-7 md:w-10">R{i + 1}</th>
         ))}
-        <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Pts</th>
-        {!hideStatus && <th className="text-center py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Status</th>}
+        <th className="text-right py-1.5 px-1 md:py-2 md:px-2 font-medium">Pts</th>
+        {!hideStatus && <th className="text-center py-1.5 px-1 md:py-2 md:px-2 font-medium">Status</th>}
         {!isGpMode && isRated && (
-          <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Rating</th>
+          <th className="text-right py-1.5 px-1 md:py-2 md:px-2 font-medium">Rating</th>
         )}
         {!isGpMode && isRated && (
-          <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">+/-</th>
+          <th className="text-right py-1.5 px-1 md:py-2 md:px-2 font-medium">+/-</th>
         )}
       </tr>
     </thead>
@@ -513,7 +513,7 @@ export function MatchDetailsTable({
         </table>
 
         {/* Score-sorted table with team color backgrounds */}
-        <table className="w-full text-xs md:text-sm min-w-[440px] md:min-w-[700px]">
+        <table className="w-full text-xs md:text-sm md:min-w-[700px]">
           {tableHeader}
           <tbody>
             {participantsWithRank.map((participant) =>
@@ -528,7 +528,7 @@ export function MatchDetailsTable({
   // Standard view (non-TEAM_CLASSIC)
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs md:text-sm min-w-[440px] md:min-w-[700px]">
+      <table className="w-full text-xs md:text-sm md:min-w-[700px]">
         {tableHeader}
         <tbody>
           {participantsWithRank.map((participant) =>

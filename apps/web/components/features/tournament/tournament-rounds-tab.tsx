@@ -488,9 +488,8 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
         </h3>
         <p className="text-sm text-gray-400">
           {round.inGameMode.replace(/_/g, ' ')}
-          {round.league && ` / ${round.league.replace(/_/g, ' ')}`}
-          {' — '}
-          {formattedTime}
+          {round.league && ` / ${round.league.replace(/_/g, ' ')}`}{' '}
+          <span className="whitespace-nowrap">— {formattedTime}</span>
         </p>
       </div>
     </div>
@@ -520,7 +519,7 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
 
   return (
     <Card>
-      <CardContent className="pt-6 space-y-4">
+      <CardContent className="pt-6 space-y-4 px-2 sm:px-6">
         {header}
 
         {/* Participant: score form first — 提出したい人が表の下まで
@@ -1868,21 +1867,21 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
   return (
     <div className="space-y-4">
     <Card>
-      <CardContent className="pt-6 space-y-4">
+      <CardContent className="pt-6 space-y-4 px-2 sm:px-6">
         <h3 className="text-white font-medium">{t('standings.overall')}</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-xs md:text-sm">
             <thead>
               <tr className="border-b border-gray-700 text-gray-400">
-                <th className="text-left py-2 px-2 font-medium w-0">#</th>
-                <th className="text-left py-2 px-2 font-medium">{t('standings.player')}</th>
+                <th className="text-left py-2 px-1 md:px-2 font-medium w-0">#</th>
+                <th className="text-left py-2 px-1 md:px-2 font-medium">{t('standings.player')}</th>
                 {rounds.map((r) => (
-                  <th key={r.roundNumber} className="text-center py-2 px-1 font-medium whitespace-nowrap">
+                  <th key={r.roundNumber} className="text-center py-2 px-0.5 md:px-1 font-medium whitespace-nowrap">
                     {roundDisplayLabel(tournament.rounds, r.roundNumber)}
                   </th>
                 ))}
-                <th className="text-center py-2 px-1 font-medium whitespace-nowrap">{t('standings.finished')}</th>
-                <th className="text-right py-2 px-2 font-medium">Pts</th>
+                <th className="text-center py-2 px-0.5 md:px-1 font-medium whitespace-nowrap">{t('standings.finished')}</th>
+                <th className="text-right py-2 px-1 md:px-2 font-medium">Pts</th>
               </tr>
             </thead>
             <tbody>
@@ -1894,14 +1893,14 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
                     className="border-b border-gray-700/50 hover:bg-gray-700/30"
                   >
                     <td className={cn(
-                      'py-2 px-2 font-bold',
+                      'py-2 px-1 md:px-2 font-bold',
                       !hasAnyScore ? 'text-gray-500' :
                       rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
                     )}>
                       {hasAnyScore ? rank : '-'}
                     </td>
-                    <td className="py-2 px-2 text-white whitespace-nowrap">
-                      <span className="flex items-center gap-1.5">
+                    <td className="py-2 px-1 md:px-2 text-white whitespace-nowrap">
+                      <span className="flex items-center gap-1 md:gap-1.5">
                         <span
                           className={`fi fi-${s.country?.toLowerCase() || 'un'}`}
                           title={s.country || 'Unknown'}
@@ -1909,12 +1908,12 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
                         {s.profileNumber ? (
                           <Link
                             href={`/profile/${s.profileNumber}`}
-                            className="hover:text-blue-400 hover:underline"
+                            className="hover:text-blue-400 hover:underline max-md:max-w-[88px] max-md:truncate"
                           >
                             {s.displayName}
                           </Link>
                         ) : (
-                          <span>{s.displayName}</span>
+                          <span className="max-md:max-w-[88px] max-md:truncate">{s.displayName}</span>
                         )}
                       </span>
                     </td>
@@ -1928,7 +1927,7 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
                       return (
                         <td
                           key={r.roundNumber}
-                          className="py-2 px-1 text-gray-100 text-center"
+                          className="py-2 px-0.5 md:px-1 text-gray-100 text-center tabular-nums"
                         >
                           {score != null ? (
                             <span className="flex flex-col items-center leading-tight">
@@ -1936,11 +1935,11 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
                                 {score}
                               </span>
                               {disqualified ? (
-                                <span className="text-xs font-medium text-red-400">DQ</span>
+                                <span className="text-[10px] md:text-xs font-medium text-red-400">DQ</span>
                               ) : compensated ? (
-                                <span className="text-xs font-medium text-orange-400">C</span>
+                                <span className="text-[10px] md:text-xs font-medium text-orange-400">C</span>
                               ) : machineStyle && (
-                                <span className={`text-xs font-medium ${machineStyle.className}`}>
+                                <span className={`text-[10px] md:text-xs font-medium ${machineStyle.className}`}>
                                   {machineStyle.abbr}
                                 </span>
                               )}
@@ -1949,10 +1948,10 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
                         </td>
                       );
                     })}
-                    <td className="py-2 px-1 text-center text-gray-100">
+                    <td className="py-2 px-0.5 md:px-1 text-center text-gray-100">
                       {Object.values(s.roundSurvived).filter(Boolean).length}
                     </td>
-                    <td className="py-2 px-2 text-right font-medium text-white">
+                    <td className="py-2 px-1 md:px-2 text-right font-medium text-white tabular-nums">
                       {s.total}
                     </td>
                   </tr>

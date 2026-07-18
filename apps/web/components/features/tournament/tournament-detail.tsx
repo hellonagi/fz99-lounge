@@ -647,14 +647,14 @@ function ParticipantTile({ p, statusLabel, muted }: { p: TournamentParticipant; 
         className={`fi fi-${p.user?.profile?.country?.toLowerCase() || 'un'} shrink-0`}
         title={p.user?.profile?.country || ''}
       />
-      <span className={cn('text-sm truncate', muted ? 'text-gray-400' : 'text-white')}>
-        {p.user?.displayName || `Player ${p.userId}`}
-      </span>
-      {statusLabel && (
-        <span className="text-[10px] text-gray-400 shrink-0 ml-auto whitespace-nowrap">
-          {statusLabel}
-        </span>
-      )}
+      <div className="min-w-0">
+        <p className={cn('text-sm truncate', muted ? 'text-gray-400' : 'text-white')}>
+          {p.user?.displayName || `Player ${p.userId}`}
+        </p>
+        {statusLabel && (
+          <p className="text-[10px] leading-tight text-gray-400 truncate">{statusLabel}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -849,53 +849,36 @@ function CountryRepresentation({ participants }: { participants: TournamentParti
       <h4 className="text-sm font-medium text-gray-300 mb-2">
         {t('countryRepresentation')}
       </h4>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[600px]">
-          <thead>
-            <tr className="border-b border-gray-700/50 text-left text-gray-400">
-              <th className="px-3 py-2 w-10">#</th>
-              <th className="px-3 py-2">{t('country')}</th>
-              <th className="px-3 py-2 text-right whitespace-nowrap">{t('participants')}</th>
-              <th className="px-3 py-2">{t('players')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {countryRows.map(({ code, name, count, rank, players }) => (
-              <tr
-                key={code}
-                className="border-b border-gray-700/50 hover:bg-gray-700/30"
-              >
-                <td className="px-3 py-2 text-gray-400">{rank}</td>
-                <td className="px-3 py-2">
-                  <span className="inline-flex items-center gap-2 text-gray-300">
-                    <span className={`fi fi-${code === 'UNKNOWN' ? 'un' : code.toLowerCase()} shrink-0`} />
-                    {name}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-right text-gray-300 whitespace-nowrap">
-                  {count} / {total} ({Math.round((count / total) * 100)}%)
-                </td>
-                <td className="px-3 py-2 text-gray-300">
-                  {players.map((player, i) => (
-                    <span key={player.profileNumber || i}>
-                      {i > 0 && ', '}
-                      {player.profileNumber ? (
-                        <Link
-                          href={`/profile/${player.profileNumber}`}
-                          className="hover:text-white hover:underline"
-                        >
-                          {player.displayName}
-                        </Link>
-                      ) : (
-                        player.displayName
-                      )}
-                    </span>
-                  ))}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="divide-y divide-gray-700/50">
+        {countryRows.map(({ code, name, count, rank, players }) => (
+          <div key={code} className="py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-sm text-gray-400 tabular-nums">{rank}</span>
+              <span className={`fi fi-${code === 'UNKNOWN' ? 'un' : code.toLowerCase()} shrink-0`} />
+              <span className="min-w-0 truncate text-sm text-gray-300">{name}</span>
+              <span className="ml-auto shrink-0 whitespace-nowrap text-sm text-gray-300">
+                {count} / {total} ({Math.round((count / total) * 100)}%)
+              </span>
+            </div>
+            <p className="mt-1 pl-7 text-xs leading-relaxed text-gray-400">
+              {players.map((player, i) => (
+                <span key={player.profileNumber || i}>
+                  {i > 0 && ', '}
+                  {player.profileNumber ? (
+                    <Link
+                      href={`/profile/${player.profileNumber}`}
+                      className="hover:text-white hover:underline"
+                    >
+                      {player.displayName}
+                    </Link>
+                  ) : (
+                    player.displayName
+                  )}
+                </span>
+              ))}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );
