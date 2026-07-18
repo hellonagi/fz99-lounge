@@ -503,16 +503,16 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getNext(eventCategory?: EventCategory) {
-    // WAITINGマッチを検索（開始時刻を1分以上過ぎたものは除外）
+    // WAITINGマッチを検索（開始時刻を1分以上過ぎたものは除外）。
+    // トーナメント(練習大会含む)のラウンドは運営のカウントダウンで開始するもので
+    // 「次のマッチ」として告知・エントリーさせる対象ではないため常に除外する
     const match = await this.prisma.match.findFirst({
       where: {
-        ...(eventCategory && {
-          season: {
-            event: {
-              category: eventCategory,
-            },
-          },
-        }),
+        season: {
+          event: eventCategory
+            ? { category: eventCategory }
+            : { category: { not: EventCategory.TOURNAMENT } },
+        },
         status: MatchStatus.WAITING,
         scheduledStart: {
           gt: new Date(Date.now() - 60 * 1000),
@@ -801,6 +801,13 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
   async join(matchId: number, userId: number) {
     const match = await this.getByIdRaw(matchId);
 
+    // トーナメント(練習大会含む)のロスターは登録フロー/管理者操作でのみ変更する
+    if (match.season.event.category === EventCategory.TOURNAMENT) {
+      throw new BadRequestException(
+        'Tournament rounds are managed via registration',
+      );
+    }
+
     // Check if match is in WAITING status
     if (match.status !== MatchStatus.WAITING) {
       throw new BadRequestException('Match is not accepting players');
@@ -903,6 +910,13 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
   async leave(matchId: number, userId: number) {
     const match = await this.getByIdRaw(matchId);
+
+    // トーナメント(練習大会含む)のロスターは登録フロー/管理者操作でのみ変更する
+    if (match.season.event.category === EventCategory.TOURNAMENT) {
+      throw new BadRequestException(
+        'Tournament rounds are managed via registration',
+      );
+    }
 
     // Check if match is in WAITING status
     if (match.status !== MatchStatus.WAITING) {

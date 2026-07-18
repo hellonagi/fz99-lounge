@@ -152,6 +152,8 @@
     "admin": {
       "finishLast": "{current}終了 / 大会終了",
       "confirmFinish": "最終ラウンドを終了して大会を終了しますか？",
+      "practiceTabShow": "Practiceタブを表示",
+      "practiceTabHide": "Practiceタブを非表示",
       "noInProgress": "現在進行中のラウンドはありません。",
       "betweenRounds": "前のGPが終了しました。次のGPを開始してください。",
       "scoreGrid": "スコア編集グリッド",
