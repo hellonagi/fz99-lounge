@@ -16,6 +16,7 @@ import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { StartCountdownDto } from './dto/start-countdown.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -57,8 +58,17 @@ export class TournamentsController {
 
   @Get(':id')
   @Public()
-  async findOne(@Param('id') id: string) {
-    return this.tournamentsService.findOne(parseInt(id, 10));
+  @UseGuards(OptionalJwtAuthGuard)
+  async findOne(@Param('id') id: string, @Req() req: Request) {
+    // パスコードはADMIN/MODERATORにのみ返す(公開はDiscordのみの原則)
+    const user = req.user as { role?: UserRole } | undefined;
+    const includePasscodes =
+      user?.role === UserRole.ADMIN || user?.role === UserRole.MODERATOR;
+    return this.tournamentsService.findOne(
+      parseInt(id, 10),
+      undefined,
+      includePasscodes,
+    );
   }
 
   @Patch(':id')
@@ -74,12 +84,6 @@ export class TournamentsController {
     @Body() dto: StartCountdownDto,
   ) {
     return this.tournamentsService.startCountdown(parseInt(id, 10), dto);
-  }
-
-  @Post(':id/hide-passcode')
-  @Roles(UserRole.ADMIN)
-  async hidePasscode(@Param('id') id: string) {
-    return this.tournamentsService.hidePasscode(parseInt(id, 10));
   }
 
   @Post(':id/notify-split')

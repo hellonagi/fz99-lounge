@@ -8,6 +8,11 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
+import {
+  confirmedEntries,
+  divisionForInGameMode,
+  roundQualifiedLabel,
+} from '@fz99/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { DiscordBotService } from '../discord-bot/discord-bot.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
@@ -39,7 +44,7 @@ export interface PasscodeRevealJobData {
 @Injectable()
 export class TournamentsService {
   private readonly logger = new Logger(TournamentsService.name);
-  // In-memory store: gameId → Discord passcode message ID (for deletion on hidePasscode)
+  // In-memory store: gameId → Discord passcode message ID (新カウントダウン開始時の旧投稿削除に使用)
   private passcodeMessageIds = new Map<number, string>();
   // In-memory store: gameId → Discord countdown message ID (deleted when passcode is revealed)
   private countdownMessageIds = new Map<number, string>();
@@ -169,7 +174,7 @@ export class TournamentsService {
     }));
   }
 
-  async findOne(id: number, tx?: any) {
+  async findOne(id: number, tx?: any, includePasscodes: boolean = true) {
     const prisma = tx || this.prisma;
     const config = await prisma.tournamentConfig.findUnique({
       where: { id },
@@ -224,11 +229,37 @@ export class TournamentsService {
       throw new NotFoundException('Tournament not found');
     }
 
+    // 一般向けレスポンスからはパスコードを除去する(公開経路はDiscordのみ)
+    const season =
+      !includePasscodes && config.season
+        ? {
+            ...config.season,
+            matches: config.season.matches?.map((m: any) => ({
+              ...m,
+              games: m.games?.map(
+                ({ passcode: _passcode, ...game }: any) => game,
+              ),
+            })),
+          }
+        : config.season;
+
     return {
       ...config,
+      season,
       registrationCount: config._count.registrations,
       _count: undefined,
+      discordPasscodeChannelUrl: this.getDiscordPasscodeChannelUrl(),
     };
+  }
+
+  private getDiscordPasscodeChannelUrl(): string | null {
+    const guildId = this.configService.get<string>('DISCORD_GUILD_ID');
+    const channelId = this.configService.get<string>(
+      'DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID',
+    );
+    return guildId && channelId
+      ? `https://discord.com/channels/${guildId}/${channelId}`
+      : null;
   }
 
   async update(id: number, dto: UpdateTournamentDto) {
@@ -272,13 +303,15 @@ export class TournamentsService {
       });
 
       // REGISTRATION_CLOSED: create matches + games for each round
-      // (再訪しても重複生成しない)
+      // (再訪時は重複生成せず、参加者だけ最新の登録内容へ同期する)
       if (dto.status === TournamentStatus.REGISTRATION_CLOSED) {
         const existingMatches = await tx.match.count({
           where: { seasonId: existing.seasonId },
         });
         if (existingMatches === 0) {
           await this.createMatchesForTournament(existing, tx);
+        } else {
+          await this.syncMatchParticipants(existing, tx);
         }
       }
 
@@ -323,7 +356,7 @@ export class TournamentsService {
       this.configService.get<string>('CORS_ORIGIN') || 'https://fz99lounge.com';
     return {
       tournamentName: `${config.name} #${config.tournamentNumber}`,
-      roundLabel: `GP${matchNumber}`,
+      roundLabel: roundQualifiedLabel(rounds, matchNumber),
       inGameMode: roundConfig?.inGameMode || 'GRAND_PRIX',
       league: roundConfig?.league,
       scoreUrl: `${baseUrl}/tournament/${config.id}?round=${matchNumber}`,
@@ -501,14 +534,15 @@ export class TournamentsService {
       offsetMinutes?: number;
     }>;
 
-    // Get all registered participants
-    const registrations = await tx.tournamentRegistration.findMany({
-      where: { tournamentConfigId: config.id },
-      select: { userId: true },
-    });
-    const userIds = registrations.map((r: { userId: number }) => r.userId);
+    // 各ラウンドには該当division(GP/Classic)の登録者だけを参加させる
+    const userIdsByDivision = await this.getRegisteredUserIdsByDivision(
+      config.id,
+      tx,
+    );
 
     for (const round of rounds) {
+      const userIds =
+        userIdsByDivision[divisionForInGameMode(round.inGameMode)];
       const scheduledStart = new Date(config.tournamentDate);
       if (round.offsetMinutes) {
         scheduledStart.setMinutes(
@@ -549,6 +583,72 @@ export class TournamentsService {
           leagueType: (round.league as any) || null,
           passcode: this.generatePasscode(),
         },
+      });
+    }
+  }
+
+  // division別の確定参加者ユーザーID。
+  // 先着定員(GP 32+67 / Classic 20)を超えたwaitlist登録は含めない。
+  // 登録キャンセルで繰り上がった場合はREGISTRATION_CLOSED再遷移の同期で反映される
+  private async getRegisteredUserIdsByDivision(
+    tournamentConfigId: number,
+    tx: any,
+  ): Promise<Record<TournamentDivision, number[]>> {
+    const registrations = (await tx.tournamentRegistration.findMany({
+      where: { tournamentConfigId },
+      select: { userId: true, division: true, mode: true },
+      orderBy: { registeredAt: 'asc' },
+    })) as Array<{
+      userId: number;
+      division: TournamentDivision;
+      mode: TournamentMode | null;
+    }>;
+
+    const byDivision: Record<TournamentDivision, number[]> = {
+      [TournamentDivision.GP]: [],
+      [TournamentDivision.CLASSIC]: [],
+    };
+    for (const division of Object.values(TournamentDivision)) {
+      const entries = registrations.filter((r) => r.division === division);
+      byDivision[division] = [
+        ...new Set(confirmedEntries(division, entries).map((r) => r.userId)),
+      ];
+    }
+    return byDivision;
+  }
+
+  // マッチ生成後に登録が変わった場合(締切の再オープン等)のために、
+  // REGISTRATION_CLOSED再遷移時は既存マッチの参加者を登録内容へ同期する
+  private async syncMatchParticipants(
+    config: { id: number; seasonId: number; rounds: any },
+    tx: any,
+  ) {
+    const rounds = config.rounds as Array<{
+      roundNumber: number;
+      inGameMode: string;
+    }>;
+    const userIdsByDivision = await this.getRegisteredUserIdsByDivision(
+      config.id,
+      tx,
+    );
+
+    const matches = (await tx.match.findMany({
+      where: { seasonId: config.seasonId },
+      select: { id: true, matchNumber: true },
+    })) as Array<{ id: number; matchNumber: number | null }>;
+
+    for (const match of matches) {
+      const round = rounds.find((r) => r.roundNumber === match.matchNumber);
+      if (!round) continue;
+      const userIds =
+        userIdsByDivision[divisionForInGameMode(round.inGameMode)];
+
+      await tx.matchParticipant.deleteMany({
+        where: { matchId: match.id, userId: { notIn: userIds } },
+      });
+      await tx.matchParticipant.createMany({
+        data: userIds.map((userId) => ({ matchId: match.id, userId })),
+        skipDuplicates: true,
       });
     }
   }
@@ -663,13 +763,6 @@ export class TournamentsService {
       throw new BadRequestException('Registration is not open');
     }
 
-    const now = new Date();
-    if (now < config.registrationStart || now > config.registrationEnd) {
-      throw new BadRequestException(
-        'Registration period has ended or not started',
-      );
-    }
-
     try {
       await this.prisma.tournamentRegistration.create({
         data: {
@@ -705,13 +798,6 @@ export class TournamentsService {
 
     if (config.status !== TournamentStatus.REGISTRATION_OPEN) {
       throw new BadRequestException('Cannot cancel registration at this stage');
-    }
-
-    const now = new Date();
-    if (now < config.registrationStart || now > config.registrationEnd) {
-      throw new BadRequestException(
-        'Registration period has ended or not started',
-      );
     }
 
     const registration = await this.prisma.tournamentRegistration.findUnique({
@@ -1098,62 +1184,6 @@ export class TournamentsService {
       countdownDescription: `Split — New passcode reveals <t:${revealTs}:R>`,
       deleteExistingMessage: true,
     });
-
-    return this.findOne(tournamentConfigId);
-  }
-
-  async hidePasscode(tournamentConfigId: number) {
-    const config = await this.prisma.tournamentConfig.findUnique({
-      where: { id: tournamentConfigId },
-    });
-
-    if (!config) throw new NotFoundException('Tournament not found');
-
-    if (config.status !== TournamentStatus.IN_PROGRESS) {
-      throw new BadRequestException('Tournament is not in progress');
-    }
-
-    const currentMatch = await this.prisma.match.findFirst({
-      where: {
-        seasonId: config.seasonId,
-        status: MatchStatus.IN_PROGRESS,
-      },
-      include: { games: { take: 1 } },
-      orderBy: { matchNumber: 'asc' },
-    });
-
-    if (!currentMatch?.games[0]) {
-      throw new BadRequestException('No active game found');
-    }
-
-    const game = currentMatch.games[0];
-
-    await this.prisma.game.update({
-      where: { id: game.id },
-      data: { passcodeRevealTime: new Date(0) },
-    });
-
-    this.eventEmitter.emit('game.passcodeHidden', { gameId: game.id });
-
-    // Delete Discord passcode message (fire-and-forget)
-    const messageId = this.passcodeMessageIds.get(game.id);
-    if (messageId) {
-      this.discordBotService
-        .deleteTournamentMessage(messageId)
-        .catch((err) =>
-          this.logger.error('Failed to delete Discord passcode message', err),
-        );
-      this.passcodeMessageIds.delete(game.id);
-    }
-
-    // Delete pending countdown message too (the reveal job will skip via the hidden sentinel)
-    const countdownMessageId = this.countdownMessageIds.get(game.id);
-    if (countdownMessageId) {
-      this.discordBotService
-        .deleteTournamentMessage(countdownMessageId)
-        .catch(() => undefined);
-      this.countdownMessageIds.delete(game.id);
-    }
 
     return this.findOne(tournamentConfigId);
   }

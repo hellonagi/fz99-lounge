@@ -5,7 +5,7 @@ import { useTranslations, useFormatter } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { KeyRound, Loader2, ChevronRight, Play, EyeOff, Shield, AlertTriangle, MessageSquareWarning, Split } from 'lucide-react';
+import { Loader2, ChevronRight, Play, Shield, AlertTriangle, MessageSquareWarning, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   detectAllPositionConflicts,
@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { League } from '@/types';
+import { League, divisionForInGameMode, roundDisplayLabel, roundQualifiedLabel } from '@/types';
 import { gamesApi, tournamentsApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useGameSocket, type ParticipantUpdate } from '@/hooks/useGameSocket';
@@ -37,7 +37,6 @@ import type {
   TournamentRoundConfig,
   Match,
   MatchParticipant,
-  Game,
   GameParticipant,
   RaceResult,
   ResultStatus,
@@ -67,9 +66,7 @@ function getRoundIcon(inGameMode: string, league?: string): string | null {
 }
 
 function getFormMode(inGameMode: string): string {
-  return ['GRAND_PRIX', 'MIRROR_GRAND_PRIX', 'MINI_PRIX'].includes(inGameMode)
-    ? 'gp'
-    : 'classic';
+  return divisionForInGameMode(inGameMode) === 'GP' ? 'gp' : 'classic';
 }
 
 // The tournament API always includes the user relation (with profile) and
@@ -103,6 +100,8 @@ interface LiveParticipantRow {
   ratingAfter: number | null;
   ratingChange: number | null;
   status?: ResultStatus;
+  isCompensated?: boolean;
+  isDisqualified?: boolean;
 }
 
 type LocalParticipant = RoundGameParticipant | LiveParticipantRow;
@@ -120,7 +119,10 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
   const format = useFormatter();
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
+  // Adminタブ(大会進行)はADMIN専用(APIもADMIN専用のため)。
+  // Modタブ(スコア編集グリッド)はMODERATORも操作できる
+  const isAdmin = user?.role === 'ADMIN';
+  const isMod = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -144,62 +146,79 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
     onUpdate();
   }, [searchParams, router, pathname, onUpdate]);
 
+  // GP部門とClassic部門は別タブ(参加者・順位表を混ぜない)
+  const divisionTabs = useMemo(
+    () =>
+      [
+        {
+          key: 'gp',
+          label: 'GP',
+          rounds: tournament.rounds.filter(
+            (r) => divisionForInGameMode(r.inGameMode) === 'GP',
+          ),
+        },
+        {
+          key: 'classic',
+          label: 'Classic',
+          rounds: tournament.rounds.filter(
+            (r) => divisionForInGameMode(r.inGameMode) === 'CLASSIC',
+          ),
+        },
+      ].filter((d) => d.rounds.length > 0),
+    [tournament.rounds],
+  );
+
+  const divisionOfRound = useCallback(
+    (roundNumber: number) => {
+      const round = tournament.rounds.find((r) => r.roundNumber === roundNumber);
+      return round && divisionForInGameMode(round.inGameMode) === 'CLASSIC'
+        ? 'classic'
+        : 'gp';
+    },
+    [tournament.rounds],
+  );
+
+  const currentDivision =
+    searchParams.get('division') ??
+    (currentRound === 'admin'
+      ? 'admin'
+      : /^\d+$/.test(currentRound)
+        ? divisionOfRound(Number(currentRound))
+        : inProgressMatch
+          ? divisionOfRound(inProgressMatch.matchNumber!)
+          : (divisionTabs[0]?.key ?? 'gp'));
+
+  const handleDivisionChange = useCallback((value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('division', value);
+    params.delete('round');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    onUpdate();
+  }, [searchParams, router, pathname, onUpdate]);
+
   const inProgressRound = inProgressMatch
     ? tournament.rounds.find((r) => r.roundNumber === inProgressMatch.matchNumber)
     : null;
-  const inProgressGame = inProgressMatch?.games?.[0];
 
   // Participant check across all matches (REGISTRATION_CLOSED has no IN_PROGRESS match)
   const isParticipant = matches.some(m => m.participants?.some(p => p.userId === user?.id));
 
-  // Countdown timer
-  const [remainingMs, setRemainingMs] = useState<number | null>(null);
-  const passcodeRevealTime = inProgressGame?.passcodeRevealTime;
-
-  // Epoch sentinel means "hidden after reveal" — treat as no countdown
-  const isPasscodeHidden = !!passcodeRevealTime && new Date(passcodeRevealTime).getTime() <= 0;
-
-  useEffect(() => {
-    if (!passcodeRevealTime || new Date(passcodeRevealTime).getTime() <= 0) {
-      setRemainingMs(null);
-      return;
-    }
-    const revealTime = new Date(passcodeRevealTime).getTime();
-    const update = () => {
-      const diff = revealTime - Date.now();
-      setRemainingMs(diff > 0 ? diff : 0);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [passcodeRevealTime]);
-
-  const formatCountdown = (ms: number): string => {
-    const totalSeconds = Math.ceil(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // "Next" banner target: REGISTRATION_CLOSED → round 1, IN_PROGRESS + no reveal → next WAITING round
+  // バナーは常に待機表示(カウントダウンや公開中への切り替えはしない)。
+  // 表示対象: REGISTRATION_CLOSED→第1ラウンド、IN_PROGRESS→ライブGP(無ければ次のWAITING)
   const nextWaitingMatch = useMemo(() =>
     matches.filter(m => m.status === 'WAITING').sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0))[0],
     [matches],
   );
-  const nextBannerRound = useMemo(() => {
+  const bannerRound = useMemo(() => {
     if (tournament.status === 'REGISTRATION_CLOSED') return tournament.rounds[0] ?? null;
     if (tournament.status === 'IN_PROGRESS') {
-      if (!passcodeRevealTime && inProgressRound) {
-        // Countdown never started → show current round info
-        return inProgressRound;
-      }
-      if (isPasscodeHidden && nextWaitingMatch) {
-        // Passcode hidden → show next waiting round info
+      if (inProgressRound) return inProgressRound;
+      if (nextWaitingMatch) {
         return tournament.rounds.find(r => r.roundNumber === nextWaitingMatch.matchNumber) ?? null;
       }
     }
     return null;
-  }, [tournament.status, tournament.rounds, passcodeRevealTime, isPasscodeHidden, inProgressRound, nextWaitingMatch]);
+  }, [tournament.status, tournament.rounds, inProgressRound, nextWaitingMatch]);
 
   // WebSocket at TournamentRoundsTab level — always mounted regardless of active tab
   const allGameIds = useMemo(() =>
@@ -207,194 +226,131 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
     [matches],
   );
 
-  // Split vote state
-  const [splitVoteStatus, setSplitVoteStatus] = useState<{
-    currentVotes: number;
-    requiredVotes: number;
-    hasVoted: boolean;
-  } | null>(null);
-  const [voting, setVoting] = useState(false);
-  const [splitThresholdReached, setSplitThresholdReached] = useState(false);
-
   useGameSocket({
     gameId: allGameIds,
-    onPasscodeCountdownStarted: () => { setSplitThresholdReached(false); onUpdate(); },
+    onPasscodeCountdownStarted: () => onUpdate(),
     onPasscodeHidden: () => onUpdate(),
     onStatusChanged: () => onUpdate(),
-    onSplitVoteUpdated: (data) => {
-      setSplitVoteStatus((prev) => prev ? { ...prev, currentVotes: data.currentVotes, requiredVotes: data.requiredVotes } : prev);
-    },
-    onSplitVoteThresholdReached: () => setSplitThresholdReached(true),
-    onPasscodeRegenerated: () => setSplitThresholdReached(false),
   });
 
-  const showNextBanner = isParticipant && !!nextBannerRound;
-  const showCountdownBanner = isParticipant && remainingMs !== null && remainingMs > 0 && inProgressRound;
-  const showPasscodeBanner = isParticipant && remainingMs !== null && remainingMs === 0 && inProgressGame?.passcode && inProgressRound;
-  const isSplit = (inProgressGame?.passcodeVersion ?? 1) > 1;
-
-  const seasonNumber = tournament.season?.seasonNumber;
-  const inProgressMatchNumber = inProgressMatch?.matchNumber;
-
-  useEffect(() => {
-    if (!showPasscodeBanner || seasonNumber == null) return;
-    gamesApi
-      .getSplitVoteStatus('tournament', seasonNumber, inProgressMatchNumber!)
-      .then((res) => {
-        setSplitVoteStatus(res.data);
-        if (res.data.splitNotified) {
-          setSplitThresholdReached(true);
-        }
-      })
-      .catch(() => {});
-  }, [showPasscodeBanner, seasonNumber, inProgressMatchNumber, inProgressGame?.passcodeVersion]);
-
-  const handleSplitVote = async () => {
-    if (!tournament.season || !inProgressMatch?.matchNumber) return;
-    setVoting(true);
-    try {
-      await gamesApi.castSplitVote('tournament', tournament.season.seasonNumber, inProgressMatch.matchNumber);
-      setSplitVoteStatus((prev) => prev ? { ...prev, hasVoted: true } : prev);
-    } catch (e) {
-      console.error('Split vote failed', e);
-    } finally {
-      setVoting(false);
-    }
-  };
+  const showBanner = isParticipant && !!bannerRound;
 
   return (
     <div className="space-y-4">
-      {/* Banner — fixed height, 3 states: next / countdown / passcode */}
-      {(showNextBanner || showCountdownBanner || showPasscodeBanner) && (() => {
-        // Determine which round to show in banner header
-        const bannerRound = showNextBanner ? nextBannerRound : inProgressRound;
-        return (
-          <div className="rounded-lg border text-gray-100 relative bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-pink-900/10 pointer-events-none" />
-            <div className="relative py-5 flex flex-col items-center justify-center text-center">
-              {/* Line 1: Mode / League — Time */}
-              <p className="text-sm text-gray-400">
-                {bannerRound!.inGameMode.replace(/_/g, ' ')}
-                {bannerRound!.league && ` — ${bannerRound!.league.replace(/_/g, ' ')}`}
-                {(() => {
-                  const roundForTime = showNextBanner ? nextBannerRound : inProgressRound;
-                  if (!roundForTime) return null;
-                  const t = new Date(tournament.tournamentDate);
-                  if (roundForTime.offsetMinutes) t.setMinutes(t.getMinutes() + roundForTime.offsetMinutes);
-                  return ` — ${format.dateTime(t, { hour: '2-digit', minute: '2-digit', timeZone })}`;
-                })()}
-              </p>
-
-              {/* Line 2: Label */}
-              <p className="text-sm text-gray-400 mt-1">
-                {showNextBanner && t('countdown.passcodeNotice')}
-                {showCountdownBanner && (isSplit ? t('countdown.splitNewPasscode') : t('countdown.revealIn'))}
-                {showPasscodeBanner && (isSplit ? t('round.splitNewPasscodeRevealed') : t('countdown.revealed'))}
-              </p>
-
-              {/* Line 3: XXXX / countdown / passcode */}
-              {showNextBanner && (
-                <p className="text-5xl font-black text-gray-500 tracking-wider font-mono mt-1">
-                  XXXX
-                </p>
-              )}
-              {showCountdownBanner && (
-                <p className="text-5xl font-black text-white tracking-wider font-mono mt-1">
-                  {formatCountdown(remainingMs!)}
-                </p>
-              )}
-              {showPasscodeBanner && !splitThresholdReached && (
-                <p className="text-2xl font-bold text-white mt-2">
-                  {t('countdown.checkDiscord')}
-                </p>
-              )}
-              {showPasscodeBanner && splitThresholdReached && (
-                <p className="text-5xl font-black text-gray-500 tracking-wider font-mono mt-1">
-                  XXXX
-                </p>
-              )}
-
-              {/* Split threshold reached message */}
-              {showPasscodeBanner && splitThresholdReached && (
-                <p className="text-sm text-red-400 mt-2 whitespace-pre-line">
-                  {t('splitVote.splitOccurred')}
-                </p>
-              )}
-
-              {/* Split vote button + gauge */}
-              {showPasscodeBanner && !splitThresholdReached && (
-                <div className="mt-3 flex flex-col items-center gap-2">
-                  <p className="text-xs text-gray-400">{t('splitVote.description')}</p>
-                  <Button
-                    variant={splitVoteStatus?.hasVoted ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={handleSplitVote}
-                    disabled={voting || splitVoteStatus?.hasVoted}
-                  >
-                    <Split className="w-4 h-4" />
-                    {splitVoteStatus?.hasVoted ? t('splitVote.voted') : t('splitVote.button')}
-                  </Button>
-                  {splitVoteStatus && splitVoteStatus.currentVotes > 0 && (
-                    <div className="w-32 h-1.5 bg-gray-700 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-500 transition-all"
-                        style={{ width: `${(splitVoteStatus.currentVotes / splitVoteStatus.requiredVotes) * 100}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+      {/* Banner — 常に待機表示(対象GPの情報 + Discord公開チャンネルの案内) */}
+      {showBanner && (
+        <div className="rounded-lg border text-gray-100 relative bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-pink-900/10 pointer-events-none" />
+          <div className="relative py-5 flex flex-col items-center justify-center text-center">
+            {/* Discord公開チャンネルの案内 */}
+            <p className="text-sm text-gray-400">
+              {t.rich('countdown.passcodeNotice', {
+                link: (chunks) =>
+                  tournament.discordPasscodeChannelUrl ? (
+                    <a
+                      href={tournament.discordPasscodeChannelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-300 underline underline-offset-2 hover:text-indigo-200"
+                    >
+                      {chunks}
+                    </a>
+                  ) : (
+                    <>{chunks}</>
+                  ),
+              })}
+            </p>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
-      <Tabs value={currentRound} onValueChange={handleTabChange}>
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="overall">
-            Overall
-          </TabsTrigger>
-          {tournament.rounds.map((round) => {
-            const roundMatch = matches.find((m) => m.matchNumber === round.roundNumber);
-            const status = roundMatch?.status;
-            return (
-              <TabsTrigger key={round.roundNumber} value={round.roundNumber.toString()} className="gap-1.5">
-                {status === 'IN_PROGRESS' && (
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                )}
-                {status === 'COMPLETED' && (
-                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-                )}
-                GP{round.roundNumber}
-              </TabsTrigger>
-            );
-          })}
+      <Tabs value={currentDivision} onValueChange={handleDivisionChange}>
+        <TabsList>
+          {divisionTabs.map((d) => (
+            <TabsTrigger key={d.key} value={d.key}>
+              {d.label}
+            </TabsTrigger>
+          ))}
+          {isMod && (
+            <TabsTrigger value="mod">Mod</TabsTrigger>
+          )}
           {isAdmin && (
             <TabsTrigger value="admin">Admin</TabsTrigger>
           )}
         </TabsList>
 
-        <TabsContent value="overall" className="px-0 sm:px-0 pb-0 sm:pb-0">
-          <OverallStandings tournament={tournament} onUpdate={onUpdate} />
-        </TabsContent>
-
-        {tournament.rounds.map((round) => {
-          const match = matches.find(
-            (m) => m.matchNumber === round.roundNumber,
-          );
+        {divisionTabs.map((d) => {
+          const innerValue = d.rounds.some(
+            (r) => r.roundNumber.toString() === currentRound,
+          )
+            ? currentRound
+            : 'overall';
           return (
-            <TabsContent key={round.roundNumber} value={round.roundNumber.toString()} className="px-0 sm:px-0 pb-0 sm:pb-0">
-              <RoundContent
-                round={round}
-                match={match}
-                tournament={tournament}
-                format={format}
-                timeZone={timeZone}
-                onUpdate={onUpdate}
-              />
+            <TabsContent key={d.key} value={d.key} className="px-0 sm:px-0 pb-0 sm:pb-0">
+              <Tabs value={innerValue} onValueChange={handleTabChange}>
+                <TabsList className="flex-wrap">
+                  <TabsTrigger value="overall">
+                    Overall
+                  </TabsTrigger>
+                  {d.rounds.map((round) => {
+                    const roundMatch = matches.find((m) => m.matchNumber === round.roundNumber);
+                    const status = roundMatch?.status;
+                    return (
+                      <TabsTrigger key={round.roundNumber} value={round.roundNumber.toString()} className="gap-1.5">
+                        {status === 'IN_PROGRESS' && (
+                          <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        )}
+                        {status === 'COMPLETED' && (
+                          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                        )}
+                        {roundDisplayLabel(tournament.rounds, round.roundNumber)}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+
+                <TabsContent value="overall" className="px-0 sm:px-0 pb-0 sm:pb-0">
+                  <OverallStandings tournament={tournament} rounds={d.rounds} onUpdate={onUpdate} />
+                </TabsContent>
+
+                {d.rounds.map((round) => {
+                  const match = matches.find(
+                    (m) => m.matchNumber === round.roundNumber,
+                  );
+                  return (
+                    <TabsContent key={round.roundNumber} value={round.roundNumber.toString()} className="px-0 sm:px-0 pb-0 sm:pb-0">
+                      <RoundContent
+                        round={round}
+                        match={match}
+                        tournament={tournament}
+                        format={format}
+                        timeZone={timeZone}
+                        onUpdate={onUpdate}
+                      />
+                    </TabsContent>
+                  );
+                })}
+              </Tabs>
             </TabsContent>
           );
         })}
+
+        {isMod && (
+          <TabsContent value="mod" className="px-0 sm:px-0 pb-0 sm:pb-0">
+            <div className="space-y-4">
+              {/* 順位重複チェック — スコア修正とセットで使う */}
+              <PositionConflictSection
+                tournament={tournament}
+                matches={matches}
+              />
+              <ScoreEditGrid
+                tournament={tournament}
+                matches={matches}
+                onUpdate={onUpdate}
+              />
+            </div>
+          </TabsContent>
+        )}
 
         {isAdmin && (
           <TabsContent value="admin" className="px-0 sm:px-0 pb-0 sm:pb-0">
@@ -459,6 +415,8 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
         ratingChange: p.ratingChange,
         // Keep the existing status when the update omits it
         status: p.status ?? (idx >= 0 ? prev[idx].status : 'UNSUBMITTED'),
+        isCompensated: p.isCompensated ?? false,
+        isDisqualified: p.isDisqualified ?? false,
       };
       if (idx >= 0) {
         const next = [...prev];
@@ -500,7 +458,7 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
       )}
       <div>
         <h3 className="text-white font-medium flex items-center gap-2">
-          {t('roundLabel', { number: round.roundNumber })}
+          {roundDisplayLabel(tournament.rounds, round.roundNumber)}
           {match && (
             <Badge
               variant={
@@ -552,6 +510,16 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
       <CardContent className="pt-6 space-y-4">
         {header}
 
+        {/* Participant: score form first — 提出したい人が表の下まで
+            スクロールしなくて済むように順位表より上に置く */}
+        {isParticipant && match.status !== 'WAITING' && tournament.status !== 'COMPLETED' && (
+          <ParticipantSection
+            tournament={tournament}
+            match={match}
+            round={round}
+          />
+        )}
+
         {/* Results table — always show */}
         <MatchDetailsTable
           gameParticipants={localParticipants}
@@ -560,15 +528,6 @@ function RoundContent({ round, match, tournament, format, timeZone, onUpdate }: 
           isClassicMode={isClassicMode}
           hideStatus
         />
-
-        {/* Participant: passcode display + score form (below table) */}
-        {isParticipant && match.status !== 'WAITING' && tournament.status !== 'COMPLETED' && (
-          <ParticipantSection
-            tournament={tournament}
-            match={match}
-            round={round}
-          />
-        )}
       </CardContent>
     </Card>
   );
@@ -583,9 +542,7 @@ interface AdminContentProps {
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
   const [advanceLoading, setAdvanceLoading] = useState(false);
-  const [hideLoading, setHideLoading] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
-  const [splitThresholdReached, setSplitThresholdReached] = useState(false);
   const [discordRoleLoading, setDiscordRoleLoading] = useState(false);
   const [discordRoleResult, setDiscordRoleResult] = useState<{
     assigned: number;
@@ -595,13 +552,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
 
   const inProgressMatch = matches.find((m) => m.status === 'IN_PROGRESS');
   const inProgressGame = inProgressMatch?.games?.[0];
-
-  useGameSocket({
-    gameId: inProgressGame?.id ?? 0,
-    onSplitVoteThresholdReached: () => setSplitThresholdReached(true),
-    onPasscodeRegenerated: () => setSplitThresholdReached(false),
-    onPasscodeCountdownStarted: () => setSplitThresholdReached(false),
-  });
 
   const handleAssignDiscordRoles = async () => {
     setDiscordRoleLoading(true);
@@ -632,10 +582,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             result={discordRoleResult}
             onAssign={handleAssignDiscordRoles}
           />
-          <PositionConflictSection
-            tournament={tournament}
-            matches={matches}
-          />
         </CardContent>
       </Card>
     );
@@ -647,23 +593,9 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
 
   const isLastRound = inProgressMatch && !nextWaiting;
 
-  const isPasscodeHidden = inProgressGame?.passcodeRevealTime &&
-    new Date(inProgressGame.passcodeRevealTime).getTime() <= 0;
-
   const passcodeRevealed = inProgressGame?.passcodeRevealTime &&
-    !isPasscodeHidden &&
+    new Date(inProgressGame.passcodeRevealTime).getTime() > 0 &&
     new Date(inProgressGame.passcodeRevealTime) <= new Date();
-
-  const handleHidePasscode = async () => {
-    setHideLoading(true);
-    try {
-      await tournamentsApi.hidePasscode(tournament.id);
-      // WebSocket (passcodeHidden) triggers onUpdate
-    } catch {
-    } finally {
-      setHideLoading(false);
-    }
-  };
 
   const handleAdvance = async () => {
     const message = isLastRound ? t('admin.confirmFinish') : t('admin.confirmAdvance');
@@ -712,7 +644,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
         {inProgressRound && (
           <div>
             <h3 className="text-white font-medium flex items-center gap-2">
-              {t('roundLabel', { number: inProgressRound.roundNumber })}
+              {roundQualifiedLabel(tournament.rounds, inProgressRound.roundNumber)}
               <Badge variant="destructive">IN_PROGRESS</Badge>
             </h3>
             <p className="text-sm text-gray-400">
@@ -722,53 +654,27 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           </div>
         )}
 
-        {splitThresholdReached && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{t('splitVote.thresholdReached')}</AlertDescription>
-          </Alert>
-        )}
-
         {/* Countdown form — operator picks the GP, league and passcode explicitly */}
         <CountdownStartForm tournament={tournament} matches={matches} />
 
         {inProgressMatch && <div className="space-y-3">
-          {/* Hide Passcode — when passcode has been revealed */}
-          {passcodeRevealed && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleHidePasscode}
-              disabled={hideLoading}
-            >
-              {hideLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <EyeOff className="h-3 w-3 mr-1" />
-              )}
-              {t('countdown.hidePasscode')}
-            </Button>
-          )}
+          {/* Notify Split — 公開状態に関係なくいつでも押せる */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleNotifySplit}
+            disabled={splitLoading}
+          >
+            {splitLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <MessageSquareWarning className="h-3 w-3 mr-1" />
+            )}
+            {splitLoading ? t('countdown.notifyingSplit') : t('countdown.notifySplit')}
+          </Button>
 
-          {/* Notify Split — when passcode has been revealed */}
-          {passcodeRevealed && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleNotifySplit}
-              disabled={splitLoading}
-            >
-              {splitLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin mr-1" />
-              ) : (
-                <MessageSquareWarning className="h-3 w-3 mr-1" />
-              )}
-              {splitLoading ? t('countdown.notifyingSplit') : t('countdown.notifySplit')}
-            </Button>
-          )}
-
-          {/* Finish tournament — last round after passcode hidden */}
-          {isLastRound && isPasscodeHidden && (
+          {/* Finish tournament — 最終GPのパスコード公開後 */}
+          {isLastRound && passcodeRevealed && (
             <Button
               size="sm"
               variant="destructive"
@@ -784,10 +690,6 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             </Button>
           )}
 
-          <PasscodeSection
-            tournament={tournament}
-            game={inProgressGame}
-          />
         </div>}
 
         <DiscordRoleSection
@@ -796,13 +698,461 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           onAssign={handleAssignDiscordRoles}
         />
 
-        {/* Position Conflict Check per round */}
-        <PositionConflictSection
-          tournament={tournament}
-          matches={matches}
-        />
       </CardContent>
     </Card>
+  );
+}
+
+const GRID_MACHINES = ['Blue Falcon', 'Golden Fox', 'Wild Goose', 'Fire Stingray'];
+
+interface GridRowEdit {
+  machine: string;
+  races: string[];
+  compensated: boolean;
+  // C ON時のみ有効な補正ポイント(合計を直接上書きする)
+  compPoints: string;
+  disqualified: boolean;
+}
+
+// スプレッドシート風のスコア編集グリッド。ラウンドごとのタブ+行=参加者。
+// 各レースの順位とマシンを行単位で編集して保存する(通常のMod代理提出と同じAPI)。
+// 順位はゲームの足切りしきい値から脱落を自動判定、切断は "dc" と入力する
+function ScoreEditGrid({
+  tournament,
+  matches,
+  onUpdate,
+}: {
+  tournament: Tournament;
+  matches: Match[];
+  onUpdate: () => void;
+}) {
+  const t = useTranslations('tournament');
+  const editableRounds = useMemo(
+    () =>
+      tournament.rounds.filter((r) =>
+        matches.some((m) => m.matchNumber === r.roundNumber),
+      ),
+    [tournament.rounds, matches],
+  );
+  const defaultRound =
+    matches.find((m) => m.status === 'IN_PROGRESS')?.matchNumber?.toString() ??
+    editableRounds[0]?.roundNumber.toString() ??
+    '';
+  const [selectedRound, setSelectedRound] = useState(defaultRound);
+  const [edits, setEdits] = useState<
+    Record<string, { row: GridRowEdit; base: GridRowEdit }>
+  >({});
+  const [savingUserId, setSavingUserId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const round = editableRounds.find(
+    (r) => r.roundNumber.toString() === selectedRound,
+  );
+  const match = matches.find((m) => m.matchNumber === round?.roundNumber);
+  const game = match?.games?.[0];
+
+  const isGp = round ? getFormMode(round.inGameMode) === 'gp' : true;
+  const raceCount = isGp ? 5 : 3;
+  const raceMaxPositions = useMemo(
+    () => (isGp ? [99, 80, 60, 40, 20] : [20, 16, 12]),
+    [isGp],
+  );
+  const eliminationThresholds = useMemo<(number | null)[]>(
+    () => (isGp ? [81, 61, 41, 21, null] : [17, 13, 9]),
+    [isGp],
+  );
+
+  const players = useMemo(
+    () =>
+      (match?.participants || [])
+        .map((p) => ({
+          userId: p.userId,
+          displayName: p.user?.displayName || `Player ${p.userId}`,
+        }))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName)),
+    [match?.participants],
+  );
+
+  const participantOf = useCallback(
+    (userId: number) =>
+      (game?.participants as RoundGameParticipant[] | undefined)?.find(
+        (p) => p.userId === userId,
+      ),
+    [game?.participants],
+  );
+
+  // サーバー上の現在値から行の初期値を作る
+  const baseRow = useCallback(
+    (userId: number): GridRowEdit => {
+      const gp = participantOf(userId);
+      const races = Array.from({ length: raceCount }, (_, i) => {
+        const rr = gp?.raceResults?.find((r) => r.raceNumber === i + 1);
+        if (!rr) return '';
+        if (rr.isDisconnected) return 'dc';
+        const pos = rr.position;
+        if (pos == null) return rr.isEliminated ? 'o' : '';
+        // しきい値による自動脱落と一致しないクラッシュアウトは "o" 付きで表現
+        const threshold = eliminationThresholds[i];
+        const autoOut = threshold != null && pos >= threshold;
+        return rr.isEliminated && !autoOut ? `${pos}o` : pos.toString();
+      });
+      return {
+        machine: gp?.machine ?? '',
+        races,
+        compensated: gp?.isCompensated ?? false,
+        compPoints: gp?.isCompensated ? (gp?.totalScore?.toString() ?? '') : '',
+        disqualified: gp?.isDisqualified ?? false,
+      };
+    },
+    [participantOf, raceCount, eliminationThresholds],
+  );
+
+  const editKey = (userId: number) => `${round?.roundNumber}-${userId}`;
+  const rowOf = (userId: number): GridRowEdit =>
+    edits[editKey(userId)]?.row ?? baseRow(userId);
+  const isDirty = (userId: number) => {
+    const edit = edits[editKey(userId)];
+    return !!edit && JSON.stringify(edit.row) !== JSON.stringify(edit.base);
+  };
+
+  const setRow = (userId: number, row: GridRowEdit) => {
+    setEdits((prev) => ({
+      ...prev,
+      // 比較基準は「編集を始めた時点」の値で固定する。
+      // 最新のサーバー値と比較すると、編集中にWS更新で合計等が動いたとき
+      // 触っていない欄まで変更扱いになり誤って排他エラーになる
+      [editKey(userId)]: { row, base: prev[editKey(userId)]?.base ?? baseRow(userId) },
+    }));
+  };
+
+  const clearEdit = (userId: number) => {
+    setEdits((prev) => {
+      const next = { ...prev };
+      delete next[editKey(userId)];
+      return next;
+    });
+  };
+
+  // レース入力を検証してAPIペイロードへ変換する。不正があればエラー文字列を返す
+  const buildRaceResults = (row: GridRowEdit) => {
+    const raceResults: Array<{
+      raceNumber: number;
+      position?: number;
+      isEliminated: boolean;
+      isDisconnected: boolean;
+    }> = [];
+    let eliminated = false;
+    for (let i = 1; i <= raceCount; i++) {
+      const raw = row.races[i - 1]?.trim().toLowerCase() ?? '';
+      if (eliminated || raw === '') {
+        raceResults.push({
+          raceNumber: i,
+          position: undefined,
+          isEliminated: false,
+          isDisconnected: false,
+        });
+        continue;
+      }
+      if (raw === 'dc') {
+        raceResults.push({
+          raceNumber: i,
+          position: undefined,
+          isEliminated: false,
+          isDisconnected: true,
+        });
+        eliminated = true;
+        continue;
+      }
+      // 順位のみ or 順位+o(クラッシュアウト) or o単独(順位不明の脱落)
+      const m = /^(\d{1,2})?(o)?$/.exec(raw);
+      const max = raceMaxPositions[i - 1];
+      if (!m || (!m[1] && !m[2])) {
+        return `Race ${i}: 1-${max} / 50o / dc`;
+      }
+      const pos = m[1] ? parseInt(m[1], 10) : undefined;
+      if (pos !== undefined && (pos < 1 || pos > max)) {
+        return `Race ${i}: 1-${max} / 50o / dc`;
+      }
+      const threshold = eliminationThresholds[i - 1];
+      const isOut =
+        !!m[2] || (pos !== undefined && threshold != null && pos >= threshold);
+      raceResults.push({
+        raceNumber: i,
+        position: pos,
+        isEliminated: isOut,
+        isDisconnected: false,
+      });
+      if (isOut) eliminated = true;
+    }
+    return raceResults;
+  };
+
+  const saveRow = async (userId: number, displayName: string) => {
+    if (!tournament.season || !match || !round) return;
+    const entry = edits[editKey(userId)];
+    if (!entry) return;
+    const { row, base } = entry;
+    const season = tournament.season.seasonNumber;
+    const matchNumber = match.matchNumber!;
+
+    // 保存は行の最終チェック状態に対して優先順位 DQ > C > 通常 で1系統だけ実行する
+    const dqDirty = row.disqualified !== base.disqualified;
+    const compApply =
+      row.compensated &&
+      (row.compensated !== base.compensated ||
+        row.compPoints !== base.compPoints);
+    const compRemoved = !row.compensated && base.compensated;
+    const racesDirty =
+      row.machine !== base.machine ||
+      JSON.stringify(row.races) !== JSON.stringify(base.races);
+
+    // 1. DQ ON → 失格処理のみ(他の編集はスコアごと消えるため無視)
+    if (row.disqualified && dqDirty) {
+      if (!window.confirm(t('admin.confirmDq', { name: displayName }))) return;
+      setSavingUserId(userId);
+      setError(null);
+      try {
+        await gamesApi.disqualify('tournament', season, matchNumber, userId, true);
+        clearEdit(userId);
+        onUpdate();
+      } catch (err) {
+        setError((err as ApiErrorLike).response?.data?.message || 'Failed to disqualify player');
+      } finally {
+        setSavingUserId(null);
+      }
+      return;
+    }
+
+    // 2. C ON → 補正ポイントで上書き(直前にDQを外していれば先に解除)
+    if (compApply) {
+      const compScore = parseInt(row.compPoints, 10);
+      if (row.compPoints === '' || Number.isNaN(compScore) || compScore < 0) {
+        setError(t('admin.gridCompRequired'));
+        return;
+      }
+      setSavingUserId(userId);
+      setError(null);
+      try {
+        if (dqDirty && !row.disqualified) {
+          await gamesApi.disqualify('tournament', season, matchNumber, userId, false);
+        }
+        await gamesApi.overrideScore('tournament', season, matchNumber, userId, compScore, true);
+        clearEdit(userId);
+        onUpdate();
+      } catch (err) {
+        setError((err as ApiErrorLike).response?.data?.message || 'Failed to save score');
+      } finally {
+        setSavingUserId(null);
+      }
+      return;
+    }
+
+    // 3. 両方OFF → 通常状態へ復帰(C/DQ解除)+レース編集の提出を1回の保存で行う
+    let raceResults: ReturnType<typeof buildRaceResults> | null = null;
+    if (racesDirty) {
+      raceResults = buildRaceResults(row);
+      if (typeof raceResults === 'string') {
+        setError(raceResults);
+        return;
+      }
+    }
+
+    setSavingUserId(userId);
+    setError(null);
+    try {
+      if (dqDirty && !row.disqualified) {
+        await gamesApi.disqualify('tournament', season, matchNumber, userId, false);
+      }
+      if (compRemoved) {
+        await gamesApi.setCompensated('tournament', season, matchNumber, userId, false);
+      }
+      if (Array.isArray(raceResults)) {
+        await gamesApi.submitScore('tournament', season, matchNumber, {
+          machine: row.machine || undefined,
+          assistEnabled: false,
+          raceResults,
+          targetUserId: userId,
+        });
+      }
+      clearEdit(userId);
+      onUpdate();
+    } catch (err) {
+      setError((err as ApiErrorLike).response?.data?.message || 'Failed to save score');
+    } finally {
+      setSavingUserId(null);
+    }
+  };
+
+  if (editableRounds.length === 0) return null;
+
+  const locked = match?.status === 'WAITING';
+
+  return (
+    <div className="p-4 bg-orange-950/10 border border-orange-900/50 rounded-lg space-y-4">
+      <div>
+        <h3 className="text-orange-400 font-medium text-sm">{t('admin.scoreGrid')}</h3>
+        <p className="text-xs text-gray-500 mt-1">{t('admin.scoreGridHelp')}</p>
+      </div>
+
+      <Tabs value={selectedRound} onValueChange={(v) => { setSelectedRound(v); setError(null); }}>
+        <TabsList className="flex-wrap">
+          {editableRounds.map((r) => (
+            <TabsTrigger key={r.roundNumber} value={r.roundNumber.toString()}>
+              {roundQualifiedLabel(tournament.rounds, r.roundNumber)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {locked && (
+        <p className="text-xs text-gray-500">{t('admin.scoreGridWaiting')}</p>
+      )}
+
+      {match && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-700 text-gray-400">
+                <th className="text-left py-1.5 px-2 font-medium">{t('standings.player')}</th>
+                <th className="text-left py-1.5 px-2 font-medium">{t('admin.gridMachine')}</th>
+                {Array.from({ length: raceCount }, (_, i) => (
+                  <th key={i} className="text-center py-1.5 px-1 font-medium whitespace-nowrap">
+                    {t('admin.gridRace', { number: i + 1 })}
+                  </th>
+                ))}
+                <th className="text-center py-1.5 px-1 font-medium">Pts</th>
+                <th className="text-center py-1.5 px-1 font-medium">C</th>
+                <th className="text-center py-1.5 px-1 font-medium">DQ</th>
+                <th className="py-1.5 px-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {players.map((p) => {
+                const row = rowOf(p.userId);
+                const dirty = isDirty(p.userId);
+                const saving = savingUserId === p.userId;
+                const gp = participantOf(p.userId);
+                // 3操作(レース編集/C補正/DQ)は排他: 進行中の操作以外は無効化する
+                const entry = edits[editKey(p.userId)];
+                const racesChanged =
+                  !!entry &&
+                  (entry.row.machine !== entry.base.machine ||
+                    JSON.stringify(entry.row.races) !== JSON.stringify(entry.base.races));
+                const raceEditDisabled =
+                  locked || saving || row.compensated || row.disqualified;
+                return (
+                  <tr key={p.userId} className="border-b border-gray-700/50">
+                    <td className="py-1 px-2 text-white whitespace-nowrap">{p.displayName}</td>
+                    <td className="py-1 px-2">
+                      <select
+                        value={row.machine}
+                        disabled={raceEditDisabled}
+                        onChange={(e) => setRow(p.userId, { ...row, machine: e.target.value })}
+                        className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="">-</option>
+                        {GRID_MACHINES.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </td>
+                    {Array.from({ length: raceCount }, (_, i) => (
+                      <td key={i} className="p-0.5 text-center">
+                        <Input
+                          value={row.races[i] ?? ''}
+                          disabled={raceEditDisabled}
+                          onChange={(e) => {
+                            const races = [...row.races];
+                            races[i] = e.target.value.replace(/[^0-9dcoDCO]/g, '').toLowerCase().slice(0, 3);
+                            setRow(p.userId, { ...row, races });
+                          }}
+                          inputMode="numeric"
+                          className="w-12 h-7 text-center font-mono mx-auto px-1"
+                        />
+                      </td>
+                    ))}
+                    <td className="py-1 px-2 text-center font-mono text-gray-100">
+                      {gp?.totalScore ?? '-'}
+                    </td>
+                    <td className="p-0.5 text-center">
+                      <span className="inline-flex items-center gap-1.5">
+                        <label className="flex items-center gap-1 text-xs font-medium text-orange-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={row.compensated}
+                            disabled={locked || saving || row.disqualified || racesChanged}
+                            onChange={(e) =>
+                              setRow(p.userId, {
+                                ...row,
+                                compensated: e.target.checked,
+                                // C ONにしたら現在の合計を初期値に、OFFなら空へ
+                                compPoints: e.target.checked
+                                  ? (row.compPoints || (gp?.totalScore?.toString() ?? ''))
+                                  : '',
+                              })
+                            }
+                            className="accent-orange-500"
+                          />
+                          C
+                        </label>
+                        <Input
+                          value={row.compPoints}
+                          disabled={locked || saving || !row.compensated}
+                          onChange={(e) =>
+                            setRow(p.userId, {
+                              ...row,
+                              compPoints: e.target.value.replace(/\D/g, '').slice(0, 4),
+                            })
+                          }
+                          inputMode="numeric"
+                          placeholder="-"
+                          className="w-14 h-7 text-center font-mono px-1"
+                        />
+                      </span>
+                    </td>
+                    <td className="py-1 px-2 text-center">
+                      <label className="inline-flex items-center gap-1 text-xs font-medium text-red-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={row.disqualified}
+                          disabled={locked || saving || row.compensated || racesChanged}
+                          onChange={(e) =>
+                            setRow(p.userId, { ...row, disqualified: e.target.checked })
+                          }
+                          className="accent-red-500"
+                        />
+                        DQ
+                      </label>
+                    </td>
+                    <td className="py-1 px-2">
+                      <Button
+                        size="sm"
+                        variant={dirty ? 'default' : 'ghost'}
+                        onClick={() => saveRow(p.userId, p.displayName)}
+                        disabled={locked || !dirty || saving}
+                        className="h-7 px-2"
+                      >
+                        {saving ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          t('admin.gridSave')
+                        )}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -862,7 +1212,7 @@ function CountdownStartForm({ tournament, matches }: CountdownStartFormProps) {
   const handleStart = async () => {
     const num = parseInt(roundNumber, 10);
     if (!num || !passcodeValid) return;
-    if (!window.confirm(t('countdown.confirmStart', { round: num, passcode }))) return;
+    if (!window.confirm(t('countdown.confirmStart', { round: roundQualifiedLabel(tournament.rounds, num), passcode }))) return;
     setLoading(true);
     setError(null);
     try {
@@ -896,7 +1246,7 @@ function CountdownStartForm({ tournament, matches }: CountdownStartFormProps) {
             <SelectContent>
               {startableRounds.map(({ round: r, match: m }) => (
                 <SelectItem key={r.roundNumber} value={r.roundNumber.toString()}>
-                  GP{r.roundNumber}
+                  {roundQualifiedLabel(tournament.rounds, r.roundNumber)}
                   {m.status === 'COMPLETED' ? ` — ${t('countdown.completedSuffix')}` : ''}
                 </SelectItem>
               ))}
@@ -940,7 +1290,11 @@ function CountdownStartForm({ tournament, matches }: CountdownStartFormProps) {
         ) : (
           <Play className="h-3 w-3 mr-1" />
         )}
-        {t('countdown.startGP', { round: parseInt(roundNumber, 10) || 1 })}
+        {t('countdown.startGP', {
+          round: roundNumber
+            ? roundQualifiedLabel(tournament.rounds, parseInt(roundNumber, 10))
+            : '',
+        })}
       </Button>
       <p className="text-xs text-gray-500">{t('countdown.startHelp')}</p>
       {error && (
@@ -958,7 +1312,6 @@ interface PositionConflictSectionProps {
 }
 
 function PositionConflictSection({ tournament, matches }: PositionConflictSectionProps) {
-  const t = useTranslations('tournament');
   const tConflict = useTranslations('positionConflict');
 
   const roundsWithConflicts = useMemo(() => {
@@ -1002,7 +1355,7 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
           className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
         >
           <span className="text-gray-400 text-sm">
-            {t('roundLabel', { number: match.matchNumber ?? 0 })}
+            {roundQualifiedLabel(tournament.rounds, match.matchNumber ?? 0)}
           </span>
 
           {!allSubmitted ? (
@@ -1047,69 +1400,6 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
           )}
         </div>
       ))}
-    </div>
-  );
-}
-
-interface PasscodeSectionProps {
-  tournament: Tournament;
-  game: Game | undefined;
-}
-
-function PasscodeSection({ tournament, game }: PasscodeSectionProps) {
-  const t = useTranslations('tournament');
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const isPasscodeHidden = !!game?.passcodeRevealTime &&
-    new Date(game.passcodeRevealTime).getTime() <= 0;
-
-  const isCountingDown = !!game?.passcodeRevealTime &&
-    !isPasscodeHidden &&
-    new Date(game.passcodeRevealTime) > new Date();
-
-  const handleGenerate = async () => {
-    setGenerating(true);
-    setError(null);
-    try {
-      await tournamentsApi.regeneratePasscode(tournament.id);
-      // WebSocket event triggers parent refetch, no need to update local state
-    } catch (err) {
-      setError((err as ApiErrorLike).response?.data?.message || 'Failed to regenerate passcode');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      {game?.passcode && !isPasscodeHidden && (
-        <div className="flex items-center gap-2">
-          <KeyRound className="h-4 w-4 text-yellow-400" />
-          <span className="text-sm text-gray-300">{t('round.passcode')}:</span>
-          <span className="font-mono text-lg text-yellow-400 font-bold">{game.passcode}</span>
-        </div>
-      )}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleGenerate}
-        disabled={generating || isPasscodeHidden || isCountingDown}
-      >
-        {generating ? (
-          <>
-            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-            {t('round.generatingPasscode')}
-          </>
-        ) : (
-          t('round.generatePasscode')
-        )}
-      </Button>
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
     </div>
   );
 }
@@ -1177,32 +1467,60 @@ interface ParticipantSectionProps {
 }
 
 function ParticipantSection({ tournament, match, round }: ParticipantSectionProps) {
+  const t = useTranslations('tournament');
+  const { user } = useAuthStore();
+
+  // 提出済みならフォームは畳んでおき、「スコアを修正」で再度開く
+  const hasSubmitted = !!match.games?.[0]?.participants?.some(
+    (p) => p.userId === user?.id && p.status !== 'UNSUBMITTED',
+  );
+  const [formOpen, setFormOpen] = useState(!hasSubmitted);
+
+  if (!tournament.season) return null;
+
+  if (!formOpen) {
+    return (
+      <div className="flex items-center justify-between rounded-lg border border-gray-700 p-3">
+        <span className="flex items-center gap-2 text-sm text-gray-300">
+          <CheckCircle2 className="w-4 h-4 text-green-500" />
+          {t('round.scoreSubmitted')}
+        </span>
+        <Button size="sm" variant="outline" onClick={() => setFormOpen(true)}>
+          {t('round.editScore')}
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {/* Score submission form — always shown during IN_PROGRESS (re-submission allowed) */}
-      {tournament.season && (
-        <ScoreSubmissionForm
-          mode={getFormMode(round.inGameMode)}
-          apiCategory="tournament"
-          season={tournament.season.seasonNumber}
-          game={match.matchNumber!}
-          deadline={match.deadline}
-          hideDescription
-        />
-      )}
+      <ScoreSubmissionForm
+        mode={getFormMode(round.inGameMode)}
+        apiCategory="tournament"
+        season={tournament.season.seasonNumber}
+        game={match.matchNumber!}
+        deadline={match.deadline}
+        hideDescription
+        onScoreSubmitted={() => setFormOpen(false)}
+      />
     </div>
   );
 }
 
-function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; onUpdate: () => void }) {
+function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tournament; rounds: TournamentRoundConfig[]; onUpdate: () => void }) {
   const t = useTranslations('tournament');
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MODERATOR';
-  const matches = useMemo(
-    () => tournament.season?.matches || [],
-    [tournament.season?.matches],
+  // 対象division(表示中タブ)のラウンドに属するマッチだけ集計する
+  const roundNumbers = useMemo(
+    () => new Set(rounds.map((r) => r.roundNumber)),
+    [rounds],
   );
-  const rounds = tournament.rounds;
+  const matches = useMemo(
+    () =>
+      (tournament.season?.matches || []).filter(
+        (m) => m.matchNumber != null && roundNumbers.has(m.matchNumber),
+      ),
+    [tournament.season?.matches, roundNumbers],
+  );
 
   // WebSocket: live score updates + status changes for all games
   const allGameIds = useMemo(() =>
@@ -1389,7 +1707,7 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
                 <th className="text-left py-2 px-2 font-medium">{t('standings.player')}</th>
                 {rounds.map((r) => (
                   <th key={r.roundNumber} className="text-center py-2 px-1 font-medium whitespace-nowrap">
-                    GP{r.roundNumber}
+                    {roundDisplayLabel(tournament.rounds, r.roundNumber)}
                   </th>
                 ))}
                 <th className="text-center py-2 px-1 font-medium whitespace-nowrap">{t('standings.finished')}</th>
@@ -1446,10 +1764,10 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
                               <span className={survived ? 'text-white font-medium' : 'text-gray-400'}>
                                 {score}
                               </span>
-                              {compensated ? (
-                                <span className="text-xs font-medium text-orange-400">C</span>
-                              ) : disqualified ? (
+                              {disqualified ? (
                                 <span className="text-xs font-medium text-red-400">DQ</span>
+                              ) : compensated ? (
+                                <span className="text-xs font-medium text-orange-400">C</span>
                               ) : machineStyle && (
                                 <span className={`text-xs font-medium ${machineStyle.className}`}>
                                   {machineStyle.abbr}
@@ -1487,218 +1805,8 @@ function OverallStandings({ tournament, onUpdate }: { tournament: Tournament; on
       </CardContent>
     </Card>
 
-    {isAdmin && tournament.season && (
-      <AdminScoreOverride tournament={tournament} matches={matches} onUpdate={onUpdate} />
-    )}
     </div>
   );
 }
 
 
-function AdminScoreOverride({
-  tournament,
-  matches,
-  onUpdate,
-}: {
-  tournament: Tournament;
-  matches: Match[];
-  onUpdate: () => void;
-}) {
-  const t = useTranslations('tournament');
-  const [selectedRound, setSelectedRound] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [totalScore, setTotalScore] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  // DQ state
-  const [dqUserId, setDqUserId] = useState('');
-  const [dqSubmitting, setDqSubmitting] = useState(false);
-  const [dqError, setDqError] = useState<string | null>(null);
-  const [dqSuccess, setDqSuccess] = useState(false);
-
-  const selectedMatch = matches.find((m) => m.matchNumber?.toString() === selectedRound);
-  const selectedRoundConfig = tournament.rounds.find((r) => r.roundNumber.toString() === selectedRound);
-  const participants = selectedMatch?.participants ?? [];
-  const formParticipants = participants.map((p) => ({
-    user: { id: p.userId, displayName: p.user?.displayName ?? null },
-  }));
-
-  const handleOverrideSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tournament.season || !selectedMatch || !selectedUserId || totalScore === '') return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await gamesApi.overrideScore(
-        'tournament',
-        tournament.season.seasonNumber,
-        selectedMatch.matchNumber!,
-        parseInt(selectedUserId, 10),
-        parseInt(totalScore, 10),
-      );
-      setSuccess(true);
-      setTotalScore('');
-      setSelectedUserId('');
-      onUpdate();
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (err) {
-      setError((err as ApiErrorLike).response?.data?.message || 'Failed to override score');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDisqualifySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tournament.season || !selectedMatch || !dqUserId) return;
-    setDqSubmitting(true);
-    setDqError(null);
-    try {
-      await gamesApi.disqualify(
-        'tournament',
-        tournament.season.seasonNumber,
-        selectedMatch.matchNumber!,
-        parseInt(dqUserId, 10),
-      );
-      setDqSuccess(true);
-      setDqUserId('');
-      onUpdate();
-      setTimeout(() => setDqSuccess(false), 3000);
-    } catch (err) {
-      setDqError((err as ApiErrorLike).response?.data?.message || 'Failed to disqualify player');
-    } finally {
-      setDqSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="p-4 bg-orange-950/10 border border-orange-900/50 rounded-lg space-y-4">
-      <h3 className="text-orange-400 font-medium text-sm">{t('admin.scoreEdit')}</h3>
-
-      {/* Round selector */}
-      <div>
-        <label className="text-gray-300 text-sm mb-1 block">{t('admin.selectRound')}</label>
-        <select
-          value={selectedRound}
-          onChange={(e) => { setSelectedRound(e.target.value); setSelectedUserId(''); }}
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">{t('admin.noRoundSelected')}</option>
-          {tournament.rounds.map((round) => {
-            const match = matches.find((m) => m.matchNumber === round.roundNumber);
-            return (
-              <option key={round.roundNumber} value={round.roundNumber.toString()} disabled={!match}>
-                {t('admin.roundOption', { number: round.roundNumber })}
-                {!match ? ` (${t('admin.noMatchYet')})` : ''}
-              </option>
-            );
-          })}
-        </select>
-      </div>
-
-      {selectedMatch && selectedRoundConfig && tournament.season && (
-        <div className="space-y-6">
-          {/* Race-by-race score edit */}
-          <div className="p-3 bg-gray-800/50 rounded-lg">
-            <p className="text-gray-400 text-xs mb-3">{t('admin.scoreEditByRace')}</p>
-            <ScoreSubmissionForm
-              mode={getFormMode(selectedRoundConfig.inGameMode)}
-              apiCategory="tournament"
-              season={tournament.season.seasonNumber}
-              game={selectedMatch.matchNumber!}
-              deadline={selectedMatch.deadline}
-              participants={formParticipants}
-              onScoreSubmitted={onUpdate}
-              hideDescription
-            />
-          </div>
-
-          {/* Direct total score override */}
-          <div className="p-3 bg-gray-800/50 rounded-lg">
-            <p className="text-gray-400 text-xs mb-3">{t('admin.scoreEditDirect')}</p>
-            <form onSubmit={handleOverrideSubmit} className="space-y-3">
-              <div>
-                <label className="text-gray-300 text-sm mb-1 block">{t('admin.selectPlayer')}</label>
-                <select
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">{t('admin.selectPlayer')}</option>
-                  {[...participants].sort((a, b) =>
-                    (a.user?.displayName || `User#${a.userId}`).localeCompare(
-                      b.user?.displayName || `User#${b.userId}`,
-                      'ja',
-                    )
-                  ).map((p) => (
-                    <option key={p.userId} value={p.userId.toString()}>
-                      {p.user?.displayName || `User#${p.userId}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-gray-300 text-sm mb-1 block">{t('admin.totalScore')}</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={totalScore}
-                  onChange={(e) => setTotalScore(e.target.value)}
-                  placeholder="0"
-                  className="w-32 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              {error && <p className="text-sm text-red-400">{error}</p>}
-              {success && <p className="text-sm text-green-400">{t('admin.scoreOverrideSuccess')}</p>}
-              <button
-                type="submit"
-                disabled={submitting || !selectedUserId || totalScore === ''}
-                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg"
-              >
-                {submitting ? '...' : t('admin.applyScore')}
-              </button>
-            </form>
-          </div>
-
-          {/* Disqualify player */}
-          <div className="p-3 bg-gray-800/50 rounded-lg">
-            <p className="text-gray-400 text-xs mb-3">{t('admin.disqualifySection')}</p>
-            <form onSubmit={handleDisqualifySubmit} className="space-y-3">
-              <div>
-                <label className="text-gray-300 text-sm mb-1 block">{t('admin.selectPlayer')}</label>
-                <select
-                  value={dqUserId}
-                  onChange={(e) => setDqUserId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">{t('admin.selectPlayer')}</option>
-                  {[...participants].sort((a, b) =>
-                    (a.user?.displayName || `User#${a.userId}`).localeCompare(
-                      b.user?.displayName || `User#${b.userId}`,
-                      'ja',
-                    )
-                  ).map((p) => (
-                    <option key={p.userId} value={p.userId.toString()}>
-                      {p.user?.displayName || `User#${p.userId}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {dqError && <p className="text-sm text-red-400">{dqError}</p>}
-              {dqSuccess && <p className="text-sm text-green-400">{t('admin.disqualifySuccess')}</p>}
-              <button
-                type="submit"
-                disabled={dqSubmitting || !dqUserId}
-                className="px-4 py-2 bg-red-700 hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg"
-              >
-                {dqSubmitting ? '...' : t('admin.disqualify')}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}

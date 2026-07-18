@@ -84,10 +84,12 @@ export interface Game {
   gameNumber: number;
   inGameMode: InGameMode;
   leagueType?: League | null;
-  passcode: string;
+  // ADMIN/MODERATORへのレスポンスにのみ含まれる(一般には返さない)
+  passcode?: string;
   passcodePublishedAt?: string | null;
   passcodeVersion?: number;
   passcodeRevealTime?: string | null;
+  splitNotified?: boolean;
   startedAt?: string | null;
   tracks?: number[] | null; // CLASSIC用: 各レースのコースID [R1, R2, R3]
   // Relations
@@ -132,6 +134,7 @@ export interface RaceResult {
   position?: number | null;
   points?: number | null;
   isEliminated: boolean;  // クラッシュアウト/ランクアウトで脱落
+  isDisconnected?: boolean;  // 切断(DC)
 }
 
 // Event & Season Types
@@ -252,6 +255,7 @@ export interface Tournament {
   venue?: string | null;
   venueUrl?: string | null;
   season?: Season & { matches?: Match[] };
+  discordPasscodeChannelUrl?: string | null;
 }
 
 export interface TournamentStream {

@@ -1839,7 +1839,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .setTitle(`${params.tournamentName} — ${params.roundLabel}`)
         .setColor(0xe74c3c)
         .setDescription(
-          'A lobby split has occurred. Please exit the lobby.\nThe passcode will be regenerated within 2 minutes.\n\n部屋が分かれました。ロビーから退出してください。\n2分以内にパスコードを再生成します。',
+          'A lobby split has occurred. Please exit the lobby.\n\n部屋が分かれました。ロビーから退出してください。',
         );
 
       const message = await (channel as TextChannel).send({

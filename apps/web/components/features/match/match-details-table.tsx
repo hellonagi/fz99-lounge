@@ -251,8 +251,9 @@ export function MatchDetailsTable({
   // Helper to get race position display
   const getRaceDisplay = (participant: MergedParticipant, raceNum: number) => {
     if (!participant.hasSubmitted) return '-';
-    if (participant.isCompensated) return <span className="text-orange-400 font-medium">C</span>;
+    // 表示優先は DQ > C (両フラグが立った場合もDQ扱いで安定させる)
     if (participant.isDisqualified) return <span className="text-red-400 font-medium">DQ</span>;
+    if (participant.isCompensated) return <span className="text-orange-400 font-medium">C</span>;
     const result = participant.raceResults?.find(r => r.raceNumber === raceNum);
     if (!result) return '-';
     // Disconnected: show "D" in blue

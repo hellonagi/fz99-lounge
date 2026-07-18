@@ -210,10 +210,16 @@ export const gamesApi = {
       isEliminated: boolean;
     }>;
   }) => api.patch(`/games/${category}/${season}/${match}/score/${userId}`, data),
-  overrideScore: (category: string, season: number, match: number, userId: number, totalScore: number) =>
-    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/override-score`, { totalScore }),
-  disqualify: (category: string, season: number, match: number, userId: number) =>
-    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/disqualify`),
+  overrideScore: (category: string, season: number, match: number, userId: number, totalScore: number, compensated?: boolean) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/override-score`, {
+      totalScore,
+      ...(compensated !== undefined && { compensated }),
+    }),
+  setCompensated: (category: string, season: number, match: number, userId: number, compensated: boolean) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/compensated`, { compensated }),
+  disqualify: (category: string, season: number, match: number, userId: number, disqualified?: boolean) =>
+    api.patch(`/games/${category}/${season}/${match}/participants/${userId}/disqualify`,
+      disqualified !== undefined ? { disqualified } : undefined),
   endMatch: (category: string, season: number, match: number) =>
     api.post(`/games/${category}/${season}/${match}/end`),
   updateTracks: (category: string, season: number, match: number, tracks: (number | null)[]) =>
@@ -332,7 +338,6 @@ export const tournamentsApi = {
   advanceRound: (id: number) => api.post(`/tournaments/${id}/advance-round`),
   startCountdown: (id: number, data?: { matchNumber?: number; league?: string; passcode?: string }) =>
     api.post(`/tournaments/${id}/start-countdown`, data ?? {}),
-  hidePasscode: (id: number) => api.post(`/tournaments/${id}/hide-passcode`),
   assignDiscordRoles: (id: number) => api.post(`/tournaments/${id}/assign-discord-roles`),
   notifySplit: (id: number) => api.post(`/tournaments/${id}/notify-split`),
   regeneratePasscode: (id: number) => api.post(`/tournaments/${id}/regenerate-passcode`),

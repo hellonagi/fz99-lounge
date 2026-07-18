@@ -19,7 +19,7 @@ import { getCountryByCode } from '@/lib/countries';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import { SiDiscord } from 'react-icons/si';
-import { Tournament, LocalizedContent, TournamentDivision, TournamentMode, TournamentScheduleEvent, TournamentRoundConfig, TournamentRegistration, User } from '@/types';
+import { Tournament, LocalizedContent, TournamentDivision, TournamentMode, TournamentScheduleEvent, TournamentRoundConfig, TournamentRegistration, User, GP_MAX, GP_OFFLINE_MAX, GP_ONLINE_MAX, CLASSIC_MAX, CLASSIC_FIRST_COME, assignGpSlots } from '@/types';
 
 type TournamentParticipant = TournamentRegistration & {
   user?: User;
@@ -122,8 +122,6 @@ const registrationSchema = z
     path: ['classicMode'],
   });
 
-const GP_MAX = 99;
-const CLASSIC_MAX = 20;
 
 type RegistrationForm = z.infer<typeof registrationSchema>;
 
@@ -661,30 +659,6 @@ function ParticipantTile({ p, statusLabel, muted }: { p: TournamentParticipant; 
   );
 }
 
-const GP_OFFLINE_MAX = 32;
-const GP_ONLINE_MAX = 67;
-const CLASSIC_FIRST_COME = 20;
-
-type GpSlot = 'OFFLINE_CONFIRMED' | 'ONLINE_CONFIRMED' | 'ONLINE_OVERFLOW' | 'WAITLIST';
-
-function assignGpSlots(entries: TournamentParticipant[]): Array<{ entry: TournamentParticipant; slot: GpSlot }> {
-  let offline = 0;
-  let online = 0;
-  return entries.map((entry) => {
-    if (entry.mode === 'OFFLINE' && offline < GP_OFFLINE_MAX) {
-      offline += 1;
-      return { entry, slot: 'OFFLINE_CONFIRMED' as GpSlot };
-    }
-    if (online < GP_ONLINE_MAX) {
-      online += 1;
-      return {
-        entry,
-        slot: (entry.mode === 'OFFLINE' ? 'ONLINE_OVERFLOW' : 'ONLINE_CONFIRMED') as GpSlot,
-      };
-    }
-    return { entry, slot: 'WAITLIST' as GpSlot };
-  });
-}
 
 function GpSection({ entries, t }: { entries: TournamentParticipant[]; t: ReturnType<typeof useTranslations> }) {
   const assigned = useMemo(() => assignGpSlots(entries), [entries]);

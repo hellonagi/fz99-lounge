@@ -270,4 +270,32 @@ describe('Tournament passcode countdown (e2e)', () => {
     const match1 = await prisma.match.findUnique({ where: { id: match1Id } });
     expect(match1!.status).toBe('COMPLETED');
   });
+
+  it('hides passcodes from non-moderator API responses', async () => {
+    // 公開経路はDiscordのみ: 一般向けの大会詳細にはpasscodeを含めない
+    const publicRes = await request(app.getHttpServer())
+      .get(`/api/tournaments/${tournamentId}`)
+      .expect(200);
+    const publicGames = publicRes.body.season.matches.flatMap(
+      (m: { games: Array<Record<string, unknown>> }) => m.games,
+    );
+    expect(publicGames.length).toBeGreaterThan(0);
+    for (const game of publicGames) {
+      expect(game).not.toHaveProperty('passcode');
+    }
+
+    // ADMIN/MODERATORには運営フォームのプリフィル用に含める
+    const adminRes = await request(app.getHttpServer())
+      .get(`/api/tournaments/${tournamentId}`)
+      .set('Cookie', `jwt=${adminToken}`)
+      .expect(200);
+    const adminGames = adminRes.body.season.matches.flatMap(
+      (m: { games: Array<Record<string, unknown>> }) => m.games,
+    );
+    expect(
+      adminGames.some(
+        (g: Record<string, unknown>) => typeof g.passcode === 'string',
+      ),
+    ).toBe(true);
+  });
 });

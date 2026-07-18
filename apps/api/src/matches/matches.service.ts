@@ -193,6 +193,10 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
         scheduledStart: {
           lte: new Date(),
         },
+        // 大会マッチは運営の発火でのみ開始する(時刻による自動開始をしない)
+        season: {
+          event: { category: { not: EventCategory.TOURNAMENT } },
+        },
       },
       select: { id: true, scheduledStart: true },
     });

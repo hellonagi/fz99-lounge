@@ -25,6 +25,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { SubmitScoreDto } from './dto/submit-score.dto';
 import { UpdateScoreDto } from './dto/update-score.dto';
 import { OverrideScoreDto } from './dto/override-score.dto';
+import { SetCompensatedDto } from './dto/set-compensated.dto';
+import { SetDisqualifiedDto } from './dto/set-disqualified.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Controller('games')
@@ -157,6 +159,7 @@ export class GamesController {
     @Param('season') season: string,
     @Param('match') match: string,
     @Param('userId') targetUserId: string,
+    @Body() dto: SetDisqualifiedDto,
   ) {
     const eventCategory = category
       .toUpperCase()
@@ -167,6 +170,8 @@ export class GamesController {
       seasonNumber,
       parseInt(match, 10),
       parseInt(targetUserId, 10),
+      1,
+      dto.disqualified ?? true,
     );
   }
 
@@ -190,6 +195,31 @@ export class GamesController {
       parseInt(match, 10),
       parseInt(targetUserId, 10),
       dto.totalScore,
+      1,
+      dto.compensated ?? true,
+    );
+  }
+
+  @Patch(':category/:season/:match/participants/:userId/compensated')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.MODERATOR)
+  async setCompensated(
+    @Param('category') category: string,
+    @Param('season') season: string,
+    @Param('match') match: string,
+    @Param('userId') targetUserId: string,
+    @Body() dto: SetCompensatedDto,
+  ) {
+    const eventCategory = category
+      .toUpperCase()
+      .replace(/-/g, '_') as EventCategory;
+    const seasonNumber = season === 'unrated' ? -1 : parseInt(season, 10);
+    return this.gamesService.setCompensated(
+      eventCategory,
+      seasonNumber,
+      parseInt(match, 10),
+      parseInt(targetUserId, 10),
+      dto.compensated,
     );
   }
 
