@@ -229,7 +229,7 @@ export class TournamentsService {
       // parentの登録者をそのままコピーし、再登録不要にする
       const parentRegistrations = await tx.tournamentRegistration.findMany({
         where: { tournamentConfigId: parentId },
-        select: { userId: true, division: true, mode: true },
+        select: { userId: true, division: true, mode: true, registeredAt: true },
       });
       if (parentRegistrations.length > 0) {
         await tx.tournamentRegistration.createMany({
@@ -239,6 +239,8 @@ export class TournamentsService {
             division: r.division,
             mode: r.mode,
             prizeEntry: false,
+            // 親大会の登録日時を引き継ぎ、Classicの先着順スライスを親と一致させる
+            registeredAt: r.registeredAt,
           })),
           skipDuplicates: true,
         });
@@ -849,7 +851,10 @@ export class TournamentsService {
     }
   }
 
-  async advanceRound(tournamentConfigId: number) {
+  // 現在のIN_PROGRESSラウンドを終了し、大会をRESULTS_PENDINGへ進める。
+  // ラウンド間の進行はstartCountdown(運営がラウンド指定)が担うため、
+  // これは最終ラウンドを閉じて大会を締める専用の操作
+  async finishTournament(tournamentConfigId: number) {
     const config = await this.prisma.tournamentConfig.findUnique({
       where: { id: tournamentConfigId },
       include: { season: true },
@@ -857,6 +862,11 @@ export class TournamentsService {
 
     if (!config) {
       throw new NotFoundException('Tournament not found');
+    }
+
+    // 練習大会にラウンド進行/大会終了の概念はない
+    if (config.practiceForTournamentId) {
+      throw new BadRequestException('Practice tournaments cannot be finished');
     }
 
     // RESULTS_PENDING中に再オープンしたGPを閉じ直すケースも許可する(ソフトロック回避)
@@ -888,34 +898,14 @@ export class TournamentsService {
         data: { status: MatchStatus.COMPLETED },
       });
 
-      // Find the next WAITING match
-      const nextMatch = await tx.match.findFirst({
-        where: {
-          seasonId: config.seasonId,
-          status: MatchStatus.WAITING,
-        },
-        include: { games: { select: { id: true }, take: 1 } },
-        orderBy: { matchNumber: 'asc' },
+      await tx.tournamentConfig.update({
+        where: { id: tournamentConfigId },
+        data: { status: TournamentStatus.RESULTS_PENDING },
       });
-
-      if (nextMatch) {
-        // Advance next match to IN_PROGRESS
-        await tx.match.update({
-          where: { id: nextMatch.id },
-          data: { status: MatchStatus.IN_PROGRESS },
-        });
-      } else {
-        // No more rounds — transition tournament to RESULTS_PENDING
-        await tx.tournamentConfig.update({
-          where: { id: tournamentConfigId },
-          data: { status: TournamentStatus.RESULTS_PENDING },
-        });
-      }
 
       return {
         tournament: await this.findOne(tournamentConfigId, tx),
         completedGameId: currentMatch.games[0]?.id,
-        startedGameId: nextMatch?.games[0]?.id,
       };
     });
 
@@ -924,12 +914,6 @@ export class TournamentsService {
       this.eventEmitter.emit('game.statusChanged', {
         gameId: result.completedGameId,
         status: MatchStatus.COMPLETED,
-      });
-    }
-    if (result.startedGameId) {
-      this.eventEmitter.emit('game.statusChanged', {
-        gameId: result.startedGameId,
-        status: MatchStatus.IN_PROGRESS,
       });
     }
 
@@ -1126,7 +1110,12 @@ export class TournamentsService {
           status: MatchStatus.IN_PROGRESS,
           id: { not: targetMatch.id },
         },
-        include: { games: { take: 1 } },
+        include: {
+          games: {
+            take: 1,
+            include: { _count: { select: { participants: true } } },
+          },
+        },
       });
       const sideEffects: Array<{ gameId: number; status: MatchStatus }> = [];
       for (const other of otherLiveMatches) {
@@ -1135,14 +1124,19 @@ export class TournamentsService {
           ? new Date(otherGame.passcodeRevealTime).getTime()
           : 0;
         const wasRevealed = revealMs > 0 && revealMs <= Date.now();
+        // スプリット再生成中はrevealTimeが未来に戻るため、それだけを見ると
+        // プレイ済みラウンドを未プレイと誤認しWAITINGへ落としてしまう。
+        // スコア提出(GameParticipant)が既にあるラウンドはプレイ済みとみなす
+        const wasPlayed =
+          wasRevealed || (otherGame?._count.participants ?? 0) > 0;
         await tx.match.update({
           where: { id: other.id },
           data: {
-            status: wasRevealed ? MatchStatus.COMPLETED : MatchStatus.WAITING,
+            status: wasPlayed ? MatchStatus.COMPLETED : MatchStatus.WAITING,
           },
         });
         if (otherGame && !wasRevealed) {
-          // 未公開のままWAITINGへ戻す場合は予約状態もリセット
+          // 未公開のreveal予約はリセット
           // (残っているBullジョブは照合ガードでスキップされる)
           await tx.game.update({
             where: { id: otherGame.id },
@@ -1152,7 +1146,7 @@ export class TournamentsService {
         if (otherGame) {
           sideEffects.push({
             gameId: otherGame.id,
-            status: wasRevealed ? MatchStatus.COMPLETED : MatchStatus.WAITING,
+            status: wasPlayed ? MatchStatus.COMPLETED : MatchStatus.WAITING,
           });
         }
       }

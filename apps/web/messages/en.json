@@ -150,9 +150,7 @@
       "scheduled": "Scheduled: {time}"
     },
     "admin": {
-      "advanceRound": "End {current} / Start {next}",
       "finishLast": "End {current} / Finish Tournament",
-      "confirmAdvance": "End current round and start the next?",
       "confirmFinish": "End the last round and finish the tournament?",
       "noInProgress": "No round is currently in progress.",
       "betweenRounds": "Previous GP has ended. Start the next GP.",

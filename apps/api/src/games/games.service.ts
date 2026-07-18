@@ -964,18 +964,30 @@ export class GamesService {
           },
         },
       },
+      include: {
+        match: {
+          select: { participants: { where: { userId }, select: { id: true } } },
+        },
+      },
     });
 
     if (!game) {
       throw new NotFoundException('Game not found');
     }
 
-    const participant = await this.prisma.gameParticipant.findFirst({
+    let participant = await this.prisma.gameParticipant.findFirst({
       where: { gameId: game.id, userId },
     });
 
     if (!participant) {
-      throw new NotFoundException('Participant not found in this game');
+      // 未提出でもマッチ参加者ならDQを付けられる(overrideScoreと同じ扱い)。
+      // DQ解除は既存レコードが前提なので従来通りNotFound
+      if (!disqualified || !game.match.participants.length) {
+        throw new NotFoundException('Participant not found in this game');
+      }
+      participant = await this.prisma.gameParticipant.create({
+        data: { gameId: game.id, userId, status: ResultStatus.PENDING },
+      });
     }
 
     if (disqualified) {

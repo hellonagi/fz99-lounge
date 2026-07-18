@@ -150,9 +150,7 @@
       "scheduled": "予定: {time}"
     },
     "admin": {
-      "advanceRound": "{current}終了 / {next}開始",
       "finishLast": "{current}終了 / 大会終了",
-      "confirmAdvance": "現在のラウンドを終了して次を開始しますか？",
       "confirmFinish": "最終ラウンドを終了して大会を終了しますか？",
       "noInProgress": "現在進行中のラウンドはありません。",
       "betweenRounds": "前のGPが終了しました。次のGPを開始してください。",

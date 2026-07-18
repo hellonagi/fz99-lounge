@@ -148,10 +148,10 @@ export class TournamentsController {
     return this.tournamentsService.regeneratePasscode(parseInt(id, 10));
   }
 
-  @Post(':id/advance-round')
+  @Post(':id/finish')
   @Roles(UserRole.ADMIN)
-  async advanceRound(@Param('id') id: string) {
-    return this.tournamentsService.advanceRound(parseInt(id, 10));
+  async finishTournament(@Param('id') id: string) {
+    return this.tournamentsService.finishTournament(parseInt(id, 10));
   }
 
   @Post(':id/test-discord')

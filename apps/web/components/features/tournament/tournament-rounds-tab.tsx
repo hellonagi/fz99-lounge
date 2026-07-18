@@ -563,7 +563,7 @@ const TOURNAMENT_STATUS_FLOW = [
 function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const t = useTranslations('tournament');
   const tAdminTournament = useTranslations('adminTournament');
-  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [finishLoading, setFinishLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
   const [discordRoleLoading, setDiscordRoleLoading] = useState(false);
@@ -690,18 +690,17 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     new Date(inProgressGame.passcodeRevealTime).getTime() > 0 &&
     new Date(inProgressGame.passcodeRevealTime) <= new Date();
 
-  const handleAdvance = async () => {
-    const message = isLastRound ? t('admin.confirmFinish') : t('admin.confirmAdvance');
-    if (!window.confirm(message)) return;
-    setAdvanceLoading(true);
+  const handleFinish = async () => {
+    if (!window.confirm(t('admin.confirmFinish'))) return;
+    setFinishLoading(true);
     setAdminError(null);
     try {
-      await tournamentsApi.advanceRound(tournament.id);
+      await tournamentsApi.finishTournament(tournament.id);
       onUpdate();
     } catch (err) {
-      setAdminError((err as ApiErrorLike).response?.data?.message || 'Failed to advance round');
+      setAdminError((err as ApiErrorLike).response?.data?.message || 'Failed to finish tournament');
     } finally {
-      setAdvanceLoading(false);
+      setFinishLoading(false);
     }
   };
 
@@ -773,15 +772,15 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
             {splitLoading ? t('countdown.notifyingSplit') : t('countdown.notifySplit')}
           </Button>
 
-          {/* Finish tournament — 最終GPのパスコード公開後 */}
-          {isLastRound && passcodeRevealed && (
+          {/* Finish tournament — 最終GPのパスコード公開後(練習大会には大会終了の概念がない) */}
+          {isLastRound && passcodeRevealed && !tournament.practiceForTournamentId && (
             <Button
               size="sm"
               variant="destructive"
-              onClick={handleAdvance}
-              disabled={advanceLoading}
+              onClick={handleFinish}
+              disabled={finishLoading}
             >
-              {advanceLoading ? (
+              {finishLoading ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
               ) : (
                 <ChevronRight className="h-3 w-3 mr-1" />
