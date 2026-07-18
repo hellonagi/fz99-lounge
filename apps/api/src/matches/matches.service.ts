@@ -503,16 +503,16 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getNext(eventCategory?: EventCategory) {
-    // WAITINGマッチを検索（開始時刻を1分以上過ぎたものは除外）
+    // WAITINGマッチを検索（開始時刻を1分以上過ぎたものは除外）。
+    // トーナメント(練習大会含む)のラウンドは運営のカウントダウンで開始するもので
+    // 「次のマッチ」として告知・エントリーさせる対象ではないため常に除外する
     const match = await this.prisma.match.findFirst({
       where: {
-        ...(eventCategory && {
-          season: {
-            event: {
-              category: eventCategory,
-            },
-          },
-        }),
+        season: {
+          event: eventCategory
+            ? { category: eventCategory }
+            : { category: { not: EventCategory.TOURNAMENT } },
+        },
         status: MatchStatus.WAITING,
         scheduledStart: {
           gt: new Date(Date.now() - 60 * 1000),
