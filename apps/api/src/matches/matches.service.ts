@@ -801,6 +801,13 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
   async join(matchId: number, userId: number) {
     const match = await this.getByIdRaw(matchId);
 
+    // トーナメント(練習大会含む)のロスターは登録フロー/管理者操作でのみ変更する
+    if (match.season.event.category === EventCategory.TOURNAMENT) {
+      throw new BadRequestException(
+        'Tournament rounds are managed via registration',
+      );
+    }
+
     // Check if match is in WAITING status
     if (match.status !== MatchStatus.WAITING) {
       throw new BadRequestException('Match is not accepting players');
@@ -903,6 +910,13 @@ export class MatchesService implements OnModuleInit, OnModuleDestroy {
 
   async leave(matchId: number, userId: number) {
     const match = await this.getByIdRaw(matchId);
+
+    // トーナメント(練習大会含む)のロスターは登録フロー/管理者操作でのみ変更する
+    if (match.season.event.category === EventCategory.TOURNAMENT) {
+      throw new BadRequestException(
+        'Tournament rounds are managed via registration',
+      );
+    }
 
     // Check if match is in WAITING status
     if (match.status !== MatchStatus.WAITING) {
