@@ -1431,12 +1431,30 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
 
   if (roundsWithConflicts.length === 0) return null;
 
+  // 問題のあるラウンドだけボックス表示し、それ以外は1行にまとめる
+  const conflictRounds = roundsWithConflicts.filter(
+    (r) => r.allSubmitted && r.conflicts.length > 0,
+  );
+  const waitingRounds = roundsWithConflicts.filter((r) => !r.allSubmitted);
+
   return (
-    <div className="space-y-3 border-t border-gray-700 pt-3 mt-3">
+    <div className="space-y-3">
       <span className="text-gray-400 text-sm font-medium">
         {tConflict('title')}
       </span>
-      {roundsWithConflicts.map(({ match, allSubmitted, conflicts }) => (
+      {conflictRounds.length === 0 && (
+        <p className="text-green-400 text-sm">{tConflict('noConflicts')}</p>
+      )}
+      {waitingRounds.length > 0 && (
+        <p className="text-gray-500 text-xs">
+          {tConflict('waitingForSubmissions')}
+          {': '}
+          {waitingRounds
+            .map((r) => roundQualifiedLabel(tournament.rounds, r.match.matchNumber ?? 0))
+            .join(', ')}
+        </p>
+      )}
+      {conflictRounds.map(({ match, conflicts }) => (
         <div
           key={match.id}
           className="p-3 bg-gray-800/50 border border-gray-700 rounded-lg"
@@ -1445,15 +1463,7 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
             {roundQualifiedLabel(tournament.rounds, match.matchNumber ?? 0)}
           </span>
 
-          {!allSubmitted ? (
-            <p className="text-gray-400 text-xs mt-1">
-              {tConflict('waitingForSubmissions')}
-            </p>
-          ) : conflicts.length === 0 ? (
-            <p className="text-green-400 text-sm mt-1">
-              {tConflict('noConflicts')}
-            </p>
-          ) : (
+          {
             <div className="space-y-2 mt-2">
               <div className="flex items-center gap-2 text-yellow-400">
                 <AlertTriangle className="w-4 h-4" />
@@ -1484,7 +1494,7 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
                 </div>
               ))}
             </div>
-          )}
+          }
         </div>
       ))}
     </div>
