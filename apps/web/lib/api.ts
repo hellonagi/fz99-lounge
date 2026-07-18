@@ -339,6 +339,7 @@ export const tournamentsApi = {
   startCountdown: (id: number, data?: { matchNumber?: number; league?: string; passcode?: string }) =>
     api.post(`/tournaments/${id}/start-countdown`, data ?? {}),
   assignDiscordRoles: (id: number) => api.post(`/tournaments/${id}/assign-discord-roles`),
+  testDiscord: (id: number) => api.post(`/tournaments/${id}/test-discord`),
   notifySplit: (id: number) => api.post(`/tournaments/${id}/notify-split`),
   regeneratePasscode: (id: number) => api.post(`/tournaments/${id}/regenerate-passcode`),
 };

@@ -234,6 +234,16 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
   });
 
   const showBanner = isParticipant && !!bannerRound;
+  // 部門の切り替わりで案内が食い違わないよう、存在する部門すべてを常に表示する
+  const passcodeChannelLines = divisionTabs.map((d) => {
+    const division = d.key === 'classic' ? 'CLASSIC' : 'GP';
+    return {
+      key: d.key,
+      divisionLabel: d.key === 'classic' ? t('classicDivision') : t('gpDivision'),
+      channelName: d.key === 'classic' ? '#passcode-classic' : '#passcode-gp',
+      url: tournament.discordPasscodeChannelUrls?.[division] ?? null,
+    };
+  });
 
   return (
     <div className="space-y-4">
@@ -241,24 +251,27 @@ export function TournamentRoundsTab({ tournament, onUpdate }: TournamentRoundsTa
       {showBanner && (
         <div className="rounded-lg border text-gray-100 relative bg-gradient-to-r from-indigo-900/30 via-purple-900/30 to-pink-900/30 border-indigo-500/30">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/10 via-purple-900/10 to-pink-900/10 pointer-events-none" />
-          <div className="relative py-5 flex flex-col items-center justify-center text-center">
+          <div className="relative py-5 flex flex-col items-center justify-center text-center space-y-1">
             {/* Discord公開チャンネルの案内 */}
-            <p className="text-sm text-gray-400">
-              {t.rich('countdown.passcodeNotice', {
-                link: (chunks) =>
-                  tournament.discordPasscodeChannelUrl ? (
+            <p className="text-sm text-gray-400">{t('countdown.passcodeNotice')}</p>
+            <p className="text-sm text-gray-400 flex flex-wrap justify-center gap-x-4">
+              {passcodeChannelLines.map((line) => (
+                <span key={line.key}>
+                  {line.divisionLabel}:{' '}
+                  {line.url ? (
                     <a
-                      href={tournament.discordPasscodeChannelUrl}
+                      href={line.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-indigo-300 underline underline-offset-2 hover:text-indigo-200"
                     >
-                      {chunks}
+                      {line.channelName}
                     </a>
                   ) : (
-                    <>{chunks}</>
-                  ),
-              })}
+                    line.channelName
+                  )}
+                </span>
+              ))}
             </p>
           </div>
         </div>
@@ -558,6 +571,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
   const [discordRoleResult, setDiscordRoleResult] = useState<{
     assigned: number;
     alreadyHad: number;
+    removed: number;
     notInServer: Array<{ displayName: string; discordId: string }>;
   } | null>(null);
   // 運営操作のエラーは握りつぶさず表示する
@@ -657,6 +671,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           {/* RESULTS_PENDING後でもGPを出し直せる復旧経路 */}
           <CountdownStartForm tournament={tournament} matches={matches} />
           <DiscordRoleSection
+            tournamentId={tournament.id}
             loading={discordRoleLoading}
             result={discordRoleResult}
             onAssign={handleAssignDiscordRoles}
@@ -712,6 +727,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           <CountdownStartForm tournament={tournament} matches={matches} />
 
           <DiscordRoleSection
+            tournamentId={tournament.id}
             loading={discordRoleLoading}
             result={discordRoleResult}
             onAssign={handleAssignDiscordRoles}
@@ -780,6 +796,7 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
         </div>}
 
         <DiscordRoleSection
+            tournamentId={tournament.id}
           loading={discordRoleLoading}
           result={discordRoleResult}
           onAssign={handleAssignDiscordRoles}
@@ -1327,7 +1344,7 @@ function CountdownStartForm({ tournament, matches }: CountdownStartFormProps) {
         <div className="space-y-1">
           <Label className="text-xs text-gray-400">{t('countdown.roundField')}</Label>
           <Select value={roundNumber} onValueChange={setRoundNumber}>
-            <SelectTrigger className="w-24">
+            <SelectTrigger className="w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1502,33 +1519,88 @@ function PositionConflictSection({ tournament, matches }: PositionConflictSectio
 }
 
 interface DiscordRoleSectionProps {
+  tournamentId: number;
   loading: boolean;
   result: {
     assigned: number;
     alreadyHad: number;
+    removed: number;
     notInServer: Array<{ displayName: string; discordId: string }>;
   } | null;
   onAssign: () => void;
 }
 
-function DiscordRoleSection({ loading, result, onAssign }: DiscordRoleSectionProps) {
+function DiscordRoleSection({ tournamentId, loading, result, onAssign }: DiscordRoleSectionProps) {
   const t = useTranslations('discord');
+  const [testing, setTesting] = useState(false);
+  const [testResults, setTestResults] = useState<Array<{
+    division: string;
+    channelId: string | null;
+    usedFallback: boolean;
+    ok: boolean;
+  }> | null>(null);
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResults(null);
+    try {
+      const res = await tournamentsApi.testDiscord(tournamentId);
+      setTestResults(res.data);
+    } catch {
+    } finally {
+      setTesting(false);
+    }
+  };
 
   return (
     <div className="border-t border-gray-700 pt-3 mt-3 space-y-2">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={onAssign}
-        disabled={loading}
-      >
-        {loading ? (
-          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-        ) : (
-          <Shield className="h-3 w-3 mr-1" />
-        )}
-        {loading ? t('assigningRoles') : t('assignRoles')}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onAssign}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          ) : (
+            <Shield className="h-3 w-3 mr-1" />
+          )}
+          {loading ? t('assigningRoles') : t('assignRoles')}
+        </Button>
+
+        {/* パスコードチャンネル設定の事前確認(メンションなしのテストembedを両部門へ投稿) */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleTest}
+          disabled={testing}
+        >
+          {testing ? (
+            <Loader2 className="h-3 w-3 animate-spin mr-1" />
+          ) : (
+            <MessageSquareWarning className="h-3 w-3 mr-1" />
+          )}
+          {testing ? t('testPosting') : t('testPost')}
+        </Button>
+      </div>
+
+      {testResults && (
+        <div className="text-sm space-y-0.5">
+          {testResults.map((r) => (
+            <p key={r.division} className="text-gray-300">
+              {r.division}:{' '}
+              <span className={r.ok ? 'text-green-400' : 'text-red-400'}>
+                {r.ok ? t('testOk') : t('testFailed')}
+              </span>
+              {' — '}
+              <span className={r.usedFallback ? 'text-yellow-400' : 'text-gray-400'}>
+                {r.usedFallback ? t('testFallback') : t('testDedicated')}
+              </span>
+            </p>
+          ))}
+        </div>
+      )}
 
       {result && (
         <div className="space-y-2">
@@ -1536,6 +1608,8 @@ function DiscordRoleSection({ loading, result, onAssign }: DiscordRoleSectionPro
             {t('assigned', { count: result.assigned })}
             {' / '}
             {t('alreadyHad', { count: result.alreadyHad })}
+            {' / '}
+            {t('removed', { count: result.removed })}
           </p>
 
           {result.notInServer.length > 0 && (

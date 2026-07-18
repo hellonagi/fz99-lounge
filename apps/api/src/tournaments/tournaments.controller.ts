@@ -104,6 +104,14 @@ export class TournamentsController {
     return this.tournamentsService.advanceRound(parseInt(id, 10));
   }
 
+  @Post(':id/test-discord')
+  @Roles(UserRole.ADMIN)
+  async testDiscord(@Param('id') id: string) {
+    return this.tournamentsService.testDiscordPasscodeChannels(
+      parseInt(id, 10),
+    );
+  }
+
   @Post(':id/assign-discord-roles')
   @Roles(UserRole.ADMIN)
   async assignDiscordRoles(@Param('id') id: string) {

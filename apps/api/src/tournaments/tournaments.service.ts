@@ -248,18 +248,28 @@ export class TournamentsService {
       season,
       registrationCount: config._count.registrations,
       _count: undefined,
-      discordPasscodeChannelUrl: this.getDiscordPasscodeChannelUrl(),
+      discordPasscodeChannelUrls: this.getDiscordPasscodeChannelUrls(),
     };
   }
 
-  private getDiscordPasscodeChannelUrl(): string | null {
+  // 部門別のパスコード公開チャンネルURL(専用→フォールバックの解決はbot側と共通)
+  private getDiscordPasscodeChannelUrls(): Record<
+    TournamentDivision,
+    string | null
+  > | null {
     const guildId = this.configService.get<string>('DISCORD_GUILD_ID');
-    const channelId = this.configService.get<string>(
-      'DISCORD_TOURNAMENT_PASSCODE_CHANNEL_ID',
-    );
-    return guildId && channelId
-      ? `https://discord.com/channels/${guildId}/${channelId}`
-      : null;
+    if (!guildId) return null;
+    const urlFor = (division: TournamentDivision) => {
+      const { channelId } =
+        this.discordBotService.resolveTournamentPasscodeChannel(division);
+      return channelId
+        ? `https://discord.com/channels/${guildId}/${channelId}`
+        : null;
+    };
+    return {
+      [TournamentDivision.GP]: urlFor(TournamentDivision.GP),
+      [TournamentDivision.CLASSIC]: urlFor(TournamentDivision.CLASSIC),
+    };
   }
 
   async update(id: number, dto: UpdateTournamentDto) {
@@ -400,6 +410,8 @@ export class TournamentsService {
       removeOnFail: true,
     });
 
+    const division = divisionForInGameMode(params.inGameMode);
+
     void (async () => {
       try {
         // Delete existing passcode Discord message if requested
@@ -407,7 +419,7 @@ export class TournamentsService {
           const existingMessageId = this.passcodeMessageIds.get(params.gameId);
           if (existingMessageId) {
             await this.discordBotService
-              .deleteTournamentMessage(existingMessageId)
+              .deleteTournamentMessage(existingMessageId, division)
               .catch((err) =>
                 this.logger.error(
                   'Failed to delete existing Discord passcode message',
@@ -422,7 +434,7 @@ export class TournamentsService {
         const previousCountdownId = this.countdownMessageIds.get(params.gameId);
         if (previousCountdownId) {
           await this.discordBotService
-            .deleteTournamentMessage(previousCountdownId)
+            .deleteTournamentMessage(previousCountdownId, division)
             .catch(() => undefined);
           this.countdownMessageIds.delete(params.gameId);
         }
@@ -1071,13 +1083,14 @@ export class TournamentsService {
       throw new BadRequestException('No in-progress round found');
     }
 
-    const { tournamentName, roundLabel } = this.getRoundMeta(
+    const { tournamentName, roundLabel, inGameMode } = this.getRoundMeta(
       config,
       currentMatch.matchNumber!,
     );
     await this.discordBotService.announceTournamentSplit({
       tournamentName,
       roundLabel,
+      inGameMode,
     });
 
     // Set DB flag + notify all clients via WebSocket (skipDiscord: already sent above)
@@ -1114,13 +1127,14 @@ export class TournamentsService {
     });
     if (!config) return;
 
-    const { tournamentName, roundLabel } = this.getRoundMeta(
+    const { tournamentName, roundLabel, inGameMode } = this.getRoundMeta(
       config,
       payload.matchNumber,
     );
     await this.discordBotService.announceTournamentSplit({
       tournamentName,
       roundLabel,
+      inGameMode,
     });
 
     this.logger.log(
@@ -1208,12 +1222,23 @@ export class TournamentsService {
       },
     });
 
-    const discordIds = registrations
-      .map((r) => r.user.discordId)
-      .filter((id): id is string => !!id);
+    // 全参加者(重複除去) + 部門別リスト
+    const idsOf = (division?: TournamentDivision) => [
+      ...new Set(
+        registrations
+          .filter((r) => !division || r.division === division)
+          .map((r) => r.user.discordId)
+          .filter((id): id is string => !!id),
+      ),
+    ];
 
-    const result =
-      await this.discordBotService.assignTournamentRole(discordIds);
+    const result = await this.discordBotService.syncTournamentRoles({
+      all: idsOf(),
+      byDivision: {
+        [TournamentDivision.GP]: idsOf(TournamentDivision.GP),
+        [TournamentDivision.CLASSIC]: idsOf(TournamentDivision.CLASSIC),
+      },
+    });
 
     // Map notInServer discord IDs back to display names
     const discordIdToName = new Map(
@@ -1223,11 +1248,33 @@ export class TournamentsService {
     return {
       assigned: result.assigned,
       alreadyHad: result.alreadyHad,
+      removed: result.removed,
       notInServer: result.notInServer.map((discordId) => ({
         displayName: discordIdToName.get(discordId) || discordId,
         discordId,
       })),
     };
+  }
+
+  // 部門別のテスト投稿(チャンネル設定の事前確認用)
+  async testDiscordPasscodeChannels(tournamentConfigId: number) {
+    const config = await this.prisma.tournamentConfig.findUnique({
+      where: { id: tournamentConfigId },
+    });
+    if (!config) throw new NotFoundException('Tournament not found');
+
+    const results: Array<{
+      division: TournamentDivision;
+      channelId: string | null;
+      usedFallback: boolean;
+      ok: boolean;
+    }> = [];
+    for (const division of Object.values(TournamentDivision)) {
+      results.push(
+        await this.discordBotService.postTournamentTestMessage(division),
+      );
+    }
+    return results;
   }
 
   async getStreams(tournamentConfigId: number) {

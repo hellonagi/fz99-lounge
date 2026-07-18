@@ -165,7 +165,7 @@
     },
     "countdown": {
       "next": "Next",
-      "passcodeNotice": "The passcode will be revealed in the <link>#passcode</link> channel on the Discord server.",
+      "passcodeNotice": "Passcodes are revealed on Discord.",
       "startCountdown": "Start Countdown",
       "startGP": "Start {round} Countdown",
       "notifySplit": "Notify Split",
@@ -750,7 +750,14 @@
     "assigned": "{count} assigned",
     "alreadyHad": "{count} already had role",
     "notInServer": "Not in Discord server",
-    "notInServerCount": "{count} participants not in Discord server"
+    "notInServerCount": "{count} participants not in Discord server",
+    "removed": "Removed from {count}",
+    "testPost": "Discord Test Post",
+    "testPosting": "Posting...",
+    "testOk": "OK",
+    "testFailed": "Failed",
+    "testDedicated": "dedicated channel",
+    "testFallback": "fallback (shared channel)"
   },
   "createMatch": {
     "title": "Create Match",

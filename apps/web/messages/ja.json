@@ -165,7 +165,7 @@
     },
     "countdown": {
       "next": "次",
-      "passcodeNotice": "パスコードはDiscordサーバーの<link>#passcode</link>チャンネルで公開されます",
+      "passcodeNotice": "パスコードはDiscordで公開されます",
       "startCountdown": "カウントダウン開始",
       "startGP": "{round} カウントダウン開始",
       "notifySplit": "スプリット通知",
@@ -749,7 +749,14 @@
     "assigned": "{count}人に付与",
     "alreadyHad": "{count}人は付与済み",
     "notInServer": "Discordサーバー未参加",
-    "notInServerCount": "{count}人がDiscordサーバー未参加"
+    "notInServerCount": "{count}人がDiscordサーバー未参加",
+    "removed": "{count}人から剥奪",
+    "testPost": "Discordテスト投稿",
+    "testPosting": "投稿中...",
+    "testOk": "成功",
+    "testFailed": "失敗",
+    "testDedicated": "専用チャンネル",
+    "testFallback": "フォールバック(共通チャンネル)"
   },
   "createMatch": {
     "title": "マッチ作成",

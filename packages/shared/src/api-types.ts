@@ -255,7 +255,8 @@ export interface Tournament {
   venue?: string | null;
   venueUrl?: string | null;
   season?: Season & { matches?: Match[] };
-  discordPasscodeChannelUrl?: string | null;
+  // 部門別のパスコード公開チャンネルURL(専用チャンネル未設定時は共通チャンネルへのURL)
+  discordPasscodeChannelUrls?: Record<TournamentDivision, string | null> | null;
 }
 
 export interface TournamentStream {
