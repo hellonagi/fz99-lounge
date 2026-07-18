@@ -625,6 +625,24 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
     }
   };
 
+  // Practiceタブの表示切り替え: practice大会のステータスをCOMPLETEDにするとタブが消える
+  const practice = tournament.practiceTournament;
+  const togglePracticeTab = async () => {
+    if (!practice) return;
+    setStatusLoading(true);
+    setAdminError(null);
+    try {
+      await tournamentsApi.update(practice.id, {
+        status: practice.status === 'COMPLETED' ? 'IN_PROGRESS' : 'COMPLETED',
+      });
+      onUpdate();
+    } catch (err) {
+      setAdminError((err as ApiErrorLike).response?.data?.message || 'Failed to update practice');
+    } finally {
+      setStatusLoading(false);
+    }
+  };
+
   const statusControls = (
     <div className="space-y-3">
     <div className="flex flex-wrap items-center gap-2">
@@ -648,6 +666,19 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           onClick={() => changeStatus(nextStatus, false)}
         >
           {t(`statusLabel.${nextStatus}`)} →
+        </Button>
+      )}
+      {practice && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={statusLoading}
+          onClick={togglePracticeTab}
+          className="text-gray-400"
+        >
+          {practice.status === 'COMPLETED'
+            ? t('admin.practiceTabShow')
+            : t('admin.practiceTabHide')}
         </Button>
       )}
     </div>

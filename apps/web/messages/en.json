@@ -152,6 +152,8 @@
     "admin": {
       "finishLast": "End {current} / Finish Tournament",
       "confirmFinish": "End the last round and finish the tournament?",
+      "practiceTabShow": "Show practice",
+      "practiceTabHide": "Hide practice",
       "noInProgress": "No round is currently in progress.",
       "betweenRounds": "Previous GP has ended. Start the next GP.",
       "scoreGrid": "Score Grid",

@@ -65,7 +65,7 @@ export default function TournamentShell({ children }: { children: React.ReactNod
 
   const tabs = [
     { key: 'overview', href: basePath, label: t('tabs.overview') },
-    ...(tournament.practiceTournament
+    ...(tournament.practiceTournament && tournament.practiceTournament.status !== 'COMPLETED'
       ? [{ key: 'practice', href: `${basePath}/practice`, label: t('tabs.practice') }]
       : []),
     ...(showMatch
