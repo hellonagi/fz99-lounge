@@ -22,9 +22,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Hash, Calendar, Trophy } from 'lucide-react';
 import { F99_MACHINES } from '@/lib/machines';
 import { CLASSIC_TRACK_ABBR } from '@/lib/classic-tracks';
-import { tracksApi, type Track } from '@/lib/api';
+import { tournamentsApi, tracksApi, type Track } from '@/lib/api';
 import { divisionForInGameMode, roundDisplayLabel } from '@/types';
-import type { Tournament, GameParticipant } from '@/types';
+import type { Tournament, GameParticipant, RecentTournament } from '@/types';
 
 // APIレスポンスでは user に profile がネストされる場合がある
 
@@ -131,11 +131,26 @@ interface CountryStats {
   medScore: number;
 }
 
+// 前回大会比較: 両大会に出場したプレイヤーの変動
+interface PrevMover {
+  userId: number;
+  name: string;
+  profileNumber?: number;
+  country?: string;
+  prevRank: number;
+  rank: number;
+  rankChange: number;
+  prevScore: number;
+  score: number;
+  pointsDiff: number;
+}
+
 function computeStats(
   tournament: Tournament,
   overallLabel: string,
   leagueTrackNames: Map<string, string[]>,
   trackNamesById: Map<number, string>,
+  previousTournament: Tournament | null,
 ) {
   const matches = tournament.season?.matches ?? [];
   const sortedMatches = [...matches].sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
@@ -376,6 +391,70 @@ function computeStats(
       };
     });
   };
+
+  // 前回大会(同一部門)の userId → { rank, totalScore }。比較不能なら空のまま
+  const prevStats = new Map<number, { rank: number; totalScore: number }>();
+  if (previousTournament) {
+    const prevScores = new Map<number, number>();
+    for (const match of previousTournament.season?.matches ?? []) {
+      for (const game of match.games ?? []) {
+        for (const p of game.participants ?? []) {
+          if (p.isDisqualified) continue;
+          prevScores.set(p.userId, (prevScores.get(p.userId) ?? 0) + (p.totalScore ?? 0));
+        }
+      }
+    }
+    const prevSorted = [...prevScores.entries()]
+      .filter(([, s]) => s > 0)
+      .sort((a, b) => b[1] - a[1]);
+    let prevRank = 1;
+    prevSorted.forEach(([uid, score], i) => {
+      if (i > 0 && score !== prevSorted[i - 1][1]) prevRank = i + 1;
+      prevStats.set(uid, { rank: prevRank, totalScore: score });
+    });
+  }
+  const hasPrevComparison = prevStats.size > 0;
+
+  // 前回大会比較セクション用データ: 両大会に出た人の順位/ポイント変動と全体指標
+  let comparison: {
+    rankClimbers: PrevMover[];
+    pointGainers: PrevMover[];
+  } | null = null;
+  if (hasPrevComparison) {
+    const currentSorted = [...playerScores.entries()]
+      .filter(([, s]) => s > 0)
+      .sort((a, b) => b[1] - a[1]);
+    let curRank = 1;
+    const movers: PrevMover[] = [];
+    currentSorted.forEach(([uid, score], i) => {
+      if (i > 0 && score !== currentSorted[i - 1][1]) curRank = i + 1;
+      const prev = prevStats.get(uid);
+      if (!prev) return;
+      const participant = allParticipants.find((p) => p.userId === uid);
+      movers.push({
+        userId: uid,
+        name: playerNames.get(uid) ?? `Player ${uid}`,
+        profileNumber: participant?.user?.profileNumber,
+        country: participant?.user?.profile?.country || participant?.user?.country || undefined,
+        prevRank: prev.rank,
+        rank: curRank,
+        rankChange: prev.rank - curRank,
+        prevScore: prev.totalScore,
+        score,
+        pointsDiff: score - prev.totalScore,
+      });
+    });
+    comparison = {
+      rankClimbers: [...movers]
+        .filter((m) => m.rankChange > 0)
+        .sort((a, b) => b.rankChange - a.rankChange)
+        .slice(0, 5),
+      pointGainers: [...movers]
+        .filter((m) => m.pointsDiff > 0)
+        .sort((a, b) => b.pointsDiff - a.pointsDiff)
+        .slice(0, 5),
+    };
+  }
 
   // 1) Total Points Top 10
   const pointsRanking = buildRanking(
@@ -667,42 +746,91 @@ function computeStats(
     leastConsistent,
     countryStats,
     coursesByRoundLabel,
+    comparison,
+    prevTournamentNumber: hasPrevComparison
+      ? previousTournament?.tournamentNumber ?? null
+      : null,
   };
+}
+
+// 大会を部門(GP/Classic)のラウンド・マッチだけに絞り込む
+function filterToDivision(
+  tournament: Tournament,
+  division: 'GP' | 'CLASSIC',
+): Tournament {
+  const rounds = tournament.rounds.filter(
+    (r) => divisionForInGameMode(r.inGameMode) === division,
+  );
+  const roundNumbers = new Set(rounds.map((r) => r.roundNumber));
+  const season = tournament.season
+    ? {
+        ...tournament.season,
+        matches: (tournament.season.matches ?? []).filter(
+          (m) => m.matchNumber != null && roundNumbers.has(m.matchNumber),
+        ),
+      }
+    : tournament.season;
+  return { ...tournament, rounds, totalRounds: rounds.length, season };
 }
 
 // GP部門とClassic部門で統計を別タブにする(マッチタブと同じ分け方)。
 // 各タブには該当部門のラウンド・マッチだけに絞った tournament を渡して集計する
 export function TournamentStats({ tournament }: TournamentStatsProps) {
+  // 前回大会(開催日が直前の完了大会)を取得して前回比較に使う。取れなければ比較なしで表示
+  const [previousTournament, setPreviousTournament] = useState<Tournament | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await tournamentsApi.getRecent(20);
+        const prev = (res.data as RecentTournament[])
+          .filter(
+            (rt) =>
+              rt.id !== tournament.id &&
+              new Date(rt.tournamentDate) < new Date(tournament.tournamentDate),
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.tournamentDate).getTime() - new Date(a.tournamentDate).getTime(),
+          )[0];
+        if (!prev) return;
+        const full = await tournamentsApi.getById(prev.id);
+        if (!cancelled) setPreviousTournament(full.data as Tournament);
+      } catch {
+        // 比較は補助情報なので失敗時は黙って非表示
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournament.id, tournament.tournamentDate]);
+
   const divisions = useMemo(() => {
     const build = (division: 'GP' | 'CLASSIC', label: string) => {
-      const rounds = tournament.rounds.filter(
-        (r) => divisionForInGameMode(r.inGameMode) === division,
-      );
-      const roundNumbers = new Set(rounds.map((r) => r.roundNumber));
-      const season = tournament.season
-        ? {
-            ...tournament.season,
-            matches: (tournament.season.matches ?? []).filter(
-              (m) => m.matchNumber != null && roundNumbers.has(m.matchNumber),
-            ),
-          }
-        : tournament.season;
+      const filtered = filterToDivision(tournament, division);
+      const prevFiltered = previousTournament
+        ? filterToDivision(previousTournament, division)
+        : null;
       return {
         key: division,
         label,
-        rounds,
-        tournament: { ...tournament, rounds, totalRounds: rounds.length, season },
+        rounds: filtered.rounds,
+        tournament: filtered,
+        // 前回大会に同部門が無ければ比較しない
+        previousTournament:
+          prevFiltered && prevFiltered.rounds.length > 0 ? prevFiltered : null,
       };
     };
     return [build('GP', 'GP'), build('CLASSIC', 'Classic')].filter(
       (d) => d.rounds.length > 0,
     );
-  }, [tournament]);
+  }, [tournament, previousTournament]);
 
   if (divisions.length <= 1) {
     return (
       <TournamentStatsBody
         tournament={divisions[0]?.tournament ?? tournament}
+        previousTournament={divisions[0]?.previousTournament ?? null}
       />
     );
   }
@@ -718,14 +846,20 @@ export function TournamentStats({ tournament }: TournamentStatsProps) {
       </TabsList>
       {divisions.map((d) => (
         <TabsContent key={d.key} value={d.key} className="px-0 sm:px-0 pb-0 sm:pb-0">
-          <TournamentStatsBody tournament={d.tournament} />
+          <TournamentStatsBody
+            tournament={d.tournament}
+            previousTournament={d.previousTournament}
+          />
         </TabsContent>
       ))}
     </Tabs>
   );
 }
 
-function TournamentStatsBody({ tournament }: TournamentStatsProps) {
+function TournamentStatsBody({
+  tournament,
+  previousTournament,
+}: TournamentStatsProps & { previousTournament?: Tournament | null }) {
   const t = useTranslations('tournament.stats');
 
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -758,8 +892,15 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
 
   const overallLabel = t('overall');
   const stats = useMemo(
-    () => computeStats(tournament, overallLabel, leagueTrackNames, trackNamesById),
-    [tournament, overallLabel, leagueTrackNames, trackNamesById],
+    () =>
+      computeStats(
+        tournament,
+        overallLabel,
+        leagueTrackNames,
+        trackNamesById,
+        previousTournament ?? null,
+      ),
+    [tournament, overallLabel, leagueTrackNames, trackNamesById, previousTournament],
   );
 
   if (stats.uniquePlayerCount === 0) {
@@ -851,6 +992,48 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
                 </TabsContent>
               ))}
             </Tabs>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 前回大会比較 */}
+      {stats.comparison && stats.prevTournamentNumber != null && (
+        <Card className="bg-gray-800/50 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {t('prevComparison')}{' '}
+              <span className="text-sm font-normal text-gray-400">
+                {t('vsPrevious', { number: stats.prevTournamentNumber })}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <MoversTable
+                title={t('rankClimbers')}
+                header={t('prevToNow')}
+                movers={stats.comparison.rankClimbers}
+                playerLabel={t('player')}
+                valueWidth="w-6"
+                render={(m) => ({
+                  from: m.prevRank,
+                  to: m.rank,
+                  diff: `↑${m.rankChange}`,
+                })}
+              />
+              <MoversTable
+                title={t('pointGainers')}
+                header={t('prevToNow')}
+                movers={stats.comparison.pointGainers}
+                playerLabel={t('player')}
+                valueWidth="w-11"
+                render={(m) => ({
+                  from: m.prevScore,
+                  to: m.score,
+                  diff: `+${m.pointsDiff}`,
+                })}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -1331,6 +1514,66 @@ function WinnerName({ name, country }: { name: string; country?: string }) {
       {country && <span className={`fi fi-${country.toLowerCase()} text-[0.8em]`} />}
       {name}
     </p>
+  );
+}
+
+function MoversTable({
+  title,
+  header,
+  playerLabel,
+  movers,
+  valueWidth,
+  render,
+}: {
+  title: string;
+  header: string;
+  playerLabel: string;
+  movers: PrevMover[];
+  // 前後の数値セルの幅。桁数が違っても矢印の位置が縦に揃うように固定する
+  valueWidth: string;
+  render: (m: PrevMover) => { from: number; to: number; diff: string };
+}) {
+  if (movers.length === 0) return null;
+  return (
+    <div>
+      <h4 className="text-sm font-medium text-green-400 mb-2">{title}</h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-700/50 text-left text-gray-400">
+            <th className="px-2 py-1.5">{playerLabel}</th>
+            <th className="px-2 py-1.5 text-right">{header}</th>
+            <th className="px-2 py-1.5 text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {movers.map((m) => {
+            const { from, to, diff } = render(m);
+            return (
+              <tr key={m.userId} className="border-b border-gray-700/50">
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    {m.country && <span className={`fi fi-${m.country.toLowerCase()}`} />}
+                    {m.profileNumber ? (
+                      <Link href={`/profile/${m.profileNumber}`} className="text-white hover:text-blue-400 hover:underline">
+                        {m.name}
+                      </Link>
+                    ) : (
+                      <span className="text-white">{m.name}</span>
+                    )}
+                  </span>
+                </td>
+                <td className="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">
+                  <span className={`inline-block ${valueWidth} text-right`}>{from}</span>
+                  <span className="mx-1 text-gray-500">→</span>
+                  <span className={`inline-block ${valueWidth} text-left`}>{to}</span>
+                </td>
+                <td className="px-2 py-1.5 text-right text-green-400 whitespace-nowrap">{diff}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

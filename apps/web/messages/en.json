@@ -92,6 +92,11 @@
     "stats": {
       "title": "Tournament Statistics",
       "participants": "Participants",
+      "vsPrevious": "vs #{number}",
+      "prevComparison": "vs Previous Tournament",
+      "rankClimbers": "Biggest Climbers",
+      "pointGainers": "Biggest Point Gains",
+      "prevToNow": "Prev → Now",
       "format": "Format",
       "date": "Date",
       "winner": "Winner",
