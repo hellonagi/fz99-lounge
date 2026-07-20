@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
@@ -719,13 +719,10 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
         <SummaryCard icon={<Hash className="h-5 w-5 text-red-400" />} label={t('format')} value={`${stats.roundCount} GPs`} />
         <Card className="bg-gray-800/50 border-gray-700">
           <CardContent className="p-4 flex items-center gap-3">
-            <Trophy className="h-5 w-5 text-yellow-400" />
-            <div>
+            <Trophy className="h-5 w-5 text-yellow-400 shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-gray-400">{t('winner')}</p>
-              <p className="text-xl font-bold text-white inline-flex items-center gap-2">
-                {stats.winnerCountry && <span className={`fi fi-${stats.winnerCountry.toLowerCase()} text-base`} />}
-                {stats.winnerName}
-              </p>
+              <WinnerName name={stats.winnerName} country={stats.winnerCountry} />
             </div>
           </CardContent>
         </Card>
@@ -1237,6 +1234,39 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
   );
 }
 
+
+// 優勝者名がカード幅を超える場合、収まるまでフォントサイズを縮小する(省略はしない)
+function WinnerName({ name, country }: { name: string; country?: string }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const text = textRef.current;
+    const container = text?.parentElement;
+    if (!text || !container) return;
+
+    const fit = () => {
+      text.style.fontSize = '';
+      const available = container.clientWidth;
+      const natural = text.scrollWidth;
+      if (natural > available && available > 0) {
+        const base = parseFloat(getComputedStyle(text).fontSize);
+        text.style.fontSize = `${Math.max((base * available) / natural, 10)}px`;
+      }
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [name, country]);
+
+  return (
+    <p ref={textRef} className="text-xl font-bold text-white inline-flex items-center gap-2 whitespace-nowrap">
+      {country && <span className={`fi fi-${country.toLowerCase()} text-[0.8em]`} />}
+      {name}
+    </p>
+  );
+}
 
 function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
   return (
