@@ -2,9 +2,13 @@
 
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { ChevronRight, Trophy } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CATEGORY_BADGE_CLASS, CATEGORY_LABEL } from '@/components/features/match/match-constants';
+import {
+  buildDivisionWinners,
+  DivisionWinnerLine,
+} from '@/components/features/tournament/division-winners';
 import { RecentTournament } from '@/types';
 
 interface PastTournamentResultsProps {
@@ -61,17 +65,7 @@ export function PastTournamentResults({
               const url = `/${locale}/tournament/${tournament.id}/match`;
               const dateLabel = formatDate(tournament.tournamentDate, locale);
               const titleLabel = `${tournament.name} #${tournament.tournamentNumber}`;
-
-              const winnerList =
-                tournament.winners && tournament.winners.length > 0
-                  ? tournament.winners
-                  : tournament.winner
-                    ? [tournament.winner]
-                    : [];
-              const winnerNames = winnerList
-                .map((w) => w.displayName || `User#${w.id}`)
-                .join(' ');
-              const sharedScore = winnerList[0]?.totalScore ?? null;
+              const divisionWinners = buildDivisionWinners(tournament);
 
               return (
                 <Link
@@ -97,25 +91,14 @@ export function PastTournamentResults({
                         {titleLabel}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 justify-end min-w-0">
-                      {winnerList.length > 0 && (
-                        <>
-                          <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                          <span className="text-sm font-bold text-gray-200 truncate max-w-[320px]">
-                            {winnerNames}
-                          </span>
-                          {sharedScore !== null && (
-                            <span className="shrink-0">
-                              <span className="font-mono tabular-nums text-sm text-gray-400">
-                                {sharedScore}
-                              </span>
-                              <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-500 ml-0.5">
-                                pts
-                              </span>
-                            </span>
-                          )}
-                        </>
-                      )}
+                    <div className="flex flex-col items-end gap-1 min-w-0">
+                      {divisionWinners.map((entry) => (
+                        <DivisionWinnerLine
+                          key={entry.key}
+                          entry={entry}
+                          className="justify-end max-w-[400px]"
+                        />
+                      ))}
                     </div>
                   </div>
 
@@ -137,24 +120,13 @@ export function PastTournamentResults({
                         {dateLabel}
                       </span>
                     </div>
-                    {winnerList.length > 0 && (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                        <span className="text-sm font-bold text-gray-200 truncate">
-                          {winnerNames}
-                        </span>
-                        {sharedScore !== null && (
-                          <span className="ml-auto shrink-0">
-                            <span className="font-mono tabular-nums text-sm text-gray-400">
-                              {sharedScore}
-                            </span>
-                            <span className="text-[10px] font-bold tracking-[.1em] uppercase text-gray-500 ml-0.5">
-                              pts
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {divisionWinners.map((entry) => (
+                      <DivisionWinnerLine
+                        key={entry.key}
+                        entry={entry}
+                        scoreClassName="ml-auto"
+                      />
+                    ))}
                   </div>
                 </Link>
               );

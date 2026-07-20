@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
@@ -21,9 +21,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Hash, Calendar, Trophy } from 'lucide-react';
 import { F99_MACHINES } from '@/lib/machines';
-import { tracksApi, type Track } from '@/lib/api';
-import { divisionForInGameMode } from '@/types';
-import type { Tournament, GameParticipant } from '@/types';
+import { CLASSIC_TRACK_ABBR } from '@/lib/classic-tracks';
+import { tournamentsApi, tracksApi, type Track } from '@/lib/api';
+import { divisionForInGameMode, roundDisplayLabel } from '@/types';
+import type { Tournament, GameParticipant, RecentTournament } from '@/types';
 
 // APIレスポンスでは user に profile がネストされる場合がある
 
@@ -41,12 +42,34 @@ const tooltipStyle = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StaggeredTick({ x, y, payload, index }: any) {
+function StaggeredTick({ x, y, payload, index, courses }: any) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const dy = isMobile && index % 2 !== 0 ? 22 : 8;
+  const courseLine = courses?.get(payload.value);
   return (
     <text x={x} y={y} dy={dy} textAnchor="middle" fill="#9ca3af" fontSize={12}>
-      {payload.value}
+      <tspan x={x}>{payload.value}</tspan>
+      {courseLine && (
+        <tspan x={x} dy={11} fontSize={8.5} fill="#6b7280">
+          {courseLine}
+        </tspan>
+      )}
+    </text>
+  );
+}
+
+// 横棒チャート(マシン使用率)のY軸用: ラウンド名の下にClassicのコース内訳を表示
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RoundCategoryTick({ x, y, payload, courses }: any) {
+  const courseLine = courses?.get(payload.value);
+  return (
+    <text x={x} y={y} textAnchor="end" fill="#9ca3af" fontSize={12}>
+      <tspan x={x} dy={courseLine ? 0 : 4}>{payload.value}</tspan>
+      {courseLine && (
+        <tspan x={x} dy={11} fontSize={8.5} fill="#6b7280">
+          {courseLine}
+        </tspan>
+      )}
     </text>
   );
 }
@@ -108,7 +131,27 @@ interface CountryStats {
   medScore: number;
 }
 
-function computeStats(tournament: Tournament, overallLabel: string, leagueTrackNames: Map<string, string[]>) {
+// 前回大会比較: 両大会に出場したプレイヤーの変動
+interface PrevMover {
+  userId: number;
+  name: string;
+  profileNumber?: number;
+  country?: string;
+  prevRank: number;
+  rank: number;
+  rankChange: number;
+  prevScore: number;
+  score: number;
+  pointsDiff: number;
+}
+
+function computeStats(
+  tournament: Tournament,
+  overallLabel: string,
+  leagueTrackNames: Map<string, string[]>,
+  trackNamesById: Map<number, string>,
+  previousTournament: Tournament | null,
+) {
   const matches = tournament.season?.matches ?? [];
   const sortedMatches = [...matches].sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
 
@@ -188,13 +231,27 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   // Machine usage per round
   const leagueLabel = (roundNumber: number): string => {
     const roundConfig = tournament.rounds?.find((r) => r.roundNumber === roundNumber);
-    if (!roundConfig?.league) return `R${roundNumber}`;
+    // Classicラウンドはleague名を持たないので部門内の通し番号(GP1, GP2...)で表示
+    if (!roundConfig?.league) return roundDisplayLabel(tournament.rounds ?? [], roundNumber);
     const name = roundConfig.league
       .split('_')
       .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
       .join('_');
     return name.replace('Mirror_', 'M.');
   };
+
+  // ラウンドラベル → Classicコース内訳 (例: "MC1, SL, FF")。tracks未割り当てのラウンドは含めない
+  const coursesByRoundLabel = new Map<string, string>();
+  for (const match of sortedMatches) {
+    const game = (match.games ?? [])[0];
+    const trackIds = (game?.tracks ?? []) as (number | null)[];
+    const abbrs = trackIds.flatMap((id) =>
+      id != null ? [CLASSIC_TRACK_ABBR[id] ?? `#${id}`] : [],
+    );
+    if (abbrs.length > 0) {
+      coursesByRoundLabel.set(leagueLabel(match.matchNumber ?? 0), abbrs.join(', '));
+    }
+  }
 
   // Machine usage stacked bar data: each row = round, values = % per machine
   const buildMachineRow = (label: string, machineCounts: Map<string, number>) => {
@@ -335,6 +392,70 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     });
   };
 
+  // 前回大会(同一部門)の userId → { rank, totalScore }。比較不能なら空のまま
+  const prevStats = new Map<number, { rank: number; totalScore: number }>();
+  if (previousTournament) {
+    const prevScores = new Map<number, number>();
+    for (const match of previousTournament.season?.matches ?? []) {
+      for (const game of match.games ?? []) {
+        for (const p of game.participants ?? []) {
+          if (p.isDisqualified) continue;
+          prevScores.set(p.userId, (prevScores.get(p.userId) ?? 0) + (p.totalScore ?? 0));
+        }
+      }
+    }
+    const prevSorted = [...prevScores.entries()]
+      .filter(([, s]) => s > 0)
+      .sort((a, b) => b[1] - a[1]);
+    let prevRank = 1;
+    prevSorted.forEach(([uid, score], i) => {
+      if (i > 0 && score !== prevSorted[i - 1][1]) prevRank = i + 1;
+      prevStats.set(uid, { rank: prevRank, totalScore: score });
+    });
+  }
+  const hasPrevComparison = prevStats.size > 0;
+
+  // 前回大会比較セクション用データ: 両大会に出た人の順位/ポイント変動と全体指標
+  let comparison: {
+    rankClimbers: PrevMover[];
+    pointGainers: PrevMover[];
+  } | null = null;
+  if (hasPrevComparison) {
+    const currentSorted = [...playerScores.entries()]
+      .filter(([, s]) => s > 0)
+      .sort((a, b) => b[1] - a[1]);
+    let curRank = 1;
+    const movers: PrevMover[] = [];
+    currentSorted.forEach(([uid, score], i) => {
+      if (i > 0 && score !== currentSorted[i - 1][1]) curRank = i + 1;
+      const prev = prevStats.get(uid);
+      if (!prev) return;
+      const participant = allParticipants.find((p) => p.userId === uid);
+      movers.push({
+        userId: uid,
+        name: playerNames.get(uid) ?? `Player ${uid}`,
+        profileNumber: participant?.user?.profileNumber,
+        country: participant?.user?.profile?.country || participant?.user?.country || undefined,
+        prevRank: prev.rank,
+        rank: curRank,
+        rankChange: prev.rank - curRank,
+        prevScore: prev.totalScore,
+        score,
+        pointsDiff: score - prev.totalScore,
+      });
+    });
+    comparison = {
+      rankClimbers: [...movers]
+        .filter((m) => m.rankChange > 0)
+        .sort((a, b) => b.rankChange - a.rankChange)
+        .slice(0, 5),
+      pointGainers: [...movers]
+        .filter((m) => m.pointsDiff > 0)
+        .sort((a, b) => b.pointsDiff - a.pointsDiff)
+        .slice(0, 5),
+    };
+  }
+
   // 1) Total Points Top 10
   const pointsRanking = buildRanking(
     [...playerScores.entries()].filter(([, s]) => s > 0),
@@ -372,7 +493,11 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   // 4) GP Highest Points: top single-GP scores (same player can appear multiple times)
   const gpHighEntries: RankedPlayer[] = [];
   for (const match of sortedMatches) {
-    const roundLabel = leagueLabel(match.matchNumber ?? 0);
+    const baseRoundLabel = leagueLabel(match.matchNumber ?? 0);
+    const roundCourses = coursesByRoundLabel.get(baseRoundLabel);
+    const roundLabel = roundCourses
+      ? `${baseRoundLabel}[${roundCourses}]`
+      : baseRoundLabel;
     for (const game of match.games ?? []) {
       for (const p of game.participants ?? []) {
         if (p.isDisqualified || p.totalScore == null || p.totalScore === 0) continue;
@@ -408,7 +533,9 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
         if (p.totalScore === maxScore) {
           gpWinCount.set(p.userId, (gpWinCount.get(p.userId) ?? 0) + 1);
           const labels = gpWinLabels.get(p.userId) ?? [];
-          labels.push(roundLabel);
+          // Classicはコース内訳を添える (例: GP1[MC1, SL, MC2])
+          const courses = coursesByRoundLabel.get(roundLabel);
+          labels.push(courses ? `${roundLabel}[${courses}]` : roundLabel);
           gpWinLabels.set(p.userId, labels);
         }
       }
@@ -426,13 +553,19 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     for (const game of match.games ?? []) {
       const league = game.leagueType ?? '';
       const leagueTracks = leagueTrackNames.get(league) ?? [];
+      // Classicはリーグを持たない。管理画面で割り当てた game.tracks(ID配列)から名前を引く
+      const assignedTrackIds = (game.tracks ?? []) as (number | null)[];
       for (const p of game.participants ?? []) {
         if (p.isDisqualified || !p.raceResults) continue;
         for (const r of p.raceResults) {
           if (r.position === 1) {
             raceWinCount.set(p.userId, (raceWinCount.get(p.userId) ?? 0) + 1);
             const isMirror = league.startsWith('MIRROR_');
-            const baseName = leagueTracks[r.raceNumber - 1] ?? `R${r.raceNumber}`;
+            const assignedId = assignedTrackIds[r.raceNumber - 1];
+            const baseName =
+              (assignedId != null ? trackNamesById.get(assignedId) : undefined) ??
+              leagueTracks[r.raceNumber - 1] ??
+              `R${r.raceNumber}`;
             const trackName = isMirror ? `Mirror ${baseName}` : baseName;
             if (!raceWinTracks.has(p.userId)) raceWinTracks.set(p.userId, []);
             raceWinTracks.get(p.userId)!.push(trackName);
@@ -612,42 +745,92 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     mostConsistent,
     leastConsistent,
     countryStats,
+    coursesByRoundLabel,
+    comparison,
+    prevTournamentNumber: hasPrevComparison
+      ? previousTournament?.tournamentNumber ?? null
+      : null,
   };
+}
+
+// 大会を部門(GP/Classic)のラウンド・マッチだけに絞り込む
+function filterToDivision(
+  tournament: Tournament,
+  division: 'GP' | 'CLASSIC',
+): Tournament {
+  const rounds = tournament.rounds.filter(
+    (r) => divisionForInGameMode(r.inGameMode) === division,
+  );
+  const roundNumbers = new Set(rounds.map((r) => r.roundNumber));
+  const season = tournament.season
+    ? {
+        ...tournament.season,
+        matches: (tournament.season.matches ?? []).filter(
+          (m) => m.matchNumber != null && roundNumbers.has(m.matchNumber),
+        ),
+      }
+    : tournament.season;
+  return { ...tournament, rounds, totalRounds: rounds.length, season };
 }
 
 // GP部門とClassic部門で統計を別タブにする(マッチタブと同じ分け方)。
 // 各タブには該当部門のラウンド・マッチだけに絞った tournament を渡して集計する
 export function TournamentStats({ tournament }: TournamentStatsProps) {
+  // 前回大会(開催日が直前の完了大会)を取得して前回比較に使う。取れなければ比較なしで表示
+  const [previousTournament, setPreviousTournament] = useState<Tournament | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await tournamentsApi.getRecent(20);
+        const prev = (res.data as RecentTournament[])
+          .filter(
+            (rt) =>
+              rt.id !== tournament.id &&
+              new Date(rt.tournamentDate) < new Date(tournament.tournamentDate),
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.tournamentDate).getTime() - new Date(a.tournamentDate).getTime(),
+          )[0];
+        if (!prev) return;
+        const full = await tournamentsApi.getById(prev.id);
+        if (!cancelled) setPreviousTournament(full.data as Tournament);
+      } catch {
+        // 比較は補助情報なので失敗時は黙って非表示
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournament.id, tournament.tournamentDate]);
+
   const divisions = useMemo(() => {
     const build = (division: 'GP' | 'CLASSIC', label: string) => {
-      const rounds = tournament.rounds.filter(
-        (r) => divisionForInGameMode(r.inGameMode) === division,
-      );
-      const roundNumbers = new Set(rounds.map((r) => r.roundNumber));
-      const season = tournament.season
-        ? {
-            ...tournament.season,
-            matches: (tournament.season.matches ?? []).filter(
-              (m) => m.matchNumber != null && roundNumbers.has(m.matchNumber),
-            ),
-          }
-        : tournament.season;
+      const filtered = filterToDivision(tournament, division);
+      const prevFiltered = previousTournament
+        ? filterToDivision(previousTournament, division)
+        : null;
       return {
         key: division,
         label,
-        rounds,
-        tournament: { ...tournament, rounds, totalRounds: rounds.length, season },
+        rounds: filtered.rounds,
+        tournament: filtered,
+        // 前回大会に同部門が無ければ比較しない
+        previousTournament:
+          prevFiltered && prevFiltered.rounds.length > 0 ? prevFiltered : null,
       };
     };
     return [build('GP', 'GP'), build('CLASSIC', 'Classic')].filter(
       (d) => d.rounds.length > 0,
     );
-  }, [tournament]);
+  }, [tournament, previousTournament]);
 
   if (divisions.length <= 1) {
     return (
       <TournamentStatsBody
         tournament={divisions[0]?.tournament ?? tournament}
+        previousTournament={divisions[0]?.previousTournament ?? null}
       />
     );
   }
@@ -663,14 +846,20 @@ export function TournamentStats({ tournament }: TournamentStatsProps) {
       </TabsList>
       {divisions.map((d) => (
         <TabsContent key={d.key} value={d.key} className="px-0 sm:px-0 pb-0 sm:pb-0">
-          <TournamentStatsBody tournament={d.tournament} />
+          <TournamentStatsBody
+            tournament={d.tournament}
+            previousTournament={d.previousTournament}
+          />
         </TabsContent>
       ))}
     </Tabs>
   );
 }
 
-function TournamentStatsBody({ tournament }: TournamentStatsProps) {
+function TournamentStatsBody({
+  tournament,
+  previousTournament,
+}: TournamentStatsProps & { previousTournament?: Tournament | null }) {
   const t = useTranslations('tournament.stats');
 
   const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
@@ -683,6 +872,7 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
     }
   };
   const [leagueTrackNames, setLeagueTrackNames] = useState<Map<string, string[]>>(new Map());
+  const [trackNamesById, setTrackNamesById] = useState<Map<number, string>>(new Map());
   useEffect(() => {
     tracksApi.getAll().then((res) => {
       const byLeague = new Map<string, Track[]>();
@@ -696,11 +886,22 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
         result.set(league, tracks.sort((a, b) => a.id - b.id).map((t) => t.name));
       }
       setLeagueTrackNames(result);
+      setTrackNamesById(new Map(res.data.map((tr) => [tr.id, tr.name])));
     });
   }, []);
 
   const overallLabel = t('overall');
-  const stats = useMemo(() => computeStats(tournament, overallLabel, leagueTrackNames), [tournament, overallLabel, leagueTrackNames]);
+  const stats = useMemo(
+    () =>
+      computeStats(
+        tournament,
+        overallLabel,
+        leagueTrackNames,
+        trackNamesById,
+        previousTournament ?? null,
+      ),
+    [tournament, overallLabel, leagueTrackNames, trackNamesById, previousTournament],
+  );
 
   if (stats.uniquePlayerCount === 0) {
     return (
@@ -719,13 +920,10 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
         <SummaryCard icon={<Hash className="h-5 w-5 text-red-400" />} label={t('format')} value={`${stats.roundCount} GPs`} />
         <Card className="bg-gray-800/50 border-gray-700">
           <CardContent className="p-4 flex items-center gap-3">
-            <Trophy className="h-5 w-5 text-yellow-400" />
-            <div>
+            <Trophy className="h-5 w-5 text-yellow-400 shrink-0" />
+            <div className="min-w-0 flex-1">
               <p className="text-xs text-gray-400">{t('winner')}</p>
-              <p className="text-xl font-bold text-white inline-flex items-center gap-2">
-                {stats.winnerCountry && <span className={`fi fi-${stats.winnerCountry.toLowerCase()} text-base`} />}
-                {stats.winnerName}
-              </p>
+              <WinnerName name={stats.winnerName} country={stats.winnerCountry} />
             </div>
           </CardContent>
         </Card>
@@ -794,6 +992,48 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
                 </TabsContent>
               ))}
             </Tabs>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 前回大会比較 */}
+      {stats.comparison && stats.prevTournamentNumber != null && (
+        <Card className="bg-gray-800/50 border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {t('prevComparison')}{' '}
+              <span className="text-sm font-normal text-gray-400">
+                {t('vsPrevious', { number: stats.prevTournamentNumber })}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <MoversTable
+                title={t('rankClimbers')}
+                header={t('prevToNow')}
+                movers={stats.comparison.rankClimbers}
+                playerLabel={t('player')}
+                valueWidth="w-6"
+                render={(m) => ({
+                  from: m.prevRank,
+                  to: m.rank,
+                  diff: `↑${m.rankChange}`,
+                })}
+              />
+              <MoversTable
+                title={t('pointGainers')}
+                header={t('prevToNow')}
+                movers={stats.comparison.pointGainers}
+                playerLabel={t('player')}
+                valueWidth="w-11"
+                render={(m) => ({
+                  from: m.prevScore,
+                  to: m.score,
+                  diff: `+${m.pointsDiff}`,
+                })}
+              />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -920,7 +1160,13 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
             <ResponsiveContainer width="100%" height={stats.machineStackedData.length * 36 + 20} minWidth={0}>
               <BarChart data={stats.machineStackedData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }} stackOffset="expand" barSize={20}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="round" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={70} />
+                <YAxis
+                  type="category"
+                  dataKey="round"
+                  stroke="#9ca3af"
+                  tick={<RoundCategoryTick courses={stats.coursesByRoundLabel} />}
+                  width={70}
+                />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   itemStyle={{ color: '#fff' }}
@@ -957,9 +1203,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineHighestByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineHighestByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} domain={[200, 'auto']} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1006,9 +1252,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineScoreByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineScoreByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1055,9 +1301,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineMedianByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineMedianByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1104,9 +1350,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineSurvivedByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineSurvivedByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} allowDecimals={false} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1237,6 +1483,99 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
   );
 }
 
+
+// 優勝者名がカード幅を超える場合、収まるまでフォントサイズを縮小する(省略はしない)
+function WinnerName({ name, country }: { name: string; country?: string }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const text = textRef.current;
+    const container = text?.parentElement;
+    if (!text || !container) return;
+
+    const fit = () => {
+      text.style.fontSize = '';
+      const available = container.clientWidth;
+      const natural = text.scrollWidth;
+      if (natural > available && available > 0) {
+        const base = parseFloat(getComputedStyle(text).fontSize);
+        text.style.fontSize = `${Math.max((base * available) / natural, 10)}px`;
+      }
+    };
+
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [name, country]);
+
+  return (
+    <p ref={textRef} className="text-xl font-bold text-white inline-flex items-center gap-2 whitespace-nowrap">
+      {country && <span className={`fi fi-${country.toLowerCase()} text-[0.8em]`} />}
+      {name}
+    </p>
+  );
+}
+
+function MoversTable({
+  title,
+  header,
+  playerLabel,
+  movers,
+  valueWidth,
+  render,
+}: {
+  title: string;
+  header: string;
+  playerLabel: string;
+  movers: PrevMover[];
+  // 前後の数値セルの幅。桁数が違っても矢印の位置が縦に揃うように固定する
+  valueWidth: string;
+  render: (m: PrevMover) => { from: number; to: number; diff: string };
+}) {
+  if (movers.length === 0) return null;
+  return (
+    <div>
+      <h4 className="text-sm font-medium text-green-400 mb-2">{title}</h4>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-700/50 text-left text-gray-400">
+            <th className="px-2 py-1.5">{playerLabel}</th>
+            <th className="px-2 py-1.5 text-right">{header}</th>
+            <th className="px-2 py-1.5 text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {movers.map((m) => {
+            const { from, to, diff } = render(m);
+            return (
+              <tr key={m.userId} className="border-b border-gray-700/50">
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  <span className="inline-flex items-center gap-1.5">
+                    {m.country && <span className={`fi fi-${m.country.toLowerCase()}`} />}
+                    {m.profileNumber ? (
+                      <Link href={`/profile/${m.profileNumber}`} className="text-white hover:text-blue-400 hover:underline">
+                        {m.name}
+                      </Link>
+                    ) : (
+                      <span className="text-white">{m.name}</span>
+                    )}
+                  </span>
+                </td>
+                <td className="px-2 py-1.5 text-right text-gray-300 font-mono tabular-nums whitespace-nowrap">
+                  <span className={`inline-block ${valueWidth} text-right`}>{from}</span>
+                  <span className="mx-1 text-gray-500">→</span>
+                  <span className={`inline-block ${valueWidth} text-left`}>{to}</span>
+                </td>
+                <td className="px-2 py-1.5 text-right text-green-400 whitespace-nowrap">{diff}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
   return (

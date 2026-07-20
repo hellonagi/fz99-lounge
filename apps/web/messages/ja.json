@@ -92,6 +92,11 @@
     "stats": {
       "title": "大会統計",
       "participants": "参加者",
+      "vsPrevious": "#{number}比",
+      "prevComparison": "前回大会比較",
+      "rankClimbers": "順位アップ",
+      "pointGainers": "ポイントアップ",
+      "prevToNow": "前回 → 今回",
       "format": "フォーマット",
       "date": "開催日",
       "winner": "優勝者",
@@ -163,7 +168,9 @@
       "gridRace": "R{number}",
       "gridSave": "保存",
       "gridCompRequired": "補正ポイントを入力",
-      "confirmDq": "{name}を失格(0点)にしますか？"
+      "confirmDq": "{name}を失格(0点)にしますか？",
+      "trackSelection": "Classicコース割り当て",
+      "trackNotSet": "未設定"
     },
     "countdown": {
       "next": "次",

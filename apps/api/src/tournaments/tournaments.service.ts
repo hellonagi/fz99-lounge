@@ -1532,17 +1532,19 @@ export class TournamentsService {
 
     const seasonIds = configs.map((c) => c.seasonId);
 
-    // Get the top scorer per season (sum of totalScore across all games)
-    const winners = seasonIds.length
+    // Get per-round scores per season (division is derived from matchNumber via config.rounds)
+    const rows = seasonIds.length
       ? await this.prisma.$queryRaw<
           Array<{
             seasonId: number;
+            matchNumber: number | null;
             userId: number;
             displayName: string | null;
             totalScore: bigint;
           }>
         >`
-          SELECT m."seasonId" AS "seasonId", gp."userId" AS "userId", u."displayName" AS "displayName",
+          SELECT m."seasonId" AS "seasonId", m."matchNumber" AS "matchNumber",
+                 gp."userId" AS "userId", u."displayName" AS "displayName",
                  SUM(gp."totalScore") AS "totalScore"
           FROM game_participants gp
           JOIN games g ON g.id = gp."gameId"
@@ -1550,48 +1552,74 @@ export class TournamentsService {
           JOIN users u ON u.id = gp."userId"
           WHERE m."seasonId" IN (${Prisma.join(seasonIds)})
             AND gp."totalScore" IS NOT NULL
-          GROUP BY m."seasonId", gp."userId", u."displayName"
-          ORDER BY m."seasonId", SUM(gp."totalScore") DESC
+          GROUP BY m."seasonId", m."matchNumber", gp."userId", u."displayName"
         `
       : [];
 
-    // Build a map: seasonId → top 3 scorers, plus the full top-tied set
-    const topScorersMap = new Map<
-      number,
-      Array<{
-        rank: number;
-        id: number;
-        displayName: string | null;
-        totalScore: number;
-      }>
-    >();
-    const allByseasonId = new Map<
-      number,
-      Array<{ id: number; displayName: string | null; totalScore: number }>
-    >();
-    for (const w of winners) {
-      const entry = {
-        id: w.userId,
-        displayName: w.displayName,
-        totalScore: Number(w.totalScore),
-      };
-      const all = allByseasonId.get(w.seasonId) ?? [];
-      all.push(entry);
-      allByseasonId.set(w.seasonId, all);
-
-      const list = topScorersMap.get(w.seasonId) ?? [];
-      if (list.length < 3) {
-        list.push({ rank: list.length + 1, ...entry });
-        topScorersMap.set(w.seasonId, list);
-      }
+    const rowsBySeasonId = new Map<number, typeof rows>();
+    for (const row of rows) {
+      const list = rowsBySeasonId.get(row.seasonId) ?? [];
+      list.push(row);
+      rowsBySeasonId.set(row.seasonId, list);
     }
 
     return configs.map((c) => {
-      const topScorers = topScorersMap.get(c.seasonId) ?? [];
-      const all = allByseasonId.get(c.seasonId) ?? [];
-      const topScore = all[0]?.totalScore ?? null;
-      const tiedWinners =
-        topScore !== null ? all.filter((s) => s.totalScore === topScore) : [];
+      const rounds = c.rounds as Array<{
+        roundNumber: number;
+        inGameMode: string;
+      }>;
+      const divisionByMatch = new Map<number, TournamentDivision>();
+      for (const r of rounds) {
+        divisionByMatch.set(r.roundNumber, divisionForInGameMode(r.inGameMode));
+      }
+
+      // division → userId → { displayName, totalScore }
+      const totalsByDivision = new Map<
+        TournamentDivision,
+        Map<number, { displayName: string | null; totalScore: number }>
+      >();
+      for (const row of rowsBySeasonId.get(c.seasonId) ?? []) {
+        const division =
+          (row.matchNumber != null
+            ? divisionByMatch.get(row.matchNumber)
+            : undefined) ?? TournamentDivision.GP;
+        const totals =
+          totalsByDivision.get(division) ??
+          new Map<number, { displayName: string | null; totalScore: number }>();
+        const prev = totals.get(row.userId);
+        totals.set(row.userId, {
+          displayName: row.displayName,
+          totalScore: (prev?.totalScore ?? 0) + Number(row.totalScore),
+        });
+        totalsByDivision.set(division, totals);
+      }
+
+      const divisions = [TournamentDivision.GP, TournamentDivision.CLASSIC]
+        .filter((d) => totalsByDivision.has(d))
+        .map((division) => {
+          const all = [...totalsByDivision.get(division)!.entries()]
+            .map(([id, v]) => ({
+              id,
+              displayName: v.displayName,
+              totalScore: v.totalScore,
+            }))
+            .filter((s) => s.totalScore > 0)
+            .sort((a, b) => b.totalScore - a.totalScore);
+          const topScore = all[0]?.totalScore ?? null;
+          const tiedWinners =
+            topScore !== null
+              ? all.filter((s) => s.totalScore === topScore)
+              : [];
+          return {
+            division,
+            winner: tiedWinners[0] ?? null,
+            winners: tiedWinners,
+          };
+        })
+        .filter((d) => d.winners.length > 0);
+
+      // 旧クライアント向けの後方互換フィールド(先頭division=GP優先の優勝者)
+      const primary = divisions[0];
       return {
         id: c.id,
         name: c.name,
@@ -1600,9 +1628,9 @@ export class TournamentsService {
         tournamentDate: c.tournamentDate,
         totalRounds: c.totalRounds,
         participantCount: c._count.registrations,
-        winner: tiedWinners[0] ?? null,
-        winners: tiedWinners,
-        topScorers,
+        winner: primary?.winner ?? null,
+        winners: primary?.winners ?? [],
+        divisions,
       };
     });
   }

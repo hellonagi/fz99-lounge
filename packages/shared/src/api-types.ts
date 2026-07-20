@@ -273,6 +273,18 @@ export interface TournamentStream {
   isFeatured: boolean;
 }
 
+export interface RecentTournamentWinner {
+  id: number;
+  displayName: string | null;
+  totalScore: number;
+}
+
+export interface RecentTournamentDivisionResult {
+  division: TournamentDivision;
+  winner: RecentTournamentWinner | null;
+  winners: RecentTournamentWinner[];
+}
+
 export interface RecentTournament {
   id: number;
   name: string;
@@ -281,22 +293,10 @@ export interface RecentTournament {
   tournamentDate: string;
   totalRounds: number;
   participantCount: number;
-  winner: {
-    id: number;
-    displayName: string | null;
-    totalScore: number;
-  } | null;
-  winners?: Array<{
-    id: number;
-    displayName: string | null;
-    totalScore: number;
-  }>;
-  topScorers?: Array<{
-    rank: number;
-    id: number;
-    displayName: string | null;
-    totalScore: number;
-  }>;
+  // 後方互換: 先頭division(GP優先)の優勝者
+  winner: RecentTournamentWinner | null;
+  winners?: RecentTournamentWinner[];
+  divisions?: RecentTournamentDivisionResult[];
 }
 
 export interface TournamentRegistration {

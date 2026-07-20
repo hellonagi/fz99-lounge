@@ -92,6 +92,11 @@
     "stats": {
       "title": "Tournament Statistics",
       "participants": "Participants",
+      "vsPrevious": "vs #{number}",
+      "prevComparison": "vs Previous Tournament",
+      "rankClimbers": "Biggest Climbers",
+      "pointGainers": "Biggest Point Gains",
+      "prevToNow": "Prev → Now",
       "format": "Format",
       "date": "Date",
       "winner": "Winner",
@@ -163,7 +168,9 @@
       "gridRace": "R{number}",
       "gridSave": "Save",
       "gridCompRequired": "Enter compensation points",
-      "confirmDq": "Disqualify {name} (0 pts)?"
+      "confirmDq": "Disqualify {name} (0 pts)?",
+      "trackSelection": "Classic Track Assignment",
+      "trackNotSet": "Not set"
     },
     "countdown": {
       "next": "Next",
