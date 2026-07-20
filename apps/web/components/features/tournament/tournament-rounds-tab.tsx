@@ -32,6 +32,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useGameSocket, type ParticipantUpdate } from '@/hooks/useGameSocket';
 import { ScoreSubmissionForm } from '@/components/features/match/score-submission-form';
 import { MatchDetailsTable } from '@/components/features/match/match-details-table';
+import { ClassicTrackSection } from '@/components/features/tournament/classic-track-section';
 import type {
   Tournament,
   TournamentRoundConfig,
@@ -700,6 +701,11 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
           <p className="text-gray-400 text-sm">{t('admin.noInProgress')}</p>
           {/* RESULTS_PENDING後でもGPを出し直せる復旧経路 */}
           <CountdownStartForm tournament={tournament} matches={matches} />
+          <ClassicTrackSection
+            tournament={tournament}
+            matches={matches}
+            onUpdate={onUpdate}
+          />
           <DiscordRoleSection
             tournamentId={tournament.id}
             loading={discordRoleLoading}
@@ -754,7 +760,11 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
         <CardContent className="pt-6 space-y-4">
           {statusControls}
           <CountdownStartForm tournament={tournament} matches={matches} />
-
+          <ClassicTrackSection
+            tournament={tournament}
+            matches={matches}
+            onUpdate={onUpdate}
+          />
           <DiscordRoleSection
             tournamentId={tournament.id}
             loading={discordRoleLoading}
@@ -786,6 +796,12 @@ function AdminContent({ tournament, matches, onUpdate }: AdminContentProps) {
 
         {/* Countdown form — operator picks the GP, league and passcode explicitly */}
         <CountdownStartForm tournament={tournament} matches={matches} />
+
+        <ClassicTrackSection
+          tournament={tournament}
+          matches={matches}
+          onUpdate={onUpdate}
+        />
 
         {inProgressMatch && <div className="flex flex-wrap items-center gap-3">
           {/* Notify Split — 公開状態に関係なくいつでも押せる */}

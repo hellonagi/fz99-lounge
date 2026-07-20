@@ -21,8 +21,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Users, Hash, Calendar, Trophy } from 'lucide-react';
 import { F99_MACHINES } from '@/lib/machines';
+import { CLASSIC_TRACK_ABBR } from '@/lib/classic-tracks';
 import { tracksApi, type Track } from '@/lib/api';
-import { divisionForInGameMode } from '@/types';
+import { divisionForInGameMode, roundDisplayLabel } from '@/types';
 import type { Tournament, GameParticipant } from '@/types';
 
 // APIレスポンスでは user に profile がネストされる場合がある
@@ -41,12 +42,34 @@ const tooltipStyle = {
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StaggeredTick({ x, y, payload, index }: any) {
+function StaggeredTick({ x, y, payload, index, courses }: any) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   const dy = isMobile && index % 2 !== 0 ? 22 : 8;
+  const courseLine = courses?.get(payload.value);
   return (
     <text x={x} y={y} dy={dy} textAnchor="middle" fill="#9ca3af" fontSize={12}>
-      {payload.value}
+      <tspan x={x}>{payload.value}</tspan>
+      {courseLine && (
+        <tspan x={x} dy={11} fontSize={8.5} fill="#6b7280">
+          {courseLine}
+        </tspan>
+      )}
+    </text>
+  );
+}
+
+// 横棒チャート(マシン使用率)のY軸用: ラウンド名の下にClassicのコース内訳を表示
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RoundCategoryTick({ x, y, payload, courses }: any) {
+  const courseLine = courses?.get(payload.value);
+  return (
+    <text x={x} y={y} textAnchor="end" fill="#9ca3af" fontSize={12}>
+      <tspan x={x} dy={courseLine ? 0 : 4}>{payload.value}</tspan>
+      {courseLine && (
+        <tspan x={x} dy={11} fontSize={8.5} fill="#6b7280">
+          {courseLine}
+        </tspan>
+      )}
     </text>
   );
 }
@@ -108,7 +131,12 @@ interface CountryStats {
   medScore: number;
 }
 
-function computeStats(tournament: Tournament, overallLabel: string, leagueTrackNames: Map<string, string[]>) {
+function computeStats(
+  tournament: Tournament,
+  overallLabel: string,
+  leagueTrackNames: Map<string, string[]>,
+  trackNamesById: Map<number, string>,
+) {
   const matches = tournament.season?.matches ?? [];
   const sortedMatches = [...matches].sort((a, b) => (a.matchNumber ?? 0) - (b.matchNumber ?? 0));
 
@@ -188,13 +216,27 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   // Machine usage per round
   const leagueLabel = (roundNumber: number): string => {
     const roundConfig = tournament.rounds?.find((r) => r.roundNumber === roundNumber);
-    if (!roundConfig?.league) return `R${roundNumber}`;
+    // Classicラウンドはleague名を持たないので部門内の通し番号(GP1, GP2...)で表示
+    if (!roundConfig?.league) return roundDisplayLabel(tournament.rounds ?? [], roundNumber);
     const name = roundConfig.league
       .split('_')
       .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
       .join('_');
     return name.replace('Mirror_', 'M.');
   };
+
+  // ラウンドラベル → Classicコース内訳 (例: "MC1, SL, FF")。tracks未割り当てのラウンドは含めない
+  const coursesByRoundLabel = new Map<string, string>();
+  for (const match of sortedMatches) {
+    const game = (match.games ?? [])[0];
+    const trackIds = (game?.tracks ?? []) as (number | null)[];
+    const abbrs = trackIds.flatMap((id) =>
+      id != null ? [CLASSIC_TRACK_ABBR[id] ?? `#${id}`] : [],
+    );
+    if (abbrs.length > 0) {
+      coursesByRoundLabel.set(leagueLabel(match.matchNumber ?? 0), abbrs.join(', '));
+    }
+  }
 
   // Machine usage stacked bar data: each row = round, values = % per machine
   const buildMachineRow = (label: string, machineCounts: Map<string, number>) => {
@@ -372,7 +414,11 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
   // 4) GP Highest Points: top single-GP scores (same player can appear multiple times)
   const gpHighEntries: RankedPlayer[] = [];
   for (const match of sortedMatches) {
-    const roundLabel = leagueLabel(match.matchNumber ?? 0);
+    const baseRoundLabel = leagueLabel(match.matchNumber ?? 0);
+    const roundCourses = coursesByRoundLabel.get(baseRoundLabel);
+    const roundLabel = roundCourses
+      ? `${baseRoundLabel}[${roundCourses}]`
+      : baseRoundLabel;
     for (const game of match.games ?? []) {
       for (const p of game.participants ?? []) {
         if (p.isDisqualified || p.totalScore == null || p.totalScore === 0) continue;
@@ -408,7 +454,9 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
         if (p.totalScore === maxScore) {
           gpWinCount.set(p.userId, (gpWinCount.get(p.userId) ?? 0) + 1);
           const labels = gpWinLabels.get(p.userId) ?? [];
-          labels.push(roundLabel);
+          // Classicはコース内訳を添える (例: GP1[MC1, SL, MC2])
+          const courses = coursesByRoundLabel.get(roundLabel);
+          labels.push(courses ? `${roundLabel}[${courses}]` : roundLabel);
           gpWinLabels.set(p.userId, labels);
         }
       }
@@ -426,13 +474,19 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     for (const game of match.games ?? []) {
       const league = game.leagueType ?? '';
       const leagueTracks = leagueTrackNames.get(league) ?? [];
+      // Classicはリーグを持たない。管理画面で割り当てた game.tracks(ID配列)から名前を引く
+      const assignedTrackIds = (game.tracks ?? []) as (number | null)[];
       for (const p of game.participants ?? []) {
         if (p.isDisqualified || !p.raceResults) continue;
         for (const r of p.raceResults) {
           if (r.position === 1) {
             raceWinCount.set(p.userId, (raceWinCount.get(p.userId) ?? 0) + 1);
             const isMirror = league.startsWith('MIRROR_');
-            const baseName = leagueTracks[r.raceNumber - 1] ?? `R${r.raceNumber}`;
+            const assignedId = assignedTrackIds[r.raceNumber - 1];
+            const baseName =
+              (assignedId != null ? trackNamesById.get(assignedId) : undefined) ??
+              leagueTracks[r.raceNumber - 1] ??
+              `R${r.raceNumber}`;
             const trackName = isMirror ? `Mirror ${baseName}` : baseName;
             if (!raceWinTracks.has(p.userId)) raceWinTracks.set(p.userId, []);
             raceWinTracks.get(p.userId)!.push(trackName);
@@ -612,6 +666,7 @@ function computeStats(tournament: Tournament, overallLabel: string, leagueTrackN
     mostConsistent,
     leastConsistent,
     countryStats,
+    coursesByRoundLabel,
   };
 }
 
@@ -683,6 +738,7 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
     }
   };
   const [leagueTrackNames, setLeagueTrackNames] = useState<Map<string, string[]>>(new Map());
+  const [trackNamesById, setTrackNamesById] = useState<Map<number, string>>(new Map());
   useEffect(() => {
     tracksApi.getAll().then((res) => {
       const byLeague = new Map<string, Track[]>();
@@ -696,11 +752,15 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
         result.set(league, tracks.sort((a, b) => a.id - b.id).map((t) => t.name));
       }
       setLeagueTrackNames(result);
+      setTrackNamesById(new Map(res.data.map((tr) => [tr.id, tr.name])));
     });
   }, []);
 
   const overallLabel = t('overall');
-  const stats = useMemo(() => computeStats(tournament, overallLabel, leagueTrackNames), [tournament, overallLabel, leagueTrackNames]);
+  const stats = useMemo(
+    () => computeStats(tournament, overallLabel, leagueTrackNames, trackNamesById),
+    [tournament, overallLabel, leagueTrackNames, trackNamesById],
+  );
 
   if (stats.uniquePlayerCount === 0) {
     return (
@@ -917,7 +977,13 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
             <ResponsiveContainer width="100%" height={stats.machineStackedData.length * 36 + 20} minWidth={0}>
               <BarChart data={stats.machineStackedData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }} stackOffset="expand" barSize={20}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="round" stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={70} />
+                <YAxis
+                  type="category"
+                  dataKey="round"
+                  stroke="#9ca3af"
+                  tick={<RoundCategoryTick courses={stats.coursesByRoundLabel} />}
+                  width={70}
+                />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   itemStyle={{ color: '#fff' }}
@@ -954,9 +1020,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineHighestByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineHighestByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} domain={[200, 'auto']} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1003,9 +1069,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineScoreByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineScoreByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1052,9 +1118,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineMedianByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineMedianByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} />
                 <Tooltip
                   contentStyle={tooltipStyle}
@@ -1101,9 +1167,9 @@ function TournamentStatsBody({ tournament }: TournamentStatsProps) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250} minWidth={0}>
-              <LineChart data={stats.machineSurvivedByRound} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <LineChart data={stats.machineSurvivedByRound} margin={{ top: 10, right: stats.coursesByRoundLabel.size > 0 ? 28 : 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick />} interval={0} height={40} />
+                <XAxis dataKey="round" stroke="#9ca3af" tick={<StaggeredTick courses={stats.coursesByRoundLabel} />} interval={0} height={stats.coursesByRoundLabel.size > 0 ? 56 : 40} />
                 <YAxis stroke="#9ca3af" tick={{ fill: '#9ca3af', fontSize: 12 }} width={40} allowDecimals={false} />
                 <Tooltip
                   contentStyle={tooltipStyle}

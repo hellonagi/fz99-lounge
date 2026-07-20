@@ -163,7 +163,9 @@
       "gridRace": "R{number}",
       "gridSave": "Save",
       "gridCompRequired": "Enter compensation points",
-      "confirmDq": "Disqualify {name} (0 pts)?"
+      "confirmDq": "Disqualify {name} (0 pts)?",
+      "trackSelection": "Classic Track Assignment",
+      "trackNotSet": "Not set"
     },
     "countdown": {
       "next": "Next",
