@@ -669,7 +669,6 @@ export default function GamePage() {
                     matchStatus={game.match.status}
                     participants={(game.participants || []).filter(p => !p.isExcluded)}
                     matchParticipants={game.match.participants.filter(mp => !(game.participants || []).some(gp => gp.user.id === mp.user.id && gp.isExcluded))}
-                    screenshots={screenshots}
                     category={category}
                     season={season}
                     match={match}

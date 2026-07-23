@@ -22,36 +22,16 @@ export class ScreenshotsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  /**
-   * 1位チェック（同点1位も含む）
-   */
-  private async checkFirstPlace(
-    gameId: number,
-    userId: number,
-  ): Promise<boolean> {
-    const participants = await this.prisma.gameParticipant.findMany({
-      where: { gameId },
-      orderBy: { totalScore: 'desc' },
-    });
-
-    if (participants.length === 0) return false;
-
-    // 最高スコアを取得
-    const topScore = participants.find(
-      (p) => p.totalScore !== null,
-    )?.totalScore;
-    if (topScore === null || topScore === undefined) return false;
-
-    // 同点1位全員が提出可能
-    const firstPlaceUsers = participants.filter(
-      (p) => p.totalScore === topScore,
-    );
-    return firstPlaceUsers.some((p) => p.userId === userId);
-  }
+  // FINAL_SCORE系は提出廃止（過去データの表示・削除処理のみ残す）
+  private static readonly FINAL_SCORE_TYPES: ScreenshotType[] = [
+    ScreenshotType.FINAL_SCORE,
+    ScreenshotType.FINAL_SCORE_1,
+    ScreenshotType.FINAL_SCORE_2,
+  ];
 
   /**
    * プレイヤーがスクショを提出
-   * type: INDIVIDUAL（個人成績）または FINAL_SCORE（全体スコア、1位のみ）
+   * type: INDIVIDUAL（個人成績）
    */
   async submitScreenshot(
     gameId: number,
@@ -59,6 +39,13 @@ export class ScreenshotsService {
     file: Express.Multer.File,
     type: ScreenshotType = ScreenshotType.INDIVIDUAL,
   ) {
+    // FINAL_SCORE系は提出廃止
+    if (ScreenshotsService.FINAL_SCORE_TYPES.includes(type)) {
+      throw new ForbiddenException(
+        'Final score screenshot submission is no longer supported',
+      );
+    }
+
     // Gameの存在確認
     const game = await this.prisma.game.findUnique({
       where: { id: gameId },
@@ -87,30 +74,6 @@ export class ScreenshotsService {
       throw new ForbiddenException(
         'Cannot submit screenshot for a completed match',
       );
-    }
-
-    // FINAL_SCOREの場合、1位チェック + 既にverify済みがあれば提出不可
-    if (type === ScreenshotType.FINAL_SCORE) {
-      const isFirstPlace = await this.checkFirstPlace(gameId, userId);
-      if (!isFirstPlace) {
-        throw new ForbiddenException(
-          'Only 1st place can submit final score screenshot',
-        );
-      }
-
-      // 既にverify済みのFINAL_SCOREがあれば提出不可
-      const verifiedFinalScore =
-        await this.prisma.gameScreenshotSubmission.findFirst({
-          where: {
-            gameId,
-            type: ScreenshotType.FINAL_SCORE,
-            isVerified: true,
-            deletedAt: null,
-          },
-        });
-      if (verifiedFinalScore) {
-        throw new ForbiddenException('Final score screenshot already verified');
-      }
     }
 
     // 既存のスクショがあるか確認
