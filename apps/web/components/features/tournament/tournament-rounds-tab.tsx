@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Loader2, ChevronRight, Play, Shield, AlertTriangle, MessageSquareWarning, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getPositionColor } from '@/lib/rank-utils';
 import {
   detectAllPositionConflicts,
   type ConflictResult,
@@ -1940,8 +1941,7 @@ function OverallStandings({ tournament, rounds, onUpdate }: { tournament: Tourna
                   >
                     <td className={cn(
                       'py-2 px-1 md:px-2 font-bold',
-                      !hasAnyScore ? 'text-gray-500' :
-                      rank <= 3 ? 'text-yellow-400' : 'text-gray-100'
+                      !hasAnyScore ? 'text-gray-500' : getPositionColor(rank)
                     )}>
                       {hasAnyScore ? rank : '-'}
                     </td>
