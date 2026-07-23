@@ -55,6 +55,14 @@ export function getRankTextColor(rating: number): string {
   return 'text-amber-700';
 }
 
+// Gold/silver/bronze text color for standings position (1st/2nd/3rd)
+export function getPositionColor(position: number): string {
+  if (position === 1) return 'text-yellow-400';
+  if (position === 2) return 'text-gray-300';
+  if (position === 3) return 'text-orange-400';
+  return 'text-gray-100';
+}
+
 // Rank thresholds for chart reference lines
 export const RANK_THRESHOLDS = [
   { rating: 4000, name: 'Grandmaster', color: '#f43f5e' },

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { getRankInfo } from '@/lib/rank-utils';
+import { getPositionColor, getRankInfo } from '@/lib/rank-utils';
 import type { User } from '@/types';
 
 interface LeaderboardEntry {
@@ -66,34 +66,34 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
 
   return (
     <div className="overflow-x-auto">
-      <table className={cn("w-full text-xs md:text-sm", isGpMode ? "min-w-[620px] md:min-w-[850px]" : "min-w-[760px] md:min-w-[1000px]")}>
+      <table className={cn("w-full text-xs md:text-sm whitespace-nowrap", isGpMode ? "md:min-w-[850px]" : "md:min-w-[1000px]")}>
         <thead>
           <tr className="border-b border-gray-700 text-gray-400">
-            <th className="text-left py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-0">#</th>
-            <th className="py-1.5 px-1 md:py-2 w-6"></th>
-            <th className="text-left py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Player</th>
-            {!isGpMode && <th className="text-left py-1.5 px-1 md:py-2 font-medium">Rank</th>}
-            {!isGpMode && <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Rating</th>}
-            {!isGpMode && <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Peak</th>}
-            <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Matches</th>
+            <th className="text-left py-2 px-1 md:px-2 font-medium w-0">#</th>
+            <th className="py-2 px-1 w-6"></th>
+            <th className="text-left py-2 px-1 md:px-2 font-medium">Player</th>
+            {!isGpMode && <th className="text-left py-2 px-1 font-medium">Rank</th>}
+            {!isGpMode && <th className="text-right py-2 px-1 md:px-2 font-medium">Rating</th>}
+            {!isGpMode && <th className="text-right py-2 px-1 md:px-2 font-medium">Peak</th>}
+            <th className="text-right py-2 px-1 md:px-2 font-medium">Matches</th>
             {isTeamClassic ? (
               <>
-                <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-12">Wins</th>
-                <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-12">MVP</th>
+                <th className="text-right py-2 px-1 md:px-2 font-medium w-12">Wins</th>
+                <th className="text-right py-2 px-1 md:px-2 font-medium w-12">MVP</th>
               </>
             ) : (
               <>
-                <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-12">1st</th>
-                <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-12">2nd</th>
-                <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium w-12">3rd</th>
+                <th className="text-right py-2 px-1 md:px-2 font-medium w-12">1st</th>
+                <th className="text-right py-2 px-1 md:px-2 font-medium w-12">2nd</th>
+                <th className="text-right py-2 px-1 md:px-2 font-medium w-12">3rd</th>
               </>
             )}
-            {isGpMode && <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Best Pos</th>}
-            <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Med Pos</th>
-            {isGpMode && <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Best Pts</th>}
-            <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Med Pts</th>
-            <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Finish%</th>
-            <th className="text-right py-1.5 px-1.5 md:py-2 md:px-2 font-medium">Most Used</th>
+            {isGpMode && <th className="text-right py-2 px-1 md:px-2 font-medium">Best Pos</th>}
+            <th className="text-right py-2 px-1 md:px-2 font-medium">Med Pos</th>
+            {isGpMode && <th className="text-right py-2 px-1 md:px-2 font-medium">Best Pts</th>}
+            <th className="text-right py-2 px-1 md:px-2 font-medium">Med Pts</th>
+            <th className="text-right py-2 px-1 md:px-2 font-medium">Finish%</th>
+            <th className="text-right py-2 px-1 md:px-2 font-medium">Most Used</th>
           </tr>
         </thead>
         <tbody>
@@ -120,17 +120,14 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
               >
                 {/* Rank */}
                 <td className={cn(
-                  'py-1.5 px-1.5 md:py-2 md:px-2 font-bold',
-                  rank === 1 ? 'text-yellow-400' :
-                  rank === 2 ? 'text-gray-300' :
-                  rank === 3 ? 'text-orange-400' :
-                  'text-gray-100'
+                  'py-2 px-1 md:px-2 font-bold',
+                  getPositionColor(rank)
                 )}>
                   {rank}
                 </td>
 
                 {/* Country */}
-                <td className="py-1.5 px-1 md:py-2 w-6">
+                <td className="py-2 px-1 w-6">
                   <span
                     className={`fi fi-${entry.user.profile?.country?.toLowerCase() || 'un'}`}
                     title={entry.user.profile?.country || 'Unknown'}
@@ -138,11 +135,11 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
                 </td>
 
                 {/* Player */}
-                <td className="py-1.5 px-1.5 md:py-2 md:px-2">
+                <td className="py-2 px-1 md:px-2">
                   <Link
                     href={`/profile/${entry.user.profileNumber}`}
                     prefetch={false}
-                    className="text-white truncate max-w-[140px] md:max-w-[150px] hover:text-blue-400"
+                    className="block text-white truncate max-w-[88px] md:max-w-[150px] hover:text-blue-400"
                   >
                     {entry.user.displayName || `User#${entry.user.profileNumber}`}
                   </Link>
@@ -150,7 +147,7 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
 
                 {/* Rank Badge */}
                 {!isGpMode && (
-                  <td className="py-1.5 px-1 md:py-2 whitespace-nowrap">
+                  <td className="py-2 px-1 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       <div className={cn('w-2.5 h-2.5 rounded-full', rankInfo.color)} />
                       <span className="text-gray-100">{rankInfo.name}</span>
@@ -160,49 +157,49 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
 
                 {/* Rating */}
                 {!isGpMode && (
-                  <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right font-bold text-white">
+                  <td className="py-2 px-1 md:px-2 text-right font-bold text-white">
                     {entry.displayRating}
                   </td>
                 )}
 
                 {/* Peak (Season High) */}
                 {!isGpMode && (
-                  <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                  <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                     {entry.seasonHighRating}
                   </td>
                 )}
 
                 {/* Matches */}
-                <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                   {entry.totalMatches}
                 </td>
 
                 {isTeamClassic ? (
                   <>
                     {/* Wins (Team 1st Place) */}
-                    <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-yellow-400">
+                    <td className="py-2 px-1 md:px-2 text-right text-yellow-400">
                       {entry.firstPlaces}
                     </td>
 
                     {/* MVP */}
-                    <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-amber-300">
+                    <td className="py-2 px-1 md:px-2 text-right text-amber-300">
                       {entry.mvpCount ?? 0}
                     </td>
                   </>
                 ) : (
                   <>
                     {/* 1st Place */}
-                    <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-yellow-400">
+                    <td className="py-2 px-1 md:px-2 text-right text-yellow-400">
                       {entry.firstPlaces}
                     </td>
 
                     {/* 2nd Place */}
-                    <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-300">
+                    <td className="py-2 px-1 md:px-2 text-right text-gray-300">
                       {entry.secondPlaces}
                     </td>
 
                     {/* 3rd Place */}
-                    <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-orange-400">
+                    <td className="py-2 px-1 md:px-2 text-right text-orange-400">
                       {entry.thirdPlaces}
                     </td>
                   </>
@@ -210,35 +207,35 @@ export function LeaderboardTable({ data, loading, startRank = 1, category = 'CLA
 
                 {/* Best Position (GP & TEAM_GP) */}
                 {isGpMode && (
-                  <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                  <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                     {entry.bestPosition ?? '-'}
                   </td>
                 )}
 
                 {/* Median Position */}
-                <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                   {medianPosition}
                 </td>
 
                 {/* Best Points (GP & TEAM_GP) */}
                 {isGpMode && (
-                  <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                  <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                     {entry.bestPoints ?? '-'}
                   </td>
                 )}
 
                 {/* Median Points */}
-                <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                   {medianPoints}
                 </td>
 
                 {/* Finish Rate */}
-                <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                   {finishRate}%
                 </td>
 
                 {/* Machine */}
-                <td className="py-1.5 px-1.5 md:py-2 md:px-2 text-right text-gray-100">
+                <td className="py-2 px-1 md:px-2 text-right text-gray-100">
                   <span className="md:hidden">{machineAbbr}</span>
                   <span className="hidden md:inline">{entry.favoriteMachine || '-'}</span>
                 </td>

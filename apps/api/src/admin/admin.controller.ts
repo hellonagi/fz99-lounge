@@ -170,7 +170,81 @@ export class AdminController {
       throw new BadRequestException('Invalid game ID');
     }
 
-    await this.classicRatingService.calculateAndUpdateRatings(gameIdNum);
+    const game = await this.prisma.game.findUnique({
+      where: { id: gameIdNum },
+      include: {
+        match: {
+          include: {
+            season: { include: { event: true } },
+          },
+        },
+      },
+    });
+    if (!game) {
+      throw new BadRequestException('Game not found');
+    }
+    if (!game.match.isRated) {
+      throw new BadRequestException('Match is unrated');
+    }
+
+    const category = game.match.season.event.category;
+    const seasonNumber = game.match.season.seasonNumber;
+    const matchNumber = game.match.matchNumber;
+
+    // 計算済みのゲームに単発計算すると変動が二重適用される。また、後続の
+    // 試合が計算済みの場合は計算順が前後する。どちらの場合もこの試合以降を
+    // matchNumber順に再計算する
+    const alreadyCalculated =
+      (await this.prisma.ratingHistory.count({
+        where: { matchId: game.matchId },
+      })) > 0;
+    const laterFinalized =
+      matchNumber != null
+        ? await this.prisma.match.findFirst({
+            where: {
+              seasonId: game.match.seasonId,
+              matchNumber: { gt: matchNumber },
+              status: 'FINALIZED',
+              isRated: true,
+            },
+            select: { id: true },
+          })
+        : null;
+
+    const isTeamCategory =
+      category === EventCategory.TEAM_CLASSIC ||
+      category === EventCategory.TEAM_GP;
+
+    if (alreadyCalculated || laterFinalized) {
+      if (matchNumber == null) {
+        throw new BadRequestException(
+          'Ratings already exist for this match but it has no matchNumber; cannot recalculate safely',
+        );
+      }
+      const result = isTeamCategory
+        ? await this.teamClassicRatingService.recalculateFromMatch(
+            seasonNumber,
+            matchNumber,
+            category,
+          )
+        : await this.classicRatingService.recalculateFromMatch(
+            category,
+            seasonNumber,
+            matchNumber,
+          );
+      return {
+        success: true,
+        message: `Ratings already existed or later matches were finalized; recalculated from match ${matchNumber}`,
+        ...result,
+      };
+    }
+
+    // endMatchと同じルーティング: チーム戦はteamConfigありならチーム用計算
+    if (isTeamCategory && game.teamConfig) {
+      await this.teamClassicRatingService.calculateAndUpdateRatings(gameIdNum);
+    } else {
+      await this.classicRatingService.calculateAndUpdateRatings(gameIdNum);
+    }
 
     return {
       success: true,

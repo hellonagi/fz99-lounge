@@ -34,7 +34,7 @@ export class ScreenshotsController {
   /**
    * スクショを提出 (プレイヤー用)
    * POST /api/screenshots/submit
-   * type: INDIVIDUAL（個人成績）または FINAL_SCORE（全体スコア、1位のみ）
+   * type: INDIVIDUAL（個人成績）。FINAL_SCORE系は提出廃止
    */
   @Post('submit')
   @HttpCode(HttpStatus.CREATED)

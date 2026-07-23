@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Saira Condensed Tab'; font-weight: 800; src: url('assets/fonts/SairaCondensedTab-800.woff2') format('woff2'); }
+  @font-face { font-family: 'Saira Condensed Tab'; font-weight: 600; src: url('assets/fonts/SairaCondensedTab-600.woff2') format('woff2'); }
+  @font-face { font-family: 'Saira Condensed'; font-weight: 800; src: url('assets/fonts/SairaCondensed-800-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Saira Condensed'; font-weight: 600; src: url('assets/fonts/SairaCondensed-600-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Chakra Petch'; font-weight: 700; font-style: italic; src: url('assets/fonts/ChakraPetch-700-italic.woff2') format('woff2'); }
+  @font-face { font-family: 'Chakra Petch'; font-weight: 700; src: url('assets/fonts/ChakraPetch-700-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Chakra Petch'; font-weight: 500; src: url('assets/fonts/ChakraPetch-500-normal.woff2') format('woff2'); }
+
+  :root {
+    --bg-0: #07060f;
+    --bg-1: #0d0b1e;
+    --panel: rgba(16, 14, 36, 0.72);
+    --line: rgba(255,255,255,0.09);
+    --ink: #f4f4ff;
+    --ink-2: #b8b6d4;
+    --muted: #6f6d92;
+    --cyan: #2de2ff;
+    --magenta: #ff2d78;
+    --gold: #ffd535;
+    --silver: #c7d2e6;
+    --bronze: #e0895a;
+    --display: 'Saira Condensed', 'Noto Sans CJK JP', sans-serif;
+    --num: 'Saira Condensed Tab', 'Noto Sans CJK JP', sans-serif;
+    --tech: 'Chakra Petch', 'Noto Sans CJK JP', sans-serif;
+    --jp: 'Noto Sans CJK JP', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #000; }
+  body { font-family: var(--jp); }
+
+  .card {
+    width: 1200px; height: 675px;
+    position: relative; overflow: hidden;
+    color: var(--ink);
+    background:
+      radial-gradient(900px 480px at 88% -8%, rgba(45,226,255,0.13), transparent 62%),
+      radial-gradient(1000px 560px at -5% 112%, rgba(255,45,120,0.16), transparent 60%),
+      linear-gradient(160deg, var(--bg-1), var(--bg-0) 55%);
+  }
+
+  /* ---- atmosphere layers ---- */
+  .horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 300px; opacity: 0.5;
+    -webkit-mask-image: linear-gradient(to top, #000 30%, transparent 100%); }
+  .streak { position: absolute; height: 3px; border-radius: 2px; transform: skewX(-32deg); opacity: 0.7; }
+  .scanlines { position: absolute; inset: 0; z-index: 40; pointer-events: none; opacity: 0.16;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.9) 0 1px, transparent 1px 3px); }
+  .vignette { position: absolute; inset: 0; z-index: 41; pointer-events: none;
+    background: radial-gradient(120% 120% at 50% 40%, transparent 60%, rgba(0,0,0,0.45) 100%); }
+  .frame { position: absolute; inset: 10px; z-index: 42; pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.07); }
+  .frame::before, .frame::after { content: ""; position: absolute; width: 26px; height: 26px; }
+  .frame::before { left: -1px; top: -1px; border-left: 2px solid var(--cyan); border-top: 2px solid var(--cyan); }
+  .frame::after { right: -1px; bottom: -1px; border-right: 2px solid var(--magenta); border-bottom: 2px solid var(--magenta); }
+  .watermark { position: absolute; right: -30px; top: -90px; z-index: 0;
+    font-family: var(--display); font-weight: 800; font-size: 460px; line-height: 1;
+    color: transparent; -webkit-text-stroke: 2px rgba(255,255,255,0.045); font-style: italic; }
+
+  .inner { position: relative; z-index: 10; height: 100%; padding: 40px 48px 36px; display: flex; flex-direction: column; }
+
+  /* ---- header ---- */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .checker { display: inline-block; width: 84px; height: 12px; margin-right: 14px;
+    background: repeating-conic-gradient(rgba(255,255,255,0.85) 0% 25%, transparent 0% 50%) 0 0 / 12px 12px;
+    -webkit-mask-image: linear-gradient(90deg, #000 60%, transparent); transform: skewX(-32deg); }
+  .kicker { display: flex; align-items: center; margin-bottom: 8px; }
+  .kicker span { font-family: var(--tech); font-style: italic; font-weight: 700; font-size: 15px;
+    letter-spacing: 4px; color: var(--cyan); text-transform: uppercase;
+    text-shadow: 0 0 12px rgba(45,226,255,0.55); }
+  .title-row { display: flex; align-items: baseline; gap: 14px; }
+  h1 { font-family: var(--display); font-weight: 800; font-size: 58px; line-height: 0.95;
+    text-transform: uppercase; letter-spacing: 1px; transform: skewX(-6deg); transform-origin: left bottom;
+    background: linear-gradient(180deg, #ffffff 20%, #cfd6ff 48%, #8a93c9 52%, #e8ecff 78%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 24px rgba(120,140,255,0.25)); }
+  .round { font-family: var(--display); font-weight: 800; font-style: italic; font-size: 74px; line-height: 0.9;
+    color: var(--gold); transform: skewX(-6deg);
+    text-shadow: 0 0 26px rgba(255,213,53,0.45), 0 3px 0 rgba(0,0,0,0.6); }
+  .sub { margin-top: 10px; font-family: var(--tech); font-weight: 500; font-size: 14px; color: var(--ink-2); letter-spacing: 0.5px; }
+  .sub b { color: var(--ink); font-weight: 700; }
+  .sub .sep { color: var(--magenta); margin: 0 10px; }
+  .site-chip { margin-top: 6px; font-family: var(--tech); font-weight: 700; font-size: 13px; letter-spacing: 2px;
+    color: var(--bg-0); background: linear-gradient(90deg, var(--cyan), #9be9ff); padding: 7px 18px;
+    transform: skewX(-18deg); box-shadow: 0 0 22px rgba(45,226,255,0.35); }
+  .site-chip > div { transform: skewX(18deg); }
+
+  /* ---- body ---- */
+  .content { display: flex; gap: 34px; flex: 1; min-height: 0; }
+  .standings { width: 470px; display: flex; flex-direction: column; }
+
+  .sec-label { font-family: var(--tech); font-style: italic; font-weight: 700; font-size: 12px;
+    letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .sec-label em { color: var(--magenta); font-style: normal; margin-right: 8px; }
+
+  .podium { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .p-row { position: relative; display: flex; align-items: center; height: 58px;
+    background: var(--panel); border: 1px solid var(--line);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 20px) 100%, 0 100%); padding: 0 26px 0 0; }
+  .p-row .medal-bar { width: 6px; align-self: stretch; }
+  .p-row .rank { font-family: var(--display); font-weight: 800; font-style: italic; font-size: 34px;
+    width: 62px; text-align: center; }
+  .p-row .flag img { width: 26px; height: 19.5px; display: block; box-shadow: 0 0 0 1px rgba(255,255,255,0.18); }
+  .p-row .name { font-family: var(--jp); font-weight: 700; font-size: 21px; margin-left: 14px; flex: 1;
+    display: flex; align-items: center; }
+  .p-row .pts { font-family: var(--num); font-weight: 800; font-size: 30px; letter-spacing: 0.5px; }
+  .p-row .pts small { font-family: var(--tech); font-weight: 500; font-size: 11px; color: var(--muted); margin-left: 4px; letter-spacing: 1px; }
+  .p-row.gold { height: 68px; border-color: rgba(255,213,53,0.55);
+    background: linear-gradient(90deg, rgba(255,213,53,0.16), rgba(255,213,53,0.03) 55%, var(--panel));
+    box-shadow: 0 0 30px rgba(255,213,53,0.14), inset 0 0 24px rgba(255,213,53,0.05); }
+  .p-row.gold .rank { font-size: 42px; color: var(--gold); text-shadow: 0 0 16px rgba(255,213,53,0.6); }
+  .p-row.gold .name { font-size: 25px; }
+  .p-row.gold .pts { font-size: 36px; color: var(--gold); text-shadow: 0 0 14px rgba(255,213,53,0.45); }
+  .p-row.silver .rank { color: var(--silver); } .p-row.silver .medal-bar { background: var(--silver); }
+  .p-row.bronze .rank { color: var(--bronze); } .p-row.bronze .medal-bar { background: var(--bronze); }
+  .p-row.gold .medal-bar { background: linear-gradient(180deg, #fff3b0, var(--gold)); box-shadow: 0 0 12px rgba(255,213,53,0.8); }
+  .trophy { width: 18px; height: 18px; stroke: var(--gold); margin-left: 10px; filter: drop-shadow(0 0 6px rgba(255,213,53,0.7)); }
+
+  .rest { display: flex; flex-direction: column;
+    background: linear-gradient(180deg, rgba(7,6,15,0.15), rgba(7,6,15,0.6));
+    padding: 0 4px; }
+  .r-row { display: flex; align-items: center; height: 31.5px; padding: 0 14px 0 0;
+    border-bottom: 1px solid rgba(255,255,255,0.055); font-size: 14px; }
+  .r-row:last-child { border-bottom: none; }
+  .r-row .rank { font-family: var(--display); font-weight: 600; font-style: italic; font-size: 15px;
+    color: var(--muted); width: 34px; text-align: right; padding-right: 12px; }
+  .r-row .flag img { width: 18px; height: 13.5px; display: block; box-shadow: 0 0 0 1px rgba(255,255,255,0.14); }
+  .r-row .name { font-weight: 500; margin-left: 10px; flex: 1; color: var(--ink-2); }
+  .r-row .pts { font-family: var(--num); font-weight: 600; font-size: 16px; color: var(--ink-2); letter-spacing: 0.5px; }
+
+  /* ---- right column ---- */
+  .right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chart-panel { flex: 1; background: var(--panel); border: 1px solid var(--line); position: relative;
+    clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%);
+    padding: 16px 20px 10px; display: flex; flex-direction: column; }
+  .chart-panel::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--magenta), var(--cyan) 70%, transparent); opacity: 0.8; }
+  .chart-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 2px; }
+  .chart-title { font-family: var(--tech); font-style: italic; font-weight: 700; font-size: 13px;
+    letter-spacing: 2.5px; text-transform: uppercase; color: var(--ink-2); }
+  .chart-title-jp { font-family: var(--jp); font-size: 11px; color: var(--muted); }
+  .chart-panel svg { flex: 1; width: 100%; }
+
+  .stats { display: flex; gap: 12px; margin-top: 14px; }
+  .stat { flex: 1; position: relative; background: var(--panel); border: 1px solid var(--line);
+    transform: skewX(-12deg); padding: 9px 16px 8px; }
+  .stat > div { transform: skewX(12deg); }
+  .stat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent, var(--cyan)); box-shadow: 0 0 10px var(--accent, var(--cyan)); }
+  .stat .label { font-family: var(--tech); font-weight: 500; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .stat .value { font-family: var(--display); font-weight: 800; font-size: 23px; line-height: 1.05; }
+  .stat .value small { font-family: var(--tech); font-weight: 500; font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-left: 3px; }
+  .stat .note { font-family: var(--jp); font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <svg class="horizon" id="horizon"></svg>
+  <div class="watermark" id="watermark"></div>
+  <div id="streaks"></div>
+
+  <div class="inner">
+    <div class="header">
+      <div class="title-block">
+        <div class="kicker"><span class="checker"></span><span id="kicker"></span></div>
+        <div class="title-row">
+          <h1 id="title"></h1>
+          <div class="round" id="round"></div>
+        </div>
+        <div class="sub" id="sub"></div>
+      </div>
+      <div class="site-chip"><div id="site"></div></div>
+    </div>
+
+    <div class="content">
+      <div class="standings">
+        <div class="sec-label"><em>■</em><span id="standings-label"></span></div>
+        <div class="podium" id="podium"></div>
+        <div class="rest" id="rest"></div>
+      </div>
+
+      <div class="right">
+        <div class="chart-panel">
+          <div class="chart-head">
+            <div class="chart-title" id="chart-title"></div>
+            <div class="chart-title-jp" id="chart-title-jp"></div>
+          </div>
+          <svg id="chart"></svg>
+        </div>
+        <div class="sec-label" id="stats-label" style="display:none; margin: 12px 0 0 2px;"><em style="color:var(--gold)">■</em><span id="stats-label-text"></span></div>
+        <div class="stats" id="stats"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+  <div class="frame"></div>
+</div>
+<script>
+/* =========================================================================
+ * 大会ごとに編集するのはこの CONFIG だけ。
+ * 新しい大会のカードを作るときはこのファイルをコピーして CONFIG を書き換え、
+ * ./render.sh <file>.html で出力する。
+ * ========================================================================= */
+const CONFIG = {
+  kicker: 'Final Results',
+  title: 'FZ99 Lounge Masters',
+  round: '#2',                       // 見出し横のゴールド表記 + 背景ウォーターマーク
+  subHtml: '<b>GP DIVISION</b><span class="sep">//</span>Red Bull Gaming Sphere Tokyo',
+  site: 'FZ99LOUNGE.COM',
+  standingsLabel: 'Top 10 Standings',
+
+  // 上位3人はメダル付き大型バー。cc は assets/flags/ の国コード
+  top3: [
+    { rank: 1, cls: 'gold',   cc: 'jp', name: 'ナスホルン',       pts: '6,754' },
+    { rank: 2, cls: 'silver', cc: 'jp', name: 'しおっち',         pts: '6,484' },
+    { rank: 3, cls: 'bronze', cc: 'jp', name: 'CPU.ルネアちゃん', pts: '6,282' },
+  ],
+  rest: [
+    { rank: 4,  cc: 'jp', name: 'reo',      pts: '6,256' },
+    { rank: 5,  cc: 'us', name: 'Misa',     pts: '6,094' },
+    { rank: 6,  cc: 'us', name: 'Kalt',     pts: '6,054' },
+    { rank: 7,  cc: 'jp', name: 'nag',      pts: '6,034' },
+    { rank: 8,  cc: 'us', name: 'oliver',   pts: '5,738' },
+    { rank: 9,  cc: 'us', name: 'Jorshama', pts: '5,604' },
+    { rank: 10, cc: 'jp', name: 'キホル',   pts: '5,596' },
+  ],
+
+  // GPごとの「総合順位」バンプチャート。ranks は各GP終了時点の全体順位
+  // maxRank より下の順位は枠外(下)に描画され、圏外から浮上する演出になる
+  chart: {
+    titleEn: 'Rank Progression',
+    titleJa: '',
+    maxRank: 15,
+    yTicks: [1, 5, 10, 15],
+    gps: ['KNIGHT', 'QUEEN', 'KING', 'ACE', 'M.KNIGHT', 'M.QUEEN', 'M.KING', 'M.ACE'],
+    // 描画順(後ろほど手前)。muted はグレー系の脇役配色になる
+    players: [
+      { label: 'キホル',     color: '#8a88a8', muted: true,  ranks: [39, 22,  9, 13, 14, 13, 10, 10] },
+      { label: 'Jorshama',   color: '#7a789c', muted: true,  ranks: [45, 26, 15, 10,  7,  8,  9,  9] },
+      { label: 'oliver',     color: '#6a6890', muted: true,  ranks: [17, 13, 14, 27, 18, 12,  8,  8] },
+      { label: 'nag',        color: '#9a98b4', muted: true,  ranks: [ 1,  1,  1,  2,  3,  3,  5,  7] },
+      { label: 'Kalt',       color: '#5a5884', muted: true,  ranks: [13, 15, 10,  5,  6,  6,  6,  6] },
+      { label: 'Misa',       color: '#a78bfa',               ranks: [11,  3,  2, 15,  9,  7,  7,  5] },
+      { label: 'reo',        color: '#3ef08a',               ranks: [31, 17, 12,  6,  4,  4,  2,  4] },
+      { label: 'ルネア',     color: '#ff4fa3',               ranks: [ 2,  4,  4,  3,  5,  5,  4,  3] },
+      { label: 'しおっち',   color: '#2de2ff',               ranks: [ 4,  2,  3,  1,  2,  2,  3,  2] },
+      { label: 'ナスホルン', color: '#ffd535', winner: true, ranks: [29,  9,  6,  4,  1,  1,  1,  1] },
+    ],
+  },
+
+  // accent は CSS 変数か hex。value が長くて収まらない場合は small: true で縮小
+  statsLabel: "Champion's Notable Stats",
+  stats: [
+    { accent: 'var(--gold)',    label: 'Comeback',    value: '29TH → 1ST' },
+    { accent: 'var(--cyan)',    label: 'Consistency', value: '844', unit: 'AVG PTS' },
+    { accent: 'var(--magenta)', label: 'Survived',    value: '7/8', unit: 'GPS' },
+  ],
+};
+/* ========================= ここから下は編集不要 ========================= */
+
+const FLAG = cc => `assets/flags/${cc}.svg`;
+const TROPHY = `<svg class="trophy" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>`;
+
+const $ = id => document.getElementById(id);
+$('kicker').textContent = CONFIG.kicker;
+$('title').textContent = CONFIG.title;
+$('round').textContent = CONFIG.round;
+$('watermark').textContent = CONFIG.round;
+$('sub').innerHTML = CONFIG.subHtml;
+$('site').textContent = CONFIG.site;
+$('standings-label').textContent = CONFIG.standingsLabel;
+$('chart-title').textContent = CONFIG.chart.titleEn;
+$('chart-title-jp').textContent = CONFIG.chart.titleJa;
+
+$('podium').innerHTML = CONFIG.top3.map(p => `
+  <div class="p-row ${p.cls}">
+    <div class="medal-bar"></div>
+    <div class="rank">${p.rank}</div>
+    <div class="flag"><img src="${FLAG(p.cc)}" alt=""></div>
+    <div class="name">${p.name}</div>
+    <div class="pts">${p.pts}<small>PTS</small></div>
+  </div>`).join('');
+
+$('rest').innerHTML = CONFIG.rest.map(p => `
+  <div class="r-row">
+    <div class="rank">${p.rank}</div>
+    <div class="flag"><img src="${FLAG(p.cc)}" alt=""></div>
+    <div class="name">${p.name}</div>
+    <div class="pts">${p.pts}</div>
+  </div>`).join('');
+
+if (!CONFIG.stats.length) $('stats').style.display = 'none';
+if (CONFIG.statsLabel && CONFIG.stats.length) {
+  $('stats-label').style.display = '';
+  $('stats-label-text').textContent = CONFIG.statsLabel;
+  $('stats').style.marginTop = '8px';
+}
+$('stats').innerHTML = CONFIG.stats.map(s => `
+  <div class="stat" style="--accent: ${s.accent}">
+    <div>
+      <div class="label">${s.label}</div>
+      <div class="value"${s.small ? ' style="font-size:20px"' : ''}>${s.value}${s.unit ? `<small>${s.unit}</small>` : ''}</div>
+      ${s.note ? `<div class="note">${s.note}</div>` : ''}
+    </div>
+  </div>`).join('');
+
+/* speed streaks */
+const STREAKS = [
+  { x: 640, y: 74,  w: 260, c: 'rgba(45,226,255,0.5)' },
+  { x: 780, y: 96,  w: 150, c: 'rgba(255,255,255,0.28)' },
+  { x: 560, y: 118, w: 200, c: 'rgba(255,45,120,0.4)' },
+  { x: 300, y: 640, w: 300, c: 'rgba(255,45,120,0.35)' },
+  { x: 150, y: 620, w: 160, c: 'rgba(45,226,255,0.3)' },
+];
+$('streaks').innerHTML = STREAKS.map(s =>
+  `<div class="streak" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;background:linear-gradient(90deg,transparent,${s.c},transparent)"></div>`).join('');
+
+/* horizon grid */
+(() => {
+  const el = $('horizon');
+  const W = 1200, H = 300, vpx = 700, vpy = -140;
+  el.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  let s = '';
+  for (let i = -14; i <= 14; i++) {
+    const bx = vpx + i * 130;
+    s += `<line x1="${vpx}" y1="${vpy}" x2="${bx}" y2="${H}" stroke="#ff2d78" stroke-width="1" opacity="0.35"/>`;
+  }
+  const rows = [0.18, 0.32, 0.45, 0.57, 0.68, 0.78, 0.87, 0.95];
+  for (const r of rows) {
+    const y = H - (1 - r) * 220;
+    s += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#ff2d78" stroke-width="1" opacity="${0.15 + r * 0.3}"/>`;
+  }
+  el.innerHTML = s;
+})();
+
+/* bump chart (総合順位の推移) */
+(() => {
+  const { players: PLAYERS, gps: GPS, maxRank, yTicks } = CONFIG.chart;
+  const chartEl = $('chart');
+  const rect = chartEl.getBoundingClientRect();
+  const W = Math.round(rect.width), H = Math.round(rect.height);
+  chartEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const M = { top: 16, right: 96, bottom: 28, left: 40 };
+  const pw = W - M.left - M.right, ph = H - M.top - M.bottom;
+  const xs = i => M.left + (i / (GPS.length - 1)) * pw;
+  // rank 1 が上端。maxRank 超は枠外(下)へ続き clip で切れる
+  const ys = r => M.top + ((Math.min(r, maxRank + 4) - 1) / (maxRank - 1)) * ph;
+
+  let svg = `<defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="4"/></filter>
+    <clipPath id="plot"><rect x="0" y="0" width="${W}" height="${M.top + ph + 6}"/></clipPath>
+  </defs>`;
+  for (const t of yTicks) {
+    svg += `<line x1="${M.left}" y1="${ys(t)}" x2="${W - M.right}" y2="${ys(t)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    svg += `<text x="${M.left - 8}" y="${ys(t) + 3.5}" text-anchor="end" fill="#6f6d92" font-size="10" font-family="Chakra Petch">${t}${t === maxRank ? '+' : ''}</text>`;
+  }
+  GPS.forEach((gp, i) => {
+    svg += `<text x="${xs(i)}" y="${H - 10}" text-anchor="middle" fill="#6f6d92" font-size="9.5" font-family="Chakra Petch" letter-spacing="0.5">${gp}</text>`;
+  });
+
+  svg += `<g clip-path="url(#plot)">`;
+  for (const p of PLAYERS) {
+    const w = p.winner ? 3 : p.muted ? 1.5 : 2;
+    const pts = p.ranks.map((r, i) => `${xs(i)},${ys(r)}`).join(' ');
+    if (!p.muted) svg += `<polyline points="${pts}" fill="none" stroke="${p.color}" stroke-width="${w + 4}" opacity="0.22" filter="url(#glow)" stroke-linejoin="round"/>`;
+    svg += `<polyline points="${pts}" fill="none" stroke="${p.color}" stroke-width="${w}" opacity="${p.muted ? 0.75 : 1}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    p.ranks.forEach((r, i) => {
+      if (r > maxRank + 1) return;
+      const lead = r === 1;
+      svg += `<circle cx="${xs(i)}" cy="${ys(r)}" r="${lead ? 4.5 : p.muted ? 2.5 : 3.5}" fill="${p.color}" stroke="#0d0b1e" stroke-width="2"/>`;
+    });
+  }
+  svg += `</g>`;
+
+  /* 終点ラベル。最終順位が全員異なるのでそのまま右に並べる */
+  const ex = xs(GPS.length - 1);
+  for (const p of PLAYERS) {
+    const fr = p.ranks[p.ranks.length - 1];
+    svg += `<text x="${ex + 14}" y="${ys(fr) + 3.5}" fill="${p.winner ? '#ffd535' : p.muted ? '#6f6d92' : '#b8b6d4'}" font-size="${p.winner ? 12 : 10.5}" font-weight="${p.winner ? 700 : 500}" font-family="Noto Sans CJK JP">${fr}. ${p.label}</text>`;
+  }
+  chartEl.innerHTML = svg;
+})();
+</script>
+</body>
+</html>

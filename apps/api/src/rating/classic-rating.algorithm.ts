@@ -154,7 +154,8 @@ function calculateWithAllComparison(
     const oppPosition = normalizedPositions[opponent.userId];
     if (oppPosition > myPosition)
       worseCount++; // opponent finished lower
-    else sameCount++; // same position (tie)
+    else if (oppPosition === myPosition) sameCount++; // same position (tie)
+    // opponent finished higher: contributes 0 to actual score
   }
 
   // Actual score: players beaten count as 1, ties count as 0.5

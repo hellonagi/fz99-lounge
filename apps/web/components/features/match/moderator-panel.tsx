@@ -4,13 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { gamesApi, screenshotsApi, tracksApi, Track } from '@/lib/api';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import { gamesApi, tracksApi, Track } from '@/lib/api';
 import {
   Select,
   SelectContent,
@@ -18,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import Image from 'next/image';
 import { Check, AlertTriangle } from 'lucide-react';
 import { ScoreSubmissionForm } from './score-submission-form';
 import {
@@ -34,20 +27,6 @@ interface RaceResult {
   points: number | null;
   isEliminated: boolean;
   isDisconnected: boolean;
-}
-
-interface Screenshot {
-  id: number;
-  userId: number;
-  imageUrl: string | null;
-  type: 'INDIVIDUAL' | 'INDIVIDUAL_1' | 'INDIVIDUAL_2' | 'FINAL_SCORE' | 'FINAL_SCORE_1' | 'FINAL_SCORE_2';
-  isVerified: boolean;
-  isRejected?: boolean;
-  isDeleted?: boolean;
-  user: {
-    id: number;
-    displayName: string | null;
-  };
 }
 
 interface Participant {
@@ -81,7 +60,6 @@ interface ModeratorPanelProps {
   matchStatus: string;
   participants: Participant[];
   matchParticipants: MatchParticipant[];
-  screenshots?: Screenshot[];
   category: string;
   season: number;
   match: number;
@@ -98,7 +76,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   const {
     matchStatus,
     participants,
-    screenshots = [],
     category,
     season,
     match,
@@ -108,15 +85,10 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
   } = props;
   const [endingMatch, setEndingMatch] = useState(false);
   const [regeneratingPasscode, setRegeneratingPasscode] = useState(false);
-  const [verifyingId, setVerifyingId] = useState<number | null>(null);
-  const [rejectingId, setRejectingId] = useState<number | null>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   // Score verification state
   const [verifyingScoreUserId, setVerifyingScoreUserId] = useState<number | null>(null);
   const [rejectingScoreUserId, setRejectingScoreUserId] = useState<number | null>(null);
   const [markingNoShowUserId, setMarkingNoShowUserId] = useState<number | null>(null);
-  const [uploadingFinalScore1, setUploadingFinalScore1] = useState(false);
-  const [uploadingFinalScore2, setUploadingFinalScore2] = useState(false);
   const [notifyingConflict, setNotifyingConflict] = useState(false);
   const [conflictNotified, setConflictNotified] = useState(false);
 
@@ -139,11 +111,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       tracksApi.getAll().then((res) => setAllTracks(res.data));
     }
   }, [isClassic]);
-
-  // Get screenshots by type
-  const finalScoreScreenshots = screenshots.filter(s =>
-    s.type === 'FINAL_SCORE' || s.type === 'FINAL_SCORE_1' || s.type === 'FINAL_SCORE_2'
-  );
 
   // Calculate verification progress (scores only, based on total match participants)
   const verifiedCount = participants.filter(p => p.status === 'VERIFIED').length;
@@ -172,34 +139,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
     }
     return ids;
   }, [positionConflicts]);
-
-  // Verify a screenshot
-  const handleVerify = async (submissionId: number) => {
-    setVerifyingId(submissionId);
-    try {
-      await screenshotsApi.verify(submissionId);
-      onUpdate();
-    } catch (error) {
-      console.error('Failed to verify screenshot:', error);
-      alert('Failed to verify screenshot');
-    } finally {
-      setVerifyingId(null);
-    }
-  };
-
-  // Reject a screenshot
-  const handleReject = async (submissionId: number) => {
-    setRejectingId(submissionId);
-    try {
-      await screenshotsApi.reject(submissionId);
-      onUpdate();
-    } catch (error) {
-      console.error('Failed to reject screenshot:', error);
-      alert('Failed to reject screenshot');
-    } finally {
-      setRejectingId(null);
-    }
-  };
 
   // Verify a participant's score
   const handleVerifyScore = async (userId: number) => {
@@ -241,38 +180,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
       alert('Failed to mark no-show');
     } finally {
       setMarkingNoShowUserId(null);
-    }
-  };
-
-  // Upload final score screenshot (moderator only)
-  const handleFinalScoreUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'FINAL_SCORE_1' | 'FINAL_SCORE_2') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.match(/^image\/(jpg|jpeg|png|webp)$/i)) {
-      alert('Only JPG, PNG, and WebP images are allowed');
-      return;
-    }
-
-    // Validate file size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
-      return;
-    }
-
-    const setUploading = type === 'FINAL_SCORE_1' ? setUploadingFinalScore1 : setUploadingFinalScore2;
-    setUploading(true);
-    try {
-      await screenshotsApi.submit(props.gameId, file, type);
-      onUpdate();
-      // Reset file input
-      e.target.value = '';
-    } catch (error) {
-      console.error(`Failed to upload ${type} screenshot:`, error);
-      alert('Failed to upload screenshot');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -763,117 +670,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
         </table>
       </div>
 
-      {/* Final Score Screenshot Upload */}
-      <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
-        <h3 className="text-sm font-medium text-white mb-3">Final Score Screenshot</h3>
-
-        {/* 1-11 positions */}
-        <div className="mb-4">
-          <p className="text-xs text-gray-400 mb-2">1-11位 (Positions 1-11)</p>
-          <input
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={(e) => handleFinalScoreUpload(e, 'FINAL_SCORE_1')}
-            disabled={uploadingFinalScore1}
-            className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
-          />
-          {uploadingFinalScore1 && (
-            <p className="text-xs text-blue-400 mt-1">Uploading...</p>
-          )}
-        </div>
-
-        {/* 10-20 positions */}
-        <div>
-          <p className="text-xs text-gray-400 mb-2">10-20位 (Positions 10-20)</p>
-          <input
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={(e) => handleFinalScoreUpload(e, 'FINAL_SCORE_2')}
-            disabled={uploadingFinalScore2}
-            className="w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer disabled:opacity-50"
-          />
-          {uploadingFinalScore2 && (
-            <p className="text-xs text-blue-400 mt-1">Uploading...</p>
-          )}
-        </div>
-      </div>
-
-      {/* Screenshots Section */}
-      {finalScoreScreenshots.length > 0 && (
-        <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
-          <h3 className="text-lg font-bold text-white mb-4">Screenshots</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {finalScoreScreenshots.map((screenshot) => (
-              <div key={screenshot.id} className="space-y-3">
-                {/* Screenshot Image */}
-                {screenshot.imageUrl ? (
-                  <div
-                    className="relative aspect-video rounded-lg overflow-hidden bg-gray-800 border border-gray-700 cursor-pointer hover:border-blue-500 transition-colors"
-                    onClick={() => setSelectedImage(screenshot.imageUrl)}
-                  >
-                    <Image
-                      src={screenshot.imageUrl}
-                      alt="Final Score"
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    />
-                  </div>
-                ) : (
-                  <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800 border border-gray-700 flex items-center justify-center">
-                    <span className="text-gray-500 text-sm">Image deleted</span>
-                  </div>
-                )}
-
-                {/* Submitted by */}
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400">
-                    Submitted by{' '}
-                    <span className="text-white">
-                      {screenshot.user.displayName || `User#${screenshot.user.id}`}
-                    </span>
-                  </p>
-
-                  {/* Verify Status */}
-                  {screenshot.isVerified ? (
-                    <span className="text-green-400 text-sm font-medium flex items-center gap-1">
-                      <Check className="w-4 h-4" /> {t('ok')}
-                    </span>
-                  ) : screenshot.isRejected ? (
-                    <span className="text-red-400 text-sm font-medium">{t('ng')}</span>
-                  ) : screenshot.imageUrl ? (
-                    <div className="flex items-center gap-2">
-                      {hasPermission(user, 'VERIFY_SCREENSHOT') && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleVerify(screenshot.id)}
-                          disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          {verifyingId === screenshot.id ? '...' : 'Verify'}
-                        </Button>
-                      )}
-                      {hasPermission(user, 'REJECT_SCREENSHOT') && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleReject(screenshot.id)}
-                          disabled={verifyingId === screenshot.id || rejectingId === screenshot.id}
-                          className="bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          {rejectingId === screenshot.id ? '...' : 'Reject'}
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-gray-500 text-sm">-</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Score Edit Form - available until match is finalized */}
       {(matchStatus === 'IN_PROGRESS' || matchStatus === 'COMPLETED') && hasPermission(user, 'EDIT_SCORE') && (
         <div className="p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
@@ -887,26 +683,6 @@ export function ModeratorPanel(props: ModeratorPanelProps) {
           />
         </div>
       )}
-
-      {/* Screenshot Modal */}
-      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-0" aria-describedby={undefined}>
-          <VisuallyHidden>
-            <DialogTitle>Screenshot Preview</DialogTitle>
-          </VisuallyHidden>
-          {selectedImage && (
-            <div className="relative w-full aspect-video">
-              <Image
-                src={selectedImage}
-                alt="Screenshot"
-                fill
-                className="object-contain rounded-lg"
-                unoptimized
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

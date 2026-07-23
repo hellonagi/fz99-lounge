@@ -29,7 +29,7 @@ function makeParticipant(
 
 describe('calculateRatingChanges', () => {
   describe('zero-sum invariant', () => {
-    it('sums internal rating changes to exactly 0 for an equal-rating game', () => {
+    it('sums internal rating changes to 0 for an equal-rating game', () => {
       const participants = [1, 2, 3, 4].map((userId, i) =>
         makeParticipant({ userId, position: i + 1 }),
       );
@@ -37,7 +37,7 @@ describe('calculateRatingChanges', () => {
       const changes = calculateRatingChanges(participants);
 
       const total = changes.reduce((sum, c) => sum + c.internalRatingChange, 0);
-      expect(total).toBe(0);
+      expect(total).toBeCloseTo(0, 9);
     });
   });
 

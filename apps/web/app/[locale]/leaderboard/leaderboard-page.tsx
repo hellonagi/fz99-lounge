@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { usersApi, seasonsApi } from '@/lib/api';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SeasonSelect } from '@/components/features/leaderboard/season-select';
 import { LeaderboardTable } from '@/components/features/leaderboard/leaderboard-table';
@@ -168,7 +169,7 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-gray-800 rounded-lg">
+      <Card>
         {mounted ? (
           <Tabs
             value={activeCategory.toLowerCase()}
@@ -181,7 +182,7 @@ export default function LeaderboardPage() {
               <TabsTrigger value="team_classic">{t('teamClassic')}</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="gp">
+            <TabsContent value="gp" className="px-2 sm:px-6">
               {error ? (
                 <div className="text-center text-red-400 py-8">{error}</div>
               ) : (
@@ -196,7 +197,7 @@ export default function LeaderboardPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="team_gp">
+            <TabsContent value="team_gp" className="px-2 sm:px-6">
               {error ? (
                 <div className="text-center text-red-400 py-8">{error}</div>
               ) : (
@@ -211,7 +212,7 @@ export default function LeaderboardPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="classic">
+            <TabsContent value="classic" className="px-2 sm:px-6">
               {error ? (
                 <div className="text-center text-red-400 py-8">{error}</div>
               ) : (
@@ -226,7 +227,7 @@ export default function LeaderboardPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="team_classic">
+            <TabsContent value="team_classic" className="px-2 sm:px-6">
               {error ? (
                 <div className="text-center text-red-400 py-8">{error}</div>
               ) : (
@@ -247,7 +248,7 @@ export default function LeaderboardPage() {
             <div className="h-64 bg-gray-700/30 rounded animate-pulse" />
           </div>
         )}
-      </div>
+      </Card>
     </main>
   );
 }
