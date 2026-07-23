@@ -495,13 +495,17 @@ export class ClassicRatingService {
         },
         matchNumber: { gte: fromMatchNumber },
         status: 'FINALIZED',
+        isRated: true,
       },
       orderBy: { matchNumber: 'asc' },
       include: {
         games: {
           include: {
             participants: {
-              where: { status: 'VERIFIED' },
+              // calculateAndUpdateRatingsの計算対象と同じ条件にする。
+              // NO_SHOWを除くと、NO_SHOWでしか出場していないユーザーの
+              // 統計がリセットされず再計算がズレる
+              where: { status: { in: ['VERIFIED', 'NO_SHOW'] } },
             },
           },
         },

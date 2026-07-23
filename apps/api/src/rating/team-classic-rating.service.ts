@@ -539,13 +539,18 @@ export class TeamClassicRatingService {
         },
         matchNumber: { gte: fromMatchNumber },
         status: 'FINALIZED',
+        isRated: true,
       },
       orderBy: { matchNumber: 'asc' },
       include: {
         games: {
           include: {
             participants: {
-              where: { status: 'VERIFIED', isExcluded: false },
+              // calculateAndUpdateRatingsの計算対象と同じ条件にする
+              where: {
+                status: { in: ['VERIFIED', 'NO_SHOW'] },
+                isExcluded: false,
+              },
             },
           },
         },

@@ -1157,13 +1157,55 @@ export class GamesService {
 
     // Calculate ratings based on event category (skip if unrated)
     if (game.match.isRated) {
-      if (
+      const isTeamCategory =
         eventCategory === EventCategory.TEAM_CLASSIC ||
-        eventCategory === EventCategory.TEAM_GP
-      ) {
-        // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
-        // If teamConfig is null (prime fallback), use classic rating service
+        eventCategory === EventCategory.TEAM_GP;
+
+      // For TEAM_CLASSIC / TEAM_GP: Calculate team scores first, then ratings
+      if (isTeamCategory) {
         await this.calculateAndSaveTeamScores(game.id);
+      }
+
+      // レートはmatchNumber順に積み上がる前提。自分より後の試合が既に
+      // FINALIZED済み(=レート計算済み)の場合、単発計算すると計算順が
+      // 前後してレート履歴が壊れるため、この試合以降を順に再計算する
+      const laterFinalized =
+        game.match.matchNumber != null
+          ? await this.prisma.match.findFirst({
+              where: {
+                seasonId: game.match.seasonId,
+                matchNumber: { gt: game.match.matchNumber },
+                status: MatchStatus.FINALIZED,
+                isRated: true,
+              },
+              select: { matchNumber: true },
+            })
+          : null;
+
+      if (laterFinalized) {
+        this.logger.warn(
+          `Match ${game.match.matchNumber} finalized after match ${laterFinalized.matchNumber}; recalculating ratings from match ${game.match.matchNumber}`,
+        );
+        // recalculateFromMatchはFINALIZEDの試合のみ対象なので先に確定させる
+        await this.prisma.match.update({
+          where: { id: game.matchId },
+          data: { status: MatchStatus.FINALIZED },
+        });
+        if (isTeamCategory) {
+          await this.teamClassicRatingService.recalculateFromMatch(
+            seasonNumber,
+            game.match.matchNumber!,
+            eventCategory,
+          );
+        } else {
+          await this.classicRatingService.recalculateFromMatch(
+            eventCategory,
+            seasonNumber,
+            game.match.matchNumber!,
+          );
+        }
+      } else if (isTeamCategory) {
+        // If teamConfig is null (prime fallback), use classic rating service
         if (game.teamConfig) {
           await this.teamClassicRatingService.calculateAndUpdateRatings(
             game.id,
@@ -1171,11 +1213,8 @@ export class GamesService {
         } else {
           await this.classicRatingService.calculateAndUpdateRatings(game.id);
         }
-      } else if (eventCategory === EventCategory.GP) {
-        // For GP: Use same classic rating algorithm (stored in DB, not displayed on frontend)
-        await this.classicRatingService.calculateAndUpdateRatings(game.id);
       } else {
-        // For CLASSIC: Use standard rating calculation
+        // CLASSIC / GP: standard rating calculation
         await this.classicRatingService.calculateAndUpdateRatings(game.id);
       }
     } else {
