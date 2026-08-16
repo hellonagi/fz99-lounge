@@ -369,6 +369,9 @@
     "byAuthor": "By {author}",
     "noNews": "ニュースはまだありません。",
     "charts": {
+      "rankValueWithPoints": "{rank}\u4f4d\u30fb{points, number}pt",
+      "rankProgressionTitle": "Top 5の順位推移",
+      "rankValue": "{rank}位",
       "progressionTitle": "Top 5 のポイント推移"
     },
     "comments": {

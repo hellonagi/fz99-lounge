@@ -369,6 +369,9 @@
     "byAuthor": "By {author}",
     "noNews": "No news yet.",
     "charts": {
+      "rankValueWithPoints": "#{rank} \u00b7 {points, number} pts",
+      "rankProgressionTitle": "Top 5 rank progression",
+      "rankValue": "#{rank}",
       "progressionTitle": "Top 5 cumulative points"
     },
     "comments": {
